@@ -52,16 +52,17 @@
       automatically, but explicit ordering aids readability):
 
         1. ike-minimal-fonts        – font JAR (no dependencies)
-        2. ike-documentation-parent – documentation POM (no dependencies)
-        3. ike-docbook-xsl          – DocBook XSL stylesheets (no dependencies)
+        2. ike-docbook-xsl          – DocBook XSL stylesheets (no dependencies)
+        3. ike-documentation-parent – documentation POM (uses ike-docbook-xsl
+                                      in pdf-xep profile)
         4. ike-java-parent          – Java POM (parent: ike-documentation-parent)
         5. example-project          – demo project (parent: ike-java-parent,
                                       dep: ike-minimal-fonts, ike-docbook-xsl)
     -->
     <modules>
         <module>ike-minimal-fonts</module>
-        <module>ike-documentation-parent</module>
         <module>ike-docbook-xsl</module>
+        <module>ike-documentation-parent</module>
         <module>ike-java-parent</module>
         <module>example-project</module>
     </modules>

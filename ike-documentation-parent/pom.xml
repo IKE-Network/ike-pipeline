@@ -79,6 +79,10 @@
         <exec-maven-plugin.version>3.5.0</exec-maven-plugin.version>
         <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
         
+        <!-- Skip external PDF renderers on POM-packaging (parent) projects.
+             Overridden to true by the pom-skip-exec profile below. -->
+        <ike.pdf.skip.exec>false</ike.pdf.skip.exec>
+
         <!-- ── External PDF Renderer Configuration ──────────────────── -->
         <!-- Override with -Dprince.executable=/usr/local/bin/prince etc. -->
         <prince.executable>prince</prince.executable>
@@ -589,6 +593,7 @@ IKE projects require Java 17+.
                                 <phase>package</phase>
                                 <goals><goal>exec</goal></goals>
                                 <configuration>
+                                    <skip>${ike.pdf.skip.exec}</skip>
                                     <executable>${prince.executable}</executable>
                                     <arguments>
                                         <argument>${pdf.html.directory}/${pdf.source.document}.html</argument>
@@ -704,6 +709,7 @@ IKE projects require Java 17+.
                                 <phase>package</phase>
                                 <goals><goal>exec</goal></goals>
                                 <configuration>
+                                    <skip>${ike.pdf.skip.exec}</skip>
                                     <executable>${antennahouse.executable}</executable>
                                     <arguments>
                                         <argument>-cssmode</argument>
@@ -819,6 +825,7 @@ IKE projects require Java 17+.
                                 <phase>package</phase>
                                 <goals><goal>exec</goal></goals>
                                 <configuration>
+                                    <skip>${ike.pdf.skip.exec}</skip>
                                     <executable>${weasyprint.executable}</executable>
                                     <arguments>
                                         <argument>${pdf.html.directory}/${pdf.source.document}.html</argument>
@@ -1018,6 +1025,7 @@ IKE projects require Java 17+.
                                 <phase>package</phase>
                                 <goals><goal>exec</goal></goals>
                                 <configuration>
+                                    <skip>${ike.pdf.skip.exec}</skip>
                                     <executable>${xep.executable}</executable>
                                     <arguments>
                                         <argument>-fo</argument>
@@ -1031,6 +1039,22 @@ IKE projects require Java 17+.
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- Skip external PDF renderers on POM-packaging projects.      -->
+        <!-- Parent POMs have no AsciiDoc content, so XEP/Prince/AH/     -->
+        <!-- WeasyPrint would fail on missing input files.               -->
+        <!-- Maven 4 packaging-based activation: active only for POM.    -->
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <profile>
+            <id>pom-skip-exec</id>
+            <activation>
+                <packaging>pom</packaging>
+            </activation>
+            <properties>
+                <ike.pdf.skip.exec>true</ike.pdf.skip.exec>
+            </properties>
         </profile>
 
         <!-- ════════════════════════════════════════════════════════════ -->
