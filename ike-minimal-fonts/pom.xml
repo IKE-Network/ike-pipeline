@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.1.0</modelVersion>
+
+    <groupId>org.ike.community</groupId>
+    <artifactId>ike-minimal-fonts</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>IKE Minimal Fonts</name>
+    <description>Minimal Noto font subset for IKE documentation (~4MB)</description>
+    <url>https://github.com/ike-community/ike-minimal-fonts</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>SIL Open Font License 1.1</name>
+            <url>https://scripts.sil.org/OFL</url>
+            <distribution>repo</distribution>
+            <comments>
+                All fonts from Google Noto project, licensed under SIL OFL 1.1.
+                Text fonts: notofonts/latin-greek-cyrillic (NotoSans v2.015, NotoSerif v2.015, NotoSansMono v2.014)
+                Math font:  notofonts/math (NotoSansMath v3.000)
+                Symbol fonts: notofonts/symbols (NotoSansSymbols v2.003, NotoSansSymbols2 v2.008)
+            </comments>
+        </license>
+    </licenses>
+
+    <organization>
+        <name>IKE Community</name>
+        <url>https://www.ikecommunity.org</url>
+    </organization>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <!--
+      No external dependencies. All 13 fonts are downloaded by build-all.sh
+      from notofonts GitHub releases into src/main/resources/ before this
+      POM is built. This eliminates the 1.36 GB jasper-noto-fonts dependency.
+    -->
+
+    <build>
+        <resources>
+            <resource>
+                <directory>${project.basedir}/src/main/resources</directory>
+                <includes>
+                    <include>*.ttf</include>
+                </includes>
+            </resource>
+        </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-install-plugin</artifactId>
+                <version>3.1.3</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>

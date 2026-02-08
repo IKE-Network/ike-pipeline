@@ -1,0 +1,25 @@
+{
+  "theme": "default",
+  "flowchart": {
+    "htmlLabels": false,
+    "useMaxWidth": false
+  },
+  "sequence": {
+    "useMaxWidth": false
+  },
+  "stateDiagram": {
+    "useMaxWidth": false
+  },
+  "er": {
+    "useMaxWidth": false
+  },
+  "class": {
+    "htmlLabels": false
+  },
+  "gantt": {
+    "useMaxWidth": false
+  },
+  "themeVariables": {
+    "fontSize": "14px"
+  }
+}

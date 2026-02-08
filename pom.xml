@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright 2025 IKE Community
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.1.0</modelVersion>
+
+    <groupId>org.ike.community</groupId>
+    <artifactId>ike-pipeline</artifactId>
+    <version>1.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>IKE Documentation Pipeline</name>
+    <description>
+        Aggregator for the IKE AsciiDoc documentation pipeline.
+        This POM is a pure reactor aggregator — it is NOT a parent POM.
+        The parent chain is: example-project → ike-java-parent → ike-documentation-parent.
+    </description>
+    <url>https://github.com/ike-community/ike-pipeline</url>
+    <inceptionYear>2025</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <organization>
+        <name>IKE Community</name>
+        <url>https://www.ikecommunity.org</url>
+    </organization>
+
+    <!--
+      Module order mirrors the dependency graph (Maven reactor sorts
+      automatically, but explicit ordering aids readability):
+
+        1. ike-minimal-fonts        – font JAR (no dependencies)
+        2. ike-documentation-parent – documentation POM (no dependencies)
+        3. ike-docbook-xsl          – DocBook XSL stylesheets (no dependencies)
+        4. ike-java-parent          – Java POM (parent: ike-documentation-parent)
+        5. example-project          – demo project (parent: ike-java-parent,
+                                      dep: ike-minimal-fonts, ike-docbook-xsl)
+    -->
+    <modules>
+        <module>ike-minimal-fonts</module>
+        <module>ike-documentation-parent</module>
+        <module>ike-docbook-xsl</module>
+        <module>ike-java-parent</module>
+        <module>example-project</module>
+    </modules>
+
+</project>

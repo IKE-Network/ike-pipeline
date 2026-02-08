@@ -1,0 +1,201 @@
+=== Supported Diagram Types
+
+The IKE AsciiDoc pipeline supports multiple diagram formats, all rendered to SVG at build time.
+
+==== Mermaid Diagrams
+
+Mermaid provides flowcharts, sequence diagrams, and more:
+
+[mermaid]
+....
+%%{init: {"sequence": {"useMaxWidth": false}} }%%
+sequenceDiagram
+    participant Client
+    participant API
+    participant Reasoner
+    participant Database
+    
+    Client->>API: Query concept
+    API->>Database: Fetch concept data
+    Database-->>API: Concept + relationships
+    API->>Reasoner: Classify concept
+    Reasoner->>Reasoner: Apply DL rules
+    Reasoner-->>API: Inferred relationships
+    API-->>Client: Complete concept
+....
+
+**Mermaid State Diagram:**
+
+[mermaid]
+....
+%%{init: {"stateDiagram": {"useMaxWidth": false}} }%%
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> Review: Submit
+    Review --> Approved: Accept
+    Review --> Draft: Reject
+    Approved --> Published: Release
+    Published --> Retired: Deprecate
+    Retired --> [*]
+    
+    Draft: Creating concept
+    Review: Under review
+    Approved: Ready for release
+    Published: In production
+    Retired: No longer active
+....
+
+==== PlantUML Diagrams
+
+PlantUML excels at UML diagrams:
+
+[plantuml]
+....
+@startuml
+!define RECTANGLE class
+
+RECTANGLE Concept {
+  - conceptId: long
+  - fullySpecifiedName: String
+  - preferredTerm: String
+  - definition: String
+  + isPrimitive(): boolean
+  + {static} clinicalFinding(): Concept
+}
+
+RECTANGLE Relationship {
+  - sourceId: long
+  - typeId: long
+  - destinationId: long
+  - relationshipGroup: int
+}
+
+RECTANGLE Description {
+  - descriptionId: long
+  - conceptId: long
+  - term: String
+  - languageCode: String
+  - typeId: long
+}
+
+Concept "1" *-- "0..*" Relationship: has
+Concept "1" *-- "1..*" Description: has
+
+note right of Concept
+  Immutable record representing
+  a SNOMED CT concept
+end note
+
+note bottom of Relationship
+  Defines semantic relationships
+  between concepts (is-a, part-of, etc.)
+end note
+@enduml
+....
+
+==== GraphViz Diagrams
+
+For complex graph structures:
+
+[graphviz]
+....
+digraph ConceptHierarchy {
+    rankdir=TB;
+    node [shape=box, style=rounded];
+    
+    SNOMEDCT [label="SNOMED CT Root", fillcolor="#e1f5ff", style="rounded,filled"];
+    
+    ClinicalFinding [label="Clinical Finding", fillcolor="#fff4e1", style="rounded,filled"];
+    Procedure [label="Procedure", fillcolor="#fff4e1", style="rounded,filled"];
+    Observable [label="Observable Entity", fillcolor="#fff4e1", style="rounded,filled"];
+    
+    Disease [label="Disease", fillcolor="#ffe6cc", style="rounded,filled"];
+    Symptom [label="Symptom", fillcolor="#ffe6cc", style="rounded,filled"];
+    
+    Diabetes [label="Diabetes mellitus\n(73211009)", fillcolor="#ffcccc", style="rounded,filled"];
+    Type1DM [label="Type 1 diabetes\n(46635009)", fillcolor="#ffcccc", style="rounded,filled"];
+    Type2DM [label="Type 2 diabetes\n(44054006)", fillcolor="#ffcccc", style="rounded,filled"];
+    
+    SNOMEDCT -> ClinicalFinding [label="is-a"];
+    SNOMEDCT -> Procedure [label="is-a"];
+    SNOMEDCT -> Observable [label="is-a"];
+    
+    ClinicalFinding -> Disease [label="is-a"];
+    ClinicalFinding -> Symptom [label="is-a"];
+    
+    Disease -> Diabetes [label="is-a"];
+    Diabetes -> Type1DM [label="is-a"];
+    Diabetes -> Type2DM [label="is-a"];
+}
+....
+
+==== Entity Relationship Diagram
+
+[mermaid]
+....
+%%{init: {"er": {"useMaxWidth": false}} }%%
+erDiagram
+    CONCEPT ||--o{ RELATIONSHIP : has
+    CONCEPT ||--o{ DESCRIPTION : has
+    CONCEPT ||--o{ REFSET_MEMBER : "member of"
+    
+    CONCEPT {
+        long conceptId PK
+        timestamp effectiveTime
+        boolean active
+        long moduleId
+        long definitionStatusId
+    }
+    
+    RELATIONSHIP {
+        long relationshipId PK
+        long sourceId FK
+        long destinationId FK
+        long typeId FK
+        int relationshipGroup
+        long characteristicTypeId
+    }
+    
+    DESCRIPTION {
+        long descriptionId PK
+        long conceptId FK
+        string term
+        string languageCode
+        long typeId FK
+        boolean active
+    }
+    
+    REFSET_MEMBER {
+        uuid memberId PK
+        long refsetId FK
+        long referencedComponentId FK
+        boolean active
+    }
+....
+
+==== Custom Diagram Extension Points
+
+For specialized diagrams (e.g., DL axiom visualizations), you can:
+
+1. Create a custom diagram generator (Java, Python, etc.)
+2. Output SVG to a file
+3. Include via standard image syntax:
+
+[source,asciidoc]
+----
+image::diagrams/custom-axiom-diagram.svg[Custom DL Axiom]
+----
+
+Or integrate with asciidoctorj-diagram as a custom diagram type (requires Ruby extension).
+
+=== Diagram Best Practices
+
+Consistent Styling:: Use color schemes that work in both light and dark modes
+
+SVG Output:: Always prefer SVG for scalability and quality
+
+Build-Time Generation:: Render at build time for deterministic output
+
+Alt Text:: Provide descriptive alt text for accessibility
+
+Version Control:: Source diagrams (`.mmd`, `.puml`) should be version controlled

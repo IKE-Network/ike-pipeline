@@ -1,0 +1,164 @@
+= IKE Example Project Documentation
+:author: IKE Community
+:email: info@ike-community.org
+:revnumber: {project-version}
+:revdate: {docdate}
+:doctype: book
+:toc: left
+:toclevels: 3
+:sectnums:
+:sectnumlevels: 4
+:icons: font
+:source-highlighter: coderay
+:experimental:
+
+[abstract]
+--
+This document demonstrates the IKE Community Maven AsciiDoc pipeline. It shows how to create professional documentation with embedded diagrams, code examples, and multi-project includes.
+--
+
+== Introduction
+
+The IKE Example Project demonstrates:
+
+* Java 25 development with records and modern features
+* Comprehensive test coverage with JUnit 5 and AssertJ
+* Professional documentation generation (HTML and PDF)
+* Diagram support with Mermaid, PlantUML, and GraphViz
+* Multi-project documentation composition
+
+=== Purpose
+
+This example serves as a template for IKE Community projects that combine:
+
+. **Java Development**: Modern Java with JPMS support
+. **Clinical Terminology**: SNOMED CT-inspired data structures
+. **Knowledge Representation**: Description logic concepts
+. **Documentation**: Comprehensive technical documentation
+
+== Architecture
+
+The project follows standard Maven conventions with enhancements for documentation.
+
+include::chapters/architecture.adoc[]
+
+== Concept Model
+
+The core `Concept` class represents a clinical terminology concept:
+
+[source,java]
+----
+public record Concept(
+    long conceptId,
+    String fullySpecifiedName,
+    String preferredTerm,
+    String definition
+) {
+    // Validation and methods...
+}
+----
+
+=== Key Features
+
+Primitive vs Fully Defined:: Concepts can be classified as primitive (incomplete definition) or fully defined (necessary and sufficient conditions).
+
+Semantic Tags:: FSNs include semantic tags like `(finding)`, `(disorder)`, `(procedure)` to disambiguate homonyms.
+
+Validation:: All fields are validated in the compact constructor.
+
+include::chapters/concept-model.adoc[]
+
+== Diagrams
+
+This section demonstrates various diagram types supported by the pipeline.
+
+include::chapters/diagrams.adoc[]
+
+== Build and Test
+
+=== Building the Project
+
+[source,bash]
+----
+# Build with HTML documentation (default)
+mvn clean verify
+
+# Build with PDF documentation
+mvn clean verify -Ppdf
+
+# Build all formats
+mvn clean verify -Pall-formats
+----
+
+=== Running Tests
+
+[source,bash]
+----
+# Unit tests only
+mvn test
+
+# Full verification (unit + integration tests)
+mvn verify
+----
+
+=== Test Coverage
+
+The project maintains comprehensive test coverage:
+
+* Unit tests for all public methods
+* Parameterized tests for behavior verification
+* Property-based testing where appropriate
+* Integration tests for system-level behavior
+
+== Documentation Pipeline
+
+This documentation is generated using the IKE Maven AsciiDoc pipeline:
+
+. **Source**: AsciiDoc files in `src/docs/asciidoc/`
+. **Processing**: Maven verifies phase triggers asciidoctor-maven-plugin
+. **Output**: HTML and/or PDF in `target/generated-docs/`
+
+=== Features
+
+Multi-format Output:: Generate HTML5 for web and PDF for distribution
+
+Diagram Rendering:: Mermaid, PlantUML, GraphViz rendered at build time
+
+Dependency Inclusion:: Include documentation from other Maven projects
+
+Theme Customization:: Professional PDF themes with custom fonts
+
+IDE Integration:: IntelliJ IDEA AsciiDoc plugin pre-configured
+
+== Future Work
+
+* Add more complex description logic examples
+* Demonstrate subsumption reasoning
+* Integration with RocksDB for persistence
+* gRPC service examples
+* Python interoperability
+
+== Appendix
+
+=== Glossary
+
+SNOMED CT:: Systematized Nomenclature of Medicine Clinical Terms
+
+DL:: Description Logic
+
+FSN:: Fully Specified Name
+
+PT:: Preferred Term
+
+JPMS:: Java Platform Module System
+
+=== References
+
+* https://www.snomed.org/[SNOMED International]
+* https://www.hl7.org/[HL7 International]
+* https://docs.asciidoctor.org/[AsciiDoctor Documentation]
+* https://maven.apache.org/[Apache Maven]
+
+---
+
+_Generated from IKE Example Project version {project-version} on {docdate}_
