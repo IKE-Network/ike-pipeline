@@ -65,6 +65,18 @@
         <asciidoctor.diagram.mermaid.format>svg</asciidoctor.diagram.mermaid.format>
         <asciidoctor.diagram.plantuml.format>svg</asciidoctor.diagram.plantuml.format>
         
+        <!-- IKE AsciiDoc Extensions -->
+        <!-- Relative from child projects in the reactor build.              -->
+        <!-- External projects override to their local checkout path.        -->
+        <ike.extensions.directory>${project.basedir}/../ike-documentation-parent/src/extensions</ike.extensions.directory>
+        
+        <!-- IKE Shared AsciiDoc Resources (docinfo.html, etc.)             -->
+        <!-- All projects get shared docinfo (Koncept CSS, etc.) via the    -->
+        <!-- docinfodir attribute.  Projects needing ADDITIONAL docinfo     -->
+        <!-- can override docinfodir and use antrun to merge shared +       -->
+        <!-- project-specific files into a staging directory.               -->
+        <ike.shared.asciidoc.directory>${project.basedir}/../ike-documentation-parent/src/shared-asciidoc</ike.shared.asciidoc.directory>
+        
         <!-- Documentation Paths (Standard Maven) -->
         <asciidoc.source.directory>${project.basedir}/src/docs/asciidoc</asciidoc.source.directory>
         <asciidoc.output.directory>${project.build.directory}/generated-docs</asciidoc.output.directory>
@@ -305,6 +317,7 @@ IKE projects require Java 17+.
                         <baseDir>${asciidoc.source.directory}</baseDir>
                         <requires>
                             <require>asciidoctor-diagram</require>
+                            <require>${ike.extensions.directory}/koncept-inline-macro.rb</require>
                         </requires>
                         <attributes>
                             <!-- Standard Maven attributes -->
@@ -314,6 +327,9 @@ IKE projects require Java 17+.
                             <!-- Path attributes for includes -->
                             <generated>${asciidoc.generated.directory}</generated>
                             <resources>${project.basedir}/src/docs/resources</resources>
+                            
+                            <!-- Shared docinfo location -->
+                            <docinfodir>${ike.shared.asciidoc.directory}</docinfodir>
                             
                             <!-- Document attributes -->
                             <source-highlighter>coderay</source-highlighter>

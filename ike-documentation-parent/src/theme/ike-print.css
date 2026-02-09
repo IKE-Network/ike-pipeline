@@ -480,6 +480,48 @@ p, li, dd {
 }
 
 
+/* ── Koncept Inline Notation ───────────────────────────────────── */
+/* Styles the koncept: inline macro for CSS Paged Media renderers.   */
+/* Same visual language as the HTML5 backend, adapted for print.     */
+
+.koncept,
+.koncept-link {
+    white-space: nowrap;
+}
+
+.koncept-k {
+    color: #2563eb;
+    font-weight: 700;
+    font-family: 'Noto Sans', sans-serif;
+    font-size: 0.92em;
+}
+
+.koncept-bracket {
+    color: #94a3b8;
+    font-weight: 400;
+    font-size: 0.88em;
+}
+
+.koncept-name {
+    font-variant: small-caps;
+    color: #1e3a5f;
+    letter-spacing: 0.03em;
+    font-size: 0.95em;
+}
+
+.koncept-link {
+    text-decoration: none;
+    border-bottom: 0.5pt dotted #2563eb;
+}
+
+/* In print, suppress the generic URL display for Koncept links —    */
+/* the K[Name] notation is self-documenting. Show URL only if the    */
+/* reader explicitly needs it (override in project-specific CSS).    */
+.koncept-link[href]::after {
+    content: none;
+}
+
+
 /* ── SVG Diagram Sizing ───────────────────────────────────────── */
 /* Kroki-generated SVGs may have large viewBox dimensions.           */
 /* Constrain to page width and let aspect ratio handle the rest.     */

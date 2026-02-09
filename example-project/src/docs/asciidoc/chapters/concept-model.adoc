@@ -4,11 +4,11 @@ The `Concept` record embodies key principles from SNOMED CT:
 
 ==== Immutability
 
-Records provide immutable data structures, ensuring concepts cannot be modified after creation:
+Records provide immutable data structures, ensuring Koncepts cannot be modified after creation:
 
 [source,java]
 ----
-// Once created, this concept cannot be changed
+// Once created, this Koncept cannot be changed
 Concept diabetes = new Concept(
     73211009L,
     "Diabetes mellitus (disorder)",
@@ -46,9 +46,13 @@ Concept finding = Concept.clinicalFinding(
 );
 ----
 
-=== Concept Relationships
+=== Koncept Relationships
 
-In a full implementation, concepts would be connected through relationships:
+In a full implementation, Koncepts are connected through formal relationships.
+For example, koncept:Diabetes mellitus[] is related to both
+koncept:Endocrine disorder[] and koncept:Metabolic disorder[] through
+subsumption, while its definition includes existential restrictions
+to koncept:Pancreatic structure[] and koncept:Hyperglycemia[].
 
 [mermaid]
 ....
@@ -58,10 +62,10 @@ graph LR
     A -->|is-a| C[Metabolic disorder]
     B -->|is-a| D[Disease]
     C -->|is-a| D
-    
+
     A -->|finding-site| E[Pancreatic structure]
     A -->|has-finding| F[Hyperglycemia]
-    
+
     style A fill:#ffcccc,color:#333333
     style B fill:#cce5ff,color:#333333
     style C fill:#cce5ff,color:#333333
@@ -72,7 +76,8 @@ graph LR
 
 === Description Logic Representation
 
-SNOMED CT concepts can be expressed in description logic notation:
+SNOMED CT Koncepts can be expressed in description logic notation.
+The definition of koncept:Diabetes mellitus[uuid=73211009] is:
 
 [source]
 ----
@@ -94,12 +99,19 @@ Where:
 
 |Primitive
 |Necessary conditions only
-|"A disease affecting the pancreas" (not sufficient - other diseases also affect pancreas)
+|"A disease affecting the pancreas" (not sufficient — other diseases also affect pancreas)
 
 |Fully Defined
 |Necessary and sufficient conditions
 |"A metabolic disorder with hyperglycemia, caused by insulin deficiency or resistance"
 |===
+
+The distinction is critical for automated classification.
+A fully defined Koncept like koncept:Diabetes mellitus[uuid=73211009]
+provides necessary _and_ sufficient conditions, enabling a DL reasoner
+to infer its position in the hierarchy.  A primitive Koncept like
+koncept:Disease[] provides only necessary conditions — subsumption
+relationships must be asserted by human modelers.
 
 The `isPrimitive()` method provides a simplified check:
 
@@ -109,14 +121,14 @@ if (concept.isPrimitive()) {
     // Handle incomplete definition
     // May need human review for classification
 } else {
-    // Fully defined - can be automatically classified
+    // Fully defined — can be automatically classified
     // Description logic reasoner can infer relationships
 }
 ----
 
 === Future Enhancements
 
-The concept model could be extended with:
+The Koncept model could be extended with:
 
 * Relationship representation
 * Role groups for complex definitions

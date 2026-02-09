@@ -44,7 +44,18 @@ include::chapters/architecture.adoc[]
 
 == Concept Model
 
-The core `Concept` class represents a clinical terminology concept:
+[NOTE]
+.Koncept Notation
+====
+This document uses _Koncept_ (with a K) to refer to formally identified
+terminology atoms — entities with a UUID, a position in the subsumption
+hierarchy, and a machine-readable definition.  When you see
+koncept:Diabetes mellitus[], that is a specific, formally identified
+Koncept.  The word "concept" (lowercase, no brackets) retains its
+ordinary English meaning.
+====
+
+The core `Concept` class represents a clinical terminology Koncept:
 
 [source,java]
 ----
@@ -60,7 +71,7 @@ public record Concept(
 
 === Key Features
 
-Primitive vs Fully Defined:: Concepts can be classified as primitive (incomplete definition) or fully defined (necessary and sufficient conditions).
+Primitive vs Fully Defined:: Koncepts can be classified as primitive (incomplete definition) or fully defined (necessary and sufficient conditions).
 
 Semantic Tags:: FSNs include semantic tags like `(finding)`, `(disorder)`, `(procedure)` to disambiguate homonyms.
 
@@ -141,6 +152,8 @@ IDE Integration:: IntelliJ IDEA AsciiDoc plugin pre-configured
 == Appendix
 
 === Glossary
+
+Koncept:: A formally identified terminology atom with a UUID, a position in the subsumption hierarchy, and a machine-readable definition. Rendered as koncept:Name[] in this document. From Danish/Swedish _koncept_ (= concept). Part of the IKE K-family: IKE, Komet, Kompendium, Koncept.
 
 SNOMED CT:: Systematized Nomenclature of Medicine Clinical Terms
 
