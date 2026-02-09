@@ -1012,6 +1012,12 @@ IKE projects require Java 17+.
                         </executions>
                     </plugin>
 
+                    <!-- 3b. Fix Mermaid SVGs for XEP's SVG renderer               -->
+                    <!--     XEP does not support <foreignObject> (labels vanish)   -->
+                    <!--     or HSL color values (strokes/fills vanish).            -->
+                    <!--     svgo converts foreignObject→<text> and hsl→hex.        -->
+                    <!--     PlantUML/GraphViz SVGs pass through unchanged.         -->
+
                     <!-- 5. XSL-FO → PDF via RenderX XEP                           -->
                     <!--    XEP reads the .fo file and produces PDF.                -->
                     <!--    Font registration is in /Library/Java/xep/xep.xml       -->
@@ -1020,6 +1026,21 @@ IKE projects require Java 17+.
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
                         <executions>
+                            <execution>
+                                <id>fix-svg-for-xep</id>
+                                <phase>prepare-package</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <skip>${ike.pdf.skip.exec}</skip>
+                                    <executable>svgo</executable>
+                                    <arguments>
+                                        <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
+                                        <argument>-f</argument>
+                                        <argument>${docbook.output.directory}</argument>
+                                        <argument>--quiet</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
                             <execution>
                                 <id>xep-fo-to-pdf</id>
                                 <phase>package</phase>

@@ -74,6 +74,7 @@ case "$PDF_RENDERER" in
     xep)
         command -v "${XEP_EXECUTABLE:-xep}" &>/dev/null || \
             MISSING+=("xep (RenderX XEP — https://www.renderx.com/download/personal.html)")
+        command -v node &>/dev/null || MISSING+=("node (Node.js 18+ — needed for svgo)")
         ;;
     none) ;;
     *)
@@ -105,7 +106,7 @@ fi
 
 echo "  mvn:  $(command -v mvn)"
 echo "  java: $(command -v java)"
-if [[ "$PDF_RENDERER" == "prawn" ]]; then
+if [[ "$PDF_RENDERER" == "prawn" || "$PDF_RENDERER" == "xep" ]]; then
     echo "  node: $(command -v node)"
     if ! command -v svgo &>/dev/null; then
         echo ""
