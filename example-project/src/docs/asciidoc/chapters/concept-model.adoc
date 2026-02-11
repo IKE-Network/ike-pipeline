@@ -49,10 +49,10 @@ Concept finding = Concept.clinicalFinding(
 === Koncept Relationships
 
 In a full implementation, Koncepts are connected through formal relationships.
-For example, koncept:Diabetes mellitus[] is related to both
-koncept:Endocrine disorder[] and koncept:Metabolic disorder[] through
+For example, k:DiabetesMellitus[] is related to both
+k:EndocrineDisorder[] and k:MetabolicDisorder[] through
 subsumption, while its definition includes existential restrictions
-to koncept:Pancreatic structure[] and koncept:Hyperglycemia[].
+to k:PancreaticStructure[] and k:Hyperglycemia[].
 
 [mermaid]
 ....
@@ -77,7 +77,7 @@ graph LR
 === Description Logic Representation
 
 SNOMED CT Koncepts can be expressed in description logic notation.
-The definition of koncept:Diabetes mellitus[uuid=73211009] is:
+The definition of k:DiabetesMellitus[] is:
 
 [source]
 ----
@@ -107,10 +107,10 @@ Where:
 |===
 
 The distinction is critical for automated classification.
-A fully defined Koncept like koncept:Diabetes mellitus[uuid=73211009]
+A fully defined Koncept like k:DiabetesMellitus[]
 provides necessary _and_ sufficient conditions, enabling a DL reasoner
 to infer its position in the hierarchy.  A primitive Koncept like
-koncept:Disease[] provides only necessary conditions — subsumption
+k:Disease[] provides only necessary conditions — subsumption
 relationships must be asserted by human modelers.
 
 The `isPrimitive()` method provides a simplified check:

@@ -1,0 +1,138 @@
+== Extensions and Theming
+
+The pipeline includes custom AsciiDoctor extensions, shared document metadata, and theme files that apply consistently across all projects.
+
+=== Directory Layout
+
+----
+documentation-parent/src/
+  shared-asciidoc/
+    docinfo.html                    <1>
+  theme/
+    ike-default-theme.yml           <2>
+    ike-print.css                   <3>
+  xep/
+    xep-ike-fonts.xml               <4>
+
+koncept-asciidoc-extension/src/
+  main/java/.../koncept/
+    KonceptInlineMacro.java         <5>
+    KonceptGlossaryProcessor.java   <6>
+    KonceptSvgRenderer.java         <7>
+    KonceptDefinitionSource.java    <8>
+  main/resources/
+    koncepts.yml                    <9>
+    koncept.css                     <10>
+----
+<1> Shared CSS for SVG badge styling and Mermaid ER diagram fixes
+<2> Prawn PDF theme -- fonts, page layout, colors
+<3> CSS Paged Media stylesheet for Prince, AH, and WeasyPrint
+<4> XEP font configuration referencing Noto TTFs
+<5> `k:Name[]` inline macro processor (AsciidoctorJ SPI)
+<6> Postprocessor that auto-generates a glossary of referenced Koncepts
+<7> SVG badge renderer for HTML and PDF backends
+<8> YAML-based definition lookup for glossary entries
+<9> Koncept definitions with axioms, SNOMED CT IDs, and OWL IRIs
+<10> CSS for SVG badges and glossary section
+
+=== Koncept Inline Macro (`k:Name[]`)
+
+The `koncept-asciidoc-extension` module provides a Java/SPI-based AsciidoctorJ extension that replaces the earlier Ruby macro. It is loaded automatically via `META-INF/services` when the JAR is on the asciidoctor-maven-plugin classpath.
+
+Use it in AsciiDoc source:
+
+[source,asciidoc]
+----
+The patient was diagnosed with k:DiabetesMellitus[].
+
+Override the display label: k:HeartFailure[Congestive Heart Failure].
+----
+
+The macro supports multiple backends:
+
+HTML5 and PDF (Prawn):: Renders as an SVG badge with a blue "K" prefix and the Koncept label. Each badge links to the auto-generated glossary entry at the end of the document.
+
+DocBook5:: Renders as `<phrase role="koncept">K[Label]</phrase>` for XSL-FO processing. The `ike-fo.xsl` customization layer styles this as bold blue text.
+
+Prince, AH, WeasyPrint:: Use the HTML5 backend; SVG badges render natively in all CSS-based PDF renderers.
+
+=== Auto-Generated Glossary
+
+The `KonceptGlossaryProcessor` postprocessor automatically appends a "Referenced Koncepts" glossary section at the end of each document. Each entry includes:
+
+* Natural language definition
+* Description logic axiom in Unicode DL notation
+* SNOMED CT identifier (when available)
+* OWL IRI (when available)
+* Reference count
+
+Definitions are loaded from `koncepts.yml` (bundled in the extension JAR or overridden via document attributes `koncept-definitions-file` or `koncept-definitions-classpath`).
+
+=== Shared `docinfo.html`
+
+The `docinfo.html` file is injected into all documents via the `docinfo=shared` attribute. It provides:
+
+* *Koncept CSS* -- blue K prefix, small-caps name, pill-shaped background
+* *Mermaid ER fix* -- JavaScript that strips the `undefined;undefined` prefix from ER diagram relationship labels
+
+All projects inherit the shared docinfo directory through the `ike.shared.asciidoc.directory` property. Projects needing additional docinfo can override `docinfodir` and merge files.
+
+=== PDF Themes
+
+==== Prawn Theme (`ike-default-theme.yml`)
+
+The Prawn PDF theme controls typography, page layout, and styling for the `asciidoctorj-pdf` backend.
+
+Font catalog:
+
+* *Body*: NotoSerif (Regular, Bold, Italic, BoldItalic)
+* *Headings*: NotoSans (Regular, Bold, Italic, BoldItalic)
+* *Code*: NotoSansMono (Regular, Bold)
+* *Fallback chain*: NotoSansMath, NotoSansSymbols, NotoSansSymbols2
+
+Page setup:
+
+* Letter size (8.5 x 11 in)
+* 0.75in top/bottom margins, 1in left/right
+* Running headers with chapter titles
+* Running footers with page numbers
+
+Projects can override the theme by placing their own `ike-default-theme.yml` in `src/theme/`. The `pdf-themesdir` attribute points to the project's theme directory first.
+
+==== Print CSS (`ike-print.css`)
+
+The CSS Paged Media stylesheet is used by Prince, AH, and WeasyPrint. It defines:
+
+* `@font-face` rules for all Noto fonts
+* `@page` rules for margins and page regions
+* `@top-left` / `@bottom-right` running elements
+* Table, list, admonition, and code block styling
+* Image sizing and page break rules
+
+The stylesheet path is configured via `pdf.print.stylesheet` and copied to the print HTML output directory at build time.
+
+=== Customization Points
+
+Override these properties in your project POM to customize behavior:
+
+[cols="2,3"]
+|===
+| Property | Effect
+
+| `asciidoc.theme.directory`
+| Point to a custom theme directory for Prawn PDF
+
+| `pdf.print.stylesheet`
+| Use a custom CSS Paged Media stylesheet
+
+| `ike.shared.asciidoc.directory`
+| Override shared docinfo location
+
+| `kroki.server.url`
+| Use a different Kroki server
+
+| `pdf.source.document`
+| Change the master document name from `index`
+|===
+
+To add project-specific AsciidoctorJ extensions, add them as dependencies of the asciidoctor-maven-plugin in your project POM. Java SPI extensions are discovered automatically from the classpath.

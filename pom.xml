@@ -20,8 +20,8 @@
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.1.0</modelVersion>
 
-    <groupId>org.ike.community</groupId>
-    <artifactId>ike-pipeline</artifactId>
+    <groupId>network.ike</groupId>
+    <artifactId>pipeline</artifactId>
     <version>1.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
@@ -29,7 +29,7 @@
     <description>
         Aggregator for the IKE AsciiDoc documentation pipeline.
         This POM is a pure reactor aggregator — it is NOT a parent POM.
-        The parent chain is: example-project → ike-java-parent → ike-documentation-parent.
+        The parent chain is: example-project → java-parent → documentation-parent.
     </description>
     <url>https://github.com/ike-community/ike-pipeline</url>
     <inceptionYear>2025</inceptionYear>
@@ -51,19 +51,21 @@
       Module order mirrors the dependency graph (Maven reactor sorts
       automatically, but explicit ordering aids readability):
 
-        1. ike-minimal-fonts        – font JAR (no dependencies)
-        2. ike-docbook-xsl          – DocBook XSL stylesheets (no dependencies)
-        3. ike-documentation-parent – documentation POM (uses ike-docbook-xsl
-                                      in pdf-xep profile)
-        4. ike-java-parent          – Java POM (parent: ike-documentation-parent)
-        5. example-project          – demo project (parent: ike-java-parent,
-                                      dep: ike-minimal-fonts, ike-docbook-xsl)
+        1. minimal-fonts                – font JAR (no dependencies)
+        2. docbook-xsl                 – DocBook XSL stylesheets (no dependencies)
+        3. koncept-asciidoc-extension  – Java AsciidoctorJ extension (no parent)
+        4. documentation-parent        – documentation POM (uses docbook-xsl
+                                         in pdf-xep profile)
+        5. java-parent                 – Java POM (parent: documentation-parent)
+        6. example-project             – demo project (parent: java-parent,
+                                         dep: minimal-fonts, docbook-xsl)
     -->
     <modules>
-        <module>ike-minimal-fonts</module>
-        <module>ike-docbook-xsl</module>
-        <module>ike-documentation-parent</module>
-        <module>ike-java-parent</module>
+        <module>minimal-fonts</module>
+        <module>docbook-xsl</module>
+        <module>koncept-asciidoc-extension</module>
+        <module>documentation-parent</module>
+        <module>java-parent</module>
         <module>example-project</module>
     </modules>
 

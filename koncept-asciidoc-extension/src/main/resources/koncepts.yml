@@ -1,0 +1,131 @@
+# Koncept Definitions
+# ===================
+# Each top-level key is the CamelCase identifier used in AsciiDoc markup
+# via k:Identifier[] syntax.
+#
+# Fields:
+#   label:      Human-readable display name (defaults to camelCase split)
+#   definition: Natural language definition text
+#   axiom:      Description logic axiom using Unicode DL notation
+#   sctid:      SNOMED CT concept identifier (optional)
+#   iri:        OWL IRI for the concept (optional)
+#
+# DL Notation Guide:
+#   ≡  equivalentTo      ⊑  subClassOf
+#   ⊓  intersection      ⊔  union
+#   ∃  someValuesFrom     ∀  allValuesFrom
+#   ¬  complement         ⊥  nothing (bottom)
+#   ⊤  thing (top)
+
+HeartFailure:
+  label: Heart Failure
+  definition: >
+    A clinical syndrome resulting from structural or functional
+    impairment of ventricular filling or ejection of blood,
+    characterized by dyspnea, fatigue, and fluid retention.
+  axiom: "≡ ClinicalSyndrome ⊓ ∃hasPathology.(InsufficientCardiacOutput) ⊓ ∃clinicalCourse.ChronicCourse"
+  sctid: "84114007"
+  iri: "http://snomed.info/id/84114007"
+
+AorticStenosis:
+  label: Aortic Stenosis
+  definition: >
+    Narrowing of the aortic valve orifice, obstructing blood flow
+    from the left ventricle to the aorta during systole.
+  axiom: "≡ DisorderOfCardiacValve ⊓ ∃hasMorphology.Stenosis ⊓ ∃findingSite.AorticValveStructure"
+  sctid: "60573004"
+  iri: "http://snomed.info/id/60573004"
+
+AcuteMyocardialInfarction:
+  label: Acute Myocardial Infarction
+  definition: >
+    Myocardial cell death due to prolonged ischemia, typically
+    resulting from acute coronary artery occlusion.
+  axiom: "≡ MyocardialInfarction ⊓ ∃clinicalCourse.AcuteOnset ⊓ ∃hasCause.(∃associatedWith.CoronaryArteryOcclusion)"
+  sctid: "57054005"
+  iri: "http://snomed.info/id/57054005"
+
+TypeTwoDiabetesMellitus:
+  label: Type 2 Diabetes Mellitus
+  definition: >
+    A metabolic disorder characterized by hyperglycemia resulting
+    from insulin resistance and relative insulin deficiency.
+  axiom: "≡ DiabetesMellitus ⊓ ∃hasPathology.(InsulinResistance ⊔ RelativeInsulinDeficiency)"
+  sctid: "44054006"
+  iri: "http://snomed.info/id/44054006"
+
+ChronicKidneyDisease:
+  label: Chronic Kidney Disease
+  definition: >
+    Abnormalities of kidney structure or function present for
+    more than 3 months, with implications for health.
+  axiom: "≡ DisorderOfKidney ⊓ ∃clinicalCourse.ChronicCourse ⊓ ∃hasDuration.(≥ 3 months)"
+  sctid: "709044004"
+  iri: "http://snomed.info/id/709044004"
+
+PulmonaryEmbolism:
+  label: Pulmonary Embolism
+  definition: >
+    Obstruction of the pulmonary arterial vasculature by
+    thrombus, most commonly originating from the deep veins
+    of the lower extremities.
+  axiom: "≡ Embolism ⊓ ∃findingSite.PulmonaryArterialStructure ⊓ ∃hasCause.(∃associatedWith.Thrombus)"
+  sctid: "59282003"
+  iri: "http://snomed.info/id/59282003"
+
+DiabetesMellitus:
+  label: Diabetes Mellitus
+  definition: >
+    A group of metabolic disorders characterized by chronic
+    hyperglycemia resulting from defects in insulin secretion,
+    insulin action, or both.
+  axiom: "≡ EndocrineDisorder ⊓ MetabolicDisorder ⊓ ∃findingSite.PancreaticStructure ⊓ ∃hasFinding.Hyperglycemia"
+  sctid: "73211009"
+  iri: "http://snomed.info/id/73211009"
+
+EndocrineDisorder:
+  label: Endocrine Disorder
+  definition: >
+    A disorder of the endocrine system, affecting hormone
+    production, secretion, or action.
+  axiom: "⊑ Disease ⊓ ∃findingSite.EndocrineStructure"
+  sctid: "362969004"
+  iri: "http://snomed.info/id/362969004"
+
+MetabolicDisorder:
+  label: Metabolic Disorder
+  definition: >
+    A disorder that disrupts normal metabolism, the chemical
+    processes the body uses to transform food into energy.
+  axiom: "⊑ Disease ⊓ ∃hasPathology.MetabolicProcessAlteration"
+  sctid: "75934005"
+  iri: "http://snomed.info/id/75934005"
+
+PancreaticStructure:
+  label: Pancreatic Structure
+  definition: >
+    Anatomical structure of the pancreas, a glandular organ
+    that produces digestive enzymes and hormones including
+    insulin and glucagon.
+  sctid: "15776009"
+  iri: "http://snomed.info/id/15776009"
+
+Hyperglycemia:
+  label: Hyperglycemia
+  definition: >
+    An abnormally high concentration of glucose in the
+    circulating blood, typically above the normal fasting
+    range of 70-100 mg/dL.
+  axiom: "≡ Finding ⊓ ∃interprets.GlucoseLevel ⊓ ∃hasInterpretation.AboveNormal"
+  sctid: "80394007"
+  iri: "http://snomed.info/id/80394007"
+
+Disease:
+  label: Disease
+  definition: >
+    A disorder of structure or function in a human, animal,
+    or plant that produces specific signs or symptoms and is
+    not simply a direct result of physical injury.
+  axiom: "⊑ ClinicalFinding"
+  sctid: "64572001"
+  iri: "http://snomed.info/id/64572001"

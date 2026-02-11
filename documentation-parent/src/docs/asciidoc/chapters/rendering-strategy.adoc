@@ -1,0 +1,166 @@
+== Rendering Strategy
+
+The pipeline produces HTML and PDF from the same AsciiDoc source. HTML generation uses the built-in `html5` backend. PDF generation supports five independent renderers, each with different trade-offs in quality, licensing, and diagram handling.
+
+=== Pipeline Overview
+
+[mermaid]
+....
+flowchart LR
+    SRC["AsciiDoc<br/>source"]
+
+    subgraph "Intermediate Forms"
+        HTML5["HTML5"]
+        DB["DocBook5 XML"]
+        FO["XSL-FO"]
+    end
+
+    subgraph "PDF Outputs"
+        PRAWN["Prawn PDF<br/><i>pdf-prawn/</i>"]
+        PRINCE["Prince PDF<br/><i>pdf-prince/</i>"]
+        AH["AH PDF<br/><i>pdf-ah/</i>"]
+        WP["WeasyPrint PDF<br/><i>pdf-weasyprint/</i>"]
+        XEP["XEP PDF<br/><i>pdf-xep/</i>"]
+    end
+
+    SRC --> |"asciidoctorj-pdf<br/>(JRuby/Prawn)"| PRAWN
+    SRC --> HTML5
+    SRC --> DB
+
+    HTML5 --> |"prince"| PRINCE
+    HTML5 --> |"AHFCmd -cssmode"| AH
+    HTML5 --> |"weasyprint"| WP
+
+    DB --> |"Saxon-HE<br/>+ DocBook XSL"| FO
+    FO --> |"xep"| XEP
+....
+
+=== Renderer Comparison
+
+[cols="1,2,1,1,1,1"]
+|===
+| Renderer | Pipeline | Diagrams | Label Strategy | License | PDF/UA
+
+| Prawn
+| AsciiDoc -> PDF (JRuby)
+| PNG
+| Rasterized by Kroki
+| Free (Apache 2.0)
+| No
+
+| Prince XML
+| AsciiDoc -> HTML -> PDF
+| SVG
+| svgo foreignObject -> text
+| $495+ per seat
+| Yes
+
+| Antenna House
+| AsciiDoc -> HTML -> PDF
+| SVG
+| svgo foreignObject -> text
+| $400+ (CSS Lite)
+| Yes
+
+| WeasyPrint
+| AsciiDoc -> HTML -> PDF
+| PNG
+| Rasterized by Kroki
+| Free (BSD)
+| No
+
+| RenderX XEP
+| AsciiDoc -> DocBook -> FO -> PDF
+| SVG
+| svgo foreignObject -> text
+| Free personal
+| No
+|===
+
+=== Prawn (Built-in)
+
+The simplest pipeline. The `asciidoctorj-pdf` library renders AsciiDoc directly to PDF using JRuby and the Prawn PDF library. No external tools required.
+
+Diagrams are rendered as PNG because `prawn-svg` cannot handle:
+
+* `<foreignObject>` elements (Mermaid label containers)
+* CSS `<style>` blocks (class-based styling)
+* HSL color values
+
+The `build-all.sh` script includes a three-step process for Prawn: build, fix SVGs with `svgo`, rebuild. The `svgo.config.mjs` inlines CSS rules into element attributes for `prawn-svg` compatibility. However, the simpler approach is to use PNG diagrams (the default in the `pdf` profile), which avoids the SVG issues entirely.
+
+[source,bash]
+----
+mvn clean verify -pl example-project -Dike.pdf.prawn
+----
+
+=== Prince XML
+
+Prince has a full CSS engine with CSS Paged Media support. The pipeline generates print-ready HTML (inline TOC, `<object>` SVG references), then runs `svgo` to convert `<foreignObject>` to `<text>` in the SVG files, then invokes Prince.
+
+Prince supports `PDF/UA-1` for accessible output. The `--pdf-profile=PDF/UA-1` flag is enabled by default.
+
+[source,bash]
+----
+mvn clean verify -pl example-project -Dike.pdf.prince
+----
+
+=== Antenna House Formatter
+
+AH Formatter supports both XSL-FO and CSS Paged Media engines. The pipeline uses CSS mode (`-cssmode`) for consistency with the Prince profile. Like Prince, it supports `PDF/UA-1`.
+
+[source,bash]
+----
+mvn clean verify -pl example-project -Dike.pdf.ah
+----
+
+=== WeasyPrint
+
+The best free alternative for CSS Paged Media. Requires Python 3.8+ (`pip install weasyprint`). WeasyPrint cannot render `<foreignObject>` in SVGs, so diagrams use PNG format (same as Prawn).
+
+Limitations vs Prince/AH:
+
+* No `target-counter()` for TOC page numbers
+* No PDF/UA tagged output
+* Requires Python and system libraries
+
+[source,bash]
+----
+mvn clean verify -pl example-project -Dike.pdf.weasyprint
+----
+
+=== RenderX XEP
+
+The only pipeline that goes through DocBook and XSL-FO rather than HTML. This is a fundamentally different rendering path:
+
+. AsciiDoc -> DocBook5 XML (asciidoctor `docbook5` backend)
+. DocBook5 -> XSL-FO (Saxon-HE + DocBook XSL + IKE customization layer)
+. XSL-FO -> PDF (RenderX XEP)
+
+All dependencies are Maven-managed. Saxon-HE resolves from Maven Central. DocBook XSL is unpacked from the `docbook-xsl` artifact. Only the XEP binary itself requires local installation (free personal license from renderx.com).
+
+Intermediate outputs are preserved for debugging:
+
+* `target/generated-docs/docbook/index.xml` -- DocBook5
+* `target/generated-docs/fo/index.fo` -- XSL-FO
+* `target/generated-docs/pdf-xep/index.pdf` -- final PDF
+
+[source,bash]
+----
+mvn clean verify -pl example-project -Dike.pdf.xep
+----
+
+=== The foreignObject Problem
+
+****
+Mermaid renders diagram labels inside `<foreignObject>` elements in SVG. This is an HTML-in-SVG escape hatch that works in browsers but fails in most PDF renderers:
+
+* *Prawn*: `prawn-svg` silently drops `<foreignObject>` -- labels vanish
+* *Prince*: Does not render `<foreignObject>` inside `<object>`-referenced SVGs
+* *AH Formatter*: May not render `<foreignObject>` in SVGs
+* *XEP*: No `<foreignObject>` support
+
+PlantUML and GraphViz do not use `<foreignObject>` -- they render labels as native SVG `<text>` elements with hex colors. These pass through all renderers without modification.
+
+The `svgo-xep.config.mjs` plugin converts `<foreignObject>` to `<text>` and HSL to hex colors, making Mermaid SVGs compatible with Prince, AH, and XEP. For Prawn and WeasyPrint, the simpler solution is PNG.
+****

@@ -21,10 +21,10 @@
     <modelVersion>4.1.0</modelVersion>
 
     <parent>
-        <groupId>org.ike.community</groupId>
-        <artifactId>ike-java-parent</artifactId>
+        <groupId>network.ike</groupId>
+        <artifactId>java-parent</artifactId>
         <version>1.1.0-SNAPSHOT</version>
-        <relativePath>../ike-java-parent/pom.xml</relativePath>
+        <relativePath>../java-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>example-project</artifactId>
@@ -51,8 +51,8 @@
     <dependencies>
         <!-- Fonts for PDF generation (minimal subset - 10 files, ~2MB) -->
         <dependency>
-            <groupId>org.ike.community</groupId>
-            <artifactId>ike-minimal-fonts</artifactId>
+            <groupId>network.ike</groupId>
+            <artifactId>minimal-fonts</artifactId>
         </dependency>
         
         <!-- Test Dependencies -->

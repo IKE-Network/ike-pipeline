@@ -50,7 +50,7 @@ include::chapters/architecture.adoc[]
 This document uses _Koncept_ (with a K) to refer to formally identified
 terminology atoms — entities with a UUID, a position in the subsumption
 hierarchy, and a machine-readable definition.  When you see
-koncept:Diabetes mellitus[], that is a specific, formally identified
+k:DiabetesMellitus[], that is a specific, formally identified
 Koncept.  The word "concept" (lowercase, no brackets) retains its
 ordinary English meaning.
 ====
@@ -153,7 +153,7 @@ IDE Integration:: IntelliJ IDEA AsciiDoc plugin pre-configured
 
 === Glossary
 
-Koncept:: A formally identified terminology atom with a UUID, a position in the subsumption hierarchy, and a machine-readable definition. Rendered as koncept:Name[] in this document. From Danish/Swedish _koncept_ (= concept). Part of the IKE K-family: IKE, Komet, Kompendium, Koncept.
+Koncept:: A formally identified terminology atom with a UUID, a position in the subsumption hierarchy, and a machine-readable definition. Rendered as k:Name[] in this document. From Danish/Swedish _koncept_ (= concept). Part of the IKE K-family: IKE, Komet, Kompendium, Koncept.
 
 SNOMED CT:: Systematized Nomenclature of Medicine Clinical Terms
 

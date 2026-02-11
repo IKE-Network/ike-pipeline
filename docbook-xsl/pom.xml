@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  IKE Community — DocBook XSL Stylesheets + IKE Customization Layer
+  ══════════════════════════════════════════════════════════════════════
+
+  Packages the DocBook XSL 1.79.2 stylesheets together with the IKE
+  FO customization layer (ike-fo.xsl) as a single Maven artifact.
+
+  Build:    mvn install
+  Deploy:   mvn deploy -DaltDeploymentRepository=ike-releases::https://nexus.tinkar.org/repository/ike-releases/
+
+  Consumer usage (in pdf-xep profile):
+    <dependency>
+      <groupId>org.ike.community</groupId>
+      <artifactId>ike-docbook-xsl</artifactId>
+      <version>1.79.2-ike.2</version>
+    </dependency>
+
+    maven-dependency-plugin:unpack → target/docbook-xsl/
+
+  JAR contents:
+    fo/docbook.xsl                (stock DocBook FO stylesheet)
+    html/docbook.xsl              (stock DocBook HTML stylesheet)
+    custom/ike-fo.xsl             (IKE customization — imports ../fo/docbook.xsl)
+    ... (all other stock subdirectories: common/, lib/, images/, etc.)
+
+  The IKE customization layer uses <xsl:import href="../fo/docbook.xsl"/>
+  which resolves correctly because ike-fo.xsl is in custom/ alongside
+  the stock fo/ directory.
+
+  DocBook XSL 1.79.2 unified the namespace-aware and non-namespace-aware
+  stylesheets into a single distribution. This version is not published
+  to Maven Central (1.79.1 is the latest there), which is why this
+  artifact exists.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.1.0</modelVersion>
+
+    <groupId>network.ike</groupId>
+    <artifactId>docbook-xsl</artifactId>
+    <!--
+      Version scheme: {docbook-xsl-version}-ike.{revision}
+      Bump the ike.N suffix when ike-fo.xsl changes.
+      Bump the base version when upgrading DocBook XSL.
+    -->
+    <version>1.79.2-ike.2</version>
+    <packaging>jar</packaging>
+
+    <name>IKE DocBook XSL Stylesheets</name>
+    <description>
+        DocBook XSL 1.79.2 stylesheets with IKE FO customization layer.
+        Ready-to-use artifact for the AsciiDoc → DocBook5 → XSL-FO → PDF pipeline.
+    </description>
+    <url>https://github.com/ike-community/ike-docbook-xsl</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>MIT License (DocBook XSL Stylesheets)</name>
+            <url>https://github.com/docbook/xslt10-stylesheets/blob/master/xsl/COPYING</url>
+            <distribution>repo</distribution>
+            <comments>
+                The DocBook XSL stylesheets are distributed under a permissive
+                MIT-style license. See the COPYING file in the distribution.
+            </comments>
+        </license>
+        <license>
+            <name>Apache License 2.0 (IKE Customization Layer)</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+            <comments>
+                The IKE customization layer (ike-fo.xsl) is Copyright 2025
+                IKE Community, licensed under Apache 2.0.
+            </comments>
+        </license>
+    </licenses>
+
+    <organization>
+        <name>IKE Community</name>
+        <url>https://www.ikecommunity.org</url>
+    </organization>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <docbook-xsl.version>1.79.2</docbook-xsl.version>
+        <download-maven-plugin.version>1.9.0</download-maven-plugin.version>
+        <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
+
+        <!-- Staging directory where we assemble the JAR contents -->
+        <staging.directory>${project.build.directory}/staging</staging.directory>
+    </properties>
+
+    <build>
+        <!--
+          Override default resource directory.
+          We don't use src/main/resources — everything is assembled
+          in the staging directory from the downloaded distribution
+          plus our customization files.
+        -->
+        <resources>
+            <resource>
+                <directory>${staging.directory}</directory>
+            </resource>
+        </resources>
+
+        <plugins>
+            <!-- 1. Download DocBook XSL 1.79.2 from GitHub releases        -->
+            <!--    Cached in ~/.m2/repository/.cache/download-maven-plugin/ -->
+            <!--    after first download — no network hit on subsequent      -->
+            <!--    builds.                                                   -->
+            <plugin>
+                <groupId>com.googlecode.maven-download-plugin</groupId>
+                <artifactId>download-maven-plugin</artifactId>
+                <version>${download-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>download-docbook-xsl</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>wget</goal></goals>
+                        <configuration>
+                            <url>https://github.com/docbook/xslt10-stylesheets/releases/download/release/${docbook-xsl.version}/docbook-xsl-${docbook-xsl.version}.zip</url>
+                            <unpack>true</unpack>
+                            <outputDirectory>${staging.directory}</outputDirectory>
+                            <!-- Suppress the noisy 1/25367K progress lines -->
+                            <quiet>true</quiet>
+                            <!-- SHA-256 for integrity verification.                  -->
+                            <!-- To populate: build once, then:                       -->
+                            <!--   shasum -a 256 ~/.m2/repository/.cache/download-maven-plugin/.../*.zip -->
+                            <!-- <sha256>CHECKSUM_HERE</sha256>                       -->
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- 2. Overlay IKE customization layer into the distribution    -->
+            <!--                                                               -->
+            <!--    Copy ike-fo.xsl into custom/ alongside the stock          -->
+            <!--    DocBook XSL directories. This preserves the relative      -->
+            <!--    import path: ../fo/docbook.xsl                            -->
+            <!--                                                               -->
+            <!--    Also flatten the directory: move contents out of the       -->
+            <!--    docbook-xsl-1.79.2/ wrapper so the JAR root contains      -->
+            <!--    fo/, html/, custom/, common/, etc. directly.              -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>${maven-antrun-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>assemble-distribution</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <target>
+                                <!--
+                                  download-maven-plugin unpacks to:
+                                    staging/docbook-xsl-1.79.2/fo/docbook.xsl
+                                    staging/docbook-xsl-1.79.2/html/docbook.xsl
+                                    ...
+
+                                  We want the JAR root to contain:
+                                    fo/docbook.xsl
+                                    html/docbook.xsl
+                                    custom/ike-fo.xsl
+                                    ...
+
+                                  So: move contents up one level, then remove the wrapper.
+                                -->
+                                <move todir="${staging.directory}" includeEmptyDirs="true">
+                                    <fileset dir="${staging.directory}/docbook-xsl-${docbook-xsl.version}"/>
+                                </move>
+                                <delete dir="${staging.directory}/docbook-xsl-${docbook-xsl.version}"
+                                        includeEmptyDirs="true" failonerror="false"/>
+
+                                <!-- Copy IKE customization layer -->
+                                <mkdir dir="${staging.directory}/custom"/>
+                                <copy todir="${staging.directory}/custom" overwrite="true">
+                                    <fileset dir="${project.basedir}/src/main/xslt"
+                                             includes="**/*.xsl"/>
+                                </copy>
+
+                                <!-- Verify key files are present -->
+                                <fail message="Stock DocBook FO stylesheet not found after assembly">
+                                    <condition>
+                                        <not><available file="${staging.directory}/fo/docbook.xsl"/></not>
+                                    </condition>
+                                </fail>
+                                <fail message="IKE FO customization layer not found after assembly">
+                                    <condition>
+                                        <not><available file="${staging.directory}/custom/ike-fo.xsl"/></not>
+                                    </condition>
+                                </fail>
+
+                                <echo>DocBook XSL ${docbook-xsl.version} + IKE customization assembled</echo>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-install-plugin</artifactId>
+                <version>3.1.3</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>
