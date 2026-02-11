@@ -62,10 +62,12 @@ case "$PDF_RENDERER" in
     prince)
         command -v "${PRINCE_EXECUTABLE:-prince}" &>/dev/null || \
             MISSING+=("prince (Prince XML — https://www.princexml.com/download/)")
+        command -v node &>/dev/null || MISSING+=("node (Node.js 18+ — needed for svgo)")
         ;;
     ah)
         command -v "${AH_EXECUTABLE:-AHFCmd}" &>/dev/null || \
             MISSING+=("AHFCmd (Antenna House Formatter — https://www.antennahouse.com/trial-formatter)")
+        command -v node &>/dev/null || MISSING+=("node (Node.js 18+ — needed for svgo)")
         ;;
     weasyprint)
         command -v "${WEASYPRINT_EXECUTABLE:-weasyprint}" &>/dev/null || \
@@ -106,7 +108,7 @@ fi
 
 echo "  mvn:  $(command -v mvn)"
 echo "  java: $(command -v java)"
-if [[ "$PDF_RENDERER" == "prawn" || "$PDF_RENDERER" == "xep" ]]; then
+if [[ "$PDF_RENDERER" == "prawn" || "$PDF_RENDERER" == "xep" || "$PDF_RENDERER" == "prince" || "$PDF_RENDERER" == "ah" ]]; then
     echo "  node: $(command -v node)"
     if ! command -v svgo &>/dev/null; then
         echo ""
@@ -154,7 +156,7 @@ case "$PDF_RENDERER" in
     prawn)
         echo ""
         echo "── Step 1/3: Building HTML + PDF (Prawn) ──"
-        mvn clean verify -pl example-project -Dike.all-formats $MVN_QUIET $KROKI_OPTS
+        mvn clean verify -pl example-project -Dike.all-formats -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
 
         # Step 2: Fix SVGs for prawn-svg
         #
@@ -162,7 +164,7 @@ case "$PDF_RENDERER" in
         # svgo inlines those CSS rules as element-level style attributes.
         SVG_COUNT=0
 
-        for SVG_DIR in "example-project/target/generated-docs/pdf" "example-project/.asciidoctor/diagram"; do
+        for SVG_DIR in "example-project/target/generated-docs/pdf-prawn" "example-project/.asciidoctor/diagram"; do
             if [[ -d "$SVG_DIR" ]]; then
                 while IFS= read -r -d '' svg; do
                     svgo --config="$SCRIPT_DIR/svgo.config.mjs" --quiet "$svg"
@@ -177,7 +179,7 @@ case "$PDF_RENDERER" in
             echo "── Step 2/3: Fixed $SVG_COUNT SVGs (CSS inlined for prawn-svg) ──"
             echo ""
             echo "── Step 3/3: Rebuilding PDF with fixed SVGs ──"
-            mvn verify -pl example-project -Dike.pdf.prawn $MVN_QUIET $KROKI_OPTS
+            mvn verify -pl example-project -Dike.pdf.prawn -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
         else
             echo ""
             echo "── Step 2/3: No SVGs found — skipping fix ──"
@@ -194,13 +196,13 @@ case "$PDF_RENDERER" in
 
         echo ""
         echo "── Building HTML + PDF (${PDF_RENDERER}) ──"
-        mvn clean package -pl example-project -D${PDF_PROP} $MVN_QUIET $KROKI_OPTS
+        mvn clean verify -pl example-project -D${PDF_PROP} -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
         ;;
 
     xep)
         echo ""
         echo "── Building HTML + PDF (XEP: DocBook → XSL-FO → PDF) ──"
-        mvn clean package -pl example-project -Dike.pdf.xep $MVN_QUIET $KROKI_OPTS
+        mvn clean verify -pl example-project -Dike.pdf.xep -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
         ;;
 
     none)
@@ -213,9 +215,10 @@ esac
 # ── Results ─────────────────────────────────────────────────────────
 echo ""
 echo "=== Build Complete ==="
-echo "  HTML: example-project/target/generated-docs/html/index.html"
+echo "  HTML:    example-project/target/generated-docs/html/index.html"
 if [[ "$PDF_RENDERER" != "none" ]]; then
-    echo "  PDF:  example-project/target/generated-docs/pdf/index.pdf"
+    echo "  PDF:     example-project/target/generated-docs/pdf-${PDF_RENDERER}/index.pdf  (classifier: ${PDF_RENDERER})"
+    echo "  Default: example-project/target/generated-docs/pdf/index.pdf  (classifier: pdf)"
 fi
 
 if [[ "$(uname -s)" == "Darwin" ]]; then

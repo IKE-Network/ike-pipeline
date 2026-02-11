@@ -14,10 +14,10 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
+<project xmlns="http://maven.apache.org/POM/4.1.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
-         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.1.0
+         http://maven.apache.org/xsd/maven-4.1.0.xsd">
     <modelVersion>4.1.0</modelVersion>
 
     <groupId>org.ike.community</groupId>
@@ -90,6 +90,7 @@
         <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
         <exec-maven-plugin.version>3.5.0</exec-maven-plugin.version>
         <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
+        <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
         
         <!-- Skip external PDF renderers on POM-packaging (parent) projects.
              Overridden to true by the pom-skip-exec profile below. -->
@@ -125,7 +126,9 @@
         <pdf.html.directory>${asciidoc.output.directory}/pdf-html</pdf.html.directory>
         
         <!-- CSS Paged Media stylesheet for external renderers            -->
-        <pdf.print.stylesheet>${asciidoc.theme.directory}/ike-print.css</pdf.print.stylesheet>
+        <!-- Uses the parent module path so child projects resolve it    -->
+        <!-- correctly (same pattern as ike.extensions.directory).       -->
+        <pdf.print.stylesheet>${project.basedir}/../ike-documentation-parent/src/theme/ike-print.css</pdf.print.stylesheet>
     </properties>
 
     <dependencyManagement>
@@ -162,6 +165,14 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <dependencies>
+        <!-- Fonts for PDF generation (required for Prawn PDF profile) -->
+        <dependency>
+            <groupId>org.ike.community</groupId>
+            <artifactId>ike-minimal-fonts</artifactId>
+        </dependency>
+    </dependencies>
 
     <build>
         <pluginManagement>
@@ -238,6 +249,13 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-antrun-plugin</artifactId>
                     <version>${maven-antrun-plugin.version}</version>
+                </plugin>
+
+                <!-- Build Helper Plugin — attach classified PDF artifacts -->
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>build-helper-maven-plugin</artifactId>
+                    <version>${build-helper-maven-plugin.version}</version>
                 </plugin>
 
                 <!-- XML Maven Plugin — XSLT transforms (DocBook → XSL-FO) -->
@@ -421,6 +439,18 @@ IKE projects require Java 17+.
             </activation>
             <build>
                 <plugins>
+                    <!-- 1. Unpack fonts from ike-minimal-fonts JAR -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>unpack-fonts</id>
+                                <!-- inherits config from pluginManagement -->
+                            </execution>
+                        </executions>
+                    </plugin>
+
                     <plugin>
                         <groupId>org.asciidoctor</groupId>
                         <artifactId>asciidoctor-maven-plugin</artifactId>
@@ -433,7 +463,7 @@ IKE projects require Java 17+.
                                 </goals>
                                 <configuration>
                                     <backend>pdf</backend>
-                                    <outputDirectory>${asciidoc.output.directory}/pdf</outputDirectory>
+                                    <outputDirectory>${asciidoc.output.directory}/pdf-prawn</outputDirectory>
                                     <attributes>
                                         <pdf-themesdir>${asciidoc.theme.directory}</pdf-themesdir>
                                         <pdf-theme>ike-default</pdf-theme>
@@ -446,6 +476,28 @@ IKE projects require Java 17+.
                                         <!-- PNG renders perfectly via Kroki server-side.        -->
                                         <diagram-format>png</diagram-format>
                                     </attributes>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Attach PDF with classifier "prawn" -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-pdf-prawn</id>
+                                <phase>package</phase>
+                                <goals><goal>attach-artifact</goal></goals>
+                                <configuration>
+                                    <artifacts>
+                                        <artifact>
+                                            <file>${asciidoc.output.directory}/pdf-prawn/${pdf.source.document}.pdf</file>
+                                            <type>pdf</type>
+                                            <classifier>prawn</classifier>
+                                        </artifact>
+                                    </artifacts>
                                 </configuration>
                             </execution>
                         </executions>
@@ -495,7 +547,7 @@ IKE projects require Java 17+.
                                 </goals>
                                 <configuration>
                                     <backend>pdf</backend>
-                                    <outputDirectory>${asciidoc.output.directory}/pdf</outputDirectory>
+                                    <outputDirectory>${asciidoc.output.directory}/pdf-prawn</outputDirectory>
                                     <attributes>
                                         <pdf-themesdir>${asciidoc.theme.directory}</pdf-themesdir>
                                         <pdf-theme>ike-default</pdf-theme>
@@ -506,6 +558,28 @@ IKE projects require Java 17+.
                                         <!-- PNG for Prawn PDF (same rationale as pdf profile) -->
                                         <diagram-format>png</diagram-format>
                                     </attributes>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Attach PDF with classifier "prawn" -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-pdf-prawn</id>
+                                <phase>package</phase>
+                                <goals><goal>attach-artifact</goal></goals>
+                                <configuration>
+                                    <artifacts>
+                                        <artifact>
+                                            <file>${asciidoc.output.directory}/pdf-prawn/${pdf.source.document}.pdf</file>
+                                            <type>pdf</type>
+                                            <classifier>prawn</classifier>
+                                        </artifact>
+                                    </artifacts>
                                 </configuration>
                             </execution>
                         </executions>
@@ -554,13 +628,14 @@ IKE projects require Java 17+.
                         <artifactId>maven-antrun-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>prepare-print-assets</id>
+                                <id>prepare-print-assets-prince</id>
                                 <phase>prepare-package</phase>
                                 <goals><goal>run</goal></goals>
                                 <configuration>
+                                    <skip>${ike.pdf.skip.exec}</skip>
                                     <target>
                                         <mkdir dir="${pdf.html.directory}/fonts"/>
-                                        <mkdir dir="${asciidoc.output.directory}/pdf"/>
+                                        <mkdir dir="${asciidoc.output.directory}/pdf-prince"/>
                                         <copy file="${pdf.print.stylesheet}"
                                               todir="${pdf.html.directory}"
                                               overwrite="true"/>
@@ -581,7 +656,7 @@ IKE projects require Java 17+.
                         <artifactId>asciidoctor-maven-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>generate-print-html</id>
+                                <id>generate-print-html-prince</id>
                                 <phase>prepare-package</phase>
                                 <goals>
                                     <goal>process-asciidoc</goal>
@@ -593,17 +668,41 @@ IKE projects require Java 17+.
                                         <toc>auto</toc>
                                         <toclevels>3</toclevels>
                                         <linkcss>false</linkcss>
+                                        <!-- External SVG via <object> tags so svgo can fix
+                                             foreignObject labels in the .svg files before
+                                             Prince renders them. Prince has full SVG/CSS
+                                             support — no need to fall back to PNG. -->
+                                        <diagram-svg-type>interactive</diagram-svg-type>
                                     </attributes>
                                 </configuration>
                             </execution>
                         </executions>
                     </plugin>
 
-                    <!-- 4. Invoke Prince XML: HTML + CSS → PDF -->
+                    <!-- 4. Fix Mermaid SVGs: foreignObject → native <text> -->
+                    <!--    Mermaid uses <foreignObject> for labels; Prince  -->
+                    <!--    does not render foreignObject in SVGs.           -->
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
                         <executions>
+                            <execution>
+                                <id>fix-svg-for-prince</id>
+                                <phase>prepare-package</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <skip>${ike.pdf.skip.exec}</skip>
+                                    <executable>svgo</executable>
+                                    <arguments>
+                                        <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
+                                        <argument>-f</argument>
+                                        <argument>${pdf.html.directory}</argument>
+                                        <argument>--quiet</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+
+                            <!-- 5. Invoke Prince XML: HTML + CSS → PDF -->
                             <execution>
                                 <id>prince-html-to-pdf</id>
                                 <phase>package</phase>
@@ -616,9 +715,31 @@ IKE projects require Java 17+.
                                         <argument>--style</argument>
                                         <argument>${pdf.html.directory}/ike-print.css</argument>
                                         <argument>--output</argument>
-                                        <argument>${asciidoc.output.directory}/pdf/${pdf.source.document}.pdf</argument>
+                                        <argument>${asciidoc.output.directory}/pdf-prince/${pdf.source.document}.pdf</argument>
                                         <argument>--pdf-profile=PDF/UA-1</argument>
                                     </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- 6. Attach PDF with classifier "prince" -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-pdf-prince</id>
+                                <phase>package</phase>
+                                <goals><goal>attach-artifact</goal></goals>
+                                <configuration>
+                                    <artifacts>
+                                        <artifact>
+                                            <file>${asciidoc.output.directory}/pdf-prince/${pdf.source.document}.pdf</file>
+                                            <type>pdf</type>
+                                            <classifier>prince</classifier>
+                                        </artifact>
+                                    </artifacts>
                                 </configuration>
                             </execution>
                         </executions>
@@ -668,13 +789,14 @@ IKE projects require Java 17+.
                         <artifactId>maven-antrun-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>prepare-print-assets</id>
+                                <id>prepare-print-assets-ah</id>
                                 <phase>prepare-package</phase>
                                 <goals><goal>run</goal></goals>
                                 <configuration>
+                                    <skip>${ike.pdf.skip.exec}</skip>
                                     <target>
                                         <mkdir dir="${pdf.html.directory}/fonts"/>
-                                        <mkdir dir="${asciidoc.output.directory}/pdf"/>
+                                        <mkdir dir="${asciidoc.output.directory}/pdf-ah"/>
                                         <copy file="${pdf.print.stylesheet}"
                                               todir="${pdf.html.directory}"
                                               overwrite="true"/>
@@ -695,7 +817,7 @@ IKE projects require Java 17+.
                         <artifactId>asciidoctor-maven-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>generate-print-html</id>
+                                <id>generate-print-html-ah</id>
                                 <phase>prepare-package</phase>
                                 <goals>
                                     <goal>process-asciidoc</goal>
@@ -707,19 +829,43 @@ IKE projects require Java 17+.
                                         <toc>auto</toc>
                                         <toclevels>3</toclevels>
                                         <linkcss>false</linkcss>
+                                        <!-- External SVG via <object> tags so svgo can fix
+                                             foreignObject labels in the .svg files before
+                                             AH Formatter renders them. AH has full SVG/CSS
+                                             support — no need to fall back to PNG. -->
+                                        <diagram-svg-type>interactive</diagram-svg-type>
                                     </attributes>
                                 </configuration>
                             </execution>
                         </executions>
                     </plugin>
 
-                    <!-- 4. Invoke AH Formatter: HTML + CSS → PDF -->
-                    <!--    -cssmode: use CSS engine (not XSL-FO)  -->
-                    <!--    -p @PDF/UA-1: accessible PDF output    -->
+                    <!-- 4. Fix Mermaid SVGs: foreignObject → native <text> -->
+                    <!--    Mermaid uses <foreignObject> for labels; AH      -->
+                    <!--    may not render foreignObject in SVGs.            -->
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
                         <executions>
+                            <execution>
+                                <id>fix-svg-for-ah</id>
+                                <phase>prepare-package</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <skip>${ike.pdf.skip.exec}</skip>
+                                    <executable>svgo</executable>
+                                    <arguments>
+                                        <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
+                                        <argument>-f</argument>
+                                        <argument>${pdf.html.directory}</argument>
+                                        <argument>--quiet</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+
+                            <!-- 5. Invoke AH Formatter: HTML + CSS → PDF -->
+                            <!--    -cssmode: use CSS engine (not XSL-FO)  -->
+                            <!--    -p @PDF/UA-1: accessible PDF output    -->
                             <execution>
                                 <id>ah-html-to-pdf</id>
                                 <phase>package</phase>
@@ -734,10 +880,32 @@ IKE projects require Java 17+.
                                         <argument>-d</argument>
                                         <argument>${pdf.html.directory}/${pdf.source.document}.html</argument>
                                         <argument>-o</argument>
-                                        <argument>${asciidoc.output.directory}/pdf/${pdf.source.document}.pdf</argument>
+                                        <argument>${asciidoc.output.directory}/pdf-ah/${pdf.source.document}.pdf</argument>
                                         <argument>-p</argument>
                                         <argument>@PDF/UA-1</argument>
                                     </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- 6. Attach PDF with classifier "ah" -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-pdf-ah</id>
+                                <phase>package</phase>
+                                <goals><goal>attach-artifact</goal></goals>
+                                <configuration>
+                                    <artifacts>
+                                        <artifact>
+                                            <file>${asciidoc.output.directory}/pdf-ah/${pdf.source.document}.pdf</file>
+                                            <type>pdf</type>
+                                            <classifier>ah</classifier>
+                                        </artifact>
+                                    </artifacts>
                                 </configuration>
                             </execution>
                         </executions>
@@ -786,13 +954,14 @@ IKE projects require Java 17+.
                         <artifactId>maven-antrun-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>prepare-print-assets</id>
+                                <id>prepare-print-assets-weasyprint</id>
                                 <phase>prepare-package</phase>
                                 <goals><goal>run</goal></goals>
                                 <configuration>
+                                    <skip>${ike.pdf.skip.exec}</skip>
                                     <target>
                                         <mkdir dir="${pdf.html.directory}/fonts"/>
-                                        <mkdir dir="${asciidoc.output.directory}/pdf"/>
+                                        <mkdir dir="${asciidoc.output.directory}/pdf-weasyprint"/>
                                         <copy file="${pdf.print.stylesheet}"
                                               todir="${pdf.html.directory}"
                                               overwrite="true"/>
@@ -813,7 +982,7 @@ IKE projects require Java 17+.
                         <artifactId>asciidoctor-maven-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>generate-print-html</id>
+                                <id>generate-print-html-weasyprint</id>
                                 <phase>prepare-package</phase>
                                 <goals>
                                     <goal>process-asciidoc</goal>
@@ -825,6 +994,11 @@ IKE projects require Java 17+.
                                         <toc>auto</toc>
                                         <toclevels>3</toclevels>
                                         <linkcss>false</linkcss>
+                                        <!-- PNG for print: WeasyPrint cannot render
+                                             <foreignObject> in SVGs (Mermaid labels vanish).
+                                             PNG rendered by Kroki server-side includes all
+                                             labels. Same approach as the Prawn PDF profile. -->
+                                        <diagram-format>png</diagram-format>
                                     </attributes>
                                 </configuration>
                             </execution>
@@ -845,10 +1019,32 @@ IKE projects require Java 17+.
                                     <executable>${weasyprint.executable}</executable>
                                     <arguments>
                                         <argument>${pdf.html.directory}/${pdf.source.document}.html</argument>
-                                        <argument>${asciidoc.output.directory}/pdf/${pdf.source.document}.pdf</argument>
+                                        <argument>${asciidoc.output.directory}/pdf-weasyprint/${pdf.source.document}.pdf</argument>
                                         <argument>--stylesheet</argument>
                                         <argument>${pdf.html.directory}/ike-print.css</argument>
                                     </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- 5. Attach PDF with classifier "weasyprint" -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-pdf-weasyprint</id>
+                                <phase>package</phase>
+                                <goals><goal>attach-artifact</goal></goals>
+                                <configuration>
+                                    <artifacts>
+                                        <artifact>
+                                            <file>${asciidoc.output.directory}/pdf-weasyprint/${pdf.source.document}.pdf</file>
+                                            <type>pdf</type>
+                                            <classifier>weasyprint</classifier>
+                                        </artifact>
+                                    </artifacts>
                                 </configuration>
                             </execution>
                         </executions>
@@ -880,7 +1076,7 @@ IKE projects require Java 17+.
         <!-- Intermediate outputs (useful for debugging):                   -->
         <!--   target/generated-docs/docbook/index.xml  (DocBook5)         -->
         <!--   target/generated-docs/fo/index.fo        (XSL-FO)           -->
-        <!--   target/generated-docs/pdf/index.pdf      (final)            -->
+        <!--   target/generated-docs/pdf-xep/index.pdf  (final)            -->
         <!-- ════════════════════════════════════════════════════════════ -->
         <profile>
             <id>pdf-xep</id>
@@ -932,11 +1128,12 @@ IKE projects require Java 17+.
                                 <phase>generate-resources</phase>
                                 <goals><goal>run</goal></goals>
                                 <configuration>
+                                    <skip>${ike.pdf.skip.exec}</skip>
                                     <target>
                                         <!-- Create output directories -->
                                         <mkdir dir="${docbook.output.directory}"/>
                                         <mkdir dir="${fo.output.directory}"/>
-                                        <mkdir dir="${asciidoc.output.directory}/pdf"/>
+                                        <mkdir dir="${asciidoc.output.directory}/pdf-xep"/>
 
                                         <!--
                                           Copy XEP font config and fonts to a staging area.
@@ -1008,6 +1205,7 @@ IKE projects require Java 17+.
                                 <phase>package</phase>
                                 <goals><goal>transform</goal></goals>
                                 <configuration>
+                                    <skip>${ike.pdf.skip.exec}</skip>
                                     <transformationSets>
                                         <transformationSet>
                                             <dir>${docbook.output.directory}</dir>
@@ -1068,8 +1266,94 @@ IKE projects require Java 17+.
                                         <argument>-fo</argument>
                                         <argument>${fo.output.directory}/${pdf.source.document}.fo</argument>
                                         <argument>-pdf</argument>
-                                        <argument>${asciidoc.output.directory}/pdf/${pdf.source.document}.pdf</argument>
+                                        <argument>${asciidoc.output.directory}/pdf-xep/${pdf.source.document}.pdf</argument>
                                     </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- 6. Attach PDF with classifier "xep" -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-pdf-xep</id>
+                                <phase>package</phase>
+                                <goals><goal>attach-artifact</goal></goals>
+                                <configuration>
+                                    <artifacts>
+                                        <artifact>
+                                            <file>${asciidoc.output.directory}/pdf-xep/${pdf.source.document}.pdf</file>
+                                            <type>pdf</type>
+                                            <classifier>xep</classifier>
+                                        </artifact>
+                                    </artifacts>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- Default PDF: copy a renderer's PDF to pdf/ and attach       -->
+        <!-- with classifier "pdf" for backward compatibility.           -->
+        <!--                                                             -->
+        <!--   mvn package -Dike.pdf.xep -Dike.pdf.default=xep          -->
+        <!--                                                             -->
+        <!-- Copies pdf-${ike.pdf.default}/index.pdf → pdf/index.pdf     -->
+        <!-- and attaches it as *-pdf.pdf.                               -->
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <profile>
+            <id>pdf-default</id>
+            <activation>
+                <property><name>ike.pdf.default</name></property>
+            </activation>
+            <build>
+                <plugins>
+                    <!-- 1. Copy the designated renderer's PDF to the canonical pdf/ dir -->
+                    <!--    Uses verify phase so all package-phase renderers finish first -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-default-pdf</id>
+                                <phase>verify</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <skip>${ike.pdf.skip.exec}</skip>
+                                    <target>
+                                        <mkdir dir="${asciidoc.output.directory}/pdf"/>
+                                        <copy file="${asciidoc.output.directory}/pdf-${ike.pdf.default}/${pdf.source.document}.pdf"
+                                              tofile="${asciidoc.output.directory}/pdf/${pdf.source.document}.pdf"
+                                              overwrite="true"/>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- 2. Attach the default copy with classifier "pdf" -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-pdf-default</id>
+                                <phase>verify</phase>
+                                <goals><goal>attach-artifact</goal></goals>
+                                <configuration>
+                                    <artifacts>
+                                        <artifact>
+                                            <file>${asciidoc.output.directory}/pdf/${pdf.source.document}.pdf</file>
+                                            <type>pdf</type>
+                                            <classifier>pdf</classifier>
+                                        </artifact>
+                                    </artifacts>
                                 </configuration>
                             </execution>
                         </executions>

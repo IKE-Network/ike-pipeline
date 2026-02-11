@@ -103,7 +103,27 @@ export default {
       },
     },
 
-    // 2. Convert HSL colors to hex in both <style> text and inline styles
+    // 2. Strip "undefined;undefined" from Mermaid ER edge style attributes
+    //    Mermaid generates: style="undefined;undefined stroke:#333333;..."
+    //    Note: second "undefined" is followed by a space, NOT a semicolon.
+    //    This causes CSS parsers to skip the stroke declaration.
+    {
+      name: 'fixMermaidUndefinedStyles',
+      fn: () => ({
+        element: {
+          enter: (node) => {
+            if (node.attributes?.style) {
+              // Match literal "undefined;undefined " pattern
+              node.attributes.style = node.attributes.style
+                .replace(/undefined;undefined\s*/g, '')
+                .replace(/^undefined[;\s]*/g, '');
+            }
+          },
+        },
+      }),
+    },
+
+    // 3. Convert HSL colors to hex in both <style> text and inline styles
     {
       name: 'convertHslToHex',
       fn: () => ({
@@ -133,7 +153,7 @@ export default {
       }),
     },
 
-    // 3. Replace foreignObject with native SVG <text>
+    // 4. Replace foreignObject with native SVG <text>
     {
       name: 'replaceForeignObject',
       fn: () => ({
@@ -202,7 +222,7 @@ export default {
       }),
     },
 
-    // 4. Remove the <style> element (now empty after inlining)
+    // 5. Remove the <style> element (now empty after inlining)
     'removeStyleElement',
   ],
 };

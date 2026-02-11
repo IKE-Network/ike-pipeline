@@ -480,6 +480,21 @@ p, li, dd {
 }
 
 
+/* ── Mermaid ER Diagram Edge Fix ───────────────────────────────── */
+/* Mermaid's ER renderer generates edge paths with a corrupted       */
+/* style attribute: style="undefined;undefined stroke:#333333;..."   */
+/* The "undefined;undefined" prefix causes CSS parsers to skip the   */
+/* stroke declaration, making relationship lines invisible.          */
+/* These !important rules override the broken inline styles.         */
+
+.erDiagram .edgePaths path[data-edge="true"],
+.erDiagram .edgePaths path {
+    stroke: #333333 !important;
+    stroke-width: 1 !important;
+    fill: none !important;
+}
+
+
 /* ── Koncept Inline Notation ───────────────────────────────────── */
 /* Styles the koncept: inline macro for CSS Paged Media renderers.   */
 /* Same visual language as the HTML5 backend, adapted for print.     */

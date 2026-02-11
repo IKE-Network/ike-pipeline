@@ -7,8 +7,7 @@
 
   All IKE projects inheriting ike-documentation-parent get these
   styles automatically.  Project-specific additions go in a
-  docinfo.html in the project's own src/docs/asciidoc/ directory
-  (set docinfodir back to the source dir in the project POM).
+  docinfo.html in the project's own src/docs/asciidoc/ directory.
 
   Copyright 2025 IKE Community — Apache License 2.0
 -->
@@ -64,5 +63,26 @@
 
 .koncept-link:hover .koncept-name {
     color: #2563eb;
+}
+
+
+/* ── Mermaid ER Diagram Edge Fix ──────────────────────────────── */
+/* Mermaid's ER renderer generates edge paths with a corrupted      */
+/* style attribute: style="undefined;undefined stroke:#333333;..."  */
+/* The "undefined;undefined" prefix causes CSS parsers to skip the  */
+/* stroke declaration, making relationship lines invisible.         */
+/* These !important rules override the broken inline styles.        */
+
+.erDiagram .edgePaths path[data-edge="true"] {
+    stroke: #333333 !important;
+    stroke-width: 1 !important;
+    fill: none !important;
+}
+
+/* Also catch edges without the data-edge attribute (older Mermaid) */
+.erDiagram .edgePaths path {
+    stroke: #333333 !important;
+    stroke-width: 1 !important;
+    fill: none !important;
 }
 </style>

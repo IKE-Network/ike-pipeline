@@ -1,0 +1,193 @@
+== Setting Up a New Project
+
+This chapter walks through creating a new documentation project that inherits the full pipeline.
+
+=== Prerequisites
+
+* *Maven 4+* -- required by the reactor POM (uses `modelVersion 4.1.0`)
+* *Java 17+* -- minimum for asciidoctorj; Java 25 if using `ike-java-parent`
+* *Node.js 18+* -- optional, only needed for `svgo` (Prawn SVG fixing)
+
+The Maven enforcer plugin validates these at build time with clear error messages.
+
+=== Step 1: Create the POM
+
+Create a minimal `pom.xml` that inherits from the documentation parent (or Java parent if you have source code):
+
+[source,xml]
+----
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.1.0</modelVersion>
+
+    <parent>
+        <groupId>org.ike.community</groupId>
+        <artifactId>ike-java-parent</artifactId>          <!--1-->
+        <version>1.1.0-SNAPSHOT</version>
+        <relativePath>../ike-java-parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>my-project</artifactId>
+    <version>1.1.0-SNAPSHOT</version>
+
+    <name>My Project</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.ike.community</groupId>
+            <artifactId>ike-minimal-fonts</artifactId>    <!--2-->
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.asciidoctor</groupId>
+                <artifactId>asciidoctor-maven-plugin</artifactId> <!--3-->
+            </plugin>
+        </plugins>
+    </build>
+</project>
+----
+<1> Use `ike-java-parent` for Java projects, `ike-documentation-parent` for docs-only projects
+<2> Required for Prawn PDF font rendering; version managed by parent
+<3> Declares the plugin so Maven runs it; all configuration inherited from parent
+
+=== Step 2: Create the Index Document
+
+Create `src/docs/asciidoc/index.adoc`:
+
+[source,asciidoc]
+----
+= My Project Documentation
+:author: IKE Community
+:email: info@ike-community.org
+:revnumber: {project-version}
+:revdate: {docdate}
+:doctype: book
+:toc: left
+:toclevels: 3
+:sectnums:
+:sectnumlevels: 4
+:icons: font
+:source-highlighter: coderay
+:experimental:
+
+== Introduction
+
+Your content here.
+----
+
+=== Step 3: Add to the Reactor
+
+Add your module to the aggregator `pom.xml` at the project root:
+
+[source,xml]
+----
+<modules>
+    <module>ike-minimal-fonts</module>
+    <module>ike-docbook-xsl</module>
+    <module>ike-documentation-parent</module>
+    <module>ike-java-parent</module>
+    <module>example-project</module>
+    <module>my-project</module>            <!-- add here -->
+</modules>
+----
+
+=== Step 4: Build
+
+[source,bash]
+----
+# HTML only (default profile)
+mvn clean verify -pl my-project
+
+# Prawn PDF
+mvn clean verify -pl my-project -Dike.pdf.prawn
+
+# Prince XML PDF
+mvn clean verify -pl my-project -Dike.pdf.prince
+
+# All renderers via build-all.sh
+./build-all.sh --pdf=prawn
+----
+
+=== Step 5: Find the Output
+
+[cols="1,3"]
+|===
+| Format | Location
+
+| HTML
+| `target/generated-docs/html/index.html`
+
+| Prawn PDF
+| `target/generated-docs/pdf-prawn/index.pdf`
+
+| Prince PDF
+| `target/generated-docs/pdf-prince/index.pdf`
+
+| AH PDF
+| `target/generated-docs/pdf-ah/index.pdf`
+
+| WeasyPrint PDF
+| `target/generated-docs/pdf-weasyprint/index.pdf`
+
+| XEP PDF
+| `target/generated-docs/pdf-xep/index.pdf`
+
+| Default PDF
+| `target/generated-docs/pdf/index.pdf` (copy of selected renderer)
+|===
+
+=== Adding Chapters
+
+Create chapter files in `src/docs/asciidoc/chapters/` and include them from `index.adoc`:
+
+[source,asciidoc]
+----
+\include::chapters/my-chapter.adoc[]
+----
+
+Each chapter file starts at the `==` heading level (the `index.adoc` book structure provides the `=` level).
+
+=== Adding Diagrams
+
+Embed diagrams directly in AsciiDoc. The Kroki server renders them at build time:
+
+[source,asciidoc]
+-----
+[mermaid]
+....
+graph LR
+    A[Source] --> B[Build] --> C[Output]
+....
+-----
+
+No local diagram tools needed. Kroki handles Mermaid, PlantUML, GraphViz, and 20+ other diagram types.
+
+=== Cross-Module Includes
+
+To include documentation from another module, add a dependency with the `asciidoc` classifier:
+
+[source,xml]
+----
+<dependency>
+    <groupId>org.ike.community</groupId>
+    <artifactId>other-project</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <classifier>asciidoc</classifier>
+    <type>zip</type>
+</dependency>
+----
+
+Then include using the `{generated}` attribute:
+
+[source,asciidoc]
+----
+\include::{generated}/other-project/chapters/shared-chapter.adoc[]
+----
+
+The `maven-dependency-plugin` unpacks these to `target/generated-sources/asciidoc/`.

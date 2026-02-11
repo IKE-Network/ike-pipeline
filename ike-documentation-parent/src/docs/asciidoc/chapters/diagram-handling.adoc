@@ -1,0 +1,119 @@
+== Diagram Handling
+
+The pipeline supports Mermaid, PlantUML, and GraphViz diagrams. All diagram types are rendered server-side by Kroki -- no local CLI tools (mmdc, plantuml.jar, dot) are required.
+
+=== Kroki Server-Side Rendering
+
+Diagrams are delegated to a Kroki server configured in the parent POM:
+
+[source,xml]
+----
+<diagram-server-url>${kroki.server.url}</diagram-server-url>
+<diagram-server-type>kroki_io</diagram-server-type>
+----
+
+The default server is `https://kroki.komet.sh`. Override for local development:
+
+[source,bash]
+----
+mvn verify -Dkroki.server.url=http://localhost:8000
+----
+
+Or with Docker:
+
+[source,bash]
+----
+docker run -p 8000:8000 yuzutech/kroki
+mvn verify -Dkroki.server.url=http://localhost:8000
+----
+
+Kroki supports 20+ diagram types including Mermaid, PlantUML, GraphViz, BPMN, Bytefield, Ditaa, Excalidraw, and more. Any diagram type supported by Kroki works in the pipeline.
+
+=== SVG vs PNG Decision
+
+The choice between SVG and PNG depends on the PDF renderer:
+
+[mermaid]
+....
+flowchart TD
+    START["Diagram source<br/>(Mermaid, PlantUML, GraphViz)"]
+    KROKI["Kroki server"]
+    START --> KROKI
+
+    KROKI --> SVG["SVG output"]
+    KROKI --> PNG["PNG output"]
+
+    SVG --> HTML["HTML5 backend<br/><i>Always SVG (inline)</i>"]
+    SVG --> SVGO{"svgo fix needed?"}
+
+    SVGO --> |"Mermaid diagrams"| FIX["svgo-xep.config.mjs<br/>foreignObject to text<br/>HSL to hex"]
+    SVGO --> |"PlantUML / GraphViz"| PASS["Pass through<br/>(native text, hex colors)"]
+
+    FIX --> PRINCE["Prince / AH / XEP"]
+    PASS --> PRINCE
+
+    PNG --> PRAWN["Prawn / WeasyPrint"]
+
+    style HTML fill:#bfb,stroke:#333
+    style PRAWN fill:#fbb,stroke:#333
+    style PRINCE fill:#bbf,stroke:#333
+....
+
+[cols="1,1,3"]
+|===
+| Renderer | Format | Reason
+
+| HTML5
+| SVG (inline)
+| Full CSS/JS support, interactive diagrams
+
+| Prawn
+| PNG
+| `prawn-svg` drops `<foreignObject>` labels
+
+| Prince
+| SVG (interactive)
+| Full CSS engine; svgo fixes foreignObject first
+
+| Antenna House
+| SVG (interactive)
+| Full CSS engine; svgo fixes foreignObject first
+
+| WeasyPrint
+| PNG
+| Cannot render `<foreignObject>` in SVGs
+
+| XEP
+| SVG
+| XSL-FO embeds SVG via `<mediaobject>`; svgo fixes foreignObject first
+|===
+
+=== SVGO Configurations
+
+Two SVGO configs handle different SVG compatibility issues:
+
+==== `svgo.config.mjs` (Prawn CSS Inlining)
+
+Used by `build-all.sh` for the Prawn three-step build. Inlines CSS class rules from `<style>` blocks into element-level `style` attributes, then removes the empty `<style>` elements. This makes SVGs compatible with `prawn-svg`, which cannot parse CSS class selectors.
+
+PlantUML and GraphViz SVGs do not use CSS classes, so they pass through unchanged.
+
+==== `svgo-xep.config.mjs` (Full SVG Fix)
+
+Used by the Prince, AH, and XEP profiles. Performs four transformations:
+
+. *Inline CSS rules* -- same as above
+. *Convert HSL to hex* -- Mermaid's default theme uses `hsl()` colors; XEP and some renderers do not support HSL in SVG
+. *Replace `<foreignObject>` with `<text>`* -- extracts label text and creates native SVG `<text>` elements with computed positions
+. *Fix ER diagram edges* -- removes the `undefined;undefined` prefix that Mermaid adds to ER relationship labels
+
+=== Diagram Type Compatibility
+
+PlantUML and GraphViz produce SVGs with:
+
+* Native `<text>` elements for labels
+* Hex color values (`#rrggbb`)
+* No `<foreignObject>` elements
+* No CSS class selectors
+
+These SVGs work in *all* renderers without any svgo processing. Only Mermaid SVGs require the foreignObject-to-text conversion.
