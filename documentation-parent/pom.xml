@@ -46,56 +46,51 @@
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        
+
         <!-- Maven Plugin Versions -->
         <maven-dependency-plugin.version>3.8.1</maven-dependency-plugin.version>
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
         <maven-clean-plugin.version>3.4.0</maven-clean-plugin.version>
-        
+
         <!-- AsciiDoc Toolchain Versions -->
         <asciidoctor-maven-plugin.version>3.1.0</asciidoctor-maven-plugin.version>
         <asciidoctorj.version>2.5.13</asciidoctorj.version>
-        <asciidoctorj-pdf.version>2.3.19</asciidoctorj-pdf.version>
+        <asciidoctorj-pdf.version>2.3.23</asciidoctorj-pdf.version>
         <asciidoctorj-diagram.version>2.3.1</asciidoctorj-diagram.version>
-        <jruby.version>9.4.9.0</jruby.version>
-        
+        <jruby.version>10.0.3.0</jruby.version>
+
         <!-- Diagram Tool Configuration — Kroki server -->
         <!-- Override with -Dkroki.server.url=http://localhost:8000 for local testing -->
         <kroki.server.url>https://kroki.komet.sh</kroki.server.url>
         <asciidoctor.diagram.mermaid.format>svg</asciidoctor.diagram.mermaid.format>
         <asciidoctor.diagram.plantuml.format>svg</asciidoctor.diagram.plantuml.format>
-        
+
         <!-- IKE AsciiDoc Extensions -->
         <!-- Relative from child projects in the reactor build.              -->
         <!-- External projects override to their local checkout path.        -->
         <ike.extensions.directory>${project.basedir}/../documentation-parent/src/extensions</ike.extensions.directory>
-        
+
         <!-- IKE Shared AsciiDoc Resources (docinfo.html, etc.)             -->
         <!-- All projects get shared docinfo (Koncept CSS, etc.) via the    -->
         <!-- docinfodir attribute.  Projects needing ADDITIONAL docinfo     -->
         <!-- can override docinfodir and use antrun to merge shared +       -->
         <!-- project-specific files into a staging directory.               -->
         <ike.shared.asciidoc.directory>${project.basedir}/../documentation-parent/src/shared-asciidoc</ike.shared.asciidoc.directory>
-        
+
         <!-- Documentation Paths (Standard Maven) -->
         <asciidoc.source.directory>${project.basedir}/src/docs/asciidoc</asciidoc.source.directory>
         <asciidoc.output.directory>${project.build.directory}/generated-docs</asciidoc.output.directory>
         <asciidoc.generated.directory>${project.build.directory}/generated-sources/asciidoc</asciidoc.generated.directory>
         <asciidoc.theme.directory>${project.basedir}/src/theme</asciidoc.theme.directory>
-        
+
         <!-- Font Configuration -->
         <fonts.output.directory>${project.build.directory}/fonts</fonts.output.directory>
-        
+
         <!-- Maven Enforcer Plugin Version -->
         <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
         <exec-maven-plugin.version>3.5.0</exec-maven-plugin.version>
-        <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
         <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
         <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
-        
-        <!-- Skip external PDF renderers on POM-packaging (parent) projects.
-             Overridden to true by the pom-skip-exec profile below. -->
-        <ike.pdf.skip.exec>false</ike.pdf.skip.exec>
 
         <!-- ── External PDF Renderer Configuration ──────────────────── -->
         <!-- Override with -Dprince.executable=/usr/local/bin/prince etc. -->
@@ -103,7 +98,7 @@
         <antennahouse.executable>AHFCmd</antennahouse.executable>
         <weasyprint.executable>weasyprint</weasyprint.executable>
         <xep.executable>xep</xep.executable>
-        
+
         <!-- ── DocBook → XSL-FO → PDF Toolchain ──────────────────────── -->
         <!-- Saxon-HE:      Resolved as xml-maven-plugin plugin dependency        -->
         <!--                 (Maven Central → Nexus proxy). No local JAR needed.  -->
@@ -115,25 +110,43 @@
         <xml-maven-plugin.version>1.1.0</xml-maven-plugin.version>
         <docbook-xsl.ike.version>1.79.2-ike.2</docbook-xsl.ike.version>
         <docbook.xsl.directory>${project.build.directory}/docbook-xsl</docbook.xsl.directory>
-        
+
         <!-- Intermediate directories for the DocBook pipeline -->
         <docbook.output.directory>${asciidoc.output.directory}/docbook</docbook.output.directory>
         <fo.output.directory>${asciidoc.output.directory}/fo</fo.output.directory>
-        
+
         <!-- Name of the master document (without extension).             -->
         <!-- Most projects have index.adoc; override for other names.     -->
         <pdf.source.document>index</pdf.source.document>
-        
+
         <!-- Intermediate directory for print-ready HTML + assets         -->
         <pdf.html.directory>${asciidoc.output.directory}/pdf-html</pdf.html.directory>
-        
+
         <!-- CSS Paged Media stylesheet for external renderers            -->
         <!-- Uses the parent module path so child projects resolve it    -->
         <!-- correctly (same pattern as ike.extensions.directory).       -->
-        <pdf.print.stylesheet>${project.basedir}/../documentation-parent/src/theme/ike-print.css</pdf.print.stylesheet>
+        <pdf.print.stylesheet.directory>${project.basedir}/../documentation-parent/src/theme</pdf.print.stylesheet.directory>
+        <pdf.print.stylesheet>${pdf.print.stylesheet.directory}/ike-print.css</pdf.print.stylesheet>
 
         <!-- Assembly descriptor directory for ZIP artifact creation -->
         <ike.assembly.directory>${project.basedir}/../documentation-parent/src/assembly</ike.assembly.directory>
+
+        <!-- ── Renderer Skip Flags ─────────────────────────────────────── -->
+        <!-- All renderers off by default. Activate via profile or -D.      -->
+        <ike.skip.html>true</ike.skip.html>
+        <ike.skip.prawn>true</ike.skip.prawn>
+        <ike.skip.prince>true</ike.skip.prince>
+        <ike.skip.ah>true</ike.skip.ah>
+        <ike.skip.weasyprint>true</ike.skip.weasyprint>
+        <ike.skip.xep>true</ike.skip.xep>
+        <ike.skip.fop>true</ike.skip.fop>
+        <ike.skip.pdf-default>true</ike.skip.pdf-default>
+        <ike.skip.docbook>true</ike.skip.docbook>
+
+        <!-- Default renderer for the pdf-default copy. POM-level properties
+             do NOT trigger property-based profile activation, so this is safe.
+             Overridden by -Dike.pdf.default=RENDERER on the command line. -->
+        <ike.pdf.default>prawn</ike.pdf.default>
     </properties>
 
     <dependencyManagement>
@@ -154,7 +167,7 @@
                 <artifactId>asciidoctorj-diagram</artifactId>
                 <version>${asciidoctorj-diagram.version}</version>
             </dependency>
-            
+
             <!-- Noto Fonts for PDF generation (minimal subset) -->
             <dependency>
                 <groupId>network.ike</groupId>
@@ -249,13 +262,6 @@
                     <version>${exec-maven-plugin.version}</version>
                 </plugin>
 
-                <!-- Ant Run Plugin — file/directory preparation tasks -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-antrun-plugin</artifactId>
-                    <version>${maven-antrun-plugin.version}</version>
-                </plugin>
-
                 <!-- Build Helper Plugin — attach classified PDF artifacts -->
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
@@ -307,9 +313,9 @@ Download: https://maven.apache.org/download.cgi
                                         </message>
                                     </requireMavenVersion>
                                     <requireJavaVersion>
-                                        <version>[17,)</version>
+                                        <version>[21,)</version>
                                         <message>
-IKE projects require Java 17+.
+IKE projects require Java 21+ (JRuby 10 baseline).
   macOS:  brew install openjdk
   Ubuntu: sudo apt install openjdk-21-jdk
                                         </message>
@@ -326,10 +332,25 @@ IKE projects require Java 17+.
                     <artifactId>asciidoctor-maven-plugin</artifactId>
                     <version>${asciidoctor-maven-plugin.version}</version>
                     <dependencies>
+                        <!-- JRuby 10.x — replaces sun.misc.Unsafe with
+                             java.lang.foreign / VarHandle APIs (JDK 21+).
+                             Must appear before asciidoctorj to override its
+                             transitive JRuby 9.x dependency. -->
+                        <dependency>
+                            <groupId>org.jruby</groupId>
+                            <artifactId>jruby</artifactId>
+                            <version>${jruby.version}</version>
+                        </dependency>
                         <dependency>
                             <groupId>org.asciidoctor</groupId>
                             <artifactId>asciidoctorj</artifactId>
                             <version>${asciidoctorj.version}</version>
+                            <exclusions>
+                                <exclusion>
+                                    <groupId>org.jruby</groupId>
+                                    <artifactId>jruby-base</artifactId>
+                                </exclusion>
+                            </exclusions>
                         </dependency>
                         <dependency>
                             <groupId>org.asciidoctor</groupId>
@@ -358,14 +379,14 @@ IKE projects require Java 17+.
                             <!-- Standard Maven attributes -->
                             <project-version>${project.version}</project-version>
                             <project-name>${project.name}</project-name>
-                            
+
                             <!-- Path attributes for includes -->
                             <generated>${asciidoc.generated.directory}</generated>
                             <resources>${project.basedir}/src/docs/resources</resources>
-                            
+
                             <!-- Shared docinfo location -->
                             <docinfodir>${ike.shared.asciidoc.directory}</docinfodir>
-                            
+
                             <!-- Document attributes -->
                             <source-highlighter>coderay</source-highlighter>
                             <coderay-linenums-mode>table</coderay-linenums-mode>
@@ -374,7 +395,7 @@ IKE projects require Java 17+.
                             <idprefix />
                             <idseparator>-</idseparator>
                             <docinfo>shared</docinfo>
-                            
+
                             <!-- Diagram configuration — Kroki server-side rendering -->
                             <!-- Delegates ALL diagram types (Mermaid, PlantUML, GraphViz, etc.) -->
                             <!-- to the Kroki server, eliminating local CLI tool requirements. -->
@@ -382,7 +403,7 @@ IKE projects require Java 17+.
                             <diagram-server-type>kroki_io</diagram-server-type>
                             <diagram-format>svg</diagram-format>
                             <diagram-svg-type>inline</diagram-svg-type>
-                            
+
                             <!-- allow-uri-read required for Kroki HTTP requests -->
                             <allow-uri-read>true</allow-uri-read>
                         </attributes>
@@ -391,14 +412,21 @@ IKE projects require Java 17+.
             </plugins>
         </pluginManagement>
 
-        <!-- Active plugins for all projects inheriting this parent -->
+        <!-- ════════════════════════════════════════════════════════════════ -->
+        <!-- Active plugins for all projects inheriting this parent.         -->
+        <!--                                                                 -->
+        <!-- Every renderer execution is declared here with a per-renderer   -->
+        <!-- <skip> flag that defaults to true. Profiles are thin toggles    -->
+        <!-- that flip the relevant skip flag to false.                      -->
+        <!-- ════════════════════════════════════════════════════════════════ -->
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
             </plugin>
 
-            <!-- Unpack fonts from ike-minimal-fonts JAR — needed by all PDF profiles -->
+            <!-- ── maven-dependency-plugin ───────────────────────────────── -->
+            <!-- Unpack fonts (always) and DocBook XSL (when XEP or FOP)     -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
@@ -407,1088 +435,1012 @@ IKE projects require Java 17+.
                         <id>unpack-fonts</id>
                         <!-- inherits config from pluginManagement -->
                     </execution>
+                    <execution>
+                        <id>unpack-docbook-xsl</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${ike.skip.docbook}</skip>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>network.ike</groupId>
+                                    <artifactId>docbook-xsl</artifactId>
+                                    <version>${docbook-xsl.ike.version}</version>
+                                    <type>jar</type>
+                                    <outputDirectory>${docbook.xsl.directory}</outputDirectory>
+                                    <excludes>META-INF/**</excludes>
+                                </artifactItem>
+                            </artifactItems>
+                            <overWriteReleases>true</overWriteReleases>
+                            <overWriteSnapshots>true</overWriteSnapshots>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- ── maven-resources-plugin ───────────────────────────────── -->
+            <!-- Asset staging for each renderer: config files, CSS, fonts.  -->
+            <!-- Replaces maven-antrun-plugin — pure Maven, no Ant scripts.  -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <!-- XEP: Stage XEP font config + fonts.                      -->
+                    <!--       XEP reads xep-ike-fonts.xml which uses             -->
+                    <!--       xml:base="fonts/" to locate TTFs relative to it.   -->
+                    <execution>
+                        <id>prepare-xep-assets</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.xep}</skip>
+                            <outputDirectory>${project.build.directory}/xep-config</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/../documentation-parent/src/xep</directory>
+                                    <includes><include>*.xml</include></includes>
+                                </resource>
+                                <resource>
+                                    <directory>${fonts.output.directory}</directory>
+                                    <includes><include>**/*.ttf</include></includes>
+                                    <targetPath>fonts</targetPath>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+
+                    <!-- FOP: Stage FOP config + fonts.                            -->
+                    <!--       FOP reads fop-ike.xconf which uses                  -->
+                    <!--       <font-base>fonts/</font-base> for TTF resolution.   -->
+                    <execution>
+                        <id>prepare-fop-assets</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.fop}</skip>
+                            <outputDirectory>${project.build.directory}/fop-config</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/../documentation-parent/src/fop</directory>
+                                    <includes><include>*.xconf</include></includes>
+                                </resource>
+                                <resource>
+                                    <directory>${fonts.output.directory}</directory>
+                                    <includes><include>**/*.ttf</include></includes>
+                                    <targetPath>fonts</targetPath>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+
+                    <!-- Prince: Copy print CSS + fonts to pdf-html-prince dir -->
+                    <execution>
+                        <id>prepare-print-assets-prince</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.prince}</skip>
+                            <outputDirectory>${asciidoc.output.directory}/pdf-html-prince</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${pdf.print.stylesheet.directory}</directory>
+                                    <includes><include>ike-print.css</include></includes>
+                                </resource>
+                                <resource>
+                                    <directory>${fonts.output.directory}</directory>
+                                    <includes><include>**/*.ttf</include></includes>
+                                    <targetPath>fonts</targetPath>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+
+                    <!-- AH: Copy print CSS + fonts to pdf-html-ah dir -->
+                    <execution>
+                        <id>prepare-print-assets-ah</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.ah}</skip>
+                            <outputDirectory>${asciidoc.output.directory}/pdf-html-ah</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${pdf.print.stylesheet.directory}</directory>
+                                    <includes><include>ike-print.css</include></includes>
+                                </resource>
+                                <resource>
+                                    <directory>${fonts.output.directory}</directory>
+                                    <includes><include>**/*.ttf</include></includes>
+                                    <targetPath>fonts</targetPath>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+
+                    <!-- WeasyPrint: Copy print CSS + fonts to pdf-html-weasyprint dir -->
+                    <execution>
+                        <id>prepare-print-assets-weasyprint</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.weasyprint}</skip>
+                            <outputDirectory>${asciidoc.output.directory}/pdf-html-weasyprint</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${pdf.print.stylesheet.directory}</directory>
+                                    <includes><include>ike-print.css</include></includes>
+                                </resource>
+                                <resource>
+                                    <directory>${fonts.output.directory}</directory>
+                                    <includes><include>**/*.ttf</include></includes>
+                                    <targetPath>fonts</targetPath>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+
+                </executions>
+            </plugin>
+
+            <!-- ── asciidoctor-maven-plugin ─────────────────────────────── -->
+            <!-- All AsciiDoc conversions: HTML, Prawn PDF, print HTML for   -->
+            <!-- external renderers, and DocBook for XSL-FO pipelines.       -->
+            <plugin>
+                <groupId>org.asciidoctor</groupId>
+                <artifactId>asciidoctor-maven-plugin</artifactId>
+                <executions>
+
+                    <!-- ── HTML5 ───────────────────────────────────────── -->
+                    <execution>
+                        <id>generate-html-docs</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>process-asciidoc</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${ike.skip.html}</skip>
+                            <backend>html5</backend>
+                            <outputDirectory>${asciidoc.output.directory}/html</outputDirectory>
+                            <!-- Register glossary Postprocessor for HTML only.
+                                 The InlineMacro is auto-discovered via SPI.
+                                 The Postprocessor cannot be registered via SPI
+                                 because it crashes the asciidoctorj-pdf backend. -->
+                            <extensions>
+                                <extension>
+                                    <className>network.ike.docs.koncept.KonceptGlossaryProcessor</className>
+                                </extension>
+                            </extensions>
+                            <attributes>
+                                <toc>left</toc>
+                                <toclevels>3</toclevels>
+                                <linkcss>false</linkcss>
+                                <ike-pdf-renderer>html5</ike-pdf-renderer>
+                            </attributes>
+                        </configuration>
+                    </execution>
+
+                    <!-- ════════════════════════════════════════════════════ -->
+                    <!-- PDF via asciidoctorj-pdf / Prawn (built-in, free)   -->
+                    <!--                                                     -->
+                    <!-- Uses the JRuby/Prawn backend directly. Diagrams     -->
+                    <!-- rendered as PNG because prawn-svg cannot handle      -->
+                    <!-- Mermaid/Kroki SVGs (drops <foreignObject> labels,   -->
+                    <!-- ignores CSS on <rect>). HTML output keeps SVG;      -->
+                    <!-- external renderers (Prince, AH, WeasyPrint, XEP)    -->
+                    <!-- also keep SVG since they have real CSS engines.      -->
+                    <!-- ════════════════════════════════════════════════════ -->
+                    <execution>
+                        <id>generate-pdf-docs</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>process-asciidoc</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${ike.skip.prawn}</skip>
+                            <backend>pdf</backend>
+                            <outputDirectory>${asciidoc.output.directory}/pdf-prawn</outputDirectory>
+                            <attributes>
+                                <pdf-themesdir>${asciidoc.theme.directory}</pdf-themesdir>
+                                <pdf-theme>ike-default</pdf-theme>
+                                <pdf-fontsdir>${fonts.output.directory}</pdf-fontsdir>
+                                <allow-uri-read>true</allow-uri-read>
+                                <media>prepress</media>
+                                <optimize>true</optimize>
+                                <!-- PNG for Prawn PDF: prawn-svg drops <foreignObject> -->
+                                <!-- labels and ignores CSS width/height on <rect>.     -->
+                                <!-- PNG renders perfectly via Kroki server-side.        -->
+                                <diagram-format>png</diagram-format>
+                                <ike-pdf-renderer>prawn</ike-pdf-renderer>
+                            </attributes>
+                        </configuration>
+                    </execution>
+
+                    <!-- ════════════════════════════════════════════════════ -->
+                    <!-- PDF via Prince XML ($495 Desktop / $3800 Server)    -->
+                    <!--                                                     -->
+                    <!-- Pipeline: AsciiDoc → HTML5 → Prince → PDF          -->
+                    <!-- Prince has its own CSS engine — no prawn-svg, no    -->
+                    <!-- svgo. Full CSS Paged Media, PDF/UA, SVG with CSS.   -->
+                    <!--                                                     -->
+                    <!-- License tiers (princexml.com/purchase):             -->
+                    <!--   Free non-commercial: watermark on first page      -->
+                    <!--   Desktop $495:  single user, local CLI             -->
+                    <!--   Server  $3800: gov/non-profit, one server         -->
+                    <!-- ════════════════════════════════════════════════════ -->
+                    <execution>
+                        <id>generate-print-html-prince</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>process-asciidoc</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${ike.skip.prince}</skip>
+                            <backend>html5</backend>
+                            <outputDirectory>${asciidoc.output.directory}/pdf-html-prince</outputDirectory>
+                            <extensions>
+                                <extension>
+                                    <className>network.ike.docs.koncept.KonceptGlossaryProcessor</className>
+                                </extension>
+                            </extensions>
+                            <attributes>
+                                <toc>auto</toc>
+                                <toclevels>3</toclevels>
+                                <linkcss>false</linkcss>
+                                <!-- External SVG via <object> tags so svgo can fix
+                                     foreignObject labels in the .svg files before
+                                     Prince renders them. Prince has full SVG/CSS
+                                     support — no need to fall back to PNG. -->
+                                <diagram-svg-type>interactive</diagram-svg-type>
+                                <ike-pdf-renderer>prince</ike-pdf-renderer>
+                            </attributes>
+                        </configuration>
+                    </execution>
+
+                    <!-- ════════════════════════════════════════════════════ -->
+                    <!-- PDF via Antenna House Formatter (CSS mode)          -->
+                    <!--                                                     -->
+                    <!-- Pipeline: AsciiDoc → HTML5 → AH Formatter → PDF    -->
+                    <!-- AH supports both XSL-FO and CSS Paged Media.       -->
+                    <!-- CSS mode used here for consistency.                 -->
+                    <!--                                                     -->
+                    <!-- License tiers (antennahouse.com/pricing):           -->
+                    <!--   Standalone Lite $400:  CSS only, perpetual        -->
+                    <!--   Standalone Std  $1250: XSL only, perpetual        -->
+                    <!--   XSL/CSS Lite    $560:  both engines, perpetual    -->
+                    <!--   XSL/CSS Std     $1750: both engines, perpetual    -->
+                    <!-- ════════════════════════════════════════════════════ -->
+                    <execution>
+                        <id>generate-print-html-ah</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>process-asciidoc</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${ike.skip.ah}</skip>
+                            <backend>html5</backend>
+                            <outputDirectory>${asciidoc.output.directory}/pdf-html-ah</outputDirectory>
+                            <extensions>
+                                <extension>
+                                    <className>network.ike.docs.koncept.KonceptGlossaryProcessor</className>
+                                </extension>
+                            </extensions>
+                            <attributes>
+                                <toc>auto</toc>
+                                <toclevels>3</toclevels>
+                                <linkcss>false</linkcss>
+                                <!-- External SVG via <object> tags so svgo can fix
+                                     foreignObject labels in the .svg files before
+                                     AH Formatter renders them. AH has full SVG/CSS
+                                     support — no need to fall back to PNG. -->
+                                <diagram-svg-type>interactive</diagram-svg-type>
+                                <ike-pdf-renderer>ah</ike-pdf-renderer>
+                            </attributes>
+                        </configuration>
+                    </execution>
+
+                    <!-- ════════════════════════════════════════════════════ -->
+                    <!-- PDF via WeasyPrint (free, open source, Python)      -->
+                    <!--                                                     -->
+                    <!-- Pipeline: AsciiDoc → HTML5 → WeasyPrint → PDF      -->
+                    <!-- Best free alternative. Good CSS Paged Media.        -->
+                    <!-- No JavaScript support (not needed).                 -->
+                    <!--                                                     -->
+                    <!-- Limitations vs Prince/AH:                           -->
+                    <!--   - No target-counter() for TOC page numbers        -->
+                    <!--   - No PDF/UA output (tagged PDF limited)           -->
+                    <!--   - Requires Python 3.8+ and system libraries       -->
+                    <!--   Install: pip install weasyprint                   -->
+                    <!-- ════════════════════════════════════════════════════ -->
+                    <execution>
+                        <id>generate-print-html-weasyprint</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>process-asciidoc</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${ike.skip.weasyprint}</skip>
+                            <backend>html5</backend>
+                            <outputDirectory>${asciidoc.output.directory}/pdf-html-weasyprint</outputDirectory>
+                            <!-- Register glossary Postprocessor for HTML only.
+                                 The InlineMacro is auto-discovered via SPI.
+                                 The Postprocessor cannot be registered via SPI
+                                 because it crashes the asciidoctorj-pdf backend. -->
+                            <extensions>
+                                <extension>
+                                    <className>network.ike.docs.koncept.KonceptGlossaryProcessor</className>
+                                </extension>
+                            </extensions>
+                            <attributes>
+                                <toc>auto</toc>
+                                <toclevels>3</toclevels>
+                                <linkcss>false</linkcss>
+                                <!-- PNG for print: WeasyPrint cannot render
+                                     <foreignObject> in SVGs (Mermaid labels vanish).
+                                     PNG rendered by Kroki server-side includes all
+                                     labels. Same approach as the Prawn PDF profile. -->
+                                <diagram-format>png</diagram-format>
+                                <ike-pdf-renderer>weasyprint</ike-pdf-renderer>
+                            </attributes>
+                        </configuration>
+                    </execution>
+
+                    <!-- ════════════════════════════════════════════════════ -->
+                    <!-- PDF via DocBook → XSL-FO → RenderX XEP             -->
+                    <!--                                                     -->
+                    <!-- Pipeline: AsciiDoc → DocBook5 → XSL-FO → PDF       -->
+                    <!--   Step 1: Unpack ike-docbook-xsl from Maven/Nexus  -->
+                    <!--   Step 2: asciidoctor docbook5 → DocBook5 XML      -->
+                    <!--   Step 3: xml-maven-plugin + Saxon-HE → XSL-FO    -->
+                    <!--   Step 4: RenderX XEP → PDF                        -->
+                    <!--                                                     -->
+                    <!-- 100% Maven-managed. All deps from Nexus.           -->
+                    <!-- External prerequisite: XEP installed               -->
+                    <!--   (free personal license from renderx.com)         -->
+                    <!--                                                     -->
+                    <!-- Intermediate outputs (for debugging):               -->
+                    <!--   target/generated-docs/docbook-xep/index.xml      -->
+                    <!--   target/generated-docs/fo-xep/index.fo            -->
+                    <!--   target/generated-docs/pdf-xep/index.pdf          -->
+                    <!-- ════════════════════════════════════════════════════ -->
+                    <execution>
+                        <id>generate-docbook-xep</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>process-asciidoc</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${ike.skip.xep}</skip>
+                            <backend>docbook5</backend>
+                            <outputDirectory>${asciidoc.output.directory}/docbook-xep</outputDirectory>
+                            <!-- Register glossary Postprocessor for DocBook.
+                                 The InlineMacro is auto-discovered via SPI.
+                                 The Postprocessor cannot be registered via SPI
+                                 because it crashes the asciidoctorj-pdf backend. -->
+                            <extensions>
+                                <extension>
+                                    <className>network.ike.docs.koncept.KonceptGlossaryProcessor</className>
+                                </extension>
+                            </extensions>
+                            <attributes>
+                                <!-- DocBook backend-specific attributes -->
+                                <doctype>book</doctype>
+                                <allow-uri-read>true</allow-uri-read>
+                                <ike-pdf-renderer>xep</ike-pdf-renderer>
+                            </attributes>
+                        </configuration>
+                    </execution>
+
+                    <!-- ════════════════════════════════════════════════════ -->
+                    <!-- PDF via DocBook → XSL-FO → Apache FOP              -->
+                    <!--                                                     -->
+                    <!-- Same DocBook → XSL-FO pipeline as XEP, but uses    -->
+                    <!-- Apache FOP (free, pure Java) for the FO→PDF step.  -->
+                    <!--                                                     -->
+                    <!-- FOP runs as a Java class via exec-maven-plugin.    -->
+                    <!-- org.apache.xmlgraphics:fop resolved from Maven     -->
+                    <!-- Central — no local binary install needed.          -->
+                    <!--                                                     -->
+                    <!-- License: Apache License 2.0 (free)                 -->
+                    <!--                                                     -->
+                    <!-- Intermediate outputs (for debugging):               -->
+                    <!--   target/generated-docs/docbook-fop/index.xml      -->
+                    <!--   target/generated-docs/fo-fop/index.fo            -->
+                    <!--   target/generated-docs/pdf-fop/index.pdf          -->
+                    <!-- ════════════════════════════════════════════════════ -->
+                    <execution>
+                        <id>generate-docbook-fop</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>process-asciidoc</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${ike.skip.fop}</skip>
+                            <backend>docbook5</backend>
+                            <outputDirectory>${asciidoc.output.directory}/docbook-fop</outputDirectory>
+                            <!-- Register glossary Postprocessor for DocBook.
+                                 The InlineMacro is auto-discovered via SPI.
+                                 The Postprocessor cannot be registered via SPI
+                                 because it crashes the asciidoctorj-pdf backend. -->
+                            <extensions>
+                                <extension>
+                                    <className>network.ike.docs.koncept.KonceptGlossaryProcessor</className>
+                                </extension>
+                            </extensions>
+                            <attributes>
+                                <!-- DocBook backend-specific attributes -->
+                                <doctype>book</doctype>
+                                <allow-uri-read>true</allow-uri-read>
+                                <ike-pdf-renderer>fop</ike-pdf-renderer>
+                            </attributes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- ── xml-maven-plugin ─────────────────────────────────────── -->
+            <!-- DocBook5 XML → XSL-FO via Saxon-HE + DocBook XSL.          -->
+            <!-- MUST appear before exec-maven-plugin: within the package    -->
+            <!-- phase, the XSLT transform produces .fo files that XEP/FOP   -->
+            <!-- (exec-maven-plugin) then consume.                           -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>xml-maven-plugin</artifactId>
+                <executions>
+                    <!-- XEP: DocBook5 XML → XSL-FO                              -->
+                    <!--       Saxon-HE is resolved from Maven Central as a       -->
+                    <!--       plugin dependency (declared in pluginManagement).   -->
+                    <!--       The transform uses custom/ike-fo.xsl (unpacked     -->
+                    <!--       from ike-docbook-xsl artifact), which imports the  -->
+                    <!--       stock DocBook FO stylesheet via ../fo/docbook.xsl. -->
+                    <execution>
+                        <id>docbook-to-fo-xep</id>
+                        <phase>package</phase>
+                        <goals><goal>transform</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.xep}</skip>
+                            <transformationSets>
+                                <transformationSet>
+                                    <dir>${asciidoc.output.directory}/docbook-xep</dir>
+                                    <includes>
+                                        <include>${pdf.source.document}.xml</include>
+                                    </includes>
+                                    <stylesheet>${docbook.xsl.directory}/custom/ike-fo.xsl</stylesheet>
+                                    <outputDir>${asciidoc.output.directory}/fo-xep</outputDir>
+                                    <fileMappers>
+                                        <fileMapper implementation="org.codehaus.plexus.components.io.filemappers.FileExtensionMapper">
+                                            <targetExtension>.fo</targetExtension>
+                                        </fileMapper>
+                                    </fileMappers>
+                                    <parameters>
+                                        <parameter>
+                                            <name>ike.pdf.renderer</name>
+                                            <value>xep</value>
+                                        </parameter>
+                                    </parameters>
+                                </transformationSet>
+                            </transformationSets>
+                        </configuration>
+                    </execution>
+
+                    <!-- FOP: DocBook5 XML → XSL-FO                              -->
+                    <!--       Uses fop1.extensions=1 for FOP-specific PDF        -->
+                    <!--       bookmarks and metadata support.                     -->
+                    <execution>
+                        <id>docbook-to-fo-fop</id>
+                        <phase>package</phase>
+                        <goals><goal>transform</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.fop}</skip>
+                            <transformationSets>
+                                <transformationSet>
+                                    <dir>${asciidoc.output.directory}/docbook-fop</dir>
+                                    <includes>
+                                        <include>${pdf.source.document}.xml</include>
+                                    </includes>
+                                    <stylesheet>${docbook.xsl.directory}/custom/ike-fo.xsl</stylesheet>
+                                    <outputDir>${asciidoc.output.directory}/fo-fop</outputDir>
+                                    <fileMappers>
+                                        <fileMapper implementation="org.codehaus.plexus.components.io.filemappers.FileExtensionMapper">
+                                            <targetExtension>.fo</targetExtension>
+                                        </fileMapper>
+                                    </fileMappers>
+                                    <parameters>
+                                        <parameter>
+                                            <name>fop1.extensions</name>
+                                            <value>1</value>
+                                        </parameter>
+                                        <parameter>
+                                            <name>ike.pdf.renderer</name>
+                                            <value>fop</value>
+                                        </parameter>
+                                    </parameters>
+                                </transformationSet>
+                            </transformationSets>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- ── exec-maven-plugin ────────────────────────────────────── -->
+            <!-- External renderer invocations: svgo SVG fixing + PDF       -->
+            <!-- rendering via Prince, AH, WeasyPrint, XEP, and FOP.       -->
+            <!-- MUST appear after xml-maven-plugin: XEP/FOP executions in  -->
+            <!-- the package phase read .fo files produced by xml-maven's   -->
+            <!-- XSLT transforms. Maven runs same-phase plugins in POM     -->
+            <!-- declaration order.                                         -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+
+                    <!-- Create PDF output directories for external renderers.   -->
+                    <!-- The renderers cannot create these directories themselves -->
+                    <!-- and will fail if they don't exist.                       -->
+                    <execution>
+                        <id>mkdir-pdf-prince</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.prince}</skip>
+                            <executable>mkdir</executable>
+                            <arguments><argument>-p</argument><argument>${asciidoc.output.directory}/pdf-prince</argument></arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>mkdir-pdf-ah</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.ah}</skip>
+                            <executable>mkdir</executable>
+                            <arguments><argument>-p</argument><argument>${asciidoc.output.directory}/pdf-ah</argument></arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>mkdir-pdf-weasyprint</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.weasyprint}</skip>
+                            <executable>mkdir</executable>
+                            <arguments><argument>-p</argument><argument>${asciidoc.output.directory}/pdf-weasyprint</argument></arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>mkdir-pdf-xep</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.xep}</skip>
+                            <executable>mkdir</executable>
+                            <arguments><argument>-p</argument><argument>${asciidoc.output.directory}/pdf-xep</argument></arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>mkdir-pdf-fop</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.fop}</skip>
+                            <executable>mkdir</executable>
+                            <arguments><argument>-p</argument><argument>${asciidoc.output.directory}/pdf-fop</argument></arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- Prince: Fix Mermaid SVGs (foreignObject → native <text>) -->
+                    <execution>
+                        <id>fix-svg-for-prince</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.prince}</skip>
+                            <executable>svgo</executable>
+                            <arguments>
+                                <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
+                                <argument>-f</argument>
+                                <argument>${asciidoc.output.directory}/pdf-html-prince</argument>
+                                <argument>--quiet</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- Prince: HTML + CSS → PDF -->
+                    <execution>
+                        <id>prince-html-to-pdf</id>
+                        <phase>package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.prince}</skip>
+                            <executable>${prince.executable}</executable>
+                            <arguments>
+                                <argument>${asciidoc.output.directory}/pdf-html-prince/${pdf.source.document}.html</argument>
+                                <argument>--style</argument>
+                                <argument>${asciidoc.output.directory}/pdf-html-prince/ike-print.css</argument>
+                                <argument>--output</argument>
+                                <argument>${asciidoc.output.directory}/pdf-prince/${pdf.source.document}.pdf</argument>
+                                <argument>--pdf-profile=PDF/UA-1</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- AH: Fix Mermaid SVGs (foreignObject → native <text>) -->
+                    <execution>
+                        <id>fix-svg-for-ah</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.ah}</skip>
+                            <executable>svgo</executable>
+                            <arguments>
+                                <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
+                                <argument>-f</argument>
+                                <argument>${asciidoc.output.directory}/pdf-html-ah</argument>
+                                <argument>--quiet</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- AH: HTML + CSS → PDF                                -->
+                    <!--     -cssmode: use CSS engine (not XSL-FO)           -->
+                    <!--     -p @PDF/UA-1: accessible PDF output             -->
+                    <execution>
+                        <id>ah-html-to-pdf</id>
+                        <phase>package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.ah}</skip>
+                            <executable>${antennahouse.executable}</executable>
+                            <arguments>
+                                <argument>-cssmode</argument>
+                                <argument>-css</argument>
+                                <argument>${asciidoc.output.directory}/pdf-html-ah/ike-print.css</argument>
+                                <argument>-d</argument>
+                                <argument>${asciidoc.output.directory}/pdf-html-ah/${pdf.source.document}.html</argument>
+                                <argument>-o</argument>
+                                <argument>${asciidoc.output.directory}/pdf-ah/${pdf.source.document}.pdf</argument>
+                                <argument>-p</argument>
+                                <argument>@PDF/UA-1</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- WeasyPrint: HTML + CSS → PDF -->
+                    <execution>
+                        <id>weasyprint-html-to-pdf</id>
+                        <phase>package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.weasyprint}</skip>
+                            <executable>${weasyprint.executable}</executable>
+                            <arguments>
+                                <argument>${asciidoc.output.directory}/pdf-html-weasyprint/${pdf.source.document}.html</argument>
+                                <argument>${asciidoc.output.directory}/pdf-weasyprint/${pdf.source.document}.pdf</argument>
+                                <argument>--stylesheet</argument>
+                                <argument>${asciidoc.output.directory}/pdf-html-weasyprint/ike-print.css</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- XEP: Fix Mermaid SVGs for XEP's SVG renderer               -->
+                    <!--       XEP does not support <foreignObject> (labels vanish)  -->
+                    <!--       or HSL color values (strokes/fills vanish).           -->
+                    <!--       svgo converts foreignObject→<text> and hsl→hex.       -->
+                    <execution>
+                        <id>fix-svg-for-xep</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.xep}</skip>
+                            <executable>svgo</executable>
+                            <arguments>
+                                <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
+                                <argument>-f</argument>
+                                <argument>${asciidoc.output.directory}/docbook-xep</argument>
+                                <argument>--quiet</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- XEP: XSL-FO → PDF via RenderX XEP -->
+                    <execution>
+                        <id>xep-fo-to-pdf</id>
+                        <phase>package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.xep}</skip>
+                            <executable>${xep.executable}</executable>
+                            <arguments>
+                                <argument>-fo</argument>
+                                <argument>${asciidoc.output.directory}/fo-xep/${pdf.source.document}.fo</argument>
+                                <argument>-pdf</argument>
+                                <argument>${asciidoc.output.directory}/pdf-xep/${pdf.source.document}.pdf</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- FOP: Fix Mermaid SVGs for FOP's SVG renderer                -->
+                    <!--       FOP does not support <foreignObject> (labels vanish)   -->
+                    <!--       or HSL color values (strokes/fills vanish).            -->
+                    <!--       svgo converts foreignObject→<text> and hsl→hex.        -->
+                    <execution>
+                        <id>fix-svg-for-fop</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.fop}</skip>
+                            <executable>svgo</executable>
+                            <arguments>
+                                <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
+                                <argument>-f</argument>
+                                <argument>${asciidoc.output.directory}/docbook-fop</argument>
+                                <argument>--quiet</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- FOP: XSL-FO → PDF via Apache FOP (separate JVM)          -->
+                    <!--       FOP's Main.main() calls System.exit(), so we run it -->
+                    <!--       as exec:exec (not exec:java) to avoid killing the   -->
+                    <!--       Maven JVM. The classpath is supplied from the        -->
+                    <!--       pdf-fop profile's <dependencies>.                   -->
+                    <execution>
+                        <id>fop-fo-to-pdf</id>
+                        <phase>package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.fop}</skip>
+                            <executable>java</executable>
+                            <arguments>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>org.apache.fop.cli.Main</argument>
+                                <argument>-c</argument>
+                                <argument>${project.build.directory}/fop-config/fop-ike.xconf</argument>
+                                <argument>-fo</argument>
+                                <argument>${asciidoc.output.directory}/fo-fop/${pdf.source.document}.fo</argument>
+                                <argument>-pdf</argument>
+                                <argument>${asciidoc.output.directory}/pdf-fop/${pdf.source.document}.pdf</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- pdf-default: Copy the designated renderer's PDF to pdf/ -->
+                    <!-- Uses verify phase — runs after asciidoctor (Prawn) and  -->
+                    <!-- after all package-phase renderers have finished.         -->
+                    <!-- exec-maven-plugin is declared after asciidoctor-maven-   -->
+                    <!-- plugin so within verify phase this runs after Prawn PDF  -->
+                    <!-- generation completes.                                    -->
+                    <execution>
+                        <id>mkdir-pdf-default</id>
+                        <phase>verify</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.pdf-default}</skip>
+                            <executable>mkdir</executable>
+                            <arguments>
+                                <argument>-p</argument>
+                                <argument>${asciidoc.output.directory}/pdf</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-default-pdf</id>
+                        <phase>verify</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.pdf-default}</skip>
+                            <executable>cp</executable>
+                            <arguments>
+                                <argument>${asciidoc.output.directory}/pdf-${ike.pdf.default}/${pdf.source.document}.pdf</argument>
+                                <argument>${asciidoc.output.directory}/pdf/</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- ── maven-assembly-plugin ────────────────────────────────── -->
+            <!-- Create classified ZIP artifacts for each renderer output    -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <executions>
+                    <!-- HTML ZIP (verify phase — after HTML generation) -->
+                    <execution>
+                        <id>zip-html</id>
+                        <phase>verify</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <skipAssembly>${ike.skip.html}</skipAssembly>
+                            <descriptors>
+                                <descriptor>${ike.assembly.directory}/html.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+
+                    <!-- Prawn PDF ZIP (verify phase — after Prawn generation) -->
+                    <execution>
+                        <id>zip-prawn</id>
+                        <phase>verify</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <skipAssembly>${ike.skip.prawn}</skipAssembly>
+                            <descriptors>
+                                <descriptor>${ike.assembly.directory}/prawn.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+
+                    <!-- Prince PDF ZIP -->
+                    <execution>
+                        <id>zip-prince</id>
+                        <phase>package</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <skipAssembly>${ike.skip.prince}</skipAssembly>
+                            <descriptors>
+                                <descriptor>${ike.assembly.directory}/prince.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+
+                    <!-- AH PDF ZIP -->
+                    <execution>
+                        <id>zip-ah</id>
+                        <phase>package</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <skipAssembly>${ike.skip.ah}</skipAssembly>
+                            <descriptors>
+                                <descriptor>${ike.assembly.directory}/ah.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+
+                    <!-- WeasyPrint PDF ZIP -->
+                    <execution>
+                        <id>zip-weasyprint</id>
+                        <phase>package</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <skipAssembly>${ike.skip.weasyprint}</skipAssembly>
+                            <descriptors>
+                                <descriptor>${ike.assembly.directory}/weasyprint.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+
+                    <!-- XEP PDF ZIP -->
+                    <execution>
+                        <id>zip-xep</id>
+                        <phase>package</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <skipAssembly>${ike.skip.xep}</skipAssembly>
+                            <descriptors>
+                                <descriptor>${ike.assembly.directory}/xep.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+
+                    <!-- FOP PDF ZIP -->
+                    <execution>
+                        <id>zip-fop</id>
+                        <phase>package</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <skipAssembly>${ike.skip.fop}</skipAssembly>
+                            <descriptors>
+                                <descriptor>${ike.assembly.directory}/fop.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+
+                    <!-- Default PDF copy ZIP (verify phase) -->
+                    <execution>
+                        <id>zip-pdf-default</id>
+                        <phase>verify</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <skipAssembly>${ike.skip.pdf-default}</skipAssembly>
+                            <descriptors>
+                                <descriptor>${ike.assembly.directory}/pdf.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>
     </build>
 
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!-- Profiles — thin toggles that flip renderer skip flags.          -->
+    <!--                                                                 -->
+    <!-- Each profile sets its ike.skip.* property to false.             -->
+    <!-- All build logic lives in the main <build> section above.        -->
+    <!-- Profiles are composable: activate multiple renderers by         -->
+    <!-- passing multiple -D properties or -P flags.                     -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
     <profiles>
-        <!-- ════════════════════════════════════════════════════════════ -->
-        <!-- HTML5 Generation Profile                                    -->
-        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- ── HTML5 (active by default) ──────────────────────────────── -->
         <profile>
             <id>html</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.asciidoctor</groupId>
-                        <artifactId>asciidoctor-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>generate-html-docs</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>process-asciidoc</goal>
-                                </goals>
-                                <configuration>
-                                    <backend>html5</backend>
-                                    <outputDirectory>${asciidoc.output.directory}/html</outputDirectory>
-                                    <!-- Register glossary Postprocessor for HTML only.
-                                         The InlineMacro is auto-discovered via SPI.
-                                         The Postprocessor cannot be registered via SPI
-                                         because it crashes the asciidoctorj-pdf backend. -->
-                                    <extensions>
-                                        <extension>
-                                            <className>network.ike.docs.koncept.KonceptGlossaryProcessor</className>
-                                        </extension>
-                                    </extensions>
-                                    <attributes>
-                                        <toc>left</toc>
-                                        <toclevels>3</toclevels>
-                                        <linkcss>false</linkcss>
-                                        <ike-pdf-renderer>html5</ike-pdf-renderer>
-                                    </attributes>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- Assemble HTML output as classified ZIP artifact -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>zip-html</id>
-                                <phase>verify</phase>
-                                <goals><goal>single</goal></goals>
-                                <configuration>
-                                    <descriptors>
-                                        <descriptor>${ike.assembly.directory}/html.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
+            <properties>
+                <ike.skip.html>false</ike.skip.html>
+            </properties>
         </profile>
 
-        <!-- ════════════════════════════════════════════════════════════ -->
-        <!-- PDF via asciidoctorj-pdf / Prawn (built-in, no license)     -->
-        <!--                                                             -->
-        <!--   mvn verify -Ppdf                                          -->
-        <!--                                                             -->
-        <!-- Uses the JRuby/Prawn backend directly. Diagrams rendered as -->
-        <!-- PNG because prawn-svg cannot handle Mermaid/Kroki SVGs      -->
-        <!-- (drops <foreignObject> labels, ignores CSS on <rect>).      -->
-        <!-- HTML output keeps SVG; external renderers (Prince, AH,      -->
-        <!-- WeasyPrint, XEP) also keep SVG since they have real CSS     -->
-        <!-- engines.                                                     -->
-        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- ── PDF via Prawn (built-in, free) ─────────────────────────── -->
         <profile>
             <id>pdf</id>
             <activation>
                 <property><name>ike.pdf.prawn</name></property>
             </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.asciidoctor</groupId>
-                        <artifactId>asciidoctor-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>generate-pdf-docs</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>process-asciidoc</goal>
-                                </goals>
-                                <configuration>
-                                    <backend>pdf</backend>
-                                    <outputDirectory>${asciidoc.output.directory}/pdf-prawn</outputDirectory>
-                                    <attributes>
-                                        <pdf-themesdir>${asciidoc.theme.directory}</pdf-themesdir>
-                                        <pdf-theme>ike-default</pdf-theme>
-                                        <pdf-fontsdir>${fonts.output.directory}</pdf-fontsdir>
-                                        <allow-uri-read>true</allow-uri-read>
-                                        <media>prepress</media>
-                                        <optimize>true</optimize>
-                                        <!-- PNG for Prawn PDF: prawn-svg drops <foreignObject> -->
-                                        <!-- labels and ignores CSS width/height on <rect>.     -->
-                                        <!-- PNG renders perfectly via Kroki server-side.        -->
-                                        <diagram-format>png</diagram-format>
-                                        <ike-pdf-renderer>prawn</ike-pdf-renderer>
-                                    </attributes>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- Assemble Prawn PDF output as classified ZIP artifact -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>zip-prawn</id>
-                                <phase>verify</phase>
-                                <goals><goal>single</goal></goals>
-                                <configuration>
-                                    <descriptors>
-                                        <descriptor>${ike.assembly.directory}/prawn.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
+            <properties>
+                <ike.skip.prawn>false</ike.skip.prawn>
+            </properties>
         </profile>
 
-        <!-- ════════════════════════════════════════════════════════════ -->
-        <!-- PDF via Prince XML  ($495 Desktop / $3800 Server)           -->
-        <!--                                                             -->
-        <!--   mvn verify -Ppdf-prince                                   -->
-        <!--   mvn verify -Ppdf-prince -Dprince.executable=/opt/prince   -->
-        <!--                                                             -->
-        <!-- Pipeline: AsciiDoc → HTML5 → Prince → PDF                   -->
-        <!-- Prince has its own CSS engine — no prawn-svg, no svgo.      -->
-        <!-- Full CSS Paged Media, PDF/UA, SVG with CSS natively.        -->
-        <!--                                                             -->
-        <!-- License tiers (princexml.com/purchase):                     -->
-        <!--   Free non-commercial: watermark on first page              -->
-        <!--   Desktop $495:  single user, local CLI, self-publishing    -->
-        <!--   Server  $3800: gov/non-profit, one production server      -->
-        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- ── PDF via Prince XML ─────────────────────────────────────── -->
         <profile>
             <id>pdf-prince</id>
             <activation>
                 <property><name>ike.pdf.prince</name></property>
             </activation>
-            <build>
-                <plugins>
-                    <!-- 1. Copy print CSS + fonts to pdf-html-prince output dir -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>prepare-print-assets-prince</id>
-                                <phase>prepare-package</phase>
-                                <goals><goal>run</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <target>
-                                        <mkdir dir="${asciidoc.output.directory}/pdf-html-prince/fonts"/>
-                                        <mkdir dir="${asciidoc.output.directory}/pdf-prince"/>
-                                        <copy file="${pdf.print.stylesheet}"
-                                              todir="${asciidoc.output.directory}/pdf-html-prince"
-                                              overwrite="true"/>
-                                        <copy todir="${asciidoc.output.directory}/pdf-html-prince/fonts"
-                                              overwrite="true">
-                                            <fileset dir="${fonts.output.directory}"
-                                                     includes="**/*.ttf"/>
-                                        </copy>
-                                    </target>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 3. Generate print-ready HTML (inline TOC, no sidebar) -->
-                    <plugin>
-                        <groupId>org.asciidoctor</groupId>
-                        <artifactId>asciidoctor-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>generate-print-html-prince</id>
-                                <phase>prepare-package</phase>
-                                <goals>
-                                    <goal>process-asciidoc</goal>
-                                </goals>
-                                <configuration>
-                                    <backend>html5</backend>
-                                    <outputDirectory>${asciidoc.output.directory}/pdf-html-prince</outputDirectory>
-                                    <extensions>
-                                        <extension>
-                                            <className>network.ike.docs.koncept.KonceptGlossaryProcessor</className>
-                                        </extension>
-                                    </extensions>
-                                    <attributes>
-                                        <toc>auto</toc>
-                                        <toclevels>3</toclevels>
-                                        <linkcss>false</linkcss>
-                                        <!-- External SVG via <object> tags so svgo can fix
-                                             foreignObject labels in the .svg files before
-                                             Prince renders them. Prince has full SVG/CSS
-                                             support — no need to fall back to PNG. -->
-                                        <diagram-svg-type>interactive</diagram-svg-type>
-                                        <ike-pdf-renderer>prince</ike-pdf-renderer>
-                                    </attributes>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 4. Fix Mermaid SVGs: foreignObject → native <text> -->
-                    <!--    Mermaid uses <foreignObject> for labels; Prince  -->
-                    <!--    does not render foreignObject in SVGs.           -->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>fix-svg-for-prince</id>
-                                <phase>prepare-package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <executable>svgo</executable>
-                                    <arguments>
-                                        <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
-                                        <argument>-f</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-html-prince</argument>
-                                        <argument>--quiet</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-
-                            <!-- 5. Invoke Prince XML: HTML + CSS → PDF -->
-                            <execution>
-                                <id>prince-html-to-pdf</id>
-                                <phase>package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <executable>${prince.executable}</executable>
-                                    <arguments>
-                                        <argument>${asciidoc.output.directory}/pdf-html-prince/${pdf.source.document}.html</argument>
-                                        <argument>--style</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-html-prince/ike-print.css</argument>
-                                        <argument>--output</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-prince/${pdf.source.document}.pdf</argument>
-                                        <argument>--pdf-profile=PDF/UA-1</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 6. Assemble Prince PDF output as classified ZIP artifact -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>zip-prince</id>
-                                <phase>package</phase>
-                                <goals><goal>single</goal></goals>
-                                <configuration>
-                                    <descriptors>
-                                        <descriptor>${ike.assembly.directory}/prince.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
+            <properties>
+                <ike.skip.prince>false</ike.skip.prince>
+            </properties>
         </profile>
 
-        <!-- ════════════════════════════════════════════════════════════ -->
-        <!-- PDF via Antenna House Formatter (CSS mode)                  -->
-        <!--                                                             -->
-        <!--   mvn verify -Ppdf-ah                                       -->
-        <!--   mvn verify -Ppdf-ah -Dantennahouse.executable=/opt/AHF/AHFCmd -->
-        <!--                                                             -->
-        <!-- Pipeline: AsciiDoc → HTML5 → AH Formatter (CSS) → PDF      -->
-        <!-- AH Formatter supports both XSL-FO and CSS Paged Media.      -->
-        <!-- CSS mode used here for consistency with other profiles.      -->
-        <!--                                                             -->
-        <!-- License tiers (antennahouse.com/pricing):                   -->
-        <!--   Standalone Lite $400:   CSS only, perpetual               -->
-        <!--   Standalone Std  $1250:  XSL only, perpetual, 90-day warranty -->
-        <!--   XSL/CSS Lite    $560:   both engines, perpetual           -->
-        <!--   XSL/CSS Std     $1750:  both engines, perpetual, warranty -->
-        <!--   Gov/edu/non-profit: contact sales for discounts           -->
-        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- ── PDF via Antenna House Formatter ────────────────────────── -->
         <profile>
             <id>pdf-ah</id>
             <activation>
                 <property><name>ike.pdf.ah</name></property>
             </activation>
-            <build>
-                <plugins>
-                    <!-- 1. Copy print CSS + fonts -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>prepare-print-assets-ah</id>
-                                <phase>prepare-package</phase>
-                                <goals><goal>run</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <target>
-                                        <mkdir dir="${asciidoc.output.directory}/pdf-html-ah/fonts"/>
-                                        <mkdir dir="${asciidoc.output.directory}/pdf-ah"/>
-                                        <copy file="${pdf.print.stylesheet}"
-                                              todir="${asciidoc.output.directory}/pdf-html-ah"
-                                              overwrite="true"/>
-                                        <copy todir="${asciidoc.output.directory}/pdf-html-ah/fonts"
-                                              overwrite="true">
-                                            <fileset dir="${fonts.output.directory}"
-                                                     includes="**/*.ttf"/>
-                                        </copy>
-                                    </target>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 3. Generate print-ready HTML -->
-                    <plugin>
-                        <groupId>org.asciidoctor</groupId>
-                        <artifactId>asciidoctor-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>generate-print-html-ah</id>
-                                <phase>prepare-package</phase>
-                                <goals>
-                                    <goal>process-asciidoc</goal>
-                                </goals>
-                                <configuration>
-                                    <backend>html5</backend>
-                                    <outputDirectory>${asciidoc.output.directory}/pdf-html-ah</outputDirectory>
-                                    <extensions>
-                                        <extension>
-                                            <className>network.ike.docs.koncept.KonceptGlossaryProcessor</className>
-                                        </extension>
-                                    </extensions>
-                                    <attributes>
-                                        <toc>auto</toc>
-                                        <toclevels>3</toclevels>
-                                        <linkcss>false</linkcss>
-                                        <!-- External SVG via <object> tags so svgo can fix
-                                             foreignObject labels in the .svg files before
-                                             AH Formatter renders them. AH has full SVG/CSS
-                                             support — no need to fall back to PNG. -->
-                                        <diagram-svg-type>interactive</diagram-svg-type>
-                                        <ike-pdf-renderer>ah</ike-pdf-renderer>
-                                    </attributes>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 4. Fix Mermaid SVGs: foreignObject → native <text> -->
-                    <!--    Mermaid uses <foreignObject> for labels; AH      -->
-                    <!--    may not render foreignObject in SVGs.            -->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>fix-svg-for-ah</id>
-                                <phase>prepare-package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <executable>svgo</executable>
-                                    <arguments>
-                                        <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
-                                        <argument>-f</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-html-ah</argument>
-                                        <argument>--quiet</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-
-                            <!-- 5. Invoke AH Formatter: HTML + CSS → PDF -->
-                            <!--    -cssmode: use CSS engine (not XSL-FO)  -->
-                            <!--    -p @PDF/UA-1: accessible PDF output    -->
-                            <execution>
-                                <id>ah-html-to-pdf</id>
-                                <phase>package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <executable>${antennahouse.executable}</executable>
-                                    <arguments>
-                                        <argument>-cssmode</argument>
-                                        <argument>-css</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-html-ah/ike-print.css</argument>
-                                        <argument>-d</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-html-ah/${pdf.source.document}.html</argument>
-                                        <argument>-o</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-ah/${pdf.source.document}.pdf</argument>
-                                        <argument>-p</argument>
-                                        <argument>@PDF/UA-1</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 6. Assemble AH PDF output as classified ZIP artifact -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>zip-ah</id>
-                                <phase>package</phase>
-                                <goals><goal>single</goal></goals>
-                                <configuration>
-                                    <descriptors>
-                                        <descriptor>${ike.assembly.directory}/ah.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
+            <properties>
+                <ike.skip.ah>false</ike.skip.ah>
+            </properties>
         </profile>
 
-        <!-- ════════════════════════════════════════════════════════════ -->
-        <!-- PDF via WeasyPrint (free, open source, Python)              -->
-        <!--                                                             -->
-        <!--   mvn verify -Ppdf-weasyprint                               -->
-        <!--   pip install weasyprint                                    -->
-        <!--                                                             -->
-        <!-- Pipeline: AsciiDoc → HTML5 → WeasyPrint → PDF              -->
-        <!-- Best free alternative. Good CSS Paged Media support.        -->
-        <!-- No JavaScript support (not needed for our pipeline).        -->
-        <!--                                                             -->
-        <!-- Limitations vs Prince/AH:                                   -->
-        <!--   - No target-counter() for TOC page numbers                -->
-        <!--   - No PDF/UA output (tagged PDF support limited)           -->
-        <!--   - Requires Python 3.8+ and system libraries              -->
-        <!--   Install: pip install weasyprint                           -->
-        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- ── PDF via WeasyPrint ─────────────────────────────────────── -->
         <profile>
             <id>pdf-weasyprint</id>
             <activation>
                 <property><name>ike.pdf.weasyprint</name></property>
             </activation>
-            <build>
-                <plugins>
-                    <!-- 1. Copy print CSS + fonts -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>prepare-print-assets-weasyprint</id>
-                                <phase>prepare-package</phase>
-                                <goals><goal>run</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <target>
-                                        <mkdir dir="${asciidoc.output.directory}/pdf-html-weasyprint/fonts"/>
-                                        <mkdir dir="${asciidoc.output.directory}/pdf-weasyprint"/>
-                                        <copy file="${pdf.print.stylesheet}"
-                                              todir="${asciidoc.output.directory}/pdf-html-weasyprint"
-                                              overwrite="true"/>
-                                        <copy todir="${asciidoc.output.directory}/pdf-html-weasyprint/fonts"
-                                              overwrite="true">
-                                            <fileset dir="${fonts.output.directory}"
-                                                     includes="**/*.ttf"/>
-                                        </copy>
-                                    </target>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 3. Generate print-ready HTML -->
-                    <plugin>
-                        <groupId>org.asciidoctor</groupId>
-                        <artifactId>asciidoctor-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>generate-print-html-weasyprint</id>
-                                <phase>prepare-package</phase>
-                                <goals>
-                                    <goal>process-asciidoc</goal>
-                                </goals>
-                                <configuration>
-                                    <backend>html5</backend>
-                                    <outputDirectory>${asciidoc.output.directory}/pdf-html-weasyprint</outputDirectory>
-                                    <!-- Register glossary Postprocessor for HTML only.
-                                         The InlineMacro is auto-discovered via SPI.
-                                         The Postprocessor cannot be registered via SPI
-                                         because it crashes the asciidoctorj-pdf backend. -->
-                                    <extensions>
-                                        <extension>
-                                            <className>network.ike.docs.koncept.KonceptGlossaryProcessor</className>
-                                        </extension>
-                                    </extensions>
-                                    <attributes>
-                                        <toc>auto</toc>
-                                        <toclevels>3</toclevels>
-                                        <linkcss>false</linkcss>
-                                        <!-- PNG for print: WeasyPrint cannot render
-                                             <foreignObject> in SVGs (Mermaid labels vanish).
-                                             PNG rendered by Kroki server-side includes all
-                                             labels. Same approach as the Prawn PDF profile. -->
-                                        <diagram-format>png</diagram-format>
-                                        <ike-pdf-renderer>weasyprint</ike-pdf-renderer>
-                                    </attributes>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 4. Invoke WeasyPrint: HTML + CSS → PDF -->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>weasyprint-html-to-pdf</id>
-                                <phase>package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <executable>${weasyprint.executable}</executable>
-                                    <arguments>
-                                        <argument>${asciidoc.output.directory}/pdf-html-weasyprint/${pdf.source.document}.html</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-weasyprint/${pdf.source.document}.pdf</argument>
-                                        <argument>--stylesheet</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-html-weasyprint/ike-print.css</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 5. Assemble WeasyPrint PDF output as classified ZIP artifact -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>zip-weasyprint</id>
-                                <phase>package</phase>
-                                <goals><goal>single</goal></goals>
-                                <configuration>
-                                    <descriptors>
-                                        <descriptor>${ike.assembly.directory}/weasyprint.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
+            <properties>
+                <ike.skip.weasyprint>false</ike.skip.weasyprint>
+            </properties>
         </profile>
 
-        <!-- ════════════════════════════════════════════════════════════ -->
-        <!-- PDF via DocBook → XSL-FO → RenderX XEP                       -->
-        <!--                                                               -->
-        <!--   mvn package -Ppdf-xep                                       -->
-        <!--   mvn package -Ppdf-xep -Dxep.executable=/opt/RenderX/xep     -->
-        <!--                                                               -->
-        <!-- Pipeline: AsciiDoc → DocBook5 → XSL-FO → PDF                 -->
-        <!--   Step 1: Unpack ike-docbook-xsl artifact (DocBook XSL +      -->
-        <!--           IKE FO customization layer) from Maven/Nexus        -->
-        <!--   Step 2: asciidoctor docbook5 backend → DocBook5 XML         -->
-        <!--   Step 3: xml-maven-plugin + Saxon-HE → XSL-FO               -->
-        <!--   Step 4: RenderX XEP → PDF                                   -->
-        <!--                                                               -->
-        <!-- 100% Maven-managed. All dependencies resolved from Nexus.     -->
-        <!-- No external downloads. No build-all.sh pre-steps.             -->
-        <!-- No Ruby, Python, or Node.js.                                   -->
-        <!--                                                               -->
-        <!-- External prerequisite:                                         -->
-        <!--   XEP installed (free personal license from renderx.com)      -->
-        <!--                                                               -->
-        <!-- Intermediate outputs (useful for debugging):                   -->
-        <!--   target/generated-docs/docbook-xep/index.xml  (DocBook5)     -->
-        <!--   target/generated-docs/fo-xep/index.fo        (XSL-FO)       -->
-        <!--   target/generated-docs/pdf-xep/index.pdf      (final)        -->
-        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- ── PDF via DocBook → XSL-FO → RenderX XEP ────────────────── -->
         <profile>
             <id>pdf-xep</id>
             <activation>
                 <property><name>ike.pdf.xep</name></property>
             </activation>
-            <build>
-                <plugins>
-                    <!-- 1. Unpack DocBook XSL stylesheets -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-dependency-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>unpack-docbook-xsl</id>
-                                <phase>generate-resources</phase>
-                                <goals>
-                                    <goal>unpack</goal>
-                                </goals>
-                                <configuration>
-                                    <artifactItems>
-                                        <artifactItem>
-                                            <groupId>network.ike</groupId>
-                                            <artifactId>docbook-xsl</artifactId>
-                                            <version>${docbook-xsl.ike.version}</version>
-                                            <type>jar</type>
-                                            <outputDirectory>${docbook.xsl.directory}</outputDirectory>
-                                            <excludes>META-INF/**</excludes>
-                                        </artifactItem>
-                                    </artifactItems>
-                                    <overWriteReleases>true</overWriteReleases>
-                                    <overWriteSnapshots>true</overWriteSnapshots>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 2. Prepare output directories and XEP font config -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>prepare-xep-assets</id>
-                                <phase>generate-resources</phase>
-                                <goals><goal>run</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <target>
-                                        <!-- Create output directories -->
-                                        <mkdir dir="${asciidoc.output.directory}/docbook-xep"/>
-                                        <mkdir dir="${asciidoc.output.directory}/fo-xep"/>
-                                        <mkdir dir="${asciidoc.output.directory}/pdf-xep"/>
-
-                                        <!--
-                                          Copy XEP font config and fonts to a staging area.
-                                          XEP reads xep-ike-fonts.xml which uses xml:base="fonts/"
-                                          to locate TTF files relative to the config file.
-                                        -->
-                                        <mkdir dir="${project.build.directory}/xep-config/fonts"/>
-                                        <copy todir="${project.build.directory}/xep-config"
-                                              overwrite="true">
-                                            <fileset dir="${project.basedir}/../documentation-parent/src/xep"
-                                                     includes="*.xml"/>
-                                        </copy>
-                                        <copy todir="${project.build.directory}/xep-config/fonts"
-                                              overwrite="true">
-                                            <fileset dir="${fonts.output.directory}"
-                                                     includes="**/*.ttf"/>
-                                        </copy>
-                                    </target>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 3. AsciiDoc → DocBook5 XML -->
-                    <!--    asciidoctor's docbook5 backend produces namespace-aware  -->
-                    <!--    DocBook5 XML.  asciidoctorj-diagram still generates SVGs -->
-                    <!--    via Kroki and embeds <mediaobject> references.           -->
-                    <plugin>
-                        <groupId>org.asciidoctor</groupId>
-                        <artifactId>asciidoctor-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>generate-docbook-xep</id>
-                                <phase>prepare-package</phase>
-                                <goals>
-                                    <goal>process-asciidoc</goal>
-                                </goals>
-                                <configuration>
-                                    <backend>docbook5</backend>
-                                    <outputDirectory>${asciidoc.output.directory}/docbook-xep</outputDirectory>
-                                    <!-- Register glossary Postprocessor for DocBook.
-                                         The InlineMacro is auto-discovered via SPI.
-                                         The Postprocessor cannot be registered via SPI
-                                         because it crashes the asciidoctorj-pdf backend. -->
-                                    <extensions>
-                                        <extension>
-                                            <className>network.ike.docs.koncept.KonceptGlossaryProcessor</className>
-                                        </extension>
-                                    </extensions>
-                                    <attributes>
-                                        <!-- DocBook backend-specific attributes -->
-                                        <doctype>book</doctype>
-                                        <allow-uri-read>true</allow-uri-read>
-                                        <ike-pdf-renderer>xep</ike-pdf-renderer>
-                                    </attributes>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 4. DocBook5 XML → XSL-FO via xml-maven-plugin + Saxon-HE -->
-                    <!--                                                             -->
-                    <!--    Saxon-HE is resolved from Maven Central as a plugin      -->
-                    <!--    dependency (declared in pluginManagement).                -->
-                    <!--                                                             -->
-                    <!--    The transform uses custom/ike-fo.xsl (unpacked from      -->
-                    <!--    ike-docbook-xsl artifact), which imports the stock        -->
-                    <!--    DocBook FO stylesheet via ../fo/docbook.xsl.             -->
-                    <!--                                                             -->
-                    <!--    The intermediate .fo file is preserved at:                -->
-                    <!--      target/generated-docs/fo-xep/index.fo                  -->
-                    <!--    for debugging and for use with other FO processors.       -->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>xml-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>docbook-to-fo-xep</id>
-                                <phase>package</phase>
-                                <goals><goal>transform</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <transformationSets>
-                                        <transformationSet>
-                                            <dir>${asciidoc.output.directory}/docbook-xep</dir>
-                                            <includes>
-                                                <include>${pdf.source.document}.xml</include>
-                                            </includes>
-                                            <stylesheet>${docbook.xsl.directory}/custom/ike-fo.xsl</stylesheet>
-                                            <outputDir>${asciidoc.output.directory}/fo-xep</outputDir>
-                                            <fileMappers>
-                                                <fileMapper implementation="org.codehaus.plexus.components.io.filemappers.FileExtensionMapper">
-                                                    <targetExtension>.fo</targetExtension>
-                                                </fileMapper>
-                                            </fileMappers>
-                                            <parameters>
-                                                <parameter>
-                                                    <name>ike.pdf.renderer</name>
-                                                    <value>xep</value>
-                                                </parameter>
-                                            </parameters>
-                                        </transformationSet>
-                                    </transformationSets>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 3b. Fix Mermaid SVGs for XEP's SVG renderer               -->
-                    <!--     XEP does not support <foreignObject> (labels vanish)   -->
-                    <!--     or HSL color values (strokes/fills vanish).            -->
-                    <!--     svgo converts foreignObject→<text> and hsl→hex.        -->
-                    <!--     PlantUML/GraphViz SVGs pass through unchanged.         -->
-
-                    <!-- 5. XSL-FO → PDF via RenderX XEP                           -->
-                    <!--    XEP reads the .fo file and produces PDF.                -->
-                    <!--    Font registration is in /Library/Java/xep/xep.xml       -->
-                    <!--    (see xep-ike-fonts.xml for the IKE font group).         -->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>fix-svg-for-xep</id>
-                                <phase>prepare-package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <executable>svgo</executable>
-                                    <arguments>
-                                        <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
-                                        <argument>-f</argument>
-                                        <argument>${asciidoc.output.directory}/docbook-xep</argument>
-                                        <argument>--quiet</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>xep-fo-to-pdf</id>
-                                <phase>package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <executable>${xep.executable}</executable>
-                                    <arguments>
-                                        <argument>-fo</argument>
-                                        <argument>${asciidoc.output.directory}/fo-xep/${pdf.source.document}.fo</argument>
-                                        <argument>-pdf</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-xep/${pdf.source.document}.pdf</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 6. Assemble XEP PDF output as classified ZIP artifact -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>zip-xep</id>
-                                <phase>package</phase>
-                                <goals><goal>single</goal></goals>
-                                <configuration>
-                                    <descriptors>
-                                        <descriptor>${ike.assembly.directory}/xep.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
+            <properties>
+                <ike.skip.xep>false</ike.skip.xep>
+                <ike.skip.docbook>false</ike.skip.docbook>
+            </properties>
         </profile>
 
-        <!-- ════════════════════════════════════════════════════════════ -->
-        <!-- PDF via DocBook → XSL-FO → Apache FOP                        -->
-        <!--                                                               -->
-        <!--   mvn package -Ppdf-fop                                       -->
-        <!--                                                               -->
-        <!-- Pipeline: AsciiDoc → DocBook5 → XSL-FO → PDF                 -->
-        <!--   Same DocBook → XSL-FO pipeline as XEP, but replaces the    -->
-        <!--   FO→PDF step with Apache FOP (free, pure Java).             -->
-        <!--                                                               -->
-        <!-- FOP runs as a Java class via exec-maven-plugin's java goal.  -->
-        <!-- org.apache.xmlgraphics:fop is resolved from Maven Central    -->
-        <!-- as a plugin dependency — no local binary install needed.     -->
-        <!--                                                               -->
-        <!-- License: Apache License 2.0 (free)                           -->
-        <!--                                                               -->
-        <!-- Intermediate outputs (useful for debugging):                   -->
-        <!--   target/generated-docs/docbook-fop/index.xml  (DocBook5)     -->
-        <!--   target/generated-docs/fo-fop/index.fo        (XSL-FO)       -->
-        <!--   target/generated-docs/pdf-fop/index.pdf      (final)        -->
-        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- ── PDF via DocBook → XSL-FO → Apache FOP ─────────────────── -->
         <profile>
             <id>pdf-fop</id>
             <activation>
                 <property><name>ike.pdf.fop</name></property>
             </activation>
-            <build>
-                <plugins>
-                    <!-- 1. Unpack DocBook XSL stylesheets -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-dependency-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>unpack-docbook-xsl</id>
-                                <phase>generate-resources</phase>
-                                <goals>
-                                    <goal>unpack</goal>
-                                </goals>
-                                <configuration>
-                                    <artifactItems>
-                                        <artifactItem>
-                                            <groupId>network.ike</groupId>
-                                            <artifactId>docbook-xsl</artifactId>
-                                            <version>${docbook-xsl.ike.version}</version>
-                                            <type>jar</type>
-                                            <outputDirectory>${docbook.xsl.directory}</outputDirectory>
-                                            <excludes>META-INF/**</excludes>
-                                        </artifactItem>
-                                    </artifactItems>
-                                    <overWriteReleases>true</overWriteReleases>
-                                    <overWriteSnapshots>true</overWriteSnapshots>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 2. Prepare output directories and FOP font config -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>prepare-fop-assets</id>
-                                <phase>generate-resources</phase>
-                                <goals><goal>run</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <target>
-                                        <!-- Create output directories -->
-                                        <mkdir dir="${asciidoc.output.directory}/docbook-fop"/>
-                                        <mkdir dir="${asciidoc.output.directory}/fo-fop"/>
-                                        <mkdir dir="${asciidoc.output.directory}/pdf-fop"/>
-
-                                        <!--
-                                          Copy FOP config and fonts to a staging area.
-                                          FOP reads fop-ike.xconf which uses <font-base>fonts/</font-base>
-                                          to locate TTF files relative to the config file.
-                                        -->
-                                        <mkdir dir="${project.build.directory}/fop-config/fonts"/>
-                                        <copy todir="${project.build.directory}/fop-config"
-                                              overwrite="true">
-                                            <fileset dir="${project.basedir}/../documentation-parent/src/fop"
-                                                     includes="*.xconf"/>
-                                        </copy>
-                                        <copy todir="${project.build.directory}/fop-config/fonts"
-                                              overwrite="true">
-                                            <fileset dir="${fonts.output.directory}"
-                                                     includes="**/*.ttf"/>
-                                        </copy>
-                                    </target>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 3. AsciiDoc → DocBook5 XML -->
-                    <plugin>
-                        <groupId>org.asciidoctor</groupId>
-                        <artifactId>asciidoctor-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>generate-docbook-fop</id>
-                                <phase>prepare-package</phase>
-                                <goals>
-                                    <goal>process-asciidoc</goal>
-                                </goals>
-                                <configuration>
-                                    <backend>docbook5</backend>
-                                    <outputDirectory>${asciidoc.output.directory}/docbook-fop</outputDirectory>
-                                    <!-- Register glossary Postprocessor for DocBook.
-                                         The InlineMacro is auto-discovered via SPI.
-                                         The Postprocessor cannot be registered via SPI
-                                         because it crashes the asciidoctorj-pdf backend. -->
-                                    <extensions>
-                                        <extension>
-                                            <className>network.ike.docs.koncept.KonceptGlossaryProcessor</className>
-                                        </extension>
-                                    </extensions>
-                                    <attributes>
-                                        <!-- DocBook backend-specific attributes -->
-                                        <doctype>book</doctype>
-                                        <allow-uri-read>true</allow-uri-read>
-                                        <ike-pdf-renderer>fop</ike-pdf-renderer>
-                                    </attributes>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 4. DocBook5 XML → XSL-FO via xml-maven-plugin + Saxon-HE -->
-                    <!--    Uses fop1.extensions=1 for FOP-specific PDF bookmarks   -->
-                    <!--    and metadata support.                                    -->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>xml-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>docbook-to-fo-fop</id>
-                                <phase>package</phase>
-                                <goals><goal>transform</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <transformationSets>
-                                        <transformationSet>
-                                            <dir>${asciidoc.output.directory}/docbook-fop</dir>
-                                            <includes>
-                                                <include>${pdf.source.document}.xml</include>
-                                            </includes>
-                                            <stylesheet>${docbook.xsl.directory}/custom/ike-fo.xsl</stylesheet>
-                                            <outputDir>${asciidoc.output.directory}/fo-fop</outputDir>
-                                            <fileMappers>
-                                                <fileMapper implementation="org.codehaus.plexus.components.io.filemappers.FileExtensionMapper">
-                                                    <targetExtension>.fo</targetExtension>
-                                                </fileMapper>
-                                            </fileMappers>
-                                            <parameters>
-                                                <parameter>
-                                                    <name>fop1.extensions</name>
-                                                    <value>1</value>
-                                                </parameter>
-                                                <parameter>
-                                                    <name>ike.pdf.renderer</name>
-                                                    <value>fop</value>
-                                                </parameter>
-                                            </parameters>
-                                        </transformationSet>
-                                    </transformationSets>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 3b. Fix Mermaid SVGs for FOP's SVG renderer                -->
-                    <!--     FOP does not support <foreignObject> (labels vanish)    -->
-                    <!--     or HSL color values (strokes/fills vanish).             -->
-                    <!--     svgo converts foreignObject→<text> and hsl→hex.         -->
-
-                    <!-- 5. XSL-FO → PDF via Apache FOP                             -->
-                    <!--    FOP runs as a Java class via exec-maven-plugin's java    -->
-                    <!--    goal. The FOP JAR is resolved from Maven Central as a    -->
-                    <!--    plugin dependency — no local binary install required.    -->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>fix-svg-for-fop</id>
-                                <phase>prepare-package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <executable>svgo</executable>
-                                    <arguments>
-                                        <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
-                                        <argument>-f</argument>
-                                        <argument>${asciidoc.output.directory}/docbook-fop</argument>
-                                        <argument>--quiet</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                            <!-- 5. XSL-FO → PDF via Apache FOP (separate JVM)          -->
-                            <!--    FOP's Main.main() calls System.exit(), so we run it  -->
-                            <!--    as exec:exec (not exec:java) to avoid killing the    -->
-                            <!--    Maven JVM. The classpath is supplied from the         -->
-                            <!--    profile's <dependencies> below.                      -->
-                            <execution>
-                                <id>fop-fo-to-pdf</id>
-                                <phase>package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <executable>java</executable>
-                                    <arguments>
-                                        <argument>-classpath</argument>
-                                        <classpath/>
-                                        <argument>org.apache.fop.cli.Main</argument>
-                                        <argument>-c</argument>
-                                        <argument>${project.build.directory}/fop-config/fop-ike.xconf</argument>
-                                        <argument>-fo</argument>
-                                        <argument>${asciidoc.output.directory}/fo-fop/${pdf.source.document}.fo</argument>
-                                        <argument>-pdf</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-fop/${pdf.source.document}.pdf</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 6. Assemble FOP PDF output as classified ZIP artifact -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>zip-fop</id>
-                                <phase>package</phase>
-                                <goals><goal>single</goal></goals>
-                                <configuration>
-                                    <descriptors>
-                                        <descriptor>${ike.assembly.directory}/fop.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
+            <properties>
+                <ike.skip.fop>false</ike.skip.fop>
+                <ike.skip.docbook>false</ike.skip.docbook>
+            </properties>
             <dependencies>
                 <!-- FOP on project classpath so exec:exec can build -classpath.
                      Runtime scope: not needed for compilation, only for the
@@ -1502,90 +1454,48 @@ IKE projects require Java 17+.
             </dependencies>
         </profile>
 
-        <!-- ════════════════════════════════════════════════════════════ -->
-        <!-- Default PDF: copy a renderer's PDF to pdf/ and attach       -->
-        <!-- with classifier "pdf" for backward compatibility.           -->
-        <!--                                                             -->
-        <!--   mvn package -Dike.pdf.xep -Dike.pdf.default=xep          -->
-        <!--                                                             -->
-        <!-- Copies pdf-${ike.pdf.default}/index.pdf → pdf/index.pdf     -->
-        <!-- and attaches it as *-pdf.pdf.                               -->
-        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- ── Default PDF copy ───────────────────────────────────────── -->
         <profile>
             <id>pdf-default</id>
             <activation>
                 <property><name>ike.pdf.default</name></property>
             </activation>
-            <build>
-                <plugins>
-                    <!-- 1. Copy the designated renderer's PDF to the canonical pdf/ dir -->
-                    <!--    Uses verify phase so all package-phase renderers finish first -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>copy-default-pdf</id>
-                                <phase>verify</phase>
-                                <goals><goal>run</goal></goals>
-                                <configuration>
-                                    <skip>${ike.pdf.skip.exec}</skip>
-                                    <target>
-                                        <mkdir dir="${asciidoc.output.directory}/pdf"/>
-                                        <copy file="${asciidoc.output.directory}/pdf-${ike.pdf.default}/${pdf.source.document}.pdf"
-                                              tofile="${asciidoc.output.directory}/pdf/${pdf.source.document}.pdf"
-                                              overwrite="true"/>
-                                    </target>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 2. Assemble default PDF output as classified ZIP artifact -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>zip-pdf-default</id>
-                                <phase>verify</phase>
-                                <goals><goal>single</goal></goals>
-                                <configuration>
-                                    <descriptors>
-                                        <descriptor>${ike.assembly.directory}/pdf.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
+            <properties>
+                <ike.skip.pdf-default>false</ike.skip.pdf-default>
+            </properties>
         </profile>
 
-        <!-- ════════════════════════════════════════════════════════════ -->
-        <!-- Skip external PDF renderers on POM-packaging projects.      -->
-        <!-- Parent POMs have no AsciiDoc content, so FOP/XEP/Prince/AH/ -->
-        <!-- WeasyPrint would fail on missing input files.               -->
-        <!-- Maven 4 packaging-based activation: active only for POM.    -->
-        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- ── Skip all renderers on POM-packaging modules ─────────── -->
+        <!-- POM modules (java-parent, documentation-parent) typically    -->
+        <!-- have no AsciiDoc content or lack the theme/font setup that   -->
+        <!-- renderers require. This profile forces ALL skip flags to     -->
+        <!-- true. To build docs from a POM module, override explicitly:  -->
+        <!--   mvn verify -pl documentation-parent -Dike.skip.html=false  -->
+        <!-- Must appear AFTER renderer profiles so its properties win.   -->
         <profile>
-            <id>pom-skip-exec</id>
+            <id>pom-skip-renderers</id>
             <activation>
                 <packaging>pom</packaging>
             </activation>
             <properties>
-                <ike.pdf.skip.exec>true</ike.pdf.skip.exec>
+                <ike.skip.html>true</ike.skip.html>
+                <ike.skip.prawn>true</ike.skip.prawn>
+                <ike.skip.prince>true</ike.skip.prince>
+                <ike.skip.ah>true</ike.skip.ah>
+                <ike.skip.weasyprint>true</ike.skip.weasyprint>
+                <ike.skip.xep>true</ike.skip.xep>
+                <ike.skip.fop>true</ike.skip.fop>
+                <ike.skip.pdf-default>true</ike.skip.pdf-default>
+                <ike.skip.docbook>true</ike.skip.docbook>
             </properties>
         </profile>
 
-        <!-- ════════════════════════════════════════════════════════════ -->
-        <!-- Diff Generation Profile (Stub for Future Implementation)    -->
-        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- ── Diff Generation (stub for future implementation) ───────── -->
         <profile>
             <id>diff-generation</id>
             <build>
                 <plugins>
-                    <!-- 
+                    <!--
                     Placeholder for future git-diff based documentation change tracking.
                     Potential approaches:
                     - JGit-based Maven plugin to generate annotated diffs
