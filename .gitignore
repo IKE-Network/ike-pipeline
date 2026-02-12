@@ -32,5 +32,6 @@ Thumbs.db
 # Node (svgo)
 node_modules/
 
-# Claude Code (local permissions — do not share)
+# Claude Code
 .claude/settings.local.json
+**/.claude/standards/

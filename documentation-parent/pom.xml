@@ -175,6 +175,15 @@
                 <version>${asciidoctorj-diagram.version}</version>
             </dependency>
 
+            <!-- IKE Build Standards (Claude instruction files) -->
+            <dependency>
+                <groupId>network.ike</groupId>
+                <artifactId>ike-build-standards</artifactId>
+                <version>1.0.0</version>
+                <classifier>claude</classifier>
+                <type>zip</type>
+            </dependency>
+
             <!-- Noto Fonts for PDF generation (minimal subset) -->
             <dependency>
                 <groupId>network.ike</groupId>
@@ -221,6 +230,26 @@
                                 <useSubDirectoryPerArtifact>true</useSubDirectoryPerArtifact>
                                 <stripVersion>true</stripVersion>
                                 <includeGroupIds>network.ike</includeGroupIds>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>unpack-claude-standards</id>
+                            <phase>validate</phase>
+                            <goals>
+                                <goal>unpack</goal>
+                            </goals>
+                            <configuration>
+                                <artifactItems>
+                                    <artifactItem>
+                                        <groupId>network.ike</groupId>
+                                        <artifactId>ike-build-standards</artifactId>
+                                        <classifier>claude</classifier>
+                                        <type>zip</type>
+                                        <outputDirectory>${project.basedir}/.claude/standards</outputDirectory>
+                                    </artifactItem>
+                                </artifactItems>
+                                <overWriteReleases>true</overWriteReleases>
+                                <overWriteSnapshots>true</overWriteSnapshots>
                             </configuration>
                         </execution>
                         <execution>
