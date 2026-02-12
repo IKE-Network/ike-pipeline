@@ -119,6 +119,12 @@
         <!-- Most projects have index.adoc; override for other names.     -->
         <pdf.source.document>index</pdf.source.document>
 
+        <!-- Output PDF filename (without extension).                    -->
+        <!-- Defaults to the Maven artifactId (always filename-safe).    -->
+        <!-- Override per-project in <properties> or via                  -->
+        <!-- -Dike.document.name=My-Document on the command line.        -->
+        <ike.document.name>${project.artifactId}</ike.document.name>
+
         <!-- Intermediate directory for print-ready HTML + assets         -->
         <pdf.html.directory>${asciidoc.output.directory}/pdf-html</pdf.html.directory>
 
@@ -134,6 +140,7 @@
         <!-- ── Renderer Skip Flags ─────────────────────────────────────── -->
         <!-- All renderers off by default. Activate via profile or -D.      -->
         <ike.skip.html>true</ike.skip.html>
+        <ike.skip.html-single>true</ike.skip.html-single>
         <ike.skip.prawn>true</ike.skip.prawn>
         <ike.skip.prince>true</ike.skip.prince>
         <ike.skip.ah>true</ike.skip.ah>
@@ -622,6 +629,41 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                     </execution>
 
                     <!-- ════════════════════════════════════════════════════ -->
+                    <!-- Self-contained HTML (single file)                    -->
+                    <!--                                                     -->
+                    <!-- Same as HTML5 but with data-uri: all images are      -->
+                    <!-- base64-encoded inline. Produces one self-contained   -->
+                    <!-- HTML file suitable for sharing, email, or offline    -->
+                    <!-- reading. Renamed to ${ike.document.name}.html by a  -->
+                    <!-- subsequent exec step.                                -->
+                    <!-- ════════════════════════════════════════════════════ -->
+                    <execution>
+                        <id>generate-html-single</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>process-asciidoc</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${ike.skip.html-single}</skip>
+                            <backend>html5</backend>
+                            <sourceDocumentName>${pdf.source.document}.adoc</sourceDocumentName>
+                            <outputDirectory>${asciidoc.output.directory}/html-single</outputDirectory>
+                            <extensions>
+                                <extension>
+                                    <className>network.ike.docs.koncept.KonceptGlossaryProcessor</className>
+                                </extension>
+                            </extensions>
+                            <attributes>
+                                <toc>left</toc>
+                                <toclevels>3</toclevels>
+                                <linkcss>false</linkcss>
+                                <data-uri/>
+                                <ike-pdf-renderer>html5</ike-pdf-renderer>
+                            </attributes>
+                        </configuration>
+                    </execution>
+
+                    <!-- ════════════════════════════════════════════════════ -->
                     <!-- PDF via asciidoctorj-pdf / Prawn (built-in, free)   -->
                     <!--                                                     -->
                     <!-- Uses the JRuby/Prawn backend directly. Diagrams     -->
@@ -1059,7 +1101,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <argument>--style</argument>
                                 <argument>${asciidoc.output.directory}/pdf-html-prince/ike-print.css</argument>
                                 <argument>--output</argument>
-                                <argument>${asciidoc.output.directory}/pdf-prince/${pdf.source.document}.pdf</argument>
+                                <argument>${asciidoc.output.directory}/pdf-prince/${ike.document.name}.pdf</argument>
                                 <argument>--pdf-profile=PDF/UA-1</argument>
                             </arguments>
                         </configuration>
@@ -1099,7 +1141,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <argument>-d</argument>
                                 <argument>${asciidoc.output.directory}/pdf-html-ah/${pdf.source.document}.html</argument>
                                 <argument>-o</argument>
-                                <argument>${asciidoc.output.directory}/pdf-ah/${pdf.source.document}.pdf</argument>
+                                <argument>${asciidoc.output.directory}/pdf-ah/${ike.document.name}.pdf</argument>
                                 <argument>-p</argument>
                                 <argument>@PDF/UA-1</argument>
                             </arguments>
@@ -1116,7 +1158,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <executable>${weasyprint.executable}</executable>
                             <arguments>
                                 <argument>${asciidoc.output.directory}/pdf-html-weasyprint/${pdf.source.document}.html</argument>
-                                <argument>${asciidoc.output.directory}/pdf-weasyprint/${pdf.source.document}.pdf</argument>
+                                <argument>${asciidoc.output.directory}/pdf-weasyprint/${ike.document.name}.pdf</argument>
                                 <argument>--stylesheet</argument>
                                 <argument>${asciidoc.output.directory}/pdf-html-weasyprint/ike-print.css</argument>
                             </arguments>
@@ -1155,7 +1197,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <argument>-fo</argument>
                                 <argument>${asciidoc.output.directory}/fo-xep/${pdf.source.document}.fo</argument>
                                 <argument>-pdf</argument>
-                                <argument>${asciidoc.output.directory}/pdf-xep/${pdf.source.document}.pdf</argument>
+                                <argument>${asciidoc.output.directory}/pdf-xep/${ike.document.name}.pdf</argument>
                             </arguments>
                         </configuration>
                     </execution>
@@ -1201,7 +1243,44 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <argument>-fo</argument>
                                 <argument>${asciidoc.output.directory}/fo-fop/${pdf.source.document}.fo</argument>
                                 <argument>-pdf</argument>
-                                <argument>${asciidoc.output.directory}/pdf-fop/${pdf.source.document}.pdf</argument>
+                                <argument>${asciidoc.output.directory}/pdf-fop/${ike.document.name}.pdf</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- html-single: Rename index.html → ${ike.document.name}.html -->
+                    <!-- Asciidoctor names output after the source file. This      -->
+                    <!-- rename gives the self-contained HTML a meaningful name.   -->
+                    <execution>
+                        <id>rename-html-single</id>
+                        <phase>verify</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.html-single}</skip>
+                            <executable>mv</executable>
+                            <arguments>
+                                <argument>${asciidoc.output.directory}/html-single/${pdf.source.document}.html</argument>
+                                <argument>${asciidoc.output.directory}/html-single/${ike.document.name}.html</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- Prawn: Rename index.pdf → ${ike.document.name}.pdf      -->
+                    <!-- asciidoctorj-pdf always names output after the source    -->
+                    <!-- file. This rename gives the PDF a meaningful name.       -->
+                    <!-- Runs in verify phase after asciidoctor (Prawn) because   -->
+                    <!-- exec-maven-plugin is declared after asciidoctor-maven-   -->
+                    <!-- plugin in the POM.                                       -->
+                    <execution>
+                        <id>rename-prawn-pdf</id>
+                        <phase>verify</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.prawn}</skip>
+                            <executable>mv</executable>
+                            <arguments>
+                                <argument>${asciidoc.output.directory}/pdf-prawn/${pdf.source.document}.pdf</argument>
+                                <argument>${asciidoc.output.directory}/pdf-prawn/${ike.document.name}.pdf</argument>
                             </arguments>
                         </configuration>
                     </execution>
@@ -1233,7 +1312,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <skip>${ike.skip.pdf-default}</skip>
                             <executable>cp</executable>
                             <arguments>
-                                <argument>${asciidoc.output.directory}/pdf-${ike.pdf.default}/${pdf.source.document}.pdf</argument>
+                                <argument>${asciidoc.output.directory}/pdf-${ike.pdf.default}/${ike.document.name}.pdf</argument>
                                 <argument>${asciidoc.output.directory}/pdf/</argument>
                             </arguments>
                         </configuration>
@@ -1256,6 +1335,19 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <skipAssembly>${ike.skip.html}</skipAssembly>
                             <descriptors>
                                 <descriptor>${ike.assembly.directory}/html.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+
+                    <!-- Self-contained HTML ZIP (verify phase) -->
+                    <execution>
+                        <id>zip-html-single</id>
+                        <phase>verify</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <skipAssembly>${ike.skip.html-single}</skipAssembly>
+                            <descriptors>
+                                <descriptor>${ike.assembly.directory}/html-single.xml</descriptor>
                             </descriptors>
                         </configuration>
                     </execution>
@@ -1375,6 +1467,17 @@ IKE projects require Java 21+ (JRuby 10 baseline).
             </properties>
         </profile>
 
+        <!-- ── Self-contained HTML (single file, data-uri) ─────────────── -->
+        <profile>
+            <id>html-single</id>
+            <activation>
+                <property><name>ike.html.single</name></property>
+            </activation>
+            <properties>
+                <ike.skip.html-single>false</ike.skip.html-single>
+            </properties>
+        </profile>
+
         <!-- ── PDF via Prawn (built-in, free) ─────────────────────────── -->
         <profile>
             <id>pdf</id>
@@ -1479,6 +1582,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
             </activation>
             <properties>
                 <ike.skip.html>true</ike.skip.html>
+                <ike.skip.html-single>true</ike.skip.html-single>
                 <ike.skip.prawn>true</ike.skip.prawn>
                 <ike.skip.prince>true</ike.skip.prince>
                 <ike.skip.ah>true</ike.skip.ah>
