@@ -11,29 +11,32 @@ documentation-parent/src/
   theme/
     ike-default-theme.yml           <2>
     ike-print.css                   <3>
+  fop/
+    fop-ike.xconf                   <4>
   xep/
-    xep-ike-fonts.xml               <4>
+    xep-ike-fonts.xml               <5>
 
 koncept-asciidoc-extension/src/
   main/java/.../koncept/
-    KonceptInlineMacro.java         <5>
-    KonceptGlossaryProcessor.java   <6>
-    KonceptSvgRenderer.java         <7>
-    KonceptDefinitionSource.java    <8>
+    KonceptInlineMacro.java         <6>
+    KonceptGlossaryProcessor.java   <7>
+    KonceptSvgRenderer.java         <8>
+    KonceptDefinitionSource.java    <9>
   main/resources/
-    koncepts.yml                    <9>
-    koncept.css                     <10>
+    koncepts.yml                    <10>
+    koncept.css                     <11>
 ----
 <1> Shared CSS for SVG badge styling and Mermaid ER diagram fixes
 <2> Prawn PDF theme -- fonts, page layout, colors
 <3> CSS Paged Media stylesheet for Prince, AH, and WeasyPrint
-<4> XEP font configuration referencing Noto TTFs
-<5> `k:Name[]` inline macro processor (AsciidoctorJ SPI)
-<6> Postprocessor that auto-generates a glossary of referenced Koncepts
-<7> SVG badge renderer for HTML and PDF backends
-<8> YAML-based definition lookup for glossary entries
-<9> Koncept definitions with axioms, SNOMED CT IDs, and OWL IRIs
-<10> CSS for SVG badges and glossary section
+<4> FOP configuration referencing Noto TTFs
+<5> XEP font configuration referencing Noto TTFs
+<6> `k:Name[]` inline macro processor (AsciidoctorJ SPI)
+<7> Postprocessor that auto-generates a glossary of referenced Koncepts
+<8> SVG badge renderer for HTML and PDF backends
+<9> YAML-based definition lookup for glossary entries
+<10> Koncept definitions with axioms, SNOMED CT IDs, and OWL IRIs
+<11> CSS for SVG badges and glossary section
 
 === Koncept Inline Macro (`k:Name[]`)
 
@@ -48,13 +51,13 @@ The patient was diagnosed with k:DiabetesMellitus[].
 Override the display label: k:HeartFailure[Congestive Heart Failure].
 ----
 
-The macro supports multiple backends:
+The macro renders differently depending on the backend:
 
-HTML5 and PDF (Prawn):: Renders as an SVG badge with a blue "K" prefix and the Koncept label. Each badge links to the auto-generated glossary entry at the end of the document.
+HTML5, Prince, AH, WeasyPrint:: SVG badge with a blue "K" prefix and the Koncept label. Each badge links to the auto-generated glossary entry at the end of the document.
 
-DocBook5:: Renders as `<phrase role="koncept">K[Label]</phrase>` for XSL-FO processing. The `ike-fo.xsl` customization layer styles this as bold blue text.
+DocBook5 (FOP, XEP):: `<phrase role="koncept">K[Label]</phrase>` for XSL-FO processing. The `ike-fo.xsl` customization layer styles this as bold blue text.
 
-Prince, AH, WeasyPrint:: Use the HTML5 backend; SVG badges render natively in all CSS-based PDF renderers.
+Prawn:: Plain text rendering (`*K*` + `Label` in code font). Prawn's HTML parser does not support SVG.
 
 === Auto-Generated Glossary
 
@@ -67,6 +70,12 @@ The `KonceptGlossaryProcessor` postprocessor automatically appends a "Referenced
 * Reference count
 
 Definitions are loaded from `koncepts.yml` (bundled in the extension JAR or overridden via document attributes `koncept-definitions-file` or `koncept-definitions-classpath`).
+
+The glossary is generated for all backends except Prawn:
+
+* *HTML, Prince, AH, WeasyPrint* -- HTML `<dl>` glossary before `</body>`
+* *DocBook (FOP, XEP)* -- Native DocBook `<glossary>` element before `</book>`
+* *Prawn* -- No glossary. The asciidoctorj-pdf backend returns a binary PDF object rather than a String, making it architecturally incompatible with Java Postprocessors. This limitation is permanent.
 
 === Shared `docinfo.html`
 

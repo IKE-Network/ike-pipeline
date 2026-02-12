@@ -1,16 +1,20 @@
-// svgo-xep.config.mjs — Fix Mermaid SVGs for RenderX XEP
+// svgo-xep.config.mjs — Fix Mermaid SVGs for RenderX XEP and Apache FOP
 //
-// XEP's SVG renderer does not support:
+// XEP's and FOP's SVG renderers do not support:
 //   1. <foreignObject> — Mermaid uses these for all labels (flowchart,
-//      state, ER). XEP silently drops them, so labels disappear.
+//      state, ER). XEP/FOP silently drop them, so labels disappear.
 //   2. HSL color values — Mermaid's theme uses hsl(h, s%, l%) in CSS.
 //      XEP ignores them, causing strokes and fills to vanish.
+//   3. <rect> without explicit width/height — Mermaid state diagrams
+//      emit background rects without dimensions. FOP's Batik renderer
+//      throws BridgeException on these (SVGRectElementBridge).
 //
-// This config applies four transformations in order:
+// This config applies five transformations in order:
 //   1. inlineStyles:          CSS rules → element-level style attributes
 //   2. convertHslToHex:       hsl(h, s%, l%) → #rrggbb
-//   3. replaceForeignObject:  <foreignObject> → <text>
-//   4. removeStyleElement:    drop the (now-empty) <style> block
+//   3. fixMissingRectDims:    add width="0" height="0" to bare <rect>s
+//   4. replaceForeignObject:  <foreignObject> → <text>
+//   5. removeStyleElement:    drop the (now-empty) <style> block
 //
 // PlantUML and GraphViz SVGs pass through unchanged — they already use
 // native <text> elements and hex colors.
@@ -153,7 +157,29 @@ export default {
       }),
     },
 
-    // 4. Replace foreignObject with native SVG <text>
+    // 4. Fix <rect> elements missing width/height attributes
+    //    Mermaid state diagrams emit bare <rect style="..."/> without
+    //    dimensions. Batik (used by FOP) requires explicit width/height
+    //    and throws BridgeException without them. Adding "0" makes them
+    //    valid but invisible — they're just background decorations.
+    {
+      name: 'fixMissingRectDims',
+      fn: () => ({
+        element: {
+          enter: (node) => {
+            if (node.name !== 'rect') return;
+            if (!node.attributes.width) {
+              node.attributes.width = '0';
+            }
+            if (!node.attributes.height) {
+              node.attributes.height = '0';
+            }
+          },
+        },
+      }),
+    },
+
+    // 5. Replace foreignObject with native SVG <text>
     {
       name: 'replaceForeignObject',
       fn: () => ({
@@ -222,7 +248,7 @@ export default {
       }),
     },
 
-    // 5. Remove the <style> element (now empty after inlining)
+    // 6. Remove the <style> element (now empty after inlining)
     'removeStyleElement',
   ],
 };

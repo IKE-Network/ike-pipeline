@@ -63,8 +63,12 @@ public class KonceptInlineMacro extends InlineMacroProcessor {
         String backend = doc.getAttribute("backend", "html5").toString();
         String rendered;
         if ("docbook5".equals(backend) || "docbook".equals(backend)) {
-            // Plain text passthrough for DocBook — styled by XSL template
-            rendered = "<phrase role=\"koncept\">K[" + escapeXml(label) + "]</phrase>";
+            // DocBook link + styled phrase — links to auto-generated glossary entry.
+            // Stock DocBook XSL converts <link> → <fo:basic-link>, and ike-fo.xsl
+            // styles <phrase role="koncept"> as bold blue text.
+            rendered = "<link linkend=\"koncept-" + escapeXml(target) + "\">"
+                    + "<phrase role=\"koncept\">K[" + escapeXml(label) + "]</phrase>"
+                    + "</link>";
         } else if ("pdf".equals(backend)) {
             // Prawn PDF: only basic HTML elements are supported (no SVG).
             // Use <strong> + <code> for a styled inline reference.

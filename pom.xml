@@ -14,10 +14,10 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
+<project xmlns="http://maven.apache.org/POM/4.1.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.1.0
+         http://maven.apache.org/xsd/maven-4.1.0.xsd">
     <modelVersion>4.1.0</modelVersion>
 
     <groupId>network.ike</groupId>
@@ -60,13 +60,21 @@
         6. example-project             – demo project (parent: java-parent,
                                          dep: minimal-fonts, docbook-xsl)
     -->
-    <modules>
-        <module>minimal-fonts</module>
-        <module>docbook-xsl</module>
-        <module>koncept-asciidoc-extension</module>
-        <module>documentation-parent</module>
-        <module>java-parent</module>
-        <module>example-project</module>
-    </modules>
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin><artifactId>maven-clean-plugin</artifactId><version>3.4.0</version></plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+    <subprojects>
+        <subproject>minimal-fonts</subproject>
+        <subproject>docbook-xsl</subproject>
+        <subproject>koncept-asciidoc-extension</subproject>
+        <subproject>documentation-parent</subproject>
+        <subproject>java-parent</subproject>
+        <subproject>example-project</subproject>
+    </subprojects>
 
 </project>

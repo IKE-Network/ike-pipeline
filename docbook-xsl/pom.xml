@@ -86,23 +86,32 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <docbook-xsl.version>1.79.2</docbook-xsl.version>
-        <download-maven-plugin.version>1.9.0</download-maven-plugin.version>
-        <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
+        <download-maven-plugin.version>1.13.0</download-maven-plugin.version>
 
-        <!-- Staging directory where we assemble the JAR contents -->
+        <!-- Staging directory where download-maven-plugin unpacks the distribution -->
         <staging.directory>${project.build.directory}/staging</staging.directory>
     </properties>
 
     <build>
-        <!--
-          Override default resource directory.
-          We don't use src/main/resources — everything is assembled
-          in the staging directory from the downloaded distribution
-          plus our customization files.
-        -->
+        <pluginManagement>
+            <plugins>
+                <plugin><artifactId>maven-clean-plugin</artifactId><version>3.4.0</version></plugin>
+                <plugin><artifactId>maven-resources-plugin</artifactId><version>3.3.1</version></plugin>
+                <plugin><artifactId>maven-compiler-plugin</artifactId><version>3.13.0</version></plugin>
+                <plugin><artifactId>maven-surefire-plugin</artifactId><version>3.5.2</version></plugin>
+                <plugin><artifactId>maven-jar-plugin</artifactId><version>3.4.2</version></plugin>
+            </plugins>
+        </pluginManagement>
+
         <resources>
+            <!-- Stock DocBook XSL stylesheets (downloaded + flattened) -->
             <resource>
                 <directory>${staging.directory}</directory>
+            </resource>
+            <!-- IKE customization layer → custom/ in the JAR -->
+            <resource>
+                <directory>${project.basedir}/src/main/xslt</directory>
+                <targetPath>custom</targetPath>
             </resource>
         </resources>
 
@@ -124,78 +133,13 @@
                             <url>https://github.com/docbook/xslt10-stylesheets/releases/download/release/${docbook-xsl.version}/docbook-xsl-${docbook-xsl.version}.zip</url>
                             <unpack>true</unpack>
                             <outputDirectory>${staging.directory}</outputDirectory>
-                            <!-- Suppress the noisy 1/25367K progress lines -->
-                            <quiet>true</quiet>
-                            <!-- SHA-256 for integrity verification.                  -->
-                            <!-- To populate: build once, then:                       -->
-                            <!--   shasum -a 256 ~/.m2/repository/.cache/download-maven-plugin/.../*.zip -->
-                            <!-- <sha256>CHECKSUM_HERE</sha256>                       -->
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- 2. Overlay IKE customization layer into the distribution    -->
-            <!--                                                               -->
-            <!--    Copy ike-fo.xsl into custom/ alongside the stock          -->
-            <!--    DocBook XSL directories. This preserves the relative      -->
-            <!--    import path: ../fo/docbook.xsl                            -->
-            <!--                                                               -->
-            <!--    Also flatten the directory: move contents out of the       -->
-            <!--    docbook-xsl-1.79.2/ wrapper so the JAR root contains      -->
-            <!--    fo/, html/, custom/, common/, etc. directly.              -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <version>${maven-antrun-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>assemble-distribution</id>
-                        <phase>generate-resources</phase>
-                        <goals><goal>run</goal></goals>
-                        <configuration>
-                            <target>
-                                <!--
-                                  download-maven-plugin unpacks to:
-                                    staging/docbook-xsl-1.79.2/fo/docbook.xsl
-                                    staging/docbook-xsl-1.79.2/html/docbook.xsl
-                                    ...
-
-                                  We want the JAR root to contain:
-                                    fo/docbook.xsl
-                                    html/docbook.xsl
-                                    custom/ike-fo.xsl
-                                    ...
-
-                                  So: move contents up one level, then remove the wrapper.
-                                -->
-                                <move todir="${staging.directory}" includeEmptyDirs="true">
-                                    <fileset dir="${staging.directory}/docbook-xsl-${docbook-xsl.version}"/>
-                                </move>
-                                <delete dir="${staging.directory}/docbook-xsl-${docbook-xsl.version}"
-                                        includeEmptyDirs="true" failonerror="false"/>
-
-                                <!-- Copy IKE customization layer -->
-                                <mkdir dir="${staging.directory}/custom"/>
-                                <copy todir="${staging.directory}/custom" overwrite="true">
-                                    <fileset dir="${project.basedir}/src/main/xslt"
-                                             includes="**/*.xsl"/>
-                                </copy>
-
-                                <!-- Verify key files are present -->
-                                <fail message="Stock DocBook FO stylesheet not found after assembly">
-                                    <condition>
-                                        <not><available file="${staging.directory}/fo/docbook.xsl"/></not>
-                                    </condition>
-                                </fail>
-                                <fail message="IKE FO customization layer not found after assembly">
-                                    <condition>
-                                        <not><available file="${staging.directory}/custom/ike-fo.xsl"/></not>
-                                    </condition>
-                                </fail>
-
-                                <echo>DocBook XSL ${docbook-xsl.version} + IKE customization assembled</echo>
-                            </target>
+                            <!-- Strip the docbook-xsl-1.79.2/ wrapper directory during unpack -->
+                            <fileMappers>
+                                <fileMapper implementation="org.codehaus.plexus.components.io.filemappers.RegExpFileMapper">
+                                    <pattern>^docbook-xsl-[^/]+/</pattern>
+                                    <replacement>./</replacement>
+                                </fileMapper>
+                            </fileMappers>
                         </configuration>
                     </execution>
                 </executions>

@@ -28,13 +28,13 @@ All PDF renderers are activated by Maven properties, not by `-P` profile flags. 
 | `-Dike.pdf.weasyprint`
 | `target/generated-docs/pdf-weasyprint/`
 
+| `pdf-fop`
+| `-Dike.pdf.fop`
+| `target/generated-docs/pdf-fop/`
+
 | `pdf-xep`
 | `-Dike.pdf.xep`
 | `target/generated-docs/pdf-xep/`
-
-| `all-formats`
-| `-Dike.all-formats`
-| HTML + Prawn PDF
 
 | `pdf-default`
 | `-Dike.pdf.default=RENDERER`
@@ -43,6 +43,26 @@ All PDF renderers are activated by Maven properties, not by `-P` profile flags. 
 | `pom-skip-exec`
 | `<packaging>pom</packaging>`
 | N/A (skips external renderers)
+|===
+
+TIP: Profiles are composable. Activate multiple renderers in a single build by passing multiple properties: `mvn clean verify -Dike.pdf.prawn -Dike.pdf.fop -Dike.pdf.xep`. The `html` profile is active by default and does not need to be specified.
+
+=== ZIP Artifacts
+
+Each profile creates a ZIP of its output directory and attaches it as a classified Maven artifact. This makes documentation output publishable to Maven repositories.
+
+[cols="2,3"]
+|===
+| Classifier | Artifact
+
+| `html` | `__artifactId__-__version__-html.zip`
+| `prawn` | `__artifactId__-__version__-prawn.zip`
+| `fop` | `__artifactId__-__version__-fop.zip`
+| `xep` | `__artifactId__-__version__-xep.zip`
+| `prince` | `__artifactId__-__version__-prince.zip`
+| `ah` | `__artifactId__-__version__-ah.zip`
+| `weasyprint` | `__artifactId__-__version__-weasyprint.zip`
+| `pdf` | `__artifactId__-__version__-pdf.zip` (default copy)
 |===
 
 === Key Overridable Properties
@@ -104,6 +124,7 @@ The `build-all.sh` script wraps the reactor build with PDF renderer selection an
 ----
 ./build-all.sh                   # HTML + PDF (Prawn default)
 ./build-all.sh --pdf=prawn       # Prawn with svgo SVG fixing
+./build-all.sh --pdf=fop         # DocBook -> XSL-FO -> FOP (free)
 ./build-all.sh --pdf=xep         # DocBook -> XSL-FO -> XEP
 ./build-all.sh --pdf=prince      # HTML -> Prince XML -> PDF
 ./build-all.sh --pdf=ah          # HTML -> AH Formatter -> PDF
@@ -147,20 +168,20 @@ note right: HTML for Prince/AH/WP\nDocBook for XEP
 
 :exec-maven-plugin
 svgo fix SVGs;
-note right: foreignObject -> text\n(Prince/AH/XEP only)
+note right: foreignObject -> text\n(Prince/AH/FOP/XEP only)
 
 |package|
 :xml-maven-plugin
 DocBook -> XSL-FO;
-note right: Saxon-HE + DocBook XSL\n(XEP only)
+note right: Saxon-HE + DocBook XSL\n(FOP/XEP only)
 
 :exec-maven-plugin
 render PDF;
-note right: Prince / AH / WP / XEP
+note right: Prince / AH / WP / FOP / XEP
 
-:build-helper-maven-plugin
-attach-artifact;
-note right: Classified PDF artifact\n(prawn/prince/ah/wp/xep)
+:maven-assembly-plugin
+zip + attach (package-phase);
+note right: Classified ZIP artifacts\n(prince/ah/wp/fop/xep)
 
 |verify|
 :asciidoctor-maven-plugin
@@ -171,9 +192,10 @@ note right: HTML5 backend (always)\nPrawn backend (if activated)
 copy-default-pdf;
 note right: pdf-RENDERER/ -> pdf/\n(if ike.pdf.default set)
 
-:build-helper-maven-plugin
-attach pdf-default;
+:maven-assembly-plugin
+zip + attach (verify-phase);
+note right: Classified ZIP artifacts\n(html/prawn/pdf-default)
 @enduml
 ....
 
-NOTE: The `pom-skip-exec` profile sets `ike.pdf.skip.exec=true` for POM-packaging modules. This skips external renderer invocations (Prince, AH, WeasyPrint, XEP, svgo) but does *not* skip the asciidoctor-maven-plugin. POM-packaging modules like `documentation-parent` can still generate HTML and Prawn PDF.
+NOTE: The `pom-skip-exec` profile sets `ike.pdf.skip.exec=true` for POM-packaging modules. This skips external renderer invocations (Prince, AH, WeasyPrint, FOP, XEP, svgo) but does *not* skip the asciidoctor-maven-plugin. POM-packaging modules like `documentation-parent` can still generate HTML and Prawn PDF.

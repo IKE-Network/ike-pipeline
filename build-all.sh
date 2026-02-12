@@ -10,6 +10,7 @@
 #   ./build-all.sh --pdf=prince      # HTML → Prince XML → PDF
 #   ./build-all.sh --pdf=ah          # HTML → Antenna House → PDF
 #   ./build-all.sh --pdf=weasyprint  # HTML → WeasyPrint → PDF
+#   ./build-all.sh --pdf=all         # Build all available renderers
 #   ./build-all.sh --pdf=none        # HTML only, skip PDF
 #   ./build-all.sh --quiet           # Suppress Maven output
 #
@@ -33,10 +34,12 @@ for arg in "$@"; do
             echo ""
             echo "PDF renderers:"
             echo "  prawn       asciidoctorj-pdf/Prawn (default, no license)"
+            echo "  fop         Apache FOP via DocBook XSL-FO (free, pure Java)"
             echo "  xep         RenderX XEP via DocBook XSL-FO (free personal license)"
             echo "  prince      Prince XML (commercial, \$495+ per seat)"
             echo "  ah          Antenna House Formatter (commercial)"
             echo "  weasyprint  WeasyPrint (open source, pip install)"
+            echo "  all         Build all available renderers"
             echo "  none        HTML only, skip PDF"
             exit 0
             ;;
@@ -73,15 +76,21 @@ case "$PDF_RENDERER" in
         command -v "${WEASYPRINT_EXECUTABLE:-weasyprint}" &>/dev/null || \
             MISSING+=("weasyprint (pip install weasyprint)")
         ;;
+    fop)
+        command -v node &>/dev/null || MISSING+=("node (Node.js 18+ — needed for svgo)")
+        ;;
     xep)
         command -v "${XEP_EXECUTABLE:-xep}" &>/dev/null || \
             MISSING+=("xep (RenderX XEP — https://www.renderx.com/download/personal.html)")
         command -v node &>/dev/null || MISSING+=("node (Node.js 18+ — needed for svgo)")
         ;;
+    all)
+        command -v node &>/dev/null || MISSING+=("node (Node.js 18+ — needed for svgo)")
+        ;;
     none) ;;
     *)
         echo "ERROR: Unknown PDF renderer: ${PDF_RENDERER}"
-        echo "  Valid options: prawn, prince, ah, weasyprint, xep, none"
+        echo "  Valid options: prawn, fop, prince, ah, weasyprint, xep, all, none"
         exit 1
         ;;
 esac
@@ -108,7 +117,7 @@ fi
 
 echo "  mvn:  $(command -v mvn)"
 echo "  java: $(command -v java)"
-if [[ "$PDF_RENDERER" == "prawn" || "$PDF_RENDERER" == "xep" || "$PDF_RENDERER" == "prince" || "$PDF_RENDERER" == "ah" ]]; then
+if [[ "$PDF_RENDERER" == "prawn" || "$PDF_RENDERER" == "fop" || "$PDF_RENDERER" == "xep" || "$PDF_RENDERER" == "prince" || "$PDF_RENDERER" == "ah" || "$PDF_RENDERER" == "all" ]]; then
     echo "  node: $(command -v node)"
     if ! command -v svgo &>/dev/null; then
         echo ""
@@ -145,18 +154,18 @@ mvn clean install -pl '!example-project' $MVN_QUIET
 #   ─────────────    ──────────────────────
 #   html             activeByDefault (always on unless -P overrides)
 #   pdf (Prawn)      -Dike.pdf.prawn
+#   pdf-fop          -Dike.pdf.fop
 #   pdf-xep          -Dike.pdf.xep
 #   pdf-prince       -Dike.pdf.prince
 #   pdf-ah           -Dike.pdf.ah
 #   pdf-weasyprint   -Dike.pdf.weasyprint
-#   all-formats      -Dike.all-formats
 #
 
 case "$PDF_RENDERER" in
     prawn)
         echo ""
         echo "── Step 1/3: Building HTML + PDF (Prawn) ──"
-        mvn clean verify -pl example-project -Dike.all-formats -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
+        mvn clean verify -pl example-project -Dike.pdf.prawn -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
 
         # Step 2: Fix SVGs for prawn-svg
         #
@@ -199,10 +208,61 @@ case "$PDF_RENDERER" in
         mvn clean verify -pl example-project -D${PDF_PROP} -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
         ;;
 
+    fop)
+        echo ""
+        echo "── Building HTML + PDF (FOP: DocBook → XSL-FO → PDF) ──"
+        mvn clean verify -pl example-project -Dike.pdf.fop -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
+        ;;
+
     xep)
         echo ""
         echo "── Building HTML + PDF (XEP: DocBook → XSL-FO → PDF) ──"
         mvn clean verify -pl example-project -Dike.pdf.xep -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
+        ;;
+
+    all)
+        echo ""
+        echo "── Building all available PDF renderers ──"
+        PDF_FLAGS="-Dike.pdf.prawn -Dike.pdf.fop"
+        RENDERERS=("prawn" "fop")
+
+        command -v "${XEP_EXECUTABLE:-xep}" &>/dev/null && {
+            PDF_FLAGS="$PDF_FLAGS -Dike.pdf.xep"; RENDERERS+=("xep"); }
+        command -v "${PRINCE_EXECUTABLE:-prince}" &>/dev/null && {
+            PDF_FLAGS="$PDF_FLAGS -Dike.pdf.prince"; RENDERERS+=("prince"); }
+        command -v "${WEASYPRINT_EXECUTABLE:-weasyprint}" &>/dev/null && {
+            PDF_FLAGS="$PDF_FLAGS -Dike.pdf.weasyprint"; RENDERERS+=("weasyprint"); }
+        command -v "${AH_EXECUTABLE:-AHFCmd}" &>/dev/null && {
+            PDF_FLAGS="$PDF_FLAGS -Dike.pdf.ah"; RENDERERS+=("ah"); }
+
+        echo "  Available: ${RENDERERS[*]}"
+
+        # Single Maven build — all profiles coexist
+        mvn clean verify -pl example-project $PDF_FLAGS $MVN_QUIET $KROKI_OPTS
+
+        # Post-build: fix Prawn SVGs (prawn-svg can't handle CSS class selectors)
+        SVG_COUNT=0
+        for SVG_DIR in "example-project/target/generated-docs/pdf-prawn" \
+                       "example-project/.asciidoctor/diagram"; do
+            if [[ -d "$SVG_DIR" ]]; then
+                while IFS= read -r -d '' svg; do
+                    svgo --config="$SCRIPT_DIR/svgo.config.mjs" --quiet "$svg"
+                    ((SVG_COUNT++))
+                done < <(find "$SVG_DIR" -name "*.svg" -type f -print0 2>/dev/null)
+            fi
+        done
+        if [[ $SVG_COUNT -gt 0 ]]; then
+            echo ""
+            echo "── Fixed $SVG_COUNT SVGs — rebuilding Prawn PDF ──"
+            mvn verify -pl example-project -Dike.pdf.prawn $MVN_QUIET $KROKI_OPTS
+        fi
+
+        echo ""
+        echo "=== All Renderers Complete ==="
+        for r in "${RENDERERS[@]}"; do
+            echo "  PDF ($r): example-project/target/generated-docs/pdf-$r/index.pdf"
+        done
+        exit 0
         ;;
 
     none)

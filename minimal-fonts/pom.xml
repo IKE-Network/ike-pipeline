@@ -57,7 +57,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <download-maven-plugin.version>1.9.0</download-maven-plugin.version>
+        <download-maven-plugin.version>1.13.0</download-maven-plugin.version>
         <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
 
         <!-- Staging directory where we assemble the JAR contents -->
@@ -71,6 +71,16 @@
     </properties>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin><artifactId>maven-clean-plugin</artifactId><version>3.4.0</version></plugin>
+                <plugin><artifactId>maven-resources-plugin</artifactId><version>3.3.1</version></plugin>
+                <plugin><artifactId>maven-compiler-plugin</artifactId><version>3.13.0</version></plugin>
+                <plugin><artifactId>maven-surefire-plugin</artifactId><version>3.5.2</version></plugin>
+                <plugin><artifactId>maven-jar-plugin</artifactId><version>3.4.2</version></plugin>
+            </plugins>
+        </pluginManagement>
+
         <!--
           Override default resource directory.
           We don't use src/main/resources — everything is assembled
@@ -99,7 +109,7 @@
                             <url>${noto.lgc.base}/NotoSerif-v2.015/NotoSerif-v2.015.zip</url>
                             <unpack>true</unpack>
                             <outputDirectory>${downloads.directory}</outputDirectory>
-                            <quiet>true</quiet>
+
                         </configuration>
                     </execution>
                     <execution>
@@ -110,7 +120,7 @@
                             <url>${noto.lgc.base}/NotoSans-v2.015/NotoSans-v2.015.zip</url>
                             <unpack>true</unpack>
                             <outputDirectory>${downloads.directory}</outputDirectory>
-                            <quiet>true</quiet>
+
                         </configuration>
                     </execution>
                     <execution>
@@ -121,7 +131,7 @@
                             <url>${noto.lgc.base}/NotoSansMono-v2.014/NotoSansMono-v2.014.zip</url>
                             <unpack>true</unpack>
                             <outputDirectory>${downloads.directory}</outputDirectory>
-                            <quiet>true</quiet>
+
                         </configuration>
                     </execution>
                     <execution>
@@ -132,7 +142,7 @@
                             <url>${noto.math.base}/NotoSansMath-v3.000/NotoSansMath-v3.000.zip</url>
                             <unpack>true</unpack>
                             <outputDirectory>${downloads.directory}</outputDirectory>
-                            <quiet>true</quiet>
+
                         </configuration>
                     </execution>
                     <execution>
@@ -143,7 +153,7 @@
                             <url>${noto.symbols.base}/NotoSansSymbols-v2.003/NotoSansSymbols-v2.003.zip</url>
                             <unpack>true</unpack>
                             <outputDirectory>${downloads.directory}</outputDirectory>
-                            <quiet>true</quiet>
+
                         </configuration>
                     </execution>
                     <execution>
@@ -154,7 +164,7 @@
                             <url>${noto.symbols.base}/NotoSansSymbols2-v2.008/NotoSansSymbols2-v2.008.zip</url>
                             <unpack>true</unpack>
                             <outputDirectory>${downloads.directory}</outputDirectory>
-                            <quiet>true</quiet>
+
                         </configuration>
                     </execution>
                 </executions>

@@ -105,14 +105,20 @@ Add your module to the aggregator `pom.xml` at the project root:
 # HTML only (default profile)
 mvn clean verify -pl my-project
 
-# Prawn PDF
-mvn clean verify -pl my-project -Dike.pdf.prawn
+# Apache FOP PDF (recommended free renderer, pure Java)
+mvn clean verify -pl my-project -Dike.pdf.fop
 
-# Prince XML PDF
+# WeasyPrint PDF (alternative free, requires Python)
+mvn clean verify -pl my-project -Dike.pdf.weasyprint
+
+# Prince XML PDF (commercial, best quality)
 mvn clean verify -pl my-project -Dike.pdf.prince
 
+# Prawn PDF (preview quality, no glossary)
+mvn clean verify -pl my-project -Dike.pdf.prawn
+
 # All renderers via build-all.sh
-./build-all.sh --pdf=prawn
+./build-all.sh --pdf=fop
 ----
 
 === Step 5: Find the Output
@@ -135,6 +141,9 @@ mvn clean verify -pl my-project -Dike.pdf.prince
 
 | WeasyPrint PDF
 | `target/generated-docs/pdf-weasyprint/index.pdf`
+
+| FOP PDF
+| `target/generated-docs/pdf-fop/index.pdf`
 
 | XEP PDF
 | `target/generated-docs/pdf-xep/index.pdf`

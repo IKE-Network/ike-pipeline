@@ -97,8 +97,8 @@ mvn clean verify
 # Build with PDF documentation
 mvn clean verify -Ppdf
 
-# Build all formats
-mvn clean verify -Pall-formats
+# Build HTML + PDF (Prawn)
+mvn clean verify -Dike.pdf.prawn
 ----
 
 === Running Tests

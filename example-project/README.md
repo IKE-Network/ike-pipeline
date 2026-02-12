@@ -30,8 +30,8 @@ Demonstration project showcasing the IKE Community Maven AsciiDoc pipeline with 
 # Build with PDF documentation
 ./mvnw clean verify -Ppdf
 
-# Build all formats
-./mvnw clean verify -Pall-formats
+# Build HTML + PDF (Prawn)
+./mvnw clean verify -Dike.pdf.prawn
 
 # Run tests only
 ./mvnw test
@@ -223,7 +223,7 @@ steps:
     with:
       java-version: '25'
   - name: Build
-    run: ./mvnw clean verify -Pall-formats
+    run: ./mvnw clean verify -Dike.pdf.prawn
   - name: Archive Documentation
     uses: actions/upload-artifact@v3
     with:

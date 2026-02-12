@@ -38,6 +38,14 @@
 
 
   <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- IKE PDF RENDERER PARAMETER                                      -->
+  <!-- Passed from Maven xml-maven-plugin as an XSLT parameter.        -->
+  <!-- Used for title page annotation and colophon additive content.    -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <xsl:param name="ike.pdf.renderer" select="''"/>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
   <!-- PAGE GEOMETRY                                                   -->
   <!-- Matches ike-default-theme.yml:                                  -->
   <!--   page size: Letter portrait                                    -->
@@ -296,6 +304,17 @@
           </xsl:if>
         </fo:block>
       </xsl:if>
+      <xsl:if test="$ike.pdf.renderer != ''">
+        <fo:block font-size="9pt" color="#999999" space-before="24pt"
+                  font-family="{$sans.font.family}">
+          <xsl:text>Rendered with: </xsl:text>
+          <xsl:choose>
+            <xsl:when test="$ike.pdf.renderer = 'fop'">Apache FOP</xsl:when>
+            <xsl:when test="$ike.pdf.renderer = 'xep'">RenderX XEP</xsl:when>
+            <xsl:otherwise><xsl:value-of select="$ike.pdf.renderer"/></xsl:otherwise>
+          </xsl:choose>
+        </fo:block>
+      </xsl:if>
     </fo:block>
   </xsl:template>
 
@@ -390,6 +409,25 @@
     <fo:inline font-weight="bold" color="#2a5a8a">
       <xsl:apply-templates/>
     </fo:inline>
+  </xsl:template>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- COLOPHON: Additive FO processor identity                        -->
+  <!-- The KonceptGlossaryProcessor Postprocessor emits a placeholder  -->
+  <!-- @@IKE_FO_PROCESSOR@@ in the colophon table.  This template      -->
+  <!-- replaces it with the actual FO processor name at XSLT time.     -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <xsl:template match="d:entry[normalize-space(text())='@@IKE_FO_PROCESSOR@@']">
+    <fo:table-cell xsl:use-attribute-sets="table.cell.padding">
+      <fo:block>
+        <xsl:choose>
+          <xsl:when test="$ike.pdf.renderer = 'fop'">Apache FOP 2.11</xsl:when>
+          <xsl:when test="$ike.pdf.renderer = 'xep'">RenderX XEP</xsl:when>
+          <xsl:otherwise><xsl:value-of select="$ike.pdf.renderer"/></xsl:otherwise>
+        </xsl:choose>
+      </fo:block>
+    </fo:table-cell>
   </xsl:template>
 
 </xsl:stylesheet>
