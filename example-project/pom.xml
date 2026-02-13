@@ -48,6 +48,17 @@
     </organization>
 
     <dependencies>
+        <!-- IKE Build Standards — Claude instruction files.
+             Version resolved from ike-bom via parent dependencyManagement.
+             scope=provided: not needed at runtime, only unpacked at validate. -->
+        <dependency>
+            <groupId>network.ike</groupId>
+            <artifactId>ike-build-standards</artifactId>
+            <classifier>claude</classifier>
+            <type>zip</type>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Fonts for PDF generation (minimal subset - 10 files, ~2MB) -->
         <dependency>
             <groupId>network.ike</groupId>

@@ -70,6 +70,7 @@
 
     <subprojects>
         <subproject>ike-build-standards</subproject>
+        <subproject>ike-bom</subproject>
         <subproject>minimal-fonts</subproject>
         <subproject>docbook-xsl</subproject>
         <subproject>koncept-asciidoc-extension</subproject>

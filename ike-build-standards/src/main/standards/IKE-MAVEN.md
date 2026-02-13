@@ -80,6 +80,44 @@ IKE-specific properties use the `ike.` prefix:
 - Parent POMs and project modules: coordinated SNAPSHOT versions during development (e.g., `1.1.0-SNAPSHOT`).
 - Release versions: remove `-SNAPSHOT` suffix, tag, deploy, then bump to next SNAPSHOT.
 
+### Standards Artifact Versioning
+
+The `ike-build-standards` artifact uses **monotonic integer versioning**: 1, 2, 3, 4, etc. No dots, no semantic versioning, no calver. These are build standards documents, not a library API — there is no compatibility contract to encode in the version number.
+
+- Increment by 1 for every release. No major/minor/patch distinction.
+- Do NOT use SNAPSHOT versions for this artifact. It must be a release version.
+- Do NOT use semantic versioning. If you find yourself wondering whether a standards change is "major" or "minor," you are overthinking it. Increment by 1.
+
+### Standards Version Coordination
+
+The `ike-build-standards` version is managed in `ike-bom`, not in the parent POM. This keeps the parent POM stable.
+
+- The BOM declares `ike-build-standards` in `<dependencyManagement>` with the current version, classifier=claude, type=zip.
+- The parent POM's `<pluginManagement>` defines the `unpack-dependencies` execution filtered by artifactId and classifier. No version appears in the parent POM.
+- Child Java projects declare `ike-build-standards` as a `<dependency>` with `scope=provided` (version resolved from BOM). Then activate the dependency plugin from pluginManagement.
+- Non-BOM projects (standalone modules not inheriting from the parent chain) declare an explicit version in their own dependency.
+- Bumping standards version = one property change in the BOM, included in the next BOM release. The parent POM does not change.
+
+### IKE BOM
+
+The `ike-bom` artifact (`network.ike:ike-bom`) provides centralized version management. Import it in `<dependencyManagement>`:
+
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>network.ike</groupId>
+            <artifactId>ike-bom</artifactId>
+            <version>${ike-bom.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
+
+Child modules then declare dependencies without `<version>` — versions are resolved from the BOM.
+
 ## Reactor Build
 
 The reactor aggregator POM (`pipeline/pom.xml`) is a pure aggregator — it is NOT a parent. It lists all modules in dependency order via `<subprojects>`. Module ordering aids readability but Maven sorts automatically by dependency graph.

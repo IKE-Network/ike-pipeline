@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  IKE Community — Bill of Materials (BOM)
+  ═══════════════════════════════════════
+
+  Centralized version management for IKE artifacts. Import this BOM
+  in your project's <dependencyManagement> to align versions across
+  all IKE dependencies.
+
+  Usage:
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>network.ike</groupId>
+                <artifactId>ike-bom</artifactId>
+                <version>${ike-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+-->
+<project xmlns="http://maven.apache.org/POM/4.1.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.1.0
+         http://maven.apache.org/xsd/maven-4.1.0.xsd">
+    <modelVersion>4.1.0</modelVersion>
+
+    <groupId>network.ike</groupId>
+    <artifactId>ike-bom</artifactId>
+    <version>1.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>IKE Bill of Materials</name>
+    <description>
+        Centralized dependency version management for IKE Community projects.
+        Import this BOM to align artifact versions across modules.
+    </description>
+    <url>https://github.com/ike-community/ike-pipeline</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <organization>
+        <name>IKE Community</name>
+        <url>https://www.ikecommunity.org</url>
+    </organization>
+
+    <properties>
+        <!-- ── IKE Build Standards ──────────────────────────────────── -->
+        <!-- Monotonic integer versioning: 1, 2, 3, ...                 -->
+        <!-- Bump here when a new standards release is published.       -->
+        <ike-build-standards.version>1</ike-build-standards.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- IKE Build Standards (Claude instruction files) -->
+            <dependency>
+                <groupId>network.ike</groupId>
+                <artifactId>ike-build-standards</artifactId>
+                <version>${ike-build-standards.version}</version>
+                <classifier>claude</classifier>
+                <type>zip</type>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin><artifactId>maven-clean-plugin</artifactId><version>3.4.0</version></plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

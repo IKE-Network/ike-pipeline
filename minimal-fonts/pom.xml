@@ -58,7 +58,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <download-maven-plugin.version>1.13.0</download-maven-plugin.version>
-        <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
+
 
         <!-- Staging directory where we assemble the JAR contents -->
         <staging.directory>${project.build.directory}/staging</staging.directory>
@@ -173,75 +173,115 @@
             <!-- 2. Assemble fonts: cherry-pick the 13 needed TTFs into staging -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <version>${maven-antrun-plugin.version}</version>
+                <artifactId>maven-resources-plugin</artifactId>
                 <executions>
+                    <!-- NotoSerif: Regular, Bold, Italic, BoldItalic -->
                     <execution>
-                        <id>assemble-fonts</id>
+                        <id>copy-noto-serif</id>
                         <phase>generate-resources</phase>
-                        <goals><goal>run</goal></goals>
+                        <goals><goal>copy-resources</goal></goals>
                         <configuration>
-                            <target>
-                                <mkdir dir="${staging.directory}"/>
-
-                                <!-- NotoSerif: Regular, Bold, Italic, BoldItalic -->
-                                <copy todir="${staging.directory}" flatten="true">
-                                    <fileset dir="${downloads.directory}/NotoSerif/unhinted/ttf">
-                                        <include name="NotoSerif-Regular.ttf"/>
-                                        <include name="NotoSerif-Bold.ttf"/>
-                                        <include name="NotoSerif-Italic.ttf"/>
-                                        <include name="NotoSerif-BoldItalic.ttf"/>
-                                    </fileset>
-                                </copy>
-
-                                <!-- NotoSans: Regular, Bold, Italic, BoldItalic -->
-                                <copy todir="${staging.directory}" flatten="true">
-                                    <fileset dir="${downloads.directory}/NotoSans/unhinted/ttf">
-                                        <include name="NotoSans-Regular.ttf"/>
-                                        <include name="NotoSans-Bold.ttf"/>
-                                        <include name="NotoSans-Italic.ttf"/>
-                                        <include name="NotoSans-BoldItalic.ttf"/>
-                                    </fileset>
-                                </copy>
-
-                                <!-- NotoSansMono: Regular, Bold -->
-                                <copy todir="${staging.directory}" flatten="true">
-                                    <fileset dir="${downloads.directory}/NotoSansMono/unhinted/ttf">
-                                        <include name="NotoSansMono-Regular.ttf"/>
-                                        <include name="NotoSansMono-Bold.ttf"/>
-                                    </fileset>
-                                </copy>
-
-                                <!-- NotoSansMath: Regular -->
-                                <copy todir="${staging.directory}" flatten="true">
-                                    <fileset dir="${downloads.directory}/NotoSansMath/unhinted/ttf">
-                                        <include name="NotoSansMath-Regular.ttf"/>
-                                    </fileset>
-                                </copy>
-
-                                <!-- NotoSansSymbols: Regular -->
-                                <copy todir="${staging.directory}" flatten="true">
-                                    <fileset dir="${downloads.directory}/NotoSansSymbols/unhinted/ttf">
-                                        <include name="NotoSansSymbols-Regular.ttf"/>
-                                    </fileset>
-                                </copy>
-
-                                <!-- NotoSansSymbols2: Regular -->
-                                <copy todir="${staging.directory}" flatten="true">
-                                    <fileset dir="${downloads.directory}/NotoSansSymbols2/unhinted/ttf">
-                                        <include name="NotoSansSymbols2-Regular.ttf"/>
-                                    </fileset>
-                                </copy>
-
-                                <!-- Verify key font is present -->
-                                <fail message="NotoSerif-Regular.ttf not found after assembly">
-                                    <condition>
-                                        <not><available file="${staging.directory}/NotoSerif-Regular.ttf"/></not>
-                                    </condition>
-                                </fail>
-
-                                <echo>13 Noto fonts assembled into ${staging.directory}</echo>
-                            </target>
+                            <outputDirectory>${staging.directory}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${downloads.directory}/NotoSerif/unhinted/ttf</directory>
+                                    <includes>
+                                        <include>NotoSerif-Regular.ttf</include>
+                                        <include>NotoSerif-Bold.ttf</include>
+                                        <include>NotoSerif-Italic.ttf</include>
+                                        <include>NotoSerif-BoldItalic.ttf</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <!-- NotoSans: Regular, Bold, Italic, BoldItalic -->
+                    <execution>
+                        <id>copy-noto-sans</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <outputDirectory>${staging.directory}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${downloads.directory}/NotoSans/unhinted/ttf</directory>
+                                    <includes>
+                                        <include>NotoSans-Regular.ttf</include>
+                                        <include>NotoSans-Bold.ttf</include>
+                                        <include>NotoSans-Italic.ttf</include>
+                                        <include>NotoSans-BoldItalic.ttf</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <!-- NotoSansMono: Regular, Bold -->
+                    <execution>
+                        <id>copy-noto-sans-mono</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <outputDirectory>${staging.directory}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${downloads.directory}/NotoSansMono/unhinted/ttf</directory>
+                                    <includes>
+                                        <include>NotoSansMono-Regular.ttf</include>
+                                        <include>NotoSansMono-Bold.ttf</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <!-- NotoSansMath: Regular -->
+                    <execution>
+                        <id>copy-noto-sans-math</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <outputDirectory>${staging.directory}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${downloads.directory}/NotoSansMath/unhinted/ttf</directory>
+                                    <includes>
+                                        <include>NotoSansMath-Regular.ttf</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <!-- NotoSansSymbols: Regular -->
+                    <execution>
+                        <id>copy-noto-sans-symbols</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <outputDirectory>${staging.directory}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${downloads.directory}/NotoSansSymbols/unhinted/ttf</directory>
+                                    <includes>
+                                        <include>NotoSansSymbols-Regular.ttf</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <!-- NotoSansSymbols2: Regular -->
+                    <execution>
+                        <id>copy-noto-sans-symbols2</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <outputDirectory>${staging.directory}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${downloads.directory}/NotoSansSymbols2/unhinted/ttf</directory>
+                                    <includes>
+                                        <include>NotoSansSymbols2-Regular.ttf</include>
+                                    </includes>
+                                </resource>
+                            </resources>
                         </configuration>
                     </execution>
                 </executions>

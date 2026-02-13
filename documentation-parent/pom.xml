@@ -175,13 +175,13 @@
                 <version>${asciidoctorj-diagram.version}</version>
             </dependency>
 
-            <!-- IKE Build Standards (Claude instruction files) -->
+            <!-- IKE BOM — centralizes artifact versions -->
             <dependency>
                 <groupId>network.ike</groupId>
-                <artifactId>ike-build-standards</artifactId>
-                <version>1.0.0</version>
-                <classifier>claude</classifier>
-                <type>zip</type>
+                <artifactId>ike-bom</artifactId>
+                <version>1.1.0-SNAPSHOT</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
 
             <!-- Noto Fonts for PDF generation (minimal subset) -->
@@ -236,18 +236,13 @@
                             <id>unpack-claude-standards</id>
                             <phase>validate</phase>
                             <goals>
-                                <goal>unpack</goal>
+                                <goal>unpack-dependencies</goal>
                             </goals>
                             <configuration>
-                                <artifactItems>
-                                    <artifactItem>
-                                        <groupId>network.ike</groupId>
-                                        <artifactId>ike-build-standards</artifactId>
-                                        <classifier>claude</classifier>
-                                        <type>zip</type>
-                                        <outputDirectory>${project.basedir}/.claude/standards</outputDirectory>
-                                    </artifactItem>
-                                </artifactItems>
+                                <includeArtifactIds>ike-build-standards</includeArtifactIds>
+                                <includeClassifiers>claude</includeClassifiers>
+                                <includeTypes>zip</includeTypes>
+                                <outputDirectory>${project.basedir}/.claude/standards</outputDirectory>
                                 <overWriteReleases>true</overWriteReleases>
                                 <overWriteSnapshots>true</overWriteSnapshots>
                             </configuration>
