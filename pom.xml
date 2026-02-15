@@ -29,7 +29,7 @@
     <description>
         Aggregator for the IKE AsciiDoc documentation pipeline.
         This POM is a pure reactor aggregator — it is NOT a parent POM.
-        The parent chain is: example-project → java-parent → documentation-parent.
+        The parent chain is: example-project → java-parent → ike-parent.
     </description>
     <url>https://github.com/ike-community/ike-pipeline</url>
     <inceptionYear>2025</inceptionYear>
@@ -54,9 +54,9 @@
         1. minimal-fonts                – font JAR (no dependencies)
         2. docbook-xsl                 – DocBook XSL stylesheets (no dependencies)
         3. koncept-asciidoc-extension  – Java AsciidoctorJ extension (no parent)
-        4. documentation-parent        – documentation POM (uses docbook-xsl
+        4. ike-parent                  – documentation POM (uses docbook-xsl
                                          in pdf-xep profile)
-        5. java-parent                 – Java POM (parent: documentation-parent)
+        5. java-parent                 – Java POM (parent: ike-parent)
         6. example-project             – demo project (parent: java-parent,
                                          dep: minimal-fonts, docbook-xsl)
     -->
@@ -66,15 +66,66 @@
                 <plugin><artifactId>maven-clean-plugin</artifactId><version>3.4.0</version></plugin>
             </plugins>
         </pluginManagement>
+
+        <plugins>
+            <!-- Unpack build infrastructure artifacts at the reactor root.
+                 This gives Claude Code access to standards and tools from
+                 the working directory where it runs. Inheriting modules
+                 also get their own copy via ike-parent's pluginManagement. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.8.1</version>
+                <executions>
+                    <execution>
+                        <id>unpack-claude-standards</id>
+                        <phase>validate</phase>
+                        <goals><goal>unpack</goal></goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>network.ike</groupId>
+                                    <artifactId>ike-build-standards</artifactId>
+                                    <version>1</version>
+                                    <classifier>claude</classifier>
+                                    <type>zip</type>
+                                    <overWrite>true</overWrite>
+                                    <outputDirectory>${project.basedir}/.claude/standards</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>unpack-build-tools</id>
+                        <phase>initialize</phase>
+                        <goals><goal>unpack</goal></goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>network.ike</groupId>
+                                    <artifactId>ike-build-tools</artifactId>
+                                    <version>1.0.0</version>
+                                    <classifier>tools</classifier>
+                                    <type>zip</type>
+                                    <overWrite>true</overWrite>
+                                    <outputDirectory>${project.build.directory}/build-tools</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 
     <subprojects>
         <subproject>ike-build-standards</subproject>
+        <subproject>ike-build-tools</subproject>
         <subproject>ike-bom</subproject>
         <subproject>minimal-fonts</subproject>
         <subproject>docbook-xsl</subproject>
         <subproject>koncept-asciidoc-extension</subproject>
-        <subproject>documentation-parent</subproject>
+        <subproject>ike-parent</subproject>
         <subproject>java-parent</subproject>
         <subproject>example-project</subproject>
     </subprojects>

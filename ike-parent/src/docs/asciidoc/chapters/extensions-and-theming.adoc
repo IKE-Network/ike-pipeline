@@ -5,7 +5,7 @@ The pipeline includes custom AsciiDoctor extensions, shared document metadata, a
 === Directory Layout
 
 ----
-documentation-parent/src/
+ike-parent/src/
   shared-asciidoc/
     docinfo.html                    <1>
   theme/

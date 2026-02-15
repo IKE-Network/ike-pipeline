@@ -1,6 +1,6 @@
 # IKE Java Parent POM
 
-Parent POM for IKE Community Java projects. Extends `ike-documentation-parent` to provide comprehensive Java build configuration alongside documentation capabilities.
+Parent POM for IKE Community Java projects. Extends `ike-parent` to provide comprehensive Java build configuration alongside documentation capabilities.
 
 ## Features
 
@@ -44,13 +44,13 @@ your-java-project/
 
 ## Inherited Capabilities
 
-From `ike-documentation-parent`:
+From `ike-parent`:
 - AsciiDoc HTML/PDF generation
 - Diagram support (Mermaid, PlantUML, GraphViz)
 - Documentation dependency management
 - Standard Maven directory layout
 
-See [ike-documentation-parent README](../ike-documentation-parent/README.md) for details.
+See [ike-parent README](../ike-parent/README.md) for details.
 
 ## Java Configuration
 
@@ -135,7 +135,7 @@ mvn verify -Ppdf
 | `maven.compiler.release` | `${java.version}` | Java release version |
 
 ### Inherited Properties
-See [ike-documentation-parent](../ike-documentation-parent/README.md#properties-reference)
+See [ike-parent](../ike-parent/README.md#properties-reference)
 
 ## Dependencies
 

@@ -8,7 +8,7 @@ Aggregator POM (`pipeline/pom.xml`)::
 Lists all modules in dependency order. Running `mvn clean verify` from the project root builds everything. The aggregator is *not* a parent -- no module inherits from it.
 
 Parent POM chain::
-`documentation-parent` -> `java-parent` -> your project. Each layer adds configuration that child modules inherit automatically.
+`ike-parent` -> `java-parent` -> your project. Each layer adds configuration that child modules inherit automatically.
 
 === Module Overview
 
@@ -28,13 +28,13 @@ Parent POM chain::
 | `jar`
 | AsciidoctorJ SPI extension providing the `k:Name[]` inline macro for formally identified terminology concepts. Renders SVG badges for HTML/PDF and DocBook phrases for XSL-FO. Auto-generates a glossary section with definitions, axioms, and SNOMED CT identifiers.
 
-| `documentation-parent`
+| `ike-parent`
 | `pom`
 | Parent POM for all documentation projects. Provides the asciidoctor-maven-plugin configuration, PDF renderer profiles, Kroki diagram integration, and shared extensions.
 
 | `java-parent`
 | `pom`
-| Extends `documentation-parent` with Java compiler, test framework (JUnit 5, AssertJ, Mockito), and JPMS support.
+| Extends `ike-parent` with Java compiler, test framework (JUnit 5, AssertJ, Mockito), and JPMS support.
 
 | `example-project`
 | `jar`
@@ -51,7 +51,7 @@ graph TD
     B["minimal-fonts<br/>JAR: Noto TTF fonts"]
     C["docbook-xsl<br/>JAR: DocBook XSL 1.79.2"]
     G["koncept-asciidoc-extension<br/>JAR: k:Name[] macro"]
-    D["documentation-parent<br/>POM: AsciiDoc pipeline"]
+    D["ike-parent<br/>POM: AsciiDoc pipeline"]
     E["java-parent<br/>POM: Java 25 + test"]
     F["example-project<br/>JAR: demo app + docs"]
 
@@ -80,8 +80,8 @@ Maven's reactor sorts modules by their dependency graph. The explicit order in t
 . `minimal-fonts` -- no dependencies, built first
 . `docbook-xsl` -- no dependencies
 . `koncept-asciidoc-extension` -- no dependencies, standalone Java 17 module
-. `documentation-parent` -- POM packaging, installed to local repo
-. `java-parent` -- parent is `documentation-parent`
+. `ike-parent` -- POM packaging, installed to local repo
+. `java-parent` -- parent is `ike-parent`
 . `example-project` -- parent is `java-parent`, depends on `minimal-fonts`
 
 The `build-all.sh` script exploits this by first installing infrastructure modules (`mvn install -pl '!example-project'`), then building the example project with the selected PDF renderer.

@@ -1,6 +1,6 @@
 == Build Profiles
 
-The documentation pipeline uses a **property-driven build** pattern. All build logic lives in the main `<build>` section of `documentation-parent/pom.xml`, with per-renderer skip flags that default to `true`. Profiles are thin toggles that flip their skip flag to `false`. This makes profiles discoverable in IntelliJ's Maven Profiles panel and composable via `-D` properties or `-P` flags.
+The documentation pipeline uses a **property-driven build** pattern. All build logic lives in the main `<build>` section of `ike-parent/pom.xml`, with per-renderer skip flags that default to `true`. Profiles are thin toggles that flip their skip flag to `false`. This makes profiles discoverable in IntelliJ's Maven Profiles panel and composable via `-D` properties or `-P` flags.
 
 === Profile Activation
 
@@ -145,15 +145,15 @@ Each renderer creates a ZIP of its output directory and attaches it as a classif
 | Path to RenderX XEP binary
 
 | `ike.extensions.directory`
-| `../documentation-parent/src/extensions`
+| `../ike-parent/src/extensions`
 | Ruby extension directory
 
 | `ike.shared.asciidoc.directory`
-| `../documentation-parent/src/shared-asciidoc`
+| `../ike-parent/src/shared-asciidoc`
 | Shared docinfo directory
 
 | `pdf.print.stylesheet`
-| `../documentation-parent/src/theme/ike-print.css`
+| `../ike-parent/src/theme/ike-print.css`
 | CSS Paged Media stylesheet
 |===
 
@@ -247,4 +247,4 @@ note right: Classified ZIP artifacts\n(html/prawn/pdf-default)
 @enduml
 ....
 
-NOTE: All renderer executions are declared in the main `<build>` section with per-renderer `<skip>` flags that default to `true`. Profiles are thin toggles that set `ike.skip.RENDERER=false`. The `pom-skip-renderers` profile (activated by `<packaging>pom</packaging>`) forces external renderer skip flags back to `true` for POM-packaging modules like `documentation-parent`, even when renderer profiles are active. HTML and Prawn are left alone since asciidoctor-maven-plugin handles missing sources gracefully.
+NOTE: All renderer executions are declared in the main `<build>` section with per-renderer `<skip>` flags that default to `true`. Profiles are thin toggles that set `ike.skip.RENDERER=false`. The `pom-skip-renderers` profile (activated by `<packaging>pom</packaging>`) forces external renderer skip flags back to `true` for POM-packaging modules like `ike-parent`, even when renderer profiles are active. HTML and Prawn are left alone since asciidoctor-maven-plugin handles missing sources gracefully.

@@ -21,7 +21,7 @@
     <modelVersion>4.1.0</modelVersion>
 
     <groupId>network.ike</groupId>
-    <artifactId>documentation-parent</artifactId>
+    <artifactId>ike-parent</artifactId>
     <version>1.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
@@ -47,6 +47,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
+        <!-- IKE Build Infrastructure Versions -->
+        <ike-build-tools.version>1.0.0</ike-build-tools.version>
+
         <!-- Maven Plugin Versions -->
         <maven-dependency-plugin.version>3.8.1</maven-dependency-plugin.version>
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
@@ -68,14 +71,14 @@
         <!-- IKE AsciiDoc Extensions -->
         <!-- Relative from child projects in the reactor build.              -->
         <!-- External projects override to their local checkout path.        -->
-        <ike.extensions.directory>${project.basedir}/../documentation-parent/src/extensions</ike.extensions.directory>
+        <ike.extensions.directory>${project.basedir}/../ike-parent/src/extensions</ike.extensions.directory>
 
         <!-- IKE Shared AsciiDoc Resources (docinfo.html, etc.)             -->
         <!-- All projects get shared docinfo (Koncept CSS, etc.) via the    -->
         <!-- docinfodir attribute.  Projects needing ADDITIONAL docinfo     -->
         <!-- can override docinfodir and use antrun to merge shared +       -->
         <!-- project-specific files into a staging directory.               -->
-        <ike.shared.asciidoc.directory>${project.basedir}/../documentation-parent/src/shared-asciidoc</ike.shared.asciidoc.directory>
+        <ike.shared.asciidoc.directory>${project.basedir}/../ike-parent/src/shared-asciidoc</ike.shared.asciidoc.directory>
 
         <!-- Documentation Paths (Standard Maven) -->
         <asciidoc.source.directory>${project.basedir}/src/docs/asciidoc</asciidoc.source.directory>
@@ -131,11 +134,11 @@
         <!-- CSS Paged Media stylesheet for external renderers            -->
         <!-- Uses the parent module path so child projects resolve it    -->
         <!-- correctly (same pattern as ike.extensions.directory).       -->
-        <pdf.print.stylesheet.directory>${project.basedir}/../documentation-parent/src/theme</pdf.print.stylesheet.directory>
+        <pdf.print.stylesheet.directory>${project.basedir}/../ike-parent/src/theme</pdf.print.stylesheet.directory>
         <pdf.print.stylesheet>${pdf.print.stylesheet.directory}/ike-print.css</pdf.print.stylesheet>
 
         <!-- Assembly descriptor directory for ZIP artifact creation -->
-        <ike.assembly.directory>${project.basedir}/../documentation-parent/src/assembly</ike.assembly.directory>
+        <ike.assembly.directory>${project.basedir}/../ike-parent/src/assembly</ike.assembly.directory>
 
         <!-- ── Renderer Skip Flags ─────────────────────────────────────── -->
         <!-- All renderers off by default. Activate via profile or -D.      -->
@@ -230,6 +233,26 @@
                                 <useSubDirectoryPerArtifact>true</useSubDirectoryPerArtifact>
                                 <stripVersion>true</stripVersion>
                                 <includeGroupIds>network.ike</includeGroupIds>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>unpack-build-tools</id>
+                            <phase>initialize</phase>
+                            <goals>
+                                <goal>unpack</goal>
+                            </goals>
+                            <configuration>
+                                <artifactItems>
+                                    <artifactItem>
+                                        <groupId>network.ike</groupId>
+                                        <artifactId>ike-build-tools</artifactId>
+                                        <version>${ike-build-tools.version}</version>
+                                        <classifier>tools</classifier>
+                                        <type>zip</type>
+                                        <overWrite>true</overWrite>
+                                        <outputDirectory>${project.build.directory}/build-tools</outputDirectory>
+                                    </artifactItem>
+                                </artifactItems>
                             </configuration>
                         </execution>
                         <execution>
@@ -462,6 +485,33 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
+                    <!-- Unpack standards directly (unpack goal, not unpack-dependencies).
+                         The pluginManagement unpack-dependencies execution only works for
+                         child modules that declare ike-build-standards as a <dependency>.
+                         This execution ensures ike-parent and java-parent themselves get
+                         standards unpacked too. -->
+                    <execution>
+                        <id>unpack-claude-standards-direct</id>
+                        <phase>validate</phase>
+                        <goals><goal>unpack</goal></goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>network.ike</groupId>
+                                    <artifactId>ike-build-standards</artifactId>
+                                    <version>1</version>
+                                    <classifier>claude</classifier>
+                                    <type>zip</type>
+                                    <overWrite>true</overWrite>
+                                    <outputDirectory>${project.basedir}/.claude/standards</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>unpack-build-tools</id>
+                        <!-- inherits config from pluginManagement -->
+                    </execution>
                     <execution>
                         <id>unpack-fonts</id>
                         <!-- inherits config from pluginManagement -->
@@ -510,7 +560,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <outputDirectory>${project.build.directory}/xep-config</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${project.basedir}/../documentation-parent/src/xep</directory>
+                                    <directory>${project.basedir}/../ike-parent/src/xep</directory>
                                     <includes><include>*.xml</include></includes>
                                 </resource>
                                 <resource>
@@ -534,7 +584,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <outputDirectory>${project.build.directory}/fop-config</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${project.basedir}/../documentation-parent/src/fop</directory>
+                                    <directory>${project.basedir}/../ike-parent/src/fop</directory>
                                     <includes><include>*.xconf</include></includes>
                                 </resource>
                                 <resource>
@@ -1593,11 +1643,11 @@ IKE projects require Java 21+ (JRuby 10 baseline).
         </profile>
 
         <!-- ── Skip all renderers on POM-packaging modules ─────────── -->
-        <!-- POM modules (java-parent, documentation-parent) typically    -->
+        <!-- POM modules (java-parent, ike-parent) typically    -->
         <!-- have no AsciiDoc content or lack the theme/font setup that   -->
         <!-- renderers require. This profile forces ALL skip flags to     -->
         <!-- true. To build docs from a POM module, override explicitly:  -->
-        <!--   mvn verify -pl documentation-parent -Dike.skip.html=false  -->
+        <!--   mvn verify -pl ike-parent -Dike.skip.html=false  -->
         <!-- Must appear AFTER renderer profiles so its properties win.   -->
         <profile>
             <id>pom-skip-renderers</id>

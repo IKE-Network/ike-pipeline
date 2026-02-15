@@ -116,6 +116,32 @@
         </resources>
 
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.8.1</version>
+                <executions>
+                    <execution>
+                        <id>unpack-claude-standards</id>
+                        <phase>validate</phase>
+                        <goals><goal>unpack</goal></goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>network.ike</groupId>
+                                    <artifactId>ike-build-standards</artifactId>
+                                    <version>1</version>
+                                    <classifier>claude</classifier>
+                                    <type>zip</type>
+                                    <overWrite>true</overWrite>
+                                    <outputDirectory>${project.basedir}/.claude/standards</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <!-- 1. Download DocBook XSL 1.79.2 from GitHub releases        -->
             <!--    Cached in ~/.m2/repository/.cache/download-maven-plugin/ -->
             <!--    after first download — no network hit on subsequent      -->

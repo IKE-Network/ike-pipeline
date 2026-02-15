@@ -202,7 +202,7 @@ include::{generated}/org.ike.community/ike-core-docs/chapters/terminology.adoc[]
 ## Parent POM Hierarchy
 
 ```
-ike-documentation-parent (AsciiDoc pipeline)
+ike-parent (AsciiDoc pipeline)
 └── ike-java-parent (Java configuration)
     └── example-project (this project)
 ```
@@ -237,7 +237,7 @@ Apache License 2.0 - See LICENSE file
 
 ## Resources
 
-- [IKE Documentation Parent](../ike-documentation-parent/README.md)
+- [IKE Documentation Parent](../ike-parent/README.md)
 - [IKE Java Parent](../ike-java-parent/README.md)
 - [AsciiDoctor User Manual](https://docs.asciidoctor.org/)
 - [SNOMED International](https://www.snomed.org/)

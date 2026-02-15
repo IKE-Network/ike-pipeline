@@ -52,7 +52,7 @@ Create a minimal `pom.xml` that inherits from the documentation parent (or Java 
     </build>
 </project>
 ----
-<1> Use `java-parent` for Java projects, `documentation-parent` for docs-only projects
+<1> Use `java-parent` for Java projects, `ike-parent` for docs-only projects
 <2> Required for Prawn PDF font rendering; version managed by parent
 <3> Declares the plugin so Maven runs it; all configuration inherited from parent
 
@@ -91,7 +91,7 @@ Add your module to the aggregator `pom.xml` at the project root:
     <module>minimal-fonts</module>
     <module>docbook-xsl</module>
     <module>koncept-asciidoc-extension</module>
-    <module>documentation-parent</module>
+    <module>ike-parent</module>
     <module>java-parent</module>
     <module>example-project</module>
     <module>my-project</module>            <!-- add here -->

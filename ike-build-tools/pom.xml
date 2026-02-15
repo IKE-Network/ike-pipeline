@@ -1,24 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  IKE Community — Bill of Materials (BOM)
-  ═══════════════════════════════════════
+  IKE Community — Build Tools
+  ════════════════════════════
 
-  Centralized version management for IKE artifacts. Import this BOM
-  in your project's <dependencyManagement> to align versions across
-  all IKE dependencies.
+  Produces a classified ZIP artifact (classifier=tools, format=zip)
+  containing shared build scripts, configs, and release automation.
 
-  Usage:
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>network.ike</groupId>
-                <artifactId>ike-bom</artifactId>
-                <version>${ike-bom.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+  Consumer modules unpack this artifact at initialize phase into
+  target/build-tools/ via maven-dependency-plugin.
+
+  Build:    mvn install
+  Artifact: network.ike:ike-build-tools:1.0.0:zip:tools
 -->
 <project xmlns="http://maven.apache.org/POM/4.1.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -27,14 +19,14 @@
     <modelVersion>4.1.0</modelVersion>
 
     <groupId>network.ike</groupId>
-    <artifactId>ike-bom</artifactId>
-    <version>1.1.0-SNAPSHOT</version>
+    <artifactId>ike-build-tools</artifactId>
+    <version>1.0.0</version>
     <packaging>pom</packaging>
 
-    <name>IKE Bill of Materials</name>
+    <name>IKE Build Tools</name>
     <description>
-        Centralized dependency version management for IKE Community projects.
-        Import this BOM to align artifact versions across modules.
+        Shared build scripts, release automation, and configuration
+        for IKE projects. Distributed as a classified Maven artifact.
     </description>
     <url>https://github.com/ike-community/ike-pipeline</url>
     <inceptionYear>2026</inceptionYear>
@@ -53,24 +45,9 @@
     </organization>
 
     <properties>
-        <!-- ── IKE Build Standards ──────────────────────────────────── -->
-        <!-- Monotonic integer versioning: 1, 2, 3, ...                 -->
-        <!-- Bump here when a new standards release is published.       -->
-        <ike-build-standards.version>1</ike-build-standards.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <!-- IKE Build Standards (Claude instruction files) -->
-            <dependency>
-                <groupId>network.ike</groupId>
-                <artifactId>ike-build-standards</artifactId>
-                <version>${ike-build-standards.version}</version>
-                <classifier>claude</classifier>
-                <type>zip</type>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <build>
         <pluginManagement>
@@ -94,7 +71,7 @@
                                 <artifactItem>
                                     <groupId>network.ike</groupId>
                                     <artifactId>ike-build-standards</artifactId>
-                                    <version>${ike-build-standards.version}</version>
+                                    <version>1</version>
                                     <classifier>claude</classifier>
                                     <type>zip</type>
                                     <overWrite>true</overWrite>
@@ -104,6 +81,30 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>${maven-assembly-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>package-build-tools</id>
+                        <phase>package</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/build-tools.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-install-plugin</artifactId>
+                <version>3.1.3</version>
             </plugin>
         </plugins>
     </build>

@@ -39,7 +39,7 @@ The project inherits from IKE parent POMs:
 [mermaid]
 ....
 graph TB
-    A[documentation-parent] --> B[java-parent]
+    A[ike-parent] --> B[java-parent]
     B --> C[example-project]
     
     A -.provides.-> D[AsciiDoc Pipeline]

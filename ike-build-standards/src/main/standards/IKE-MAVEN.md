@@ -9,15 +9,15 @@ All IKE artifacts use `network.ike` as the group ID.
 The parent chain for IKE projects:
 
 ```
-documentation-parent          (documentation pipeline, renderer profiles)
+ike-parent                    (documentation pipeline, renderer profiles)
   └── java-parent             (Java compiler, test frameworks, JPMS support)
        └── [your-project]     (inherits both documentation and Java config)
 ```
 
-- `documentation-parent` provides: AsciiDoc toolchain, PDF renderer profiles, font management, assembly descriptors, skip-flag property pattern.
+- `ike-parent` provides: AsciiDoc toolchain, PDF renderer profiles, font management, assembly descriptors, skip-flag property pattern.
 - `java-parent` provides: Java 25 compiler config, JUnit 5 + AssertJ + Mockito dependency management, Surefire/Failsafe configuration, source/javadoc attachment.
 
-Projects that need only documentation (no Java code) inherit directly from `documentation-parent`. Projects with Java code inherit from `java-parent`.
+Projects that need only documentation (no Java code) inherit directly from `ike-parent`. Projects with Java code inherit from `java-parent`.
 
 ## Infrastructure Modules
 
