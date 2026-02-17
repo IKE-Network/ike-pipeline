@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright 2025 IKE Community
-  ~
-  ~ Licensed under the Apache License, Version 2.0 (the "License");
-  ~ you may not use this file except in compliance with the License.
-  ~ You may obtain a copy of the License at
-  ~
-  ~     http://www.apache.org/licenses/LICENSE-2.0
-  ~
-  ~ Unless required by applicable law or agreed to in writing, software
-  ~ distributed under the License is distributed on an "AS IS" BASIS,
-  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  ~ See the License for the specific language governing permissions and
-  ~ limitations under the License.
-  -->
+  IKE Community — Documentation Example
+  ══════════════════════════════════════
+
+  A doc-only project that inherits from ike-parent directly (no java-parent).
+  Serves as:
+    1. Proof that doc-only inheritance works
+    2. Comprehensive renderer/pipeline test vehicle
+    3. Template for new documentation projects
+
+  Build:
+    mvn clean verify                       # HTML only
+    mvn clean verify -Dike.pdf.prawn       # HTML + Prawn PDF
+    mvn clean verify -Dike.pdf.fop         # HTML + FOP PDF
+-->
 <project xmlns="http://maven.apache.org/POM/4.1.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.1.0
@@ -22,16 +22,20 @@
 
     <parent>
         <groupId>network.ike</groupId>
-        <artifactId>java-parent</artifactId>
+        <artifactId>ike-parent</artifactId>
         <version>1.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>example-project</artifactId>
+    <artifactId>doc-example</artifactId>
     <version>1.1.0-SNAPSHOT</version>
 
-    <name>IKE Example Project</name>
-    <description>Example Java project demonstrating IKE documentation pipeline integration with Java source, tests, and Koncept macros</description>
-    <url>https://github.com/ike-community/example-project</url>
+    <name>IKE Documentation Example</name>
+    <description>
+        Documentation-only project demonstrating the IKE AsciiDoc pipeline.
+        Exercises all diagram types, Koncept macros, typography, and layout
+        features across all 6 PDF renderers.
+    </description>
+    <url>https://github.com/ike-community/ike-pipeline</url>
     <inceptionYear>2026</inceptionYear>
 
     <licenses>
@@ -64,32 +68,6 @@
             <groupId>network.ike</groupId>
             <artifactId>minimal-fonts</artifactId>
         </dependency>
-        
-        <!-- Test Dependencies -->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        
-        <!-- 
-        Example: Documentation dependency from another project
-        Uncomment when you have other doc projects to include
-        -->
-        <!--
-        <dependency>
-            <groupId>org.ike.community</groupId>
-            <artifactId>ike-core-docs</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
-            <classifier>asciidoc</classifier>
-            <type>zip</type>
-        </dependency>
-        -->
     </dependencies>
 
     <build>

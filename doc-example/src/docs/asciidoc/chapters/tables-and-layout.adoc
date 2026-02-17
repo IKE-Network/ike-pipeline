@@ -1,0 +1,112 @@
+=== Tables
+
+Simple table:
+
+[cols="1,2,3"]
+|===
+|Column A |Column B |Column C
+
+|Cell 1
+|Cell 2
+|Cell 3
+
+|Cell 4
+|Cell 5
+|Cell 6
+|===
+
+Table with header styling and alignment:
+
+[cols="2,>1,^3"]
+|===
+|Feature |Status |Notes
+
+|HTML5 output
+|Done
+|Multi-page with left TOC sidebar
+
+|Prawn PDF
+|Done
+|Built-in, free, JRuby-based
+
+|FOP PDF
+|Done
+|Free, pure Java, DocBook pipeline
+
+|Prince XML
+|Done
+|Commercial, best CSS Paged Media support
+
+|XEP PDF
+|Done
+|DocBook pipeline, free personal license
+
+|WeasyPrint PDF
+|Done
+|Free Python-based, good CSS support
+|===
+
+=== Admonitions
+
+NOTE: This is a note admonition. It provides additional context.
+
+TIP: This is a tip admonition. It suggests a best practice.
+
+IMPORTANT: This is an important admonition. Pay attention to this.
+
+WARNING: This is a warning admonition. Proceed with caution.
+
+CAUTION: This is a caution admonition. Potential for data loss.
+
+=== Block Quotes
+
+[quote, The IKE Community, Documentation Standards]
+____
+Good documentation is not just accurate — it is discoverable,
+consistent, and beautiful across every output format.
+____
+
+=== Sidebar
+
+.Pipeline Architecture
+****
+The IKE documentation pipeline is built on Maven 4's reactor model.
+Infrastructure modules (fonts, themes, extensions) are installed first,
+then child projects inherit the full toolchain via parent POM inheritance.
+****
+
+=== Lists
+
+Ordered list:
+
+. First item
+. Second item
+  .. Nested item A
+  .. Nested item B
+. Third item
+
+Unordered list:
+
+* Bullet one
+* Bullet two
+** Sub-bullet
+** Another sub-bullet
+* Bullet three
+
+Description list:
+
+First term:: Definition of the first term.
+Second term:: Definition of the second term, which is longer to test
+how the layout handles wrapping in definition lists across different
+PDF renderers.
+
+=== Page Breaks
+
+In PDF output, a new chapter (level-2 heading) forces a page break.
+This is controlled by the CSS rule `h2 { page-break-before: always; }`
+in the print stylesheet, and by the Prawn theme's heading configuration.
+
+=== Images
+
+The pipeline supports inline SVG diagrams (rendered by Kroki) and
+raster images. SVG is preferred for scalability and print quality.

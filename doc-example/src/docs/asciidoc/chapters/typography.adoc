@@ -1,0 +1,86 @@
+=== Font Families
+
+The IKE pipeline ships the Noto font family for consistent cross-platform rendering:
+
+Serif (body text):: Noto Serif — used for paragraph text throughout.
+
+Sans-serif (headings):: Noto Sans — used for headings, table headers, and running headers/footers.
+
+Monospace (code):: Noto Sans Mono — used for code blocks and inline code.
+
+=== Unicode Symbols
+
+Mathematical operators (Noto Sans Math):
+
+* Subsumption: &#x2291; (is-a)
+* Intersection: &#x2293; (and)
+* Existential: &#x2203; (some)
+* Universal: &#x2200; (all)
+* Equivalence: &#x2261; (defined-as)
+* Union: &#x2294; (or)
+* Negation: &#x00AC; (not)
+
+Technical symbols (Noto Sans Symbols):
+
+* Arrows: &#x2190; &#x2191; &#x2192; &#x2193; &#x2194; &#x2195;
+* Check mark: &#x2713;
+* Cross mark: &#x2717;
+* Section: &#x00A7;
+* Paragraph: &#x00B6;
+
+Description logic axiom notation:
+
+[source]
+----
+Diabetes mellitus ⊑ Endocrine disorder ⊓ Metabolic disorder ⊓
+    ∃ finding-site.Pancreatic structure ⊓
+    ∃ has-finding.Hyperglycemia
+----
+
+=== Code Blocks
+
+Java example with syntax highlighting:
+
+[source,java]
+----
+public record DocumentMetadata(
+    String title,
+    String author,
+    LocalDate publishDate,
+    List<String> keywords
+) {
+    public DocumentMetadata {
+        Objects.requireNonNull(title, "title");
+        Objects.requireNonNull(author, "author");
+        keywords = List.copyOf(keywords);
+    }
+}
+----
+
+XML example:
+
+[source,xml]
+----
+<dependency>
+    <groupId>network.ike</groupId>
+    <artifactId>ike-parent</artifactId>
+    <version>1.1.0-SNAPSHOT</version>
+</dependency>
+----
+
+Shell example with long lines (tests word-wrapping in PDF):
+
+[source,bash]
+----
+mvn clean verify -pl doc-example -Dike.pdf.prawn -Dike.pdf.fop -Dike.pdf.xep -Dike.pdf.prince -Dike.pdf.ah -Dike.pdf.weasyprint
+----
+
+=== Inline Formatting
+
+This paragraph has *bold text*, _italic text_, `inline code`, *_bold italic_*, and a footnote.footnote:[This is a test footnote to verify footnote rendering across all PDF backends.]
+
+Keyboard shortcuts: kbd:[Ctrl+C], kbd:[Ctrl+V], kbd:[Cmd+Shift+P]
+
+Menu navigation: menu:File[Save As... > PDF]
+
+Button: btn:[OK]

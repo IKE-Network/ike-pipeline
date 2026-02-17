@@ -1,4 +1,4 @@
-# IKE Example Project — Claude Standards
+# IKE Documentation Example — Claude Standards
 
 ## Initial Setup — ALWAYS DO THIS FIRST
 
@@ -16,31 +16,27 @@ After validate completes, read and follow these files in `.claude/standards/`:
 
 - MAVEN.md — Maven 4 build standards (always read)
 - IKE-MAVEN.md — IKE-specific Maven conventions (always read)
+- IKE-DOC.md — Documentation project standards (always read)
 
-Read these additional files when working on Java code:
-
-- JAVA.md — Java 25 standards
-- IKE-JAVA.md — IKE-specific Java patterns
-
-Read this file when working on AsciiDoc content:
-
-- IKE-DOC.md — Documentation project standards
+Do NOT read JAVA.md or IKE-JAVA.md — this is a doc-only project with
+no Java source code.
 
 ## Module Overview
 
-Reference implementation demonstrating all IKE pipeline features.
-Contains Java source code, comprehensive tests, and AsciiDoc
-documentation using diagrams, Koncept macros, and all renderer profiles.
+Documentation-only project that inherits from `ike-parent` directly
+(not `java-parent`). Exercises all pipeline features across all 6 PDF
+renderers: diagrams, Koncept macros, typography, tables, and layout.
 
-- **Artifact**: `network.ike:example-project`
-- **Packaging**: JAR + docs
-- **Parent**: `java-parent`
+- **Artifact**: `network.ike:doc-example`
+- **Packaging**: JAR (empty JAR — doc-only projects use `jar` packaging
+  to inherit the full renderer pipeline)
+- **Parent**: `ike-parent`
 
 ## Key Build Commands
 
 ```bash
 # HTML only:
-mvn clean verify -Dike.skip.html=false
+mvn clean verify
 
 # Prawn PDF:
 mvn clean verify -Dike.pdf.prawn
@@ -55,4 +51,4 @@ mvn clean verify -Dike.pdf.prawn -Dike.pdf.fop
 ## Output Locations
 
 - HTML: `target/generated-docs/html/index.html`
-- PDF: `target/generated-docs/pdf-{renderer}/example-project.pdf`
+- PDF: `target/generated-docs/pdf-{renderer}/doc-example.pdf`

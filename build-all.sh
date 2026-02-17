@@ -144,7 +144,7 @@ fi
 #
 echo ""
 echo "── Installing infrastructure modules (reactor) ──"
-mvn clean install -pl '!example-project' $MVN_QUIET
+mvn clean install -pl '!example-project,!doc-example' $MVN_QUIET
 
 # ── Build example-project with selected PDF renderer ────────────────
 #
@@ -165,7 +165,7 @@ case "$PDF_RENDERER" in
     prawn)
         echo ""
         echo "── Step 1/3: Building HTML + PDF (Prawn) ──"
-        mvn clean verify -pl example-project -Dike.pdf.prawn -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
+        mvn clean verify -pl doc-example,example-project -Dike.pdf.prawn -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
 
         # Step 2: Fix SVGs for prawn-svg
         #
@@ -173,7 +173,8 @@ case "$PDF_RENDERER" in
         # svgo inlines those CSS rules as element-level style attributes.
         SVG_COUNT=0
 
-        for SVG_DIR in "example-project/target/generated-docs/pdf-prawn" "example-project/.asciidoctor/diagram"; do
+        for SVG_DIR in "doc-example/target/generated-docs/pdf-prawn" "doc-example/.asciidoctor/diagram" \
+                       "example-project/target/generated-docs/pdf-prawn" "example-project/.asciidoctor/diagram"; do
             if [[ -d "$SVG_DIR" ]]; then
                 while IFS= read -r -d '' svg; do
                     svgo --config="$SCRIPT_DIR/svgo.config.mjs" --quiet "$svg"
@@ -188,7 +189,7 @@ case "$PDF_RENDERER" in
             echo "── Step 2/3: Fixed $SVG_COUNT SVGs (CSS inlined for prawn-svg) ──"
             echo ""
             echo "── Step 3/3: Rebuilding PDF with fixed SVGs ──"
-            mvn verify -pl example-project -Dike.pdf.prawn -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
+            mvn verify -pl doc-example,example-project -Dike.pdf.prawn -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
         else
             echo ""
             echo "── Step 2/3: No SVGs found — skipping fix ──"
@@ -205,19 +206,19 @@ case "$PDF_RENDERER" in
 
         echo ""
         echo "── Building HTML + PDF (${PDF_RENDERER}) ──"
-        mvn clean verify -pl example-project -D${PDF_PROP} -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
+        mvn clean verify -pl doc-example,example-project -D${PDF_PROP} -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
         ;;
 
     fop)
         echo ""
         echo "── Building HTML + PDF (FOP: DocBook → XSL-FO → PDF) ──"
-        mvn clean verify -pl example-project -Dike.pdf.fop -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
+        mvn clean verify -pl doc-example,example-project -Dike.pdf.fop -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
         ;;
 
     xep)
         echo ""
         echo "── Building HTML + PDF (XEP: DocBook → XSL-FO → PDF) ──"
-        mvn clean verify -pl example-project -Dike.pdf.xep -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
+        mvn clean verify -pl doc-example,example-project -Dike.pdf.xep -Dike.pdf.default=${PDF_RENDERER} $MVN_QUIET $KROKI_OPTS
         ;;
 
     all)
@@ -238,11 +239,13 @@ case "$PDF_RENDERER" in
         echo "  Available: ${RENDERERS[*]}"
 
         # Single Maven build — all profiles coexist
-        mvn clean verify -pl example-project $PDF_FLAGS $MVN_QUIET $KROKI_OPTS
+        mvn clean verify -pl doc-example,example-project $PDF_FLAGS $MVN_QUIET $KROKI_OPTS
 
         # Post-build: fix Prawn SVGs (prawn-svg can't handle CSS class selectors)
         SVG_COUNT=0
-        for SVG_DIR in "example-project/target/generated-docs/pdf-prawn" \
+        for SVG_DIR in "doc-example/target/generated-docs/pdf-prawn" \
+                       "doc-example/.asciidoctor/diagram" \
+                       "example-project/target/generated-docs/pdf-prawn" \
                        "example-project/.asciidoctor/diagram"; do
             if [[ -d "$SVG_DIR" ]]; then
                 while IFS= read -r -d '' svg; do
@@ -254,7 +257,7 @@ case "$PDF_RENDERER" in
         if [[ $SVG_COUNT -gt 0 ]]; then
             echo ""
             echo "── Fixed $SVG_COUNT SVGs — rebuilding Prawn PDF ──"
-            mvn verify -pl example-project -Dike.pdf.prawn $MVN_QUIET $KROKI_OPTS
+            mvn verify -pl doc-example,example-project -Dike.pdf.prawn $MVN_QUIET $KROKI_OPTS
         fi
 
         echo ""
@@ -268,7 +271,7 @@ case "$PDF_RENDERER" in
     none)
         echo ""
         echo "── Building HTML only (PDF skipped) ──"
-        mvn clean verify -pl example-project $MVN_QUIET $KROKI_OPTS
+        mvn clean verify -pl doc-example,example-project $MVN_QUIET $KROKI_OPTS
         ;;
 esac
 

@@ -9,12 +9,13 @@
 //      emit background rects without dimensions. FOP's Batik renderer
 //      throws BridgeException on these (SVGRectElementBridge).
 //
-// This config applies five transformations in order:
+// This config applies six transformations in order:
 //   1. inlineStyles:          CSS rules → element-level style attributes
 //   2. convertHslToHex:       hsl(h, s%, l%) → #rrggbb
-//   3. fixMissingRectDims:    add width="0" height="0" to bare <rect>s
-//   4. replaceForeignObject:  <foreignObject> → <text>
-//   5. removeStyleElement:    drop the (now-empty) <style> block
+//   3. fixMarkerOrient:       orient="auto-start-reverse" → "auto" (Batik compat)
+//   4. fixMissingRectDims:    add width="0" height="0" to bare <rect>s
+//   5. replaceForeignObject:  <foreignObject> → <text>
+//   6. removeStyleElement:    drop the (now-empty) <style> block
 //
 // PlantUML and GraphViz SVGs pass through unchanged — they already use
 // native <text> elements and hex colors.
@@ -157,7 +158,26 @@ export default {
       }),
     },
 
-    // 4. Fix <rect> elements missing width/height attributes
+    // 4. Fix <marker orient="auto-start-reverse"> for Batik/FOP
+    //    Mermaid ER diagrams use orient="auto-start-reverse" (SVG2).
+    //    Batik 1.19 (used by FOP) throws BridgeException on this value.
+    //    Replace with "auto" which Batik supports — arrows may point
+    //    the same direction but the diagram remains readable.
+    {
+      name: 'fixMarkerOrient',
+      fn: () => ({
+        element: {
+          enter: (node) => {
+            if (node.name !== 'marker') return;
+            if (node.attributes?.orient === 'auto-start-reverse') {
+              node.attributes.orient = 'auto';
+            }
+          },
+        },
+      }),
+    },
+
+    // 6. Fix <rect> elements missing width/height attributes
     //    Mermaid state diagrams emit bare <rect style="..."/> without
     //    dimensions. Batik (used by FOP) requires explicit width/height
     //    and throws BridgeException without them. Adding "0" makes them
@@ -179,7 +199,7 @@ export default {
       }),
     },
 
-    // 5. Replace foreignObject with native SVG <text>
+    // 7. Replace foreignObject with native SVG <text>
     {
       name: 'replaceForeignObject',
       fn: () => ({
@@ -248,7 +268,7 @@ export default {
       }),
     },
 
-    // 6. Remove the <style> element (now empty after inlining)
+    // 8. Remove the <style> element (now empty after inlining)
     'removeStyleElement',
   ],
 };

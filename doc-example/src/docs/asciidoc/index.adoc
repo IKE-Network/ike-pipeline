@@ -1,0 +1,118 @@
+= IKE Documentation Pipeline — Feature Test
+:author: IKE Community
+:email: info@ike-community.org
+:revnumber: {project-version}
+:revdate: {docdate}
+:doctype: book
+:toc: left
+:toclevels: 3
+:sectnums:
+:sectnumlevels: 4
+:icons: font
+:source-highlighter: coderay
+:experimental:
+
+[abstract]
+--
+This document exercises all features of the IKE documentation pipeline.
+It serves as both a comprehensive test vehicle for all 6 PDF renderers
+and a template for new documentation projects.
+--
+
+== Introduction
+
+The IKE documentation pipeline converts AsciiDoc source to:
+
+* **HTML5** — multi-page with table of contents
+* **Self-contained HTML** — single file with embedded images
+* **PDF via Prawn** — built-in, free (asciidoctorj-pdf)
+* **PDF via FOP** — free, pure Java (DocBook -> XSL-FO -> PDF)
+* **PDF via Prince XML** — commercial CSS Paged Media
+* **PDF via Antenna House** — commercial CSS Paged Media
+* **PDF via WeasyPrint** — free Python-based CSS Paged Media
+* **PDF via RenderX XEP** — DocBook -> XSL-FO -> PDF
+
+This document tests each feature across all renderers.
+
+== Koncept Macros
+
+[NOTE]
+.Koncept Notation
+====
+This document uses _Koncept_ (with a K) to refer to formally identified
+terminology atoms -- entities with a UUID, a position in the subsumption
+hierarchy, and a machine-readable definition.  When you see
+k:DiabetesMellitus[], that is a specific, formally identified
+Koncept.  The word "concept" (lowercase, no brackets) retains its
+ordinary English meaning.
+====
+
+include::chapters/koncept.adoc[]
+
+== Diagrams
+
+This section demonstrates all diagram types supported by the pipeline.
+
+include::chapters/diagrams.adoc[]
+
+== Typography and Symbols
+
+include::chapters/typography.adoc[]
+
+== Tables and Layout
+
+include::chapters/tables-and-layout.adoc[]
+
+== Build Reference
+
+=== Quick Start
+
+[source,bash]
+----
+# HTML only (default):
+mvn clean verify
+
+# HTML + Prawn PDF:
+mvn clean verify -Dike.pdf.prawn
+
+# HTML + FOP PDF:
+mvn clean verify -Dike.pdf.fop
+
+# Multiple renderers:
+mvn clean verify -Dike.pdf.prawn -Dike.pdf.fop
+----
+
+=== Output Locations
+
+[cols="2,4"]
+|===
+|Format |Path
+
+|HTML
+|`target/generated-docs/html/index.html`
+
+|Self-contained HTML
+|`target/generated-docs/html-single/doc-example.html`
+
+|Prawn PDF
+|`target/generated-docs/pdf-prawn/doc-example.pdf`
+
+|FOP PDF
+|`target/generated-docs/pdf-fop/doc-example.pdf`
+
+|Prince PDF
+|`target/generated-docs/pdf-prince/doc-example.pdf`
+
+|AH PDF
+|`target/generated-docs/pdf-ah/doc-example.pdf`
+
+|WeasyPrint PDF
+|`target/generated-docs/pdf-weasyprint/doc-example.pdf`
+
+|XEP PDF
+|`target/generated-docs/pdf-xep/doc-example.pdf`
+|===
+
+---
+
+_Generated from IKE Documentation Example version {project-version} on {docdate}_

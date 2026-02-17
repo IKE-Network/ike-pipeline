@@ -68,23 +68,24 @@
         <asciidoctor.diagram.mermaid.format>svg</asciidoctor.diagram.mermaid.format>
         <asciidoctor.diagram.plantuml.format>svg</asciidoctor.diagram.plantuml.format>
 
+        <!-- IKE Documentation Resources — unpacked from ike-doc-resources JAR -->
+        <ike.doc.resources.directory>${project.build.directory}/ike-doc-resources</ike.doc.resources.directory>
+
         <!-- IKE AsciiDoc Extensions -->
-        <!-- Relative from child projects in the reactor build.              -->
-        <!-- External projects override to their local checkout path.        -->
-        <ike.extensions.directory>${project.basedir}/../ike-parent/src/extensions</ike.extensions.directory>
+        <ike.extensions.directory>${ike.doc.resources.directory}/extensions</ike.extensions.directory>
 
         <!-- IKE Shared AsciiDoc Resources (docinfo.html, etc.)             -->
         <!-- All projects get shared docinfo (Koncept CSS, etc.) via the    -->
         <!-- docinfodir attribute.  Projects needing ADDITIONAL docinfo     -->
         <!-- can override docinfodir and use antrun to merge shared +       -->
         <!-- project-specific files into a staging directory.               -->
-        <ike.shared.asciidoc.directory>${project.basedir}/../ike-parent/src/shared-asciidoc</ike.shared.asciidoc.directory>
+        <ike.shared.asciidoc.directory>${ike.doc.resources.directory}/shared-asciidoc</ike.shared.asciidoc.directory>
 
         <!-- Documentation Paths (Standard Maven) -->
         <asciidoc.source.directory>${project.basedir}/src/docs/asciidoc</asciidoc.source.directory>
         <asciidoc.output.directory>${project.build.directory}/generated-docs</asciidoc.output.directory>
         <asciidoc.generated.directory>${project.build.directory}/generated-sources/asciidoc</asciidoc.generated.directory>
-        <asciidoc.theme.directory>${project.basedir}/src/theme</asciidoc.theme.directory>
+        <asciidoc.theme.directory>${ike.doc.resources.directory}/theme</asciidoc.theme.directory>
 
         <!-- Font Configuration -->
         <fonts.output.directory>${project.build.directory}/fonts</fonts.output.directory>
@@ -134,11 +135,11 @@
         <!-- CSS Paged Media stylesheet for external renderers            -->
         <!-- Uses the parent module path so child projects resolve it    -->
         <!-- correctly (same pattern as ike.extensions.directory).       -->
-        <pdf.print.stylesheet.directory>${project.basedir}/../ike-parent/src/theme</pdf.print.stylesheet.directory>
+        <pdf.print.stylesheet.directory>${ike.doc.resources.directory}/theme</pdf.print.stylesheet.directory>
         <pdf.print.stylesheet>${pdf.print.stylesheet.directory}/ike-print.css</pdf.print.stylesheet>
 
         <!-- Assembly descriptor directory for ZIP artifact creation -->
-        <ike.assembly.directory>${project.basedir}/../ike-parent/src/assembly</ike.assembly.directory>
+        <ike.assembly.directory>${ike.doc.resources.directory}/assembly</ike.assembly.directory>
 
         <!-- ── Renderer Skip Flags ─────────────────────────────────────── -->
         <!-- All renderers off by default. Activate via profile or -D.      -->
@@ -220,6 +221,24 @@
                     <artifactId>maven-dependency-plugin</artifactId>
                     <version>${maven-dependency-plugin.version}</version>
                     <executions>
+                        <execution>
+                            <id>unpack-doc-resources</id>
+                            <phase>initialize</phase>
+                            <goals><goal>unpack</goal></goals>
+                            <configuration>
+                                <artifactItems>
+                                    <artifactItem>
+                                        <groupId>network.ike</groupId>
+                                        <artifactId>ike-doc-resources</artifactId>
+                                        <version>1.0.0</version>
+                                        <type>jar</type>
+                                        <overWrite>true</overWrite>
+                                        <outputDirectory>${ike.doc.resources.directory}</outputDirectory>
+                                        <excludes>META-INF/**</excludes>
+                                    </artifactItem>
+                                </artifactItems>
+                            </configuration>
+                        </execution>
                         <execution>
                             <id>unpack-doc-dependencies</id>
                             <phase>generate-sources</phase>
@@ -485,6 +504,28 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
+                    <!-- Unpack shared documentation resources (themes, assembly descriptors,
+                         renderer configs, etc.) from ike-doc-resources JAR.
+                         Runs at initialize phase so resources are available for all
+                         subsequent build phases. -->
+                    <execution>
+                        <id>unpack-doc-resources</id>
+                        <phase>initialize</phase>
+                        <goals><goal>unpack</goal></goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>network.ike</groupId>
+                                    <artifactId>ike-doc-resources</artifactId>
+                                    <version>1.0.0</version>
+                                    <type>jar</type>
+                                    <overWrite>true</overWrite>
+                                    <outputDirectory>${ike.doc.resources.directory}</outputDirectory>
+                                    <excludes>META-INF/**</excludes>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
                     <!-- Unpack standards directly (unpack goal, not unpack-dependencies).
                          The pluginManagement unpack-dependencies execution only works for
                          child modules that declare ike-build-standards as a <dependency>.
@@ -499,7 +540,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <artifactItem>
                                     <groupId>network.ike</groupId>
                                     <artifactId>ike-build-standards</artifactId>
-                                    <version>1</version>
+                                    <version>2</version>
                                     <classifier>claude</classifier>
                                     <type>zip</type>
                                     <overWrite>true</overWrite>
@@ -560,7 +601,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <outputDirectory>${project.build.directory}/xep-config</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${project.basedir}/../ike-parent/src/xep</directory>
+                                    <directory>${ike.doc.resources.directory}/xep</directory>
                                     <includes><include>*.xml</include></includes>
                                 </resource>
                                 <resource>
@@ -584,7 +625,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <outputDirectory>${project.build.directory}/fop-config</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${project.basedir}/../ike-parent/src/fop</directory>
+                                    <directory>${ike.doc.resources.directory}/fop</directory>
                                     <includes><include>*.xconf</include></includes>
                                 </resource>
                                 <resource>
@@ -1154,7 +1195,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <skip>${ike.skip.prince}</skip>
                             <executable>svgo</executable>
                             <arguments>
-                                <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
+                                <argument>--config=${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
                                 <argument>-f</argument>
                                 <argument>${asciidoc.output.directory}/pdf-html-prince</argument>
                                 <argument>--quiet</argument>
@@ -1190,7 +1231,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <skip>${ike.skip.ah}</skip>
                             <executable>svgo</executable>
                             <arguments>
-                                <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
+                                <argument>--config=${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
                                 <argument>-f</argument>
                                 <argument>${asciidoc.output.directory}/pdf-html-ah</argument>
                                 <argument>--quiet</argument>
@@ -1251,7 +1292,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <skip>${ike.skip.xep}</skip>
                             <executable>svgo</executable>
                             <arguments>
-                                <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
+                                <argument>--config=${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
                                 <argument>-f</argument>
                                 <argument>${asciidoc.output.directory}/docbook-xep</argument>
                                 <argument>--quiet</argument>
@@ -1288,7 +1329,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <skip>${ike.skip.fop}</skip>
                             <executable>svgo</executable>
                             <arguments>
-                                <argument>--config=${project.basedir}/../svgo-xep.config.mjs</argument>
+                                <argument>--config=${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
                                 <argument>-f</argument>
                                 <argument>${asciidoc.output.directory}/docbook-fop</argument>
                                 <argument>--quiet</argument>
@@ -1312,6 +1353,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <argument>-classpath</argument>
                                 <classpath/>
                                 <argument>org.apache.fop.cli.Main</argument>
+                                <argument>-r</argument>
                                 <argument>-c</argument>
                                 <argument>${project.build.directory}/fop-config/fop-ike.xconf</argument>
                                 <argument>-fo</argument>

@@ -17,7 +17,7 @@ ike-parent                    (documentation pipeline, renderer profiles)
 - `ike-parent` provides: AsciiDoc toolchain, PDF renderer profiles, font management, assembly descriptors, skip-flag property pattern.
 - `java-parent` provides: Java 25 compiler config, JUnit 5 + AssertJ + Mockito dependency management, Surefire/Failsafe configuration, source/javadoc attachment.
 
-Projects that need only documentation (no Java code) inherit directly from `ike-parent`. Projects with Java code inherit from `java-parent`.
+Projects that need only documentation (no Java code) inherit directly from `ike-parent` (see `doc-example`). Projects with Java code inherit from `java-parent` (see `example-project`).
 
 ## Infrastructure Modules
 
@@ -26,6 +26,8 @@ Infrastructure modules are standalone (no parent inheritance):
 | Module | Purpose | Packaging |
 |---|---|---|
 | `ike-build-standards` | Claude instruction files | POM + classified ZIP |
+| `ike-build-tools` | Shared build scripts, release automation | POM + classified ZIP |
+| `ike-doc-resources` | Shared doc build resources (themes, assembly descriptors, configs) | JAR |
 | `minimal-fonts` | Noto font subset for PDF | JAR |
 | `docbook-xsl` | DocBook XSL stylesheets + IKE FO layer | JAR |
 | `koncept-asciidoc-extension` | AsciidoctorJ inline macro + glossary | JAR |

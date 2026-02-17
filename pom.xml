@@ -29,7 +29,8 @@
     <description>
         Aggregator for the IKE AsciiDoc documentation pipeline.
         This POM is a pure reactor aggregator — it is NOT a parent POM.
-        The parent chain is: example-project → java-parent → ike-parent.
+        Parent chains: example-project → java-parent → ike-parent;
+        doc-example → ike-parent.
     </description>
     <url>https://github.com/ike-community/ike-pipeline</url>
     <inceptionYear>2025</inceptionYear>
@@ -53,12 +54,13 @@
 
         1. minimal-fonts                – font JAR (no dependencies)
         2. docbook-xsl                 – DocBook XSL stylesheets (no dependencies)
-        3. koncept-asciidoc-extension  – Java AsciidoctorJ extension (no parent)
-        4. ike-parent                  – documentation POM (uses docbook-xsl
-                                         in pdf-xep profile)
-        5. java-parent                 – Java POM (parent: ike-parent)
-        6. example-project             – demo project (parent: java-parent,
-                                         dep: minimal-fonts, docbook-xsl)
+        3. ike-doc-resources           – shared doc resources JAR (no dependencies)
+        4. koncept-asciidoc-extension  – Java AsciidoctorJ extension (no parent)
+        5. ike-parent                  – documentation POM (uses ike-doc-resources,
+                                         docbook-xsl in pdf-xep profile)
+        6. java-parent                 – Java POM (parent: ike-parent)
+        7. doc-example                 – doc-only project (parent: ike-parent)
+        8. example-project             – Java+docs project (parent: java-parent)
     -->
     <build>
         <pluginManagement>
@@ -86,7 +88,7 @@
                                 <artifactItem>
                                     <groupId>network.ike</groupId>
                                     <artifactId>ike-build-standards</artifactId>
-                                    <version>1</version>
+                                    <version>2</version>
                                     <classifier>claude</classifier>
                                     <type>zip</type>
                                     <overWrite>true</overWrite>
@@ -124,9 +126,11 @@
         <subproject>ike-bom</subproject>
         <subproject>minimal-fonts</subproject>
         <subproject>docbook-xsl</subproject>
+        <subproject>ike-doc-resources</subproject>
         <subproject>koncept-asciidoc-extension</subproject>
         <subproject>ike-parent</subproject>
         <subproject>java-parent</subproject>
+        <subproject>doc-example</subproject>
         <subproject>example-project</subproject>
     </subprojects>
 

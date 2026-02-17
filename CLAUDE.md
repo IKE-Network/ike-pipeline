@@ -37,22 +37,25 @@ a multi-renderer AsciiDoc-to-PDF/HTML pipeline for IKE Community projects.
 |---|---|---|
 | `ike-build-tools` | Shared build scripts + release automation | POM + ZIP |
 | `ike-build-standards` | Versioned Claude instruction files | POM + ZIP |
+| `ike-doc-resources` | Shared doc build resources (themes, configs, assembly descriptors) | JAR |
 | `minimal-fonts` | Noto font subset for PDF rendering | JAR |
 | `docbook-xsl` | DocBook XSL 1.79.2 + IKE FO customization | JAR |
 | `koncept-asciidoc-extension` | AsciidoctorJ `k:Name[]` inline macro + glossary | JAR |
 | `ike-parent` | Parent POM — AsciiDoc toolchain, renderer profiles | POM |
 | `java-parent` | Parent POM — Java 25 compiler, test frameworks | POM |
-| `example-project` | Demo project exercising all pipeline features | JAR + docs |
+| `doc-example` | Doc-only project exercising all pipeline features | JAR (empty) |
+| `example-project` | Java+docs demo project | JAR + docs |
 
 ### Parent Inheritance Chain
 
 ```
 ike-parent → java-parent → example-project
+ike-parent → doc-example
 ```
 
-Infrastructure modules (`ike-build-tools`, `ike-build-standards`, `minimal-fonts`,
-`docbook-xsl`, `koncept-asciidoc-extension`) are standalone — they do not inherit
-from the parent chain.
+Infrastructure modules (`ike-build-tools`, `ike-build-standards`, `ike-doc-resources`,
+`minimal-fonts`, `docbook-xsl`, `koncept-asciidoc-extension`) are standalone — they
+do not inherit from the parent chain.
 
 ### Key Build Commands
 

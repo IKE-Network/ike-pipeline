@@ -7,29 +7,24 @@ The project follows Maven standard directory layout:
 example-project/
 ├── src/
 │   ├── main/
-│   │   ├── java/               # Java source code
-│   │   │   └── org/ike/example/
-│   │   │       └── Concept.java
-│   │   └── resources/          # Application resources
+│   │   └── java/               # Java source code
+│   │       └── org/ike/example/
+│   │           └── Concept.java
 │   ├── test/
-│   │   ├── java/               # Test source code
-│   │   │   └── org/ike/example/
-│   │   │       └── ConceptTest.java
-│   │   └── resources/          # Test resources
+│   │   └── java/               # Test source code
+│   │       └── org/ike/example/
+│   │           └── ConceptTest.java
 │   └── docs/
-│       ├── asciidoc/           # Documentation source
-│       │   ├── index.adoc
-│       │   └── chapters/       # Modular documentation
-│       └── resources/          # Images, etc.
+│       └── asciidoc/           # Documentation source
+│           ├── index.adoc
+│           └── chapters/
 ├── pom.xml
 └── target/
     ├── classes/                # Compiled Java
     ├── test-classes/           # Compiled tests
-    ├── generated-sources/      # Unpacked doc dependencies
-    │   └── asciidoc/
     └── generated-docs/         # Generated documentation
         ├── html/
-        └── pdf/
+        └── pdf-{renderer}/
 ----
 
 === Maven Parent Hierarchy
@@ -41,93 +36,13 @@ The project inherits from IKE parent POMs:
 graph TB
     A[ike-parent] --> B[java-parent]
     B --> C[example-project]
-    
+
     A -.provides.-> D[AsciiDoc Pipeline]
     B -.provides.-> E[Java 25 Config]
     B -.provides.-> F[Test Frameworks]
     C -.produces.-> G[JAR + Docs]
-    
+
     style A fill:#e1f5ff
     style B fill:#fff4e1
     style C fill:#e8f5e9
 ....
-
-=== Build Lifecycle
-
-The Maven build follows this sequence:
-
-[plantuml]
-....
-@startuml
-start
-
-:generate-sources|
-note right
-  Unpack doc dependencies
-  to target/generated-sources/
-end note
-
-:compile|
-note right
-  Compile Java 25 source
-  with preview features
-end note
-
-:test|
-note right
-  Run unit tests with
-  JUnit 5 + AssertJ
-end note
-
-:package|
-note right
-  Create JAR with
-  manifest entries
-end note
-
-:verify|
-note right
-  Run integration tests
-  Generate documentation
-end note
-
-:install|
-note right
-  Install to local
-  Maven repository
-end note
-
-stop
-@enduml
-....
-
-=== Technology Stack
-
-[cols="2,3,5"]
-|===
-|Layer |Technology |Purpose
-
-|Language
-|Java 25
-|Modern language features, records, sealed classes
-
-|Build
-|Maven 4
-|Dependency management, build lifecycle
-
-|Testing
-|JUnit 5, AssertJ
-|Unit and integration testing
-
-|Documentation
-|AsciiDoc
-|Technical documentation
-
-|Diagrams
-|Mermaid, PlantUML
-|Visual architecture representation
-
-|Knowledge Rep
-|Custom
-|SNOMED CT-inspired concepts
-|===

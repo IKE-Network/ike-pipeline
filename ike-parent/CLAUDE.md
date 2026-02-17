@@ -33,12 +33,12 @@ and the property-driven skip-flag build pattern.
 - Property-driven build: all logic in main `<build>`, profiles are thin
   toggles that flip `ike.skip.*` flags
 - 6 PDF renderers: Prawn, FOP, Prince, AH, WeasyPrint, XEP
-- Path properties (`ike.extensions.directory`, `ike.shared.asciidoc.directory`,
-  etc.) use `../ike-parent/` relative paths for reactor builds
-- Assembly descriptors in `src/assembly/`
-- Shared docinfo in `src/shared-asciidoc/`
-- Print CSS theme in `src/theme/`
-- FOP/XEP configs in `src/fop/` and `src/xep/`
+- Shared resources (themes, assembly descriptors, renderer configs)
+  are packaged in `ike-doc-resources` JAR and unpacked at initialize
+  phase to `${ike.doc.resources.directory}` (= `target/ike-doc-resources/`)
+- No `../` relative paths — all paths resolve via `${ike.doc.resources.directory}`
+- Children: `java-parent`, `doc-example` inherit from this; `example-project`
+  inherits from `java-parent`
 - Output filenames use `${ike.document.name}` (defaults to `${project.artifactId}`)
 
 ## Build
