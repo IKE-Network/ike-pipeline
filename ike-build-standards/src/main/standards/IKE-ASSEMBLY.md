@@ -369,7 +369,7 @@ Dependent modules unpack the topic library during `generate-resources`:
       <goals><goal>unpack-dependencies</goal></goals>
       <configuration>
         <includeGroupIds>${project.groupId}</includeGroupIds>
-        <includeArtifactIds>ike-topics</includeArtifactIds>
+        <includeArtifactIds>topics</includeArtifactIds>
         <includeClassifiers>topics</includeClassifiers>
         <outputDirectory>${project.build.directory}/topics</outputDirectory>
       </configuration>
@@ -414,7 +414,7 @@ in each assembly module's POM.
 <dependencies>
   <dependency>
     <groupId>${project.groupId}</groupId>
-    <artifactId>ike-topics</artifactId>
+    <artifactId>topics</artifactId>
     <version>${project.version}</version>
     <classifier>topics</classifier>
     <type>zip</type>

@@ -224,10 +224,14 @@ architecture guide, and a developer guide), use a **topic library +
 assembly module** pattern. Each assembly produces an independent PDF
 artifact in one reactor build.
 
-### Topic Library
+### Topic Library (`topics/`)
 
-A topic library is a Maven module containing reusable `.adoc` fragments:
+Every doc multi-module project has a module named `topics/` with
+artifact ID `topics`. The group ID carries project uniqueness. See
+`IKE-INGEST.md` for the full standard project structure.
 
+- **Directory**: always `topics/`
+- **ArtifactId**: always `topics`
 - **Packaging**: JAR (renders HTML by default for authoring preview)
 - **Source**: `src/docs/asciidoc/topics/` with topic files, plus
   `index.adoc` for a browsable all-topics preview
@@ -244,8 +248,10 @@ A topic library is a Maven module containing reusable `.adoc` fragments:
         <artifactId>ike-parent</artifactId>
         <version>1.1.0-SNAPSHOT</version>
     </parent>
-    <artifactId>my-topics</artifactId>
+    <artifactId>topics</artifactId>
     <version>1.0.0-SNAPSHOT</version>
+
+    <name>Topics</name>
 
     <properties>
         <ike.skip.asciidoc-zip>false</ike.skip.asciidoc-zip>
@@ -305,7 +311,7 @@ into a single document:
     <dependencies>
         <dependency>
             <groupId>network.ike</groupId>
-            <artifactId>my-topics</artifactId>
+            <artifactId>topics</artifactId>
             <version>1.0.0-SNAPSHOT</version>
             <classifier>asciidoc</classifier>
             <type>zip</type>
@@ -338,12 +344,14 @@ In assembly `.adoc` files, use the `{generated}` attribute (provided by
 topic libraries:
 
 ```asciidoc
-:my-topics: {generated}/my-topics-asciidoc
+:topics: {generated}/topics-asciidoc
 
-include::{my-topics}/topics/dev/overview.adoc[leveloffset=+1]
+include::{topics}/topics/dev/overview.adoc[leveloffset=+1]
 ```
 
-The attribute name is a convention — use the topic library's artifact ID.
+The attribute name matches the topic library's artifact ID. Since every
+doc project uses `topics` as the standard artifact ID, this attribute
+is always `:topics:`.
 
 ### IDE Preview with `.asciidoctorconfig`
 
@@ -370,7 +378,7 @@ The top-level POM uses `pom` packaging and lists subprojects:
     <packaging>pom</packaging>
 
     <subprojects>
-        <subproject>my-topics</subproject>
+        <subproject>topics</subproject>
         <subproject>my-compendium</subproject>
         <subproject>my-guide</subproject>
     </subprojects>
