@@ -27,7 +27,7 @@
 
     <name>IKE Documentation Parent</name>
     <description>Parent POM for IKE Community projects with AsciiDoc documentation pipeline</description>
-    <url>https://github.com/ike-community</url>
+    <url>https://github.com/IKE-Network</url>
 
     <licenses>
         <license>
@@ -39,7 +39,7 @@
 
     <organization>
         <name>IKE Community</name>
-        <url>https://www.ikecommunity.org</url>
+        <url>https://ike.network</url>
     </organization>
 
     <properties>

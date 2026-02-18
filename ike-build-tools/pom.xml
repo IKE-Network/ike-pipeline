@@ -28,7 +28,7 @@
         Shared build scripts, release automation, and configuration
         for IKE projects. Distributed as a classified Maven artifact.
     </description>
-    <url>https://github.com/ike-community/ike-pipeline</url>
+    <url>https://github.com/IKE-Network/ike-pipeline</url>
     <inceptionYear>2026</inceptionYear>
 
     <licenses>
@@ -41,7 +41,7 @@
 
     <organization>
         <name>IKE Community</name>
-        <url>https://www.ikecommunity.org</url>
+        <url>https://ike.network</url>
     </organization>
 
     <properties>

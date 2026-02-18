@@ -33,7 +33,7 @@
 
     <name>IKE Minimal Fonts</name>
     <description>Minimal Noto font subset for IKE documentation (~4MB)</description>
-    <url>https://github.com/ike-community/ike-minimal-fonts</url>
+    <url>https://github.com/IKE-Network/ike-minimal-fonts</url>
     <inceptionYear>2026</inceptionYear>
 
     <licenses>
@@ -52,7 +52,7 @@
 
     <organization>
         <name>IKE Community</name>
-        <url>https://www.ikecommunity.org</url>
+        <url>https://ike.network</url>
     </organization>
 
     <properties>

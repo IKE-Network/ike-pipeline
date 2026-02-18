@@ -32,7 +32,7 @@
 
     <name>IKE Java Parent</name>
     <description>Parent POM for IKE Community Java projects with documentation support</description>
-    <url>https://github.com/ike-community/ike-java-parent</url>
+    <url>https://github.com/IKE-Network/ike-java-parent</url>
     <inceptionYear>2026</inceptionYear>
 
     <licenses>
@@ -45,7 +45,7 @@
 
     <organization>
         <name>IKE Community</name>
-        <url>https://www.ikecommunity.org</url>
+        <url>https://ike.network</url>
     </organization>
 
     <properties>

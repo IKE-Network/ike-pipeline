@@ -36,7 +36,7 @@
         Centralized dependency version management for IKE Community projects.
         Import this BOM to align artifact versions across modules.
     </description>
-    <url>https://github.com/ike-community/ike-pipeline</url>
+    <url>https://github.com/IKE-Network/ike-pipeline</url>
     <inceptionYear>2026</inceptionYear>
 
     <licenses>
@@ -49,7 +49,7 @@
 
     <organization>
         <name>IKE Community</name>
-        <url>https://www.ikecommunity.org</url>
+        <url>https://ike.network</url>
     </organization>
 
     <properties>

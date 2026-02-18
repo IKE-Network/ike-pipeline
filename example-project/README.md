@@ -185,7 +185,7 @@ To include documentation from other projects:
 
 ```xml
 <dependency>
-    <groupId>org.ike.community</groupId>
+    <groupId>network.ike</groupId>
     <artifactId>ike-core-docs</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <classifier>asciidoc</classifier>
@@ -196,7 +196,7 @@ To include documentation from other projects:
 Then include in your `.adoc` files:
 
 ```asciidoc
-include::{generated}/org.ike.community/ike-core-docs/chapters/terminology.adoc[]
+include::{generated}/network.ike/ike-core-docs/chapters/terminology.adoc[]
 ```
 
 ## Parent POM Hierarchy
@@ -245,5 +245,5 @@ Apache License 2.0 - See LICENSE file
 ## Support
 
 For issues or questions:
-- GitHub Issues: https://github.com/ike-community/ike-maven-asciidoc
+- GitHub Issues: https://github.com/IKE-Network/ike-pipeline
 - Documentation: See `target/generated-docs/` after building

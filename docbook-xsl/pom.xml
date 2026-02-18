@@ -11,7 +11,7 @@
 
   Consumer usage (in pdf-xep profile):
     <dependency>
-      <groupId>org.ike.community</groupId>
+      <groupId>network.ike</groupId>
       <artifactId>ike-docbook-xsl</artifactId>
       <version>1.79.2-ike.2</version>
     </dependency>
@@ -54,7 +54,7 @@
         DocBook XSL 1.79.2 stylesheets with IKE FO customization layer.
         Ready-to-use artifact for the AsciiDoc → DocBook5 → XSL-FO → PDF pipeline.
     </description>
-    <url>https://github.com/ike-community/ike-docbook-xsl</url>
+    <url>https://github.com/IKE-Network/ike-docbook-xsl</url>
     <inceptionYear>2026</inceptionYear>
 
     <licenses>
@@ -80,7 +80,7 @@
 
     <organization>
         <name>IKE Community</name>
-        <url>https://www.ikecommunity.org</url>
+        <url>https://ike.network</url>
     </organization>
 
     <properties>

@@ -32,7 +32,7 @@
         Parent chains: example-project → java-parent → ike-parent;
         doc-example → ike-parent.
     </description>
-    <url>https://github.com/ike-community/ike-pipeline</url>
+    <url>https://github.com/IKE-Network/ike-pipeline</url>
     <inceptionYear>2025</inceptionYear>
 
     <licenses>
@@ -45,7 +45,7 @@
 
     <organization>
         <name>IKE Community</name>
-        <url>https://www.ikecommunity.org</url>
+        <url>https://ike.network</url>
     </organization>
 
     <!--

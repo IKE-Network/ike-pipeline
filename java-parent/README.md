@@ -16,7 +16,7 @@ Parent POM for IKE Community Java projects. Extends `ike-parent` to provide comp
 
 ```xml
 <parent>
-    <groupId>org.ike.community</groupId>
+    <groupId>network.ike</groupId>
     <artifactId>ike-java-parent</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 </parent>
@@ -168,7 +168,7 @@ Your project can have both Java code and comprehensive documentation:
 ```xml
 <project>
     <parent>
-        <groupId>org.ike.community</groupId>
+        <groupId>network.ike</groupId>
         <artifactId>ike-java-parent</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>

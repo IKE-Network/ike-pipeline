@@ -1,6 +1,6 @@
 = IKE Example Project Documentation
 :author: IKE Community
-:email: info@ike-community.org
+:email: info@ike.network
 :revnumber: {project-version}
 :revdate: {docdate}
 :doctype: book

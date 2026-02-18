@@ -63,7 +63,7 @@ Replace the jasper-noto-fonts dependency with ike-minimal-fonts:
 
 <!-- AFTER: ~4 MB local artifact, zero transitive deps -->
 <dependency>
-    <groupId>org.ike.community</groupId>
+    <groupId>network.ike</groupId>
     <artifactId>ike-minimal-fonts</artifactId>
     <version>1.0.0</version>
 </dependency>
