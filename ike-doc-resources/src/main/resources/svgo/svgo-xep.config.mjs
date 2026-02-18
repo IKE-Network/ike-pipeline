@@ -9,13 +9,16 @@
 //      emit background rects without dimensions. FOP's Batik renderer
 //      throws BridgeException on these (SVGRectElementBridge).
 //
-// This config applies six transformations in order:
+// This config applies eight transformations in order:
 //   1. inlineStyles:          CSS rules → element-level style attributes
-//   2. convertHslToHex:       hsl(h, s%, l%) → #rrggbb
-//   3. fixMarkerOrient:       orient="auto-start-reverse" → "auto" (Batik compat)
-//   4. fixMissingRectDims:    add width="0" height="0" to bare <rect>s
-//   5. replaceForeignObject:  <foreignObject> → <text>
-//   6. removeStyleElement:    drop the (now-empty) <style> block
+//   2. fixMermaidUndefined:   strip "undefined;undefined" from Mermaid ER styles
+//   3. convertHslToHex:       hsl(h, s%, l%) → #rrggbb
+//   4. fixMarkerOrient:       orient="auto-start-reverse" → "auto" (Batik compat)
+//   5. fixAlignmentBaseline:  alignment-baseline="central" → "middle" (Batik compat)
+//   6. convertRgbaToHex:      rgba(r,g,b,a) → hex + fill-opacity (Batik compat)
+//   7. fixMissingRectDims:    add width="0" height="0" to bare <rect>s
+//   8. replaceForeignObject:  <foreignObject> → <text>
+//   9. removeStyleElement:    drop the (now-empty) <style> block
 //
 // PlantUML and GraphViz SVGs pass through unchanged — they already use
 // native <text> elements and hex colors.
@@ -177,7 +180,91 @@ export default {
       }),
     },
 
-    // 6. Fix <rect> elements missing width/height attributes
+    // 5. Fix alignment-baseline="central" for Batik/FOP
+    //    Mermaid and the replaceForeignObject plugin below emit
+    //    alignment-baseline="central" (SVG2 value). Batik 1.19 rejects
+    //    this as invalid CSS, throwing DOMException and skipping the
+    //    element entirely. Replace with "middle" which Batik supports.
+    {
+      name: 'fixAlignmentBaseline',
+      fn: () => ({
+        element: {
+          enter: (node) => {
+            // Fix attribute form: alignment-baseline="central"
+            if (node.attributes?.['alignment-baseline'] === 'central') {
+              node.attributes['alignment-baseline'] = 'middle';
+            }
+            if (node.attributes?.['dominant-baseline'] === 'central') {
+              node.attributes['dominant-baseline'] = 'middle';
+            }
+            // Fix inline style form: alignment-baseline: central
+            if (node.attributes?.style) {
+              node.attributes.style = node.attributes.style
+                .replace(/alignment-baseline\s*:\s*central/g, 'alignment-baseline: middle')
+                .replace(/dominant-baseline\s*:\s*central/g, 'dominant-baseline: middle');
+            }
+          },
+        },
+      }),
+    },
+
+    // 6. Convert rgba() colors to hex + opacity for Batik/FOP
+    //    Batik does not support rgba() function notation in fill/stroke.
+    //    It throws DOMException: "fill" property does not support function values.
+    //    Convert rgba(r,g,b,a) to #rrggbb and set fill-opacity/stroke-opacity.
+    {
+      name: 'convertRgbaToHex',
+      fn: () => {
+        const RGBA_RE = /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/g;
+
+        function rgbaToHex(r, g, b) {
+          const toHex = (v) => {
+            const hex = parseInt(v, 10).toString(16);
+            return hex.length === 1 ? '0' + hex : hex;
+          };
+          return '#' + toHex(r) + toHex(g) + toHex(b);
+        }
+
+        function replaceRgbaInStyle(style) {
+          // Track the last alpha we extract (for setting opacity)
+          let lastAlpha = null;
+          const replaced = style.replace(RGBA_RE, (_, r, g, b, a) => {
+            lastAlpha = parseFloat(a);
+            return rgbaToHex(r, g, b);
+          });
+          return { replaced, lastAlpha };
+        }
+
+        return {
+          element: {
+            enter: (node) => {
+              // Handle fill/stroke attributes directly
+              for (const attr of ['fill', 'stroke']) {
+                if (node.attributes?.[attr]) {
+                  const match = /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/.exec(node.attributes[attr]);
+                  if (match) {
+                    node.attributes[attr] = rgbaToHex(match[1], match[2], match[3]);
+                    node.attributes[attr + '-opacity'] = match[4];
+                  }
+                }
+              }
+              // Handle inline style attributes
+              if (node.attributes?.style) {
+                const { replaced, lastAlpha } = replaceRgbaInStyle(node.attributes.style);
+                if (replaced !== node.attributes.style) {
+                  node.attributes.style = replaced;
+                  // Remove background-color (not valid SVG)
+                  node.attributes.style = node.attributes.style
+                    .replace(/background-color\s*:\s*[^;]+;?\s*/g, '');
+                }
+              }
+            },
+          },
+        };
+      },
+    },
+
+    // 7. Fix <rect> elements missing width/height attributes
     //    Mermaid state diagrams emit bare <rect style="..."/> without
     //    dimensions. Batik (used by FOP) requires explicit width/height
     //    and throws BridgeException without them. Adding "0" makes them
@@ -199,7 +286,7 @@ export default {
       }),
     },
 
-    // 7. Replace foreignObject with native SVG <text>
+    // 8. Replace foreignObject with native SVG <text>
     {
       name: 'replaceForeignObject',
       fn: () => ({
@@ -252,7 +339,7 @@ export default {
               x: xPos,
               y: String(height / 2),
               'text-anchor': textAnchor,
-              'dominant-baseline': 'central',
+              'dominant-baseline': 'middle',
               'font-family': '"trebuchet ms", verdana, arial, sans-serif',
               'font-size': '16px',
               fill: '#333',
@@ -268,7 +355,7 @@ export default {
       }),
     },
 
-    // 8. Remove the <style> element (now empty after inlining)
+    // 9. Remove the <style> element (now empty after inlining)
     'removeStyleElement',
   ],
 };

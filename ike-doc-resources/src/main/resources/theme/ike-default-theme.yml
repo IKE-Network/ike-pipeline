@@ -78,7 +78,7 @@ link:
   font-color: 428bca
   text-decoration: none
 
-literal:
+codespan:
   font-family: NotoSansMono
   font-color: b12146
   font-size: 9
@@ -153,12 +153,12 @@ admonition:
     text-transform: uppercase
     font-style: bold
 
-blockquote:
+quote:
   font-color: 555555
   font-size: 10
   border-color: $base-border-color
   border-width: 5
-  padding: [0, $horizontal-rhythm, $block-margin-bottom * -0.75, $horizontal-rhythm + $blockquote-border-width / 2]
+  padding: [0, $horizontal-rhythm, $block-margin-bottom * -0.75, $horizontal-rhythm + $quote-border-width / 2]
   cite:
     font-size: 9
     font-color: 999999
@@ -218,7 +218,7 @@ description-list:
   term-spacing: $vertical-rhythm / 4
   description-indent: $horizontal-rhythm * 1.25
 
-outline-list:
+list:
   indent: $horizontal-rhythm * 1.5
   item-spacing: $vertical-rhythm / 2
 
