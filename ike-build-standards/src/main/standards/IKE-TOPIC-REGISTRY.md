@@ -27,7 +27,7 @@ the topics.
 
 ```yaml
 # topic-registry.yaml
-registry-version: "1.0"            # schema version for forward compatibility
+registry-version: "1.1"            # schema version for forward compatibility
 generated: 2025-06-15              # ISO date of last registry update
 topic-count: 247                   # total number of topic entries (validation target)
 
@@ -46,27 +46,56 @@ domains:
         status: published
         char-count: 2340
         dependencies: []
+        related: []
         summary: >
           High-level overview of the IKE layered architecture including
-          knowledge graph, reasoning, and API tiers.
+          knowledge graph, reasoning, and API tiers. Covers the separation
+          between storage, inference, and presentation layers.
+
+      - id: arch-dl-classifier
+        file: topics/architecture/dl-classifier.adoc
+        title: "Classifier Architecture"
+        type: concept
+        keywords: [classifier, reasoning, EL++, inference]
+        status: published
+        char-count: 2890
+        dependencies: [arch-overview]
+        related: [term-dl-axioms]  # covers similar ground from architecture angle
+        summary: >
+          Describes the classifier subsystem architecture including integration
+          points, performance characteristics, and the EL++ profile constraints
+          that enable polynomial-time reasoning.
 
 assemblies:                        # catalog of assembly documents
   - id: compendium
     file: compendium.adoc
     title: "IKE Compendium"
     description: "Master assembly containing all topics."
-    topic-refs:
-      - arch-overview
-      - arch-coord-versioning
-      # ... exhaustive ordered list
+    sections:                      # hierarchical structure mirroring the assembly
+      - heading: "Architecture"
+        sections:
+          - heading: "Core Patterns"
+            topic-refs: [arch-overview, arch-coord-versioning, arch-module-coordinates]
+          - heading: "Reasoning"
+            topic-refs: [arch-dl-classifier, arch-inference-pipeline]
+      - heading: "Terminology Management"
+        sections:
+          - heading: "SNOMED CT"
+            topic-refs: [term-snomed-concept-model, term-dl-axioms]
+          - heading: "LOINC"
+            topic-refs: [term-loinc-part-mapping]
 
   - id: versioning-guide
     file: guides/versioning-guide.adoc
     title: "Versioning Guide"
     description: "Targeted guide for version management."
-    topic-refs:
-      - arch-coord-versioning
-      - arch-version-migration
+    sections:
+      - heading: "Core Concepts"
+        topic-refs: [arch-coord-versioning, arch-module-coordinates]
+      - heading: "Procedures"
+        topic-refs: [ops-version-migration, ops-version-conflict-resolution]
+      - heading: "Reference"
+        topic-refs: [ref-coordinate-fields]
 ```
 
 ## Field Definitions: Topic Entry
@@ -88,7 +117,8 @@ assemblies:                        # catalog of assembly documents
 | Field          | Type       | Description                                                  |
 |----------------|------------|--------------------------------------------------------------|
 | `char-count`   | integer    | Character count of the `.adoc` content (excluding attribute block). Updated on each decomposition pass. Used for granularity validation. |
-| `dependencies` | string[]   | List of `topic-id` values that this topic cross-references. Represents "this topic links to" relationships. |
+| `dependencies` | string[]   | List of `topic-id` values that this topic cross-references via `xref:`. Represents "this topic links to" relationships. |
+| `related`      | string[]   | List of `topic-id` values that cover similar subject matter from a different angle. Represents "this topic overlaps with" relationships. Used for redundancy management — when revising one topic, check its `related` topics for consistency. Distinct from `dependencies`, which are structural cross-references. |
 | `supersedes`   | string     | `topic-id` of a deprecated topic that this topic replaces.   |
 | `notes`        | string     | Free-text notes for authors and Claude. Use for documenting exceptions (e.g., "Exceeds 5000 chars — indivisible reference table"). |
 
@@ -100,7 +130,24 @@ assemblies:                        # catalog of assembly documents
 | `file`         | string     | Relative path to the assembly `.adoc` file.                  |
 | `title`        | string     | Human-readable title of the assembled document.              |
 | `description`  | string     | Brief description of the assembly's purpose and audience.    |
-| `topic-refs`   | string[]   | Ordered list of `topic-id` values included in this assembly. Order reflects document order. |
+| `sections`     | section[]  | Hierarchical structure of the assembly (see below).          |
+
+### Assembly Section Structure
+
+Assembly entries use nested `sections` to capture the heading hierarchy of the assembled
+document. This gives Claude and authors structural context — not just which topics are
+included, but where they sit in the document hierarchy.
+
+| Field          | Type       | Description                                                  |
+|----------------|------------|--------------------------------------------------------------|
+| `heading`      | string     | The section heading text as it appears in the assembly.      |
+| `topic-refs`   | string[]   | Ordered list of `topic-id` values included under this heading. |
+| `sections`     | section[]  | Optional nested subsections.                                 |
+
+Sections may nest to match the assembly's heading depth. The `topic-refs` at each level
+list the topics included directly under that heading, in document order. A section may have
+both `topic-refs` and child `sections` if it contains both directly included topics and
+subsections.
 
 ## Topic ID Construction Rules
 
@@ -150,18 +197,31 @@ rules:
 
 ## Summary Guidelines
 
-Summaries serve double duty as human-readable abstracts and Claude search targets. They should:
+Summaries serve triple duty: human-readable abstracts, Claude search targets, and redundancy
+detection signals. They are the primary mechanism by which Claude identifies content overlap
+across sessions. Invest effort in making them specific and term-rich.
 
-1. Be 1–2 sentences, 100–250 characters.
+1. Be 1–3 sentences, 150–400 characters. This is longer than a typical abstract — the extra
+   space is needed for the technical terms that drive redundancy detection.
 2. Use indicative mood: "Describes the coordinate-based versioning pattern..." not "This topic
    describes..."
-3. Include 2–3 key terms not already in `keywords` or `title`.
-4. Be specific enough that a reader (or Claude) can determine relevance without opening the
-   file.
+3. Include 3–5 key technical terms not already in `keywords` or `title`. Prioritize terms
+   that would help identify overlap with other topics — the specific standards, formalisms,
+   patterns, and domain concepts discussed in the body.
+4. Mention the *angle* or *perspective* of the topic when relevant: "from the terminology
+   authoring perspective" or "focusing on build-time validation." This helps distinguish
+   intentionally overlapping topics.
+5. Be specific enough that a reader (or Claude) can determine relevance and potential overlap
+   without opening the file.
 
-Bad: "Covers versioning." (too vague)
+Bad: "Covers versioning." (too vague, no technical terms, useless for redundancy detection)
+
+Bad: "Describes coordinate-based versioning." (marginally better but still lacks the specific
+terms that would trigger overlap detection)
+
 Good: "Describes the coordinate-based versioning pattern where each component version is
-identified by module, path, and temporal coordinates within the STAMP model."
+identified by module, path, and temporal coordinates within the STAMP model. Covers the
+relationship between coordinates and the version graph used for dependency resolution."
 
 ## Maintenance Rules
 
@@ -190,22 +250,61 @@ The CI build should enforce:
 2. Every registry entry's `file` path resolves to an existing `.adoc` file.
 3. `topic-count` matches the actual count of topic entries.
 4. All `dependencies` reference valid `topic-id` values.
-5. All `topic-refs` in assemblies reference valid `topic-id` values.
-6. No duplicate `topic-id` values exist.
+5. All `related` entries reference valid `topic-id` values, and the relationship is
+   bidirectional — if topic A lists topic B as `related`, topic B must list topic A.
+6. All `topic-refs` in assembly sections reference valid `topic-id` values.
+7. No duplicate `topic-id` values exist.
+8. Every published topic appears in at least one assembly's `sections`.
 
 A Maven Enforcer rule or a lightweight validation script invoked during `validate` phase can
 perform these checks.
+
+## Generated Artifact: term-index.yaml
+
+The build produces `term-index.yaml` by collecting all `indexterm` and `((...))` entries from
+topic `.adoc` files. This file is a generated artifact — it must not be hand-edited. See
+`IKE-INDEX.md` for the full schema and authoring conventions.
+
+### Purpose
+
+The term index provides a reverse mapping from technical terms to topics. While the registry's
+`keywords` and `summary` fields capture what a topic is *about*, the term index captures what
+a topic *discusses*. This distinction matters for redundancy detection: two topics may have
+different keywords but discuss the same underlying concepts.
+
+### Location
+
+```
+{topic-library-module}/target/generated/term-index.yaml
+```
+
+The term index is generated during the build and placed in the `target/` directory. It is not
+committed to source control. It is included in the packaged topic library zip so that
+dependent modules and Claude have access to it after unpacking.
+
+### Build Integration
+
+A build-time script (Groovy, Python, or similar) walks all `.adoc` files under `topics/`,
+extracts `indexterm` macros and `((...))` inline index terms, and produces the YAML file.
+This script should run during the `process-resources` phase, after topic files are in place
+but before packaging.
 
 ## Working with Claude
 
 ### Providing Context
 
-At the start of a session involving topic work, upload or paste the `topic-registry.yaml` file
-(or the relevant domain section if the full file is too large). This gives Claude the complete
-map of existing content.
+At the start of a session involving topic work, upload or paste:
 
-For a 600-page compendium decomposed into ~300 topics, the registry will be roughly 15–20 KB
-of YAML — well within context window limits.
+1. The `topic-registry.yaml` file (or the relevant domain section if the full file is too
+   large).
+2. The `term-index.yaml` file, if available and if the session involves integration or
+   redundancy checking.
+
+For a 600-page compendium decomposed into ~300 topics, the registry will be roughly 20–30 KB
+of YAML and the term index roughly 10–15 KB — both well within context window limits.
+
+Together, these two files give Claude a complete map of what exists (registry), where it sits
+structurally (assembly sections), and what specific terms each topic discusses (term index).
 
 ### Requesting Topic Lookup
 

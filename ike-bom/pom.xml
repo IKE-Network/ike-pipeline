@@ -52,11 +52,22 @@
         <url>https://ike.network</url>
     </organization>
 
+    <distributionManagement>
+        <repository>
+            <id>ike-releases</id>
+            <url>${deploy.release.url}</url>
+        </repository>
+        <snapshotRepository>
+            <id>ike-snapshots</id>
+            <url>${deploy.snapshot.url}</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <properties>
         <!-- ── IKE Build Standards ──────────────────────────────────── -->
         <!-- Monotonic integer versioning: 1, 2, 3, ...                 -->
         <!-- Bump here when a new standards release is published.       -->
-        <ike-build-standards.version>2</ike-build-standards.version>
+        <ike-build-standards.version>3-SNAPSHOT</ike-build-standards.version>
     </properties>
 
     <dependencyManagement>
@@ -74,7 +85,7 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-doc-resources</artifactId>
-                <version>1.0.0</version>
+                <version>1.0.0-SNAPSHOT</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

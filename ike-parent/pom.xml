@@ -42,13 +42,24 @@
         <url>https://ike.network</url>
     </organization>
 
+    <distributionManagement>
+        <repository>
+            <id>ike-releases</id>
+            <url>${deploy.release.url}</url>
+        </repository>
+        <snapshotRepository>
+            <id>ike-snapshots</id>
+            <url>${deploy.snapshot.url}</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <properties>
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- IKE Build Infrastructure Versions -->
-        <ike-build-tools.version>1.0.0</ike-build-tools.version>
+        <ike-build-tools.version>1.0.0-SNAPSHOT</ike-build-tools.version>
 
         <!-- Maven Plugin Versions -->
         <maven-dependency-plugin.version>3.8.1</maven-dependency-plugin.version>
@@ -113,7 +124,7 @@
         <saxon-he.version>12.5</saxon-he.version>
         <fop.version>2.11</fop.version>
         <xml-maven-plugin.version>1.1.0</xml-maven-plugin.version>
-        <docbook-xsl.ike.version>1.79.2-ike.2</docbook-xsl.ike.version>
+        <docbook-xsl.ike.version>1.79.2-ike.2-SNAPSHOT</docbook-xsl.ike.version>
         <docbook.xsl.directory>${project.build.directory}/docbook-xsl</docbook.xsl.directory>
 
         <!-- Intermediate directories for the DocBook pipeline -->
@@ -154,6 +165,7 @@
         <ike.skip.fop>true</ike.skip.fop>
         <ike.skip.pdf-default>true</ike.skip.pdf-default>
         <ike.skip.docbook>true</ike.skip.docbook>
+        <ike.skip.asciidoc-zip>true</ike.skip.asciidoc-zip>
 
         <!-- Default renderer for the pdf-default copy. POM-level properties
              do NOT trigger property-based profile activation, so this is safe.
@@ -188,7 +200,7 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>minimal-fonts</artifactId>
-                <version>1.0.0</version>
+                <version>1.0.0-SNAPSHOT</version>
             </dependency>
 
             <!-- DocBook XSL 1.79.2 + IKE FO customization layer -->
@@ -226,7 +238,7 @@
                                     <artifactItem>
                                         <groupId>network.ike</groupId>
                                         <artifactId>ike-doc-resources</artifactId>
-                                        <version>1.0.0</version>
+                                        <version>1.0.0-SNAPSHOT</version>
                                         <type>jar</type>
                                         <overWrite>true</overWrite>
                                         <outputDirectory>${ike.doc.resources.directory}</outputDirectory>
@@ -247,6 +259,7 @@
                                 <outputDirectory>${asciidoc.generated.directory}</outputDirectory>
                                 <useSubDirectoryPerArtifact>true</useSubDirectoryPerArtifact>
                                 <stripVersion>true</stripVersion>
+                                <stripType>true</stripType>
                                 <includeGroupIds>network.ike</includeGroupIds>
                             </configuration>
                         </execution>
@@ -296,7 +309,7 @@
                                     <artifactItem>
                                         <groupId>network.ike</groupId>
                                         <artifactId>minimal-fonts</artifactId>
-                                        <version>1.0.0</version>
+                                        <version>1.0.0-SNAPSHOT</version>
                                         <type>jar</type>
                                         <outputDirectory>${fonts.output.directory}</outputDirectory>
                                         <includes>**/*.ttf</includes>
@@ -328,6 +341,7 @@
                 <plugin><artifactId>maven-surefire-plugin</artifactId><version>3.5.2</version></plugin>
                 <plugin><artifactId>maven-jar-plugin</artifactId><version>3.4.2</version></plugin>
                 <plugin><artifactId>maven-install-plugin</artifactId><version>3.1.3</version></plugin>
+                <plugin><artifactId>maven-deploy-plugin</artifactId><version>3.1.3</version></plugin>
 
                 <!-- Exec Maven Plugin — invokes external PDF renderers -->
                 <plugin>
@@ -518,7 +532,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <artifactItem>
                                     <groupId>network.ike</groupId>
                                     <artifactId>ike-doc-resources</artifactId>
-                                    <version>1.0.0</version>
+                                    <version>1.0.0-SNAPSHOT</version>
                                     <type>jar</type>
                                     <overWrite>true</overWrite>
                                     <outputDirectory>${ike.doc.resources.directory}</outputDirectory>
@@ -541,7 +555,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <artifactItem>
                                     <groupId>network.ike</groupId>
                                     <artifactId>ike-build-standards</artifactId>
-                                    <version>2</version>
+                                    <version>3-SNAPSHOT</version>
                                     <classifier>claude</classifier>
                                     <type>zip</type>
                                     <overWrite>true</overWrite>
@@ -1192,18 +1206,19 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                     </execution>
 
                     <!-- Prince: Fix Mermaid SVGs (foreignObject → native <text>) -->
+                    <!-- Wrapped in sh -c to gracefully skip when no SVGs exist   -->
                     <execution>
                         <id>fix-svg-for-prince</id>
                         <phase>prepare-package</phase>
                         <goals><goal>exec</goal></goals>
                         <configuration>
                             <skip>${ike.skip.prince}</skip>
-                            <executable>svgo</executable>
+                            <executable>sh</executable>
                             <arguments>
-                                <argument>--config=${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
-                                <argument>-f</argument>
+                                <argument>-c</argument>
+                                <argument>ls "${0}"/*.svg &gt;/dev/null 2&gt;&amp;1 &amp;&amp; svgo --config="${1}" -f "${0}" --quiet || true</argument>
                                 <argument>${asciidoc.output.directory}/pdf-html-prince</argument>
-                                <argument>--quiet</argument>
+                                <argument>${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
                             </arguments>
                         </configuration>
                     </execution>
@@ -1215,6 +1230,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         <goals><goal>exec</goal></goals>
                         <configuration>
                             <skip>${ike.skip.prince}</skip>
+                            <outputFile>${project.build.directory}/logs/renderer-prince.log</outputFile>
                             <executable>${prince.executable}</executable>
                             <arguments>
                                 <argument>${asciidoc.output.directory}/pdf-html-prince/${pdf.source.document}.html</argument>
@@ -1234,12 +1250,12 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         <goals><goal>exec</goal></goals>
                         <configuration>
                             <skip>${ike.skip.ah}</skip>
-                            <executable>svgo</executable>
+                            <executable>sh</executable>
                             <arguments>
-                                <argument>--config=${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
-                                <argument>-f</argument>
+                                <argument>-c</argument>
+                                <argument>ls "${0}"/*.svg &gt;/dev/null 2&gt;&amp;1 &amp;&amp; svgo --config="${1}" -f "${0}" --quiet || true</argument>
                                 <argument>${asciidoc.output.directory}/pdf-html-ah</argument>
-                                <argument>--quiet</argument>
+                                <argument>${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
                             </arguments>
                         </configuration>
                     </execution>
@@ -1253,6 +1269,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         <goals><goal>exec</goal></goals>
                         <configuration>
                             <skip>${ike.skip.ah}</skip>
+                            <outputFile>${project.build.directory}/logs/renderer-ah.log</outputFile>
                             <executable>${antennahouse.executable}</executable>
                             <arguments>
                                 <argument>-cssmode</argument>
@@ -1275,6 +1292,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         <goals><goal>exec</goal></goals>
                         <configuration>
                             <skip>${ike.skip.weasyprint}</skip>
+                            <outputFile>${project.build.directory}/logs/renderer-weasyprint.log</outputFile>
                             <executable>${weasyprint.executable}</executable>
                             <arguments>
                                 <argument>${asciidoc.output.directory}/pdf-html-weasyprint/${pdf.source.document}.html</argument>
@@ -1295,12 +1313,12 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         <goals><goal>exec</goal></goals>
                         <configuration>
                             <skip>${ike.skip.xep}</skip>
-                            <executable>svgo</executable>
+                            <executable>sh</executable>
                             <arguments>
-                                <argument>--config=${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
-                                <argument>-f</argument>
+                                <argument>-c</argument>
+                                <argument>ls "${0}"/*.svg &gt;/dev/null 2&gt;&amp;1 &amp;&amp; svgo --config="${1}" -f "${0}" --quiet || true</argument>
                                 <argument>${asciidoc.output.directory}/docbook-xep</argument>
-                                <argument>--quiet</argument>
+                                <argument>${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
                             </arguments>
                         </configuration>
                     </execution>
@@ -1315,6 +1333,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         <goals><goal>exec</goal></goals>
                         <configuration>
                             <skip>${ike.skip.xep}</skip>
+                            <outputFile>${project.build.directory}/logs/renderer-xep.log</outputFile>
                             <executable>java</executable>
                             <arguments>
                                 <argument>-classpath</argument>
@@ -1339,12 +1358,12 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         <goals><goal>exec</goal></goals>
                         <configuration>
                             <skip>${ike.skip.fop}</skip>
-                            <executable>svgo</executable>
+                            <executable>sh</executable>
                             <arguments>
-                                <argument>--config=${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
-                                <argument>-f</argument>
+                                <argument>-c</argument>
+                                <argument>ls "${0}"/*.svg &gt;/dev/null 2&gt;&amp;1 &amp;&amp; svgo --config="${1}" -f "${0}" --quiet || true</argument>
                                 <argument>${asciidoc.output.directory}/docbook-fop</argument>
-                                <argument>--quiet</argument>
+                                <argument>${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
                             </arguments>
                         </configuration>
                     </execution>
@@ -1360,6 +1379,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         <goals><goal>exec</goal></goals>
                         <configuration>
                             <skip>${ike.skip.fop}</skip>
+                            <outputFile>${project.build.directory}/logs/renderer-fop.log</outputFile>
                             <executable>java</executable>
                             <arguments>
                                 <argument>-classpath</argument>
@@ -1442,6 +1462,23 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <arguments>
                                 <argument>${asciidoc.output.directory}/pdf-${ike.pdf.default}/${ike.document.name}.pdf</argument>
                                 <argument>${asciidoc.output.directory}/pdf/</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- Scan renderer log files for errors and print summary.  -->
+                    <!-- Runs in verify phase after all renderers (package) and -->
+                    <!-- after pdf-default copy. Always enabled — the script    -->
+                    <!-- silently exits if no log files exist.                  -->
+                    <execution>
+                        <id>scan-renderer-logs</id>
+                        <phase>verify</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <executable>sh</executable>
+                            <arguments>
+                                <argument>${project.build.directory}/build-tools/scripts/scan-renderer-logs.sh</argument>
+                                <argument>${project.build.directory}/logs</argument>
                             </arguments>
                         </configuration>
                     </execution>
@@ -1567,6 +1604,19 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <skipAssembly>${ike.skip.pdf-default}</skipAssembly>
                             <descriptors>
                                 <descriptor>${ike.assembly.directory}/pdf.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+
+                    <!-- AsciiDoc source ZIP for topic libraries -->
+                    <execution>
+                        <id>zip-asciidoc</id>
+                        <phase>package</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <skipAssembly>${ike.skip.asciidoc-zip}</skipAssembly>
+                            <descriptors>
+                                <descriptor>${ike.assembly.directory}/asciidoc.xml</descriptor>
                             </descriptors>
                         </configuration>
                     </execution>

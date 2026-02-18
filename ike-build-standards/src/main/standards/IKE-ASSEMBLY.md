@@ -78,6 +78,13 @@ include::{topicsdir}/topics/terminology/snomed-ct/concept-model.adoc[leveloffset
 include::{topicsdir}/topics/terminology/snomed-ct/description-logic-axioms.adoc[leveloffset=+1]
 
 // ... remaining domains
+
+// ============================================================
+// Index (generated from indexterm macros in topic fragments)
+// ============================================================
+
+[index]
+== Index
 ```
 
 ### Targeted Guide
@@ -117,6 +124,10 @@ include::{topicsdir}/topics/operations/version-conflict-resolution.adoc[leveloff
 == Reference
 
 include::{topicsdir}/topics/architecture/coordinate-field-definitions.adoc[leveloffset=+1]
+
+// Index is optional for targeted guides. Include for guides with 30+ topics.
+// [index]
+// == Index
 ```
 
 ## Include Directive Conventions
@@ -219,6 +230,91 @@ degrading in targeted guides that may not include the referenced topic.
 `versioning-guide`, etc.) and should only control cross-reference behavior, never substantive
 content. If content varies by audience, create separate topics.
 
+## Index Generation
+
+Topic fragments contain `indexterm` macros and inline `((...))` index terms authored per
+`IKE-INDEX.md`. Assemblies control whether those terms are collected into a rendered index.
+
+### Compendium: Index Required
+
+The compendium must include a generated index. Place the index block as the final section
+of the document:
+
+```asciidoc
+// after all domain sections
+
+[index]
+== Index
+```
+
+The `[index]` block macro instructs the AsciiDoc processor to collect all `indexterm` and
+`((...))` entries from the included fragments and render them as a sorted, linked index at
+this location.
+
+### Targeted Guides: Index Optional
+
+Targeted guides should include an index when they contain 30 or more topics. For shorter
+guides, the TOC is typically sufficient navigation. When including an index in a targeted
+guide, use the same syntax as the compendium.
+
+For guides that omit the index, add a commented placeholder so future maintainers know it
+was an intentional choice:
+
+```asciidoc
+// Index omitted — guide has fewer than 30 topics.
+// Uncomment if the guide grows:
+// [index]
+// == Index
+```
+
+### Backend Requirements
+
+Index generation support varies by backend:
+
+| Backend              | Index Support | Notes                                    |
+|----------------------|---------------|------------------------------------------|
+| DocBook              | Full          | Native index generation                  |
+| `asciidoctor-pdf`    | Full          | Generates back-of-book index             |
+| HTML5 (default)      | Partial       | Renders index term anchors but does not generate a collected index page without an extension |
+| HTML5 + Asciidoctor.js | Partial    | Same limitation as default HTML5         |
+
+For HTML5 output, consider the `asciidoctor-index` extension or generate the index via the
+DocBook toolchain and convert. If HTML5 is the primary output format, the `term-index.yaml`
+generated build artifact (see `IKE-INDEX.md` and `IKE-TOPIC-REGISTRY.md`) serves as the
+machine-readable index regardless of rendering backend.
+
+### Build Configuration
+
+No additional `asciidoctor-maven-plugin` attributes are needed for index generation. The
+`[index]` block macro and the `indexterm`/`((...))` markup in fragments are sufficient. The
+processor handles collection and rendering.
+
+For PDF output, ensure `asciidoctor-pdf` is configured in the build:
+
+```xml
+<plugin>
+  <groupId>org.asciidoctor</groupId>
+  <artifactId>asciidoctor-maven-plugin</artifactId>
+  <dependencies>
+    <dependency>
+      <groupId>org.asciidoctor</groupId>
+      <artifactId>asciidoctorj-pdf</artifactId>
+      <version>${asciidoctorj-pdf.version}</version>
+    </dependency>
+  </dependencies>
+  <executions>
+    <execution>
+      <id>generate-pdf</id>
+      <phase>generate-resources</phase>
+      <goals><goal>process-asciidoc</goal></goals>
+      <configuration>
+        <backend>pdf</backend>
+      </configuration>
+    </execution>
+  </executions>
+</plugin>
+```
+
 ## Transitional Prose in Assemblies
 
 Targeted guides may include brief transitional prose between `include::` directives to provide
@@ -245,14 +341,16 @@ Constraints on transitional prose:
 ## Assembly Registration
 
 Every assembly must have an entry in `topic-registry.yaml` under the `assemblies` section.
-The `topic-refs` list must be kept in sync with the `include::` directives in the assembly
-file. See `IKE-TOPIC-REGISTRY.md` for the assembly entry schema.
+The entry's `sections` structure must be kept in sync with the `include::` directives and
+heading hierarchy in the assembly file. See `IKE-TOPIC-REGISTRY.md` for the assembly entry
+schema, including the nested `sections` format.
 
 CI validation should check that:
 
 1. Every `include::` path in the assembly resolves to a topic with a valid registry entry.
-2. The `topic-refs` list in the registry matches the actual includes in the assembly file
-   (same topics, same order).
+2. The `sections` hierarchy in the registry matches the actual heading structure and includes
+   in the assembly file (same topics, same nesting, same order).
+3. Every published, non-deprecated topic appears in at least one assembly's `sections`.
 
 ## Maven Build Integration
 
@@ -330,12 +428,14 @@ in each assembly module's POM.
 2. Set document-level attributes per the table above.
 3. Add `include::` directives for each topic, using `{topicsdir}` paths and appropriate
    `leveloffset`.
-4. Add the assembly entry to `topic-registry.yaml` with the ordered `topic-refs` list.
+4. Add the assembly entry to `topic-registry.yaml` with nested `sections` mirroring the
+   heading hierarchy of the assembly.
 5. Build and verify:
    - All includes resolve.
    - All cross-references resolve.
    - Heading levels render correctly.
    - TOC structure is sensible.
+   - Registry `sections` match the actual assembly structure.
 
 ## Instructing Claude for Assembly Work
 

@@ -21,11 +21,13 @@ Every topic `.adoc` file must follow this structure:
 :topic-type: concept
 :topic-status: draft
 :topic-keywords: versioning, coordinates, STAMP, temporal
+:topic-scope-note: Covers versioning from the architecture perspective. \
+  For version management procedures, see ops-version-migration.
 
 [[{topic-id}]]
 = {Title}
 
-{Content body}
+{Content body with index terms per IKE-INDEX.md}
 ```
 
 ### Breakdown
@@ -33,16 +35,17 @@ Every topic `.adoc` file must follow this structure:
 1. **Comment header** (lines 1–4): Human-readable metadata for quick identification when
    viewing raw files. These are AsciiDoc comments and do not render.
 
-2. **Attribute block** (lines 5–8): Machine-readable metadata. These attributes are available
+2. **Attribute block** (lines 5–9): Machine-readable metadata. These attributes are available
    to the build pipeline and can be extracted for registry validation.
 
-3. **Anchor** (line 10): An inline anchor using the `topic-id` as the anchor name. This is
+3. **Anchor** (line 11): An inline anchor using the `topic-id` as the anchor name. This is
    the cross-reference target. It must immediately precede the heading.
 
-4. **Level-1 heading** (line 11): Every fragment starts with a level-1 heading (`=`). The
+4. **Level-1 heading** (line 12): Every fragment starts with a level-1 heading (`=`). The
    assembly controls the actual rendered level via `leveloffset` in the `include::` directive.
 
-5. **Content body** (line 13+): The topic content.
+5. **Content body** (line 14+): The topic content, with index terms embedded per
+   `IKE-INDEX.md`.
 
 ## Heading Rules
 
@@ -82,12 +85,13 @@ labels for empty sections or as organizational placeholders.
 
 ### Include in Fragments
 
-| Attribute         | Purpose                          | Example                                |
-|-------------------|----------------------------------|----------------------------------------|
-| `:topic-id:`      | Unique identifier                | `arch-coord-versioning`                |
-| `:topic-type:`    | concept, task, or reference      | `concept`                              |
-| `:topic-status:`  | Lifecycle status                 | `published`                            |
-| `:topic-keywords:`| Comma-separated keyword list     | `versioning, coordinates, STAMP`       |
+| Attribute            | Purpose                          | Example                                |
+|----------------------|----------------------------------|----------------------------------------|
+| `:topic-id:`         | Unique identifier                | `arch-coord-versioning`                |
+| `:topic-type:`       | concept, task, or reference      | `concept`                              |
+| `:topic-status:`     | Lifecycle status                 | `published`                            |
+| `:topic-keywords:`   | Comma-separated keyword list     | `versioning, coordinates, STAMP`       |
+| `:topic-scope-note:` | Optional. Clarifies this topic's angle when it intentionally overlaps with a related topic. References the related topic-id. | `Covers classifiers from the authoring perspective. For classifier architecture, see arch-dl-classifier.` |
 
 ### Never Include in Fragments
 
@@ -293,6 +297,43 @@ This reference defines all fields in the STAMP coordinate system.
 ```
 
 Reference topics should minimize narrative and maximize scannable structure.
+
+## Index Terms
+
+Every topic must contain index terms per `IKE-INDEX.md`. Index terms are embedded during
+authoring — they are not added in a separate pass. Target 3–10 index terms per topic.
+
+### Syntax Summary
+
+Use inline double parentheses for terms that should appear in rendered text:
+
+```asciidoc
+The ((necessary normal form)) transformation ensures that all concept definitions
+are reduced to a canonical structure before classification.
+```
+
+Use the `indexterm` macro for silent entries (hierarchical or alternate terms):
+
+```asciidoc
+indexterm:[classification, necessary normal form]
+indexterm:[coordinates, temporal coordinate]
+```
+
+### Placement
+
+- Place index terms at the point of first substantive use in the topic.
+- Place `indexterm` macros immediately before the paragraph that discusses the term.
+- Do not cluster index terms at the top or bottom of the file.
+- Do not mark subsequent occurrences of a term already indexed.
+
+### Controlled Vocabulary
+
+Use the controlled vocabulary defined in `IKE-INDEX.md`. Check the vocabulary before
+creating new index entries. If the term you need is not in the vocabulary, propose an
+addition as part of your session deliverables.
+
+See `IKE-INDEX.md` for full term selection criteria, density guidelines, and the current
+controlled vocabulary.
 
 ## Things to Avoid
 

@@ -78,9 +78,32 @@ IKE-specific properties use the `ike.` prefix:
 
 ## Version Strategy
 
-- Infrastructure modules: independent versions (e.g., `minimal-fonts:1.0.0`, `docbook-xsl:1.79.2-ike.2`).
-- Parent POMs and project modules: coordinated SNAPSHOT versions during development (e.g., `1.1.0-SNAPSHOT`).
-- Release versions: remove `-SNAPSHOT` suffix, tag, deploy, then bump to next SNAPSHOT.
+- All modules use `-SNAPSHOT` versions during development.
+- Infrastructure modules have independent version tracks (e.g.,
+  `minimal-fonts:1.0.0-SNAPSHOT`, `docbook-xsl:1.79.2-ike.2-SNAPSHOT`).
+- Parent POMs and project modules use coordinated SNAPSHOT versions
+  (e.g., `1.1.0-SNAPSHOT`).
+
+### Release Process — NEVER manually edit versions
+
+**Releases MUST use a proper release tool** — either the
+`maven-release-plugin`, the `gitflow-maven-plugin`, or an equivalent
+SCM-integrated release process. A valid release:
+
+1. Is performed by a release plugin (not manual version edits)
+2. Removes `-SNAPSHOT`, builds, deploys the release artifact
+3. Tags the commit in SCM (e.g., `v1.0.0`)
+4. Bumps to the next `-SNAPSHOT` for continued development
+5. Pushes both the tag and the version bump commit
+
+**Prohibited**: Manually removing `-SNAPSHOT` from `<version>` elements
+and running `mvn deploy`. This produces untagged, unreproducible artifacts
+in the release repository. The Nexus release repository rejects
+redeployment, so a botched manual release permanently burns that version
+number.
+
+**During development**, all versions remain `-SNAPSHOT`. Only a release
+plugin may transition a version to a non-SNAPSHOT release.
 
 ### Standards Artifact Versioning
 

@@ -7,13 +7,13 @@
   FO customization layer (ike-fo.xsl) as a single Maven artifact.
 
   Build:    mvn install
-  Deploy:   mvn deploy -DaltDeploymentRepository=ike-releases::https://nexus.tinkar.org/repository/ike-releases/
+  Deploy:   mvn deploy (requires deploy.release.url in settings.xml)
 
   Consumer usage (in pdf-xep profile):
     <dependency>
       <groupId>network.ike</groupId>
       <artifactId>ike-docbook-xsl</artifactId>
-      <version>1.79.2-ike.2</version>
+      <version>1.79.2-ike.2-SNAPSHOT</version>
     </dependency>
 
     maven-dependency-plugin:unpack → target/docbook-xsl/
@@ -46,7 +46,7 @@
       Bump the ike.N suffix when ike-fo.xsl changes.
       Bump the base version when upgrading DocBook XSL.
     -->
-    <version>1.79.2-ike.2</version>
+    <version>1.79.2-ike.2-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>IKE DocBook XSL Stylesheets</name>
@@ -82,6 +82,17 @@
         <name>IKE Community</name>
         <url>https://ike.network</url>
     </organization>
+
+    <distributionManagement>
+        <repository>
+            <id>ike-releases</id>
+            <url>${deploy.release.url}</url>
+        </repository>
+        <snapshotRepository>
+            <id>ike-snapshots</id>
+            <url>${deploy.snapshot.url}</url>
+        </snapshotRepository>
+    </distributionManagement>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -130,7 +141,7 @@
                                 <artifactItem>
                                     <groupId>network.ike</groupId>
                                     <artifactId>ike-build-standards</artifactId>
-                                    <version>2</version>
+                                    <version>3-SNAPSHOT</version>
                                     <classifier>claude</classifier>
                                     <type>zip</type>
                                     <overWrite>true</overWrite>

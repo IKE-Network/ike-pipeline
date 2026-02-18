@@ -12,7 +12,7 @@
   standards files to read.
 
   Build:    mvn install
-  Artifact: network.ike:ike-build-standards:2:zip:claude
+  Artifact: network.ike:ike-build-standards:3-SNAPSHOT:zip:claude
 -->
 <project xmlns="http://maven.apache.org/POM/4.1.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -22,7 +22,7 @@
 
     <groupId>network.ike</groupId>
     <artifactId>ike-build-standards</artifactId>
-    <version>2</version>
+    <version>3-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>IKE Build Standards</name>
@@ -46,6 +46,17 @@
         <name>IKE Community</name>
         <url>https://ike.network</url>
     </organization>
+
+    <distributionManagement>
+        <repository>
+            <id>ike-releases</id>
+            <url>${deploy.release.url}</url>
+        </repository>
+        <snapshotRepository>
+            <id>ike-snapshots</id>
+            <url>${deploy.snapshot.url}</url>
+        </snapshotRepository>
+    </distributionManagement>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

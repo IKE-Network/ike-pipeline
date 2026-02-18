@@ -120,6 +120,86 @@ mvn clean verify -Dike.html.single
 | XEP PDF | `target/generated-docs/pdf-xep/` |
 | Default PDF copy | `target/generated-docs/pdf/` |
 
+## Renderer Capabilities
+
+The pipeline supports 6 PDF renderers and 2 HTML outputs. Each uses a
+different Asciidoctor backend and rendering pipeline, which determines
+what features are available.
+
+### Renderer Overview
+
+| Renderer | Backend | Pipeline | License |
+|----------|---------|----------|---------|
+| HTML | html5 | AsciiDoc → HTML | Free |
+| HTML-Single | html5 | AsciiDoc → HTML (data-URI) | Free |
+| Prawn | pdf | AsciiDoc → PDF (direct) | Free |
+| FOP | docbook5 | AsciiDoc → DocBook → XSL-FO → PDF | Free |
+| Prince | html5 | AsciiDoc → HTML → PDF | Commercial |
+| AH | html5 | AsciiDoc → HTML → PDF | Commercial |
+| WeasyPrint | html5 | AsciiDoc → HTML → PDF | Free |
+| XEP | docbook5 | AsciiDoc → DocBook → XSL-FO → PDF | Commercial |
+
+### Feature Support by Backend
+
+Not all AsciiDoc features work identically across backends. The
+Asciidoctor backend determines what is available.
+
+| Feature | html5 | pdf (Prawn) | docbook5 |
+|---------|:-----:|:-----------:|:--------:|
+| `[index]` catalog | No | Yes | Yes |
+| `indexterm:[]` captured | Anchors only | Full index | Full index |
+| Koncept badges | SVG | Text-only | DocBook phrase |
+| Glossary (Postprocessor) | Yes | No (crashes) | Yes |
+| SVG diagrams (Kroki) | Full | PNG fallback | Full (with fixes) |
+| Table of contents | Yes | Yes | Yes |
+| Cross-references | Yes | Yes | Yes |
+| Source highlighting | Rouge | Rouge | N/A (XSL-FO) |
+
+**Renderers grouped by backend:**
+
+- **html5**: HTML, HTML-Single, Prince, AH, WeasyPrint
+- **pdf**: Prawn
+- **docbook5**: FOP, XEP
+
+### Known Limitations
+
+**Index generation** — The `[index]` macro only produces a back-of-book
+index with the `pdf` (Prawn) and `docbook5` (FOP/XEP) backends. The
+`html5` backend captures `indexterm:[]` macros as hidden anchors but
+does not generate the index catalog. This affects all HTML-based
+renderers (HTML, Prince, AH, WeasyPrint). Use conditional inclusion
+in assembly files:
+
+```asciidoc
+ifdef::backend-pdf,backend-docbook5[]
+[index]
+== Index
+endif::[]
+```
+
+**Koncept badges** — The `k:Name[]` inline macro renders differently
+per backend:
+- html5: clickable SVG pill badges linking to glossary
+- pdf (Prawn): text-only `K Label` (Prawn's HTML parser cannot render SVG)
+- docbook5: `<phrase role="koncept">` styled by ike-fo.xsl
+
+**Glossary Postprocessor** — Cannot be registered via SPI because it
+crashes the Prawn backend (JRuby `PostprocessorProxy` TypeError). It is
+registered per-execution in the asciidoctor-maven-plugin config for
+html5 and docbook5 backends only.
+
+**FOP SVG rendering** — Apache FOP uses Batik for SVG, which has
+several limitations. The pipeline includes automated fixes (svgo +
+antrun) for: missing `<rect>` dimensions, `orient="auto-start-reverse"`
+on markers, `alignment-baseline="central"` (SVG2), and `fill:rgba()`
+values. FOP also requires the `-r` (relaxed validation) flag.
+
+**WeasyPrint SVG** — Cannot render `<foreignObject>` in SVGs, so
+Mermaid diagrams use PNG format instead of SVG.
+
+**Prawn SVG** — The `prawn-svg` library drops `<foreignObject>` from
+Mermaid SVGs. Diagrams use PNG format instead of SVG.
+
 ## Creating a Standalone Doc Project
 
 For a doc project in its own repository (outside the IKE reactor):
@@ -137,20 +217,193 @@ For a doc project in its own repository (outside the IKE reactor):
 3. The `ike-doc-resources` JAR is unpacked automatically by `ike-parent`'s
    `maven-dependency-plugin` configuration — no `../` paths needed.
 
-## Cross-Project Doc Inclusion
+## Multi-Assembly Projects
 
-To include documentation from another project:
+When a project produces multiple documents (e.g., a compendium, an
+architecture guide, and a developer guide), use a **topic library +
+assembly module** pattern. Each assembly produces an independent PDF
+artifact in one reactor build.
 
-1. The source project packages AsciiDoc as a classified ZIP:
-   ```xml
-   <classifier>asciidoc</classifier>
-   <type>zip</type>
-   ```
+### Topic Library
 
-2. The consumer declares it as a dependency and unpacks via
-   `maven-dependency-plugin`'s `unpack-dependencies` goal.
+A topic library is a Maven module containing reusable `.adoc` fragments:
 
-3. Reference via the `{generated}` attribute:
-   ```asciidoc
-   include::{generated}/other-project/chapters/shared.adoc[]
-   ```
+- **Packaging**: JAR (renders HTML by default for authoring preview)
+- **Source**: `src/docs/asciidoc/topics/` with topic files, plus
+  `index.adoc` for a browsable all-topics preview
+- **Artifact**: publishes a `-asciidoc` classified ZIP of all sources
+- Does NOT render PDF — that is the assembly module's job
+
+**POM template** (topic library):
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.1.0" ...>
+    <modelVersion>4.1.0</modelVersion>
+    <parent>
+        <groupId>network.ike</groupId>
+        <artifactId>ike-parent</artifactId>
+        <version>1.1.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>my-topics</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+
+    <properties>
+        <ike.skip.asciidoc-zip>false</ike.skip.asciidoc-zip>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>network.ike</groupId>
+            <artifactId>minimal-fonts</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.asciidoctor</groupId>
+                <artifactId>asciidoctor-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+```
+
+### Assembly Module
+
+An assembly module composes topics from one or more topic libraries
+into a single document:
+
+- **Packaging**: JAR (full renderer pipeline)
+- **Source**: `src/docs/asciidoc/` with the assembly `.adoc` file
+- **Dependencies**: one or more topic library `-asciidoc` ZIPs
+- **Unpack**: `ike-parent` automatically unpacks `-asciidoc` ZIPs to
+  `target/generated-sources/asciidoc/{artifactId}-asciidoc/`
+- **Includes**: use AsciiDoc attributes to reference unpacked topics
+
+**POM template** (assembly module):
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.1.0" ...>
+    <modelVersion>4.1.0</modelVersion>
+    <parent>
+        <groupId>network.ike</groupId>
+        <artifactId>ike-parent</artifactId>
+        <version>1.1.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>my-compendium</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+
+    <properties>
+        <pdf.source.document>compendium</pdf.source.document>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>network.ike</groupId>
+            <artifactId>my-topics</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <classifier>asciidoc</classifier>
+            <type>zip</type>
+        </dependency>
+        <dependency>
+            <groupId>network.ike</groupId>
+            <artifactId>minimal-fonts</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.asciidoctor</groupId>
+                <artifactId>asciidoctor-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+```
+
+### Include Path Resolution
+
+In assembly `.adoc` files, use the `{generated}` attribute (provided by
+`ike-parent`'s asciidoctor-maven-plugin config) to reference unpacked
+topic libraries:
+
+```asciidoc
+:my-topics: {generated}/my-topics-asciidoc
+
+include::{my-topics}/topics/dev/overview.adoc[leveloffset=+1]
+```
+
+The attribute name is a convention — use the topic library's artifact ID.
+
+### IDE Preview with `.asciidoctorconfig`
+
+Create `.asciidoctorconfig` in each assembly module root so IntelliJ
+and VS Code resolve includes without a Maven build:
+
+```
+:generated: {asciidoctorconfigdir}/target/generated-sources/asciidoc
+```
+
+After one `mvn generate-sources`, the IDE resolves all includes, shows
+previews, and provides file completion.
+
+### Aggregator POM
+
+The top-level POM uses `pom` packaging and lists subprojects:
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.1.0" ...>
+    <modelVersion>4.1.0</modelVersion>
+    <groupId>network.ike</groupId>
+    <artifactId>my-documents</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <subprojects>
+        <subproject>my-topics</subproject>
+        <subproject>my-compendium</subproject>
+        <subproject>my-guide</subproject>
+    </subprojects>
+</project>
+```
+
+### Build Commands
+
+```bash
+# IDE setup (unpack dependencies for preview):
+mvn generate-sources
+
+# All assemblies, HTML only:
+mvn clean verify
+
+# All assemblies with PDF:
+mvn clean verify -Dike.pdf.prawn
+
+# Single assembly with PDF:
+mvn clean verify -pl my-compendium -am -Dike.pdf.prawn
+```
+
+### Cross-Project Composition
+
+A future assembly can pull from multiple topic libraries across repos:
+
+```asciidoc
+:arch-topics: {generated}/arch-topics-asciidoc
+:clinical-topics: {generated}/clinical-topics-asciidoc
+
+include::{arch-topics}/topics/arch/design-lineage.adoc[leveloffset=+1]
+include::{clinical-topics}/topics/clinical/workflow.adoc[leveloffset=+1]
+```
+
+Each `.asciidoctorconfig` defines the attributes for its own dependencies.
+Attribute names are stable; values are project-local.
