@@ -143,6 +143,20 @@ The `ike-bom` artifact (`network.ike:ike-bom`) provides centralized version mana
 
 Child modules then declare dependencies without `<version>` — versions are resolved from the BOM.
 
+## POM Element Names
+
+Always use full element names in POM files. Maven 4.1.0 supports
+abbreviated element names (e.g., `<n>` for `<name>`, `<v>` for
+`<version>`), but these abbreviations harm readability and are not
+universally supported by tools. **Never use abbreviated element names.**
+
+| Prohibited | Required |
+|---|---|
+| `<n>` | `<name>` |
+| `<v>` | `<version>` |
+| `<g>` | `<groupId>` |
+| `<a>` | `<artifactId>` |
+
 ## Reactor Build
 
 The reactor aggregator POM (`pipeline/pom.xml`) is a pure aggregator — it is NOT a parent. It lists all modules in dependency order via `<subprojects>`. Module ordering aids readability but Maven sorts automatically by dependency graph.
