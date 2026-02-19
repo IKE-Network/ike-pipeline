@@ -1,6 +1,8 @@
 == Diagram Handling
 
-The pipeline supports Mermaid, PlantUML, and GraphViz diagrams. All diagram types are rendered server-side by Kroki -- no local CLI tools (mmdc, plantuml.jar, dot) are required.
+The pipeline supports PlantUML, GraphViz, and Mermaid diagrams. All diagram types are rendered server-side by Kroki -- no local CLI tools (mmdc, plantuml.jar, dot) are required.
+
+IMPORTANT: **Prefer PlantUML and GraphViz over Mermaid.** PlantUML and GraphViz emit clean SVG that renders correctly across all backends without workarounds. Mermaid's SVG output relies on `<foreignObject>` elements for label rendering, which causes failures in Prawn and WeasyPrint and requires svgo post-processing for Prince, AH, and XEP. Use Mermaid only for HTML-only output or diagram types without PlantUML equivalents (Gantt, pie). See the `IKE-DIAGRAMS` standard for full editorial guidance.
 
 === Kroki Server-Side Rendering
 
@@ -117,3 +119,5 @@ PlantUML and GraphViz produce SVGs with:
 * No CSS class selectors
 
 These SVGs work in *all* renderers without any svgo processing. Only Mermaid SVGs require the foreignObject-to-text conversion.
+
+This compatibility difference is the primary reason IKE documentation standards prefer PlantUML and GraphViz over Mermaid. The svgo post-processing for Mermaid SVGs is lossy (text positioning is approximate after foreignObject-to-text conversion) and adds build complexity. PlantUML and GraphViz avoid this entirely.

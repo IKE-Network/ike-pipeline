@@ -32,7 +32,7 @@ src/docs/asciidoc/
 ├── chapters/               # Modular chapter includes
 │   ├── intro.adoc
 │   └── architecture.adoc
-└── .mermaid-config.json    # Mermaid diagram config
+└── .mermaid-config.json    # Mermaid diagram config (legacy; prefer PlantUML/GraphViz)
 ```
 
 ## Document Attributes
@@ -57,10 +57,15 @@ Standard attributes for the master document (`index.adoc`):
 
 All diagrams are rendered server-side via Kroki. No local CLI tools needed.
 
-- **Mermaid**: Use `htmlLabels: false` in `.mermaid-config.json` for PDF compatibility
-- **PlantUML**: Standard `@startuml`/`@enduml` syntax
-- **GraphViz**: Standard `digraph`/`graph` syntax
+- **PlantUML** (preferred): Standard `@startuml`/`@enduml` syntax. Clean SVG across all renderers.
+- **GraphViz** (preferred): Standard `digraph`/`graph` syntax. Clean SVG across all renderers.
+- **Mermaid** (discouraged): SVG uses `<foreignObject>`, which breaks in Prawn, WeasyPrint,
+  and partially in FOP. Use only for HTML-only output or diagram types without PlantUML
+  equivalents (Gantt, pie). If used, set `htmlLabels: false` in `.mermaid-config.json`.
 - **Kroki server**: Default `https://kroki.komet.sh`, override with `-Dkroki.server.url=...`
+
+For editorial guidance on **when** to include a diagram, **which engine** to
+choose, style conventions, and renderer compatibility details, see `IKE-DIAGRAMS.md`.
 
 ## Koncept Macro Usage
 
@@ -346,8 +351,14 @@ topic libraries:
 ```asciidoc
 :topics: {generated}/topics-asciidoc
 
-include::{topics}/topics/dev/overview.adoc[leveloffset=+1]
+== Developer Guide
+include::{topics}/topics/dev/overview.adoc[leveloffset=+2]
 ```
+
+The `leveloffset` value depends on the containing heading level — see
+`IKE-ASCIIDOC-FRAGMENT.md` for the full table. Since all IKE assemblies
+use `:doctype: book` with `==` chapter headings, topic includes under a
+chapter need `leveloffset=+2` (not `+1`).
 
 The attribute name matches the topic library's artifact ID. Since every
 doc project uses `topics` as the standard artifact ID, this attribute

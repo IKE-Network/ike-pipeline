@@ -67,7 +67,7 @@
         <!-- ── IKE Build Standards ──────────────────────────────────── -->
         <!-- Monotonic integer versioning: 1, 2, 3, ...                 -->
         <!-- Bump here when a new standards release is published.       -->
-        <ike-build-standards.version>3-SNAPSHOT</ike-build-standards.version>
+        <ike-build-standards.version>4-SNAPSHOT</ike-build-standards.version>
     </properties>
 
     <dependencyManagement>

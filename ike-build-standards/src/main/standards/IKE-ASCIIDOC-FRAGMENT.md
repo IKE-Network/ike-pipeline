@@ -24,7 +24,7 @@ Every topic `.adoc` file must follow this structure:
 :topic-scope-note: Covers versioning from the architecture perspective. \
   For version management procedures, see ops-version-migration.
 
-[[{topic-id}]]
+[[arch-coord-versioning]]
 = {Title}
 
 {Content body with index terms per IKE-INDEX.md}
@@ -38,8 +38,11 @@ Every topic `.adoc` file must follow this structure:
 2. **Attribute block** (lines 5–9): Machine-readable metadata. These attributes are available
    to the build pipeline and can be extracted for registry validation.
 
-3. **Anchor** (line 11): An inline anchor using the `topic-id` as the anchor name. This is
-   the cross-reference target. It must immediately precede the heading.
+3. **Anchor** (line 11): A literal inline anchor matching the `topic-id` value. This is the
+   cross-reference target. It must immediately precede the heading. **Always use a literal
+   string** — never `[[{topic-id}]]`. Asciidoctor expands attributes for HTML output but does
+   not register attribute-expanded anchors in its xref catalog, so cross-references to such
+   anchors produce "possible invalid reference" warnings and lose their display text.
 
 4. **Level-1 heading** (line 12): Every fragment starts with a level-1 heading (`=`). The
    assembly controls the actual rendered level via `leveloffset` in the `include::` directive.
@@ -63,12 +66,24 @@ to the correct depth.
 ```
 
 ```asciidoc
-// In the assembly:
+// In an assembly with :doctype: book — chapter heading is ==
 == Architecture
-include::topics/architecture/coord-versioning.adoc[leveloffset=+1]
-// Renders "Coordinate-Based Versioning" as level 2 (=== equivalent)
-// Renders "Temporal Coordinates" as level 3 (==== equivalent)
+include::topics/architecture/coord-versioning.adoc[leveloffset=+2]
+// Renders "Coordinate-Based Versioning" as === (section within chapter)
+// Renders "Temporal Coordinates" as ==== (subsection)
 ```
+
+**Leveloffset must match the assembly's heading depth.** The offset places the
+topic's `= Title` one level below the containing heading. Since all IKE assemblies
+use `:doctype: book` where `==` headings are chapters:
+
+| Assembly heading | Leveloffset | Topic `= Title` becomes | Topic `== Sub` becomes |
+|------------------|-------------|-------------------------|------------------------|
+| `=` (part)       | `+1`        | `==` (chapter)          | `===` (section)        |
+| `==` (chapter)   | `+2`        | `===` (section)         | `====` (subsection)    |
+
+Using `leveloffset=+1` under a `==` chapter heading is a common mistake — it makes
+the topic a peer chapter instead of a child section, leaving the named chapter empty.
 
 ### Maximum Depth
 
@@ -136,6 +151,26 @@ endif::[]
 
 Use this sparingly. Most cross-references should work within any assembly that includes both
 the source and target topics.
+
+### Bibliography Citations
+
+Reference bibliography entries defined in a `[bibliography]` section using `<<anchorId>>`:
+
+```asciidoc
+The Dragon Book <<aho1977>> formalized compiler architecture.
+```
+
+**Multiple citations must be separate refs.** Never comma-separate citation IDs
+inside a single `<<>>` — AsciiDoc interprets `<<id1,id2>>` as "link to `id1` with
+display text `id2`", which silently drops the first citation:
+
+```asciidoc
+// WRONG — renders as "[date2003]" linking to codd1970, loses codd1970 citation
+<<codd1970,date2003>>
+
+// CORRECT — renders as "[codd1970] [date2003]" with both citations
+<<codd1970>> <<date2003>>
+```
 
 ### Placeholder Cross-References
 
@@ -240,6 +275,20 @@ image::{imagesdir}/architecture/layer-diagram.png[Architecture layers, width=600
 - Always include alt text (the text in square brackets).
 - Always include a block title (the line starting with `.`).
 - Place image files in `src/docs/asciidoc/images/{domain}/`.
+
+### Generated Diagrams
+
+For inline diagrams rendered via Kroki (PlantUML, GraphViz, or Mermaid), see
+`IKE-DIAGRAMS.md` for editorial guidance on when to include a diagram, which
+engine to use, and renderer compatibility constraints. Key rules:
+
+- **Prefer PlantUML or GraphViz over Mermaid.** Mermaid's SVG output uses
+  `<foreignObject>` elements that break in most PDF renderers. PlantUML and
+  GraphViz produce clean SVG that works across all backends.
+- Every diagram block must have a block title (`.Title text`).
+- Use `[plantuml]`, `[graphviz]`, or `[mermaid]` as the block attribute.
+- Apply the Diagram Test from `IKE-DIAGRAMS.md` before adding any diagram —
+  diagrams that merely restate prose or duplicate table content should be omitted.
 
 ## Task-Type Topic Conventions
 
@@ -348,3 +397,6 @@ controlled vocabulary.
 - **Conditional logic for content within a single topic**: If content varies by audience or
   context, create separate topics rather than using `ifdef` blocks within the body. Reserve
   `ifdef` for cross-reference handling as described above.
+- **Attribute references in anchors**: Never write `[[{topic-id}]]`. Asciidoctor's xref catalog
+  does not resolve attribute-expanded anchors, so `xref:` links targeting them produce warnings
+  and lose display text. Always use the literal topic ID: `[[arch-coord-versioning]]`.

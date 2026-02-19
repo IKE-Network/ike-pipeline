@@ -17,7 +17,7 @@ This module produces a classified ZIP artifact (`classifier=claude`,
 modules unpack this artifact at `validate` phase into `.claude/standards/`
 via `maven-dependency-plugin`.
 
-- **Artifact**: `network.ike:ike-build-standards:2:zip:claude`
+- **Artifact**: `network.ike:ike-build-standards:4-SNAPSHOT:zip:claude`
 - **Packaging**: POM (no compiled code)
 - **Versioning**: Monotonic integers (1, 2, 3...) — not semver, not SNAPSHOT
 

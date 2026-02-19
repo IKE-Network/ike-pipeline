@@ -109,6 +109,10 @@ text.
 
 - Place `indexterm` macros immediately before the paragraph that substantively discusses the
   term. Do not cluster them at the top or bottom of the topic.
+- **Never place an `indexterm` macro on the line immediately before a list item** (`*`, `.`,
+  `-`) with no blank line between. The AsciiDoc processor treats the list marker as inline
+  formatting (e.g., `*` becomes bold) within a paragraph that began with the indexterm. Move
+  the indexterm above the paragraph that introduces the list instead.
 - Place inline `((...))` terms at the point of first substantive use within the topic. Do
   not mark subsequent occurrences.
 - For a term discussed across multiple paragraphs, place the index entry at the start of the
