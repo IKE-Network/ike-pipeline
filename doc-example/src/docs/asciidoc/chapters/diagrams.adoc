@@ -1,60 +1,62 @@
 === Supported Diagram Types
 
-The IKE AsciiDoc pipeline supports multiple diagram formats, all rendered to SVG at build time.
-
-==== Mermaid Diagrams
-
-Mermaid provides flowcharts, sequence diagrams, and more:
-
-[mermaid]
-....
-%%{init: {"sequence": {"useMaxWidth": false}} }%%
-sequenceDiagram
-    participant Client
-    participant API
-    participant Reasoner
-    participant Database
-    
-    Client->>API: Query concept
-    API->>Database: Fetch concept data
-    Database-->>API: Concept + relationships
-    API->>Reasoner: Classify concept
-    Reasoner->>Reasoner: Apply DL rules
-    Reasoner-->>API: Inferred relationships
-    API-->>Client: Complete concept
-....
-
-**Mermaid State Diagram:**
-
-[mermaid]
-....
-%%{init: {"stateDiagram": {"useMaxWidth": false}} }%%
-stateDiagram-v2
-    [*] --> Draft
-    Draft --> Review: Submit
-    Review --> Approved: Accept
-    Review --> Draft: Reject
-    Approved --> Published: Release
-    Published --> Retired: Deprecate
-    Retired --> [*]
-    
-    Draft: Creating concept
-    Review: Under review
-    Approved: Ready for release
-    Published: In production
-    Retired: No longer active
-....
+The IKE AsciiDoc pipeline supports PlantUML and GraphViz diagrams, all rendered to SVG at build time via the Kroki server.
 
 ==== PlantUML Diagrams
 
-PlantUML excels at UML diagrams:
+PlantUML is the preferred diagram engine for IKE documentation. It covers the widest range of diagram types with reliable SVG output across all renderers.
+
+**PlantUML Sequence Diagram:**
 
 [plantuml]
 ....
 @startuml
-!define RECTANGLE class
+participant Client
+participant API
+participant Reasoner
+participant Database
 
-RECTANGLE Concept {
+Client -> API: Query concept
+API -> Database: Fetch concept data
+Database --> API: Concept + relationships
+API -> Reasoner: Classify concept
+Reasoner -> Reasoner: Apply DL rules
+Reasoner --> API: Inferred relationships
+API --> Client: Complete concept
+@enduml
+....
+
+**PlantUML State Diagram:**
+
+[plantuml]
+....
+@startuml
+[*] --> Draft
+Draft : Creating concept
+Draft --> Review : Submit
+
+Review : Under review
+Review --> Approved : Accept
+Review --> Draft : Reject
+
+Approved : Ready for release
+Approved --> Published : Release
+
+Published : In production
+Published --> Retired : Deprecate
+
+Retired : No longer active
+Retired --> [*]
+@enduml
+....
+
+**PlantUML Class Diagram:**
+
+[plantuml]
+....
+@startuml
+
+class Concept {
   - conceptId: long
   - fullySpecifiedName: String
   - preferredTerm: String
@@ -63,14 +65,14 @@ RECTANGLE Concept {
   + {static} clinicalFinding(): Concept
 }
 
-RECTANGLE Relationship {
+class Relationship {
   - sourceId: long
   - typeId: long
   - destinationId: long
   - relationshipGroup: int
 }
 
-RECTANGLE Description {
+class Description {
   - descriptionId: long
   - conceptId: long
   - term: String
@@ -93,9 +95,59 @@ end note
 @enduml
 ....
 
+**PlantUML Entity-Relationship Diagram:**
+
+[plantuml]
+....
+@startuml
+!pragma layout smetana
+
+entity CONCEPT {
+  * conceptId : long <<PK>>
+  --
+  * effectiveTime : timestamp
+  * active : boolean
+  * moduleId : long
+  * definitionStatusId : long
+}
+
+entity RELATIONSHIP {
+  * relationshipId : long <<PK>>
+  --
+  * sourceId : long <<FK>>
+  * destinationId : long <<FK>>
+  * typeId : long <<FK>>
+  * relationshipGroup : int
+  * characteristicTypeId : long
+}
+
+entity DESCRIPTION {
+  * descriptionId : long <<PK>>
+  --
+  * conceptId : long <<FK>>
+  * term : string
+  * languageCode : string
+  * typeId : long <<FK>>
+  * active : boolean
+}
+
+entity REFSET_MEMBER {
+  * memberId : uuid <<PK>>
+  --
+  * refsetId : long <<FK>>
+  * referencedComponentId : long <<FK>>
+  * active : boolean
+}
+
+CONCEPT ||--o{ RELATIONSHIP : has
+CONCEPT ||--o{ DESCRIPTION : has
+CONCEPT ||--o{ REFSET_MEMBER : "member of"
+@enduml
+....
+
 ==== GraphViz Diagrams
 
-For complex graph structures:
+GraphViz excels at complex graph structures where layout precision matters, including dependency graphs, subsumption hierarchies, and large node-count diagrams:
 
 [graphviz]
 ....
@@ -129,50 +181,6 @@ digraph ConceptHierarchy {
 }
 ....
 
-==== Entity Relationship Diagram
-
-[mermaid]
-....
-%%{init: {"er": {"useMaxWidth": false}} }%%
-erDiagram
-    CONCEPT ||--o{ RELATIONSHIP : has
-    CONCEPT ||--o{ DESCRIPTION : has
-    CONCEPT ||--o{ REFSET_MEMBER : "member of"
-    
-    CONCEPT {
-        long conceptId PK
-        timestamp effectiveTime
-        boolean active
-        long moduleId
-        long definitionStatusId
-    }
-    
-    RELATIONSHIP {
-        long relationshipId PK
-        long sourceId FK
-        long destinationId FK
-        long typeId FK
-        int relationshipGroup
-        long characteristicTypeId
-    }
-    
-    DESCRIPTION {
-        long descriptionId PK
-        long conceptId FK
-        string term
-        string languageCode
-        long typeId FK
-        boolean active
-    }
-    
-    REFSET_MEMBER {
-        uuid memberId PK
-        long refsetId FK
-        long referencedComponentId FK
-        boolean active
-    }
-....
-
 ==== Custom Diagram Extension Points
 
 For specialized diagrams (e.g., DL axiom visualizations), you can:
@@ -198,4 +206,4 @@ Build-Time Generation:: Render at build time for deterministic output
 
 Alt Text:: Provide descriptive alt text for accessibility
 
-Version Control:: Source diagrams (`.mmd`, `.puml`) should be version controlled
+Version Control:: Source diagrams (`.puml`, `.dot`) should be version controlled

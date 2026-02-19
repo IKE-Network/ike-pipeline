@@ -76,7 +76,6 @@
         <!-- Diagram Tool Configuration — Kroki server -->
         <!-- Override with -Dkroki.server.url=http://localhost:8000 for local testing -->
         <kroki.server.url>https://kroki.komet.sh</kroki.server.url>
-        <asciidoctor.diagram.mermaid.format>svg</asciidoctor.diagram.mermaid.format>
         <asciidoctor.diagram.plantuml.format>svg</asciidoctor.diagram.plantuml.format>
 
         <!-- IKE Documentation Resources — unpacked from ike-doc-resources JAR -->
@@ -485,8 +484,8 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <docinfo>shared</docinfo>
 
                             <!-- Diagram configuration — Kroki server-side rendering -->
-                            <!-- Delegates ALL diagram types (Mermaid, PlantUML, GraphViz, etc.) -->
-                            <!-- to the Kroki server, eliminating local CLI tool requirements. -->
+                            <!-- Delegates PlantUML and GraphViz diagrams to the     -->
+                            <!-- Kroki server, eliminating local CLI tool requirements. -->
                             <diagram-server-url>${kroki.server.url}</diagram-server-url>
                             <diagram-server-type>kroki_io</diagram-server-type>
                             <diagram-format>svg</diagram-format>
@@ -800,12 +799,8 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                     <!-- ════════════════════════════════════════════════════ -->
                     <!-- PDF via asciidoctorj-pdf / Prawn (built-in, free)   -->
                     <!--                                                     -->
-                    <!-- Uses the JRuby/Prawn backend directly. Diagrams     -->
-                    <!-- rendered as PNG because prawn-svg cannot handle      -->
-                    <!-- Mermaid/Kroki SVGs (drops <foreignObject> labels,   -->
-                    <!-- ignores CSS on <rect>). HTML output keeps SVG;      -->
-                    <!-- external renderers (Prince, AH, WeasyPrint, XEP)    -->
-                    <!-- also keep SVG since they have real CSS engines.      -->
+                    <!-- Uses the JRuby/Prawn backend directly. PlantUML     -->
+                    <!-- and GraphViz diagrams render as SVG via Kroki.      -->
                     <!-- ════════════════════════════════════════════════════ -->
                     <execution>
                         <id>generate-pdf-docs</id>
@@ -824,10 +819,6 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <allow-uri-read>true</allow-uri-read>
                                 <media>prepress</media>
                                 <optimize>true</optimize>
-                                <!-- PNG for Prawn PDF: prawn-svg drops <foreignObject> -->
-                                <!-- labels and ignores CSS width/height on <rect>.     -->
-                                <!-- PNG renders perfectly via Kroki server-side.        -->
-                                <diagram-format>png</diagram-format>
                                 <ike-pdf-renderer>prawn</ike-pdf-renderer>
                             </attributes>
                         </configuration>
@@ -864,11 +855,6 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <toc>auto</toc>
                                 <toclevels>3</toclevels>
                                 <linkcss>false</linkcss>
-                                <!-- External SVG via <object> tags so svgo can fix
-                                     foreignObject labels in the .svg files before
-                                     Prince renders them. Prince has full SVG/CSS
-                                     support — no need to fall back to PNG. -->
-                                <diagram-svg-type>interactive</diagram-svg-type>
                                 <ike-pdf-renderer>prince</ike-pdf-renderer>
                             </attributes>
                         </configuration>
@@ -906,11 +892,6 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <toc>auto</toc>
                                 <toclevels>3</toclevels>
                                 <linkcss>false</linkcss>
-                                <!-- External SVG via <object> tags so svgo can fix
-                                     foreignObject labels in the .svg files before
-                                     AH Formatter renders them. AH has full SVG/CSS
-                                     support — no need to fall back to PNG. -->
-                                <diagram-svg-type>interactive</diagram-svg-type>
                                 <ike-pdf-renderer>ah</ike-pdf-renderer>
                             </attributes>
                         </configuration>
@@ -952,11 +933,6 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <toc>auto</toc>
                                 <toclevels>3</toclevels>
                                 <linkcss>false</linkcss>
-                                <!-- PNG for print: WeasyPrint cannot render
-                                     <foreignObject> in SVGs (Mermaid labels vanish).
-                                     PNG rendered by Kroki server-side includes all
-                                     labels. Same approach as the Prawn PDF profile. -->
-                                <diagram-format>png</diagram-format>
                                 <ike-pdf-renderer>weasyprint</ike-pdf-renderer>
                             </attributes>
                         </configuration>
@@ -1140,8 +1116,8 @@ IKE projects require Java 21+ (JRuby 10 baseline).
             </plugin>
 
             <!-- ── exec-maven-plugin ────────────────────────────────────── -->
-            <!-- External renderer invocations: svgo SVG fixing + PDF       -->
-            <!-- rendering via Prince, AH, WeasyPrint, XEP, and FOP.       -->
+            <!-- External renderer invocations: PDF rendering via Prince,   -->
+            <!-- AH, WeasyPrint, XEP, and FOP. File renames and copies.     -->
             <!-- MUST appear after xml-maven-plugin: XEP/FOP executions in  -->
             <!-- the package phase read .fo files produced by xml-maven's   -->
             <!-- XSLT transforms. Maven runs same-phase plugins in POM     -->
@@ -1205,24 +1181,6 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         </configuration>
                     </execution>
 
-                    <!-- Prince: Fix Mermaid SVGs (foreignObject → native <text>) -->
-                    <!-- Wrapped in sh -c to gracefully skip when no SVGs exist   -->
-                    <execution>
-                        <id>fix-svg-for-prince</id>
-                        <phase>prepare-package</phase>
-                        <goals><goal>exec</goal></goals>
-                        <configuration>
-                            <skip>${ike.skip.prince}</skip>
-                            <executable>sh</executable>
-                            <arguments>
-                                <argument>-c</argument>
-                                <argument>ls "${0}"/*.svg &gt;/dev/null 2&gt;&amp;1 &amp;&amp; svgo --config="${1}" -f "${0}" --quiet || true</argument>
-                                <argument>${asciidoc.output.directory}/pdf-html-prince</argument>
-                                <argument>${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-
                     <!-- Prince: HTML + CSS → PDF -->
                     <execution>
                         <id>prince-html-to-pdf</id>
@@ -1239,23 +1197,6 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <argument>--output</argument>
                                 <argument>${asciidoc.output.directory}/pdf-prince/${ike.document.name}.pdf</argument>
                                 <argument>--pdf-profile=PDF/UA-1</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-
-                    <!-- AH: Fix Mermaid SVGs (foreignObject → native <text>) -->
-                    <execution>
-                        <id>fix-svg-for-ah</id>
-                        <phase>prepare-package</phase>
-                        <goals><goal>exec</goal></goals>
-                        <configuration>
-                            <skip>${ike.skip.ah}</skip>
-                            <executable>sh</executable>
-                            <arguments>
-                                <argument>-c</argument>
-                                <argument>ls "${0}"/*.svg &gt;/dev/null 2&gt;&amp;1 &amp;&amp; svgo --config="${1}" -f "${0}" --quiet || true</argument>
-                                <argument>${asciidoc.output.directory}/pdf-html-ah</argument>
-                                <argument>${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
                             </arguments>
                         </configuration>
                     </execution>
@@ -1303,26 +1244,6 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         </configuration>
                     </execution>
 
-                    <!-- XEP: Fix Mermaid SVGs for XEP's SVG renderer               -->
-                    <!--       XEP does not support <foreignObject> (labels vanish)  -->
-                    <!--       or HSL color values (strokes/fills vanish).           -->
-                    <!--       svgo converts foreignObject→<text> and hsl→hex.       -->
-                    <execution>
-                        <id>fix-svg-for-xep</id>
-                        <phase>prepare-package</phase>
-                        <goals><goal>exec</goal></goals>
-                        <configuration>
-                            <skip>${ike.skip.xep}</skip>
-                            <executable>sh</executable>
-                            <arguments>
-                                <argument>-c</argument>
-                                <argument>ls "${0}"/*.svg &gt;/dev/null 2&gt;&amp;1 &amp;&amp; svgo --config="${1}" -f "${0}" --quiet || true</argument>
-                                <argument>${asciidoc.output.directory}/docbook-xep</argument>
-                                <argument>${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-
                     <!-- XEP: XSL-FO → PDF via RenderX XEP -->
                     <!--       Invoke Java directly (not the xep wrapper) so we can    -->
                     <!--       pass -Dcom.renderx.xep.CONFIG pointing to our custom    -->
@@ -1344,26 +1265,6 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <argument>${asciidoc.output.directory}/fo-xep/${pdf.source.document}.fo</argument>
                                 <argument>-pdf</argument>
                                 <argument>${asciidoc.output.directory}/pdf-xep/${ike.document.name}.pdf</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-
-                    <!-- FOP: Fix Mermaid SVGs for FOP's SVG renderer                -->
-                    <!--       FOP does not support <foreignObject> (labels vanish)   -->
-                    <!--       or HSL color values (strokes/fills vanish).            -->
-                    <!--       svgo converts foreignObject→<text> and hsl→hex.        -->
-                    <execution>
-                        <id>fix-svg-for-fop</id>
-                        <phase>prepare-package</phase>
-                        <goals><goal>exec</goal></goals>
-                        <configuration>
-                            <skip>${ike.skip.fop}</skip>
-                            <executable>sh</executable>
-                            <arguments>
-                                <argument>-c</argument>
-                                <argument>ls "${0}"/*.svg &gt;/dev/null 2&gt;&amp;1 &amp;&amp; svgo --config="${1}" -f "${0}" --quiet || true</argument>
-                                <argument>${asciidoc.output.directory}/docbook-fop</argument>
-                                <argument>${ike.doc.resources.directory}/svgo/svgo-xep.config.mjs</argument>
                             </arguments>
                         </configuration>
                     </execution>

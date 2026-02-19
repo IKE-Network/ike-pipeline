@@ -2,12 +2,12 @@
 
 ## Purpose
 
-This document defines when and how to use generated diagrams (Mermaid,
-PlantUML, GraphViz) in IKE topic files. The build pipeline renders all
-diagrams server-side via Kroki — no local CLI tools are needed. This
-standard covers editorial judgment (when a diagram earns its place),
-tool selection (which engine for which communication task), and
-authoring mechanics (syntax, format, renderer compatibility).
+This document defines when and how to use generated diagrams (PlantUML,
+GraphViz) in IKE topic files. The build pipeline renders all diagrams
+server-side via Kroki — no local CLI tools are needed. This standard
+covers editorial judgment (when a diagram earns its place), tool
+selection (which engine for which communication task), and authoring
+mechanics (syntax, format, renderer compatibility).
 
 ## The Diagram Test
 
@@ -70,22 +70,13 @@ Do **not** add a diagram when:
 
 Choose the diagram engine based on what you are communicating.
 
-**General preference: PlantUML and GraphViz over Mermaid.** Mermaid
-emits SVG that relies on `<foreignObject>` elements to embed HTML labels
-inside SVG. This causes rendering failures in multiple PDF backends
-(Prawn, WeasyPrint, and partially in FOP) and produces inconsistent
-results even in some browser contexts. PlantUML and GraphViz emit clean
-SVG using standard path and text elements, which renders correctly
-across all backends — HTML, Prince, FOP, Prawn, and WeasyPrint — without
-format workarounds. Prefer PlantUML or GraphViz unless Mermaid offers a
-clear syntactic advantage for the specific diagram type and the document
-will only be rendered as HTML.
-
 ### PlantUML — Preferred for Most Diagrams
 
 PlantUML is the default choice for IKE documentation. It covers the
 widest range of diagram types with reliable SVG output and good layout
-control.
+control. PlantUML emits clean SVG using standard path and text
+elements, which renders correctly across all backends — HTML, Prince,
+FOP, Prawn, and WeasyPrint — without format workarounds.
 
 | PlantUML Diagram Type | Best For |
 |----------------------|----------|
@@ -100,11 +91,12 @@ control.
 
 PlantUML also supports swim lanes (partitions), explicit layout control
 (`together` blocks, hidden links, directional hints), and stereotypes —
-features Mermaid lacks entirely.
+features that provide fine-grained control over diagram presentation.
 
 ### GraphViz — Graphs Where Layout Precision Matters
 
-Use GraphViz (`dot`, `neato`, `fdp`) for:
+Use GraphViz (`dot`, `neato`, `fdp`) when PlantUML's automatic layout
+does not meet the need:
 
 - **Dependency graphs** with many edges (GraphViz's edge routing is
   superior for dense graphs)
@@ -114,30 +106,8 @@ Use GraphViz (`dot`, `neato`, `fdp`) for:
 - **Large graphs (>20 nodes)** where automatic layout quality is
   critical
 
-GraphViz produces the cleanest SVG of all three engines and gives the
+GraphViz produces the cleanest SVG of the two engines and gives the
 most predictable cross-renderer results.
-
-### Mermaid — Acceptable for HTML-Only Output
-
-Mermaid may be used when all of the following conditions hold:
-
-1. The document targets HTML output only (no PDF generation)
-2. The diagram type is one where Mermaid's syntax is notably simpler
-   (e.g., simple flowcharts, Gantt charts, pie charts)
-3. The author understands that future PDF rendering will require either
-   conversion to PlantUML/GraphViz or use of `format=png` fallback
-
-| Mermaid Diagram Type | Acceptable Use Case |
-|---------------------|--------------------|
-| `flowchart` (TD/LR) | Quick prototyping, HTML-only docs |
-| `sequenceDiagram` | Simple interactions (prefer PlantUML for complex ones) |
-| `erDiagram` | Simple schemas (prefer PlantUML for >6 entities) |
-| `gantt` | Project timelines (no PlantUML equivalent) |
-| `pie` | Simple proportional charts (no PlantUML equivalent) |
-
-**Do not use Mermaid for** class diagrams, state diagrams, or any
-diagram that will appear in PDF output. These are better served by
-PlantUML in all cases.
 
 ### Decision Summary
 
@@ -162,12 +132,6 @@ Does it have >15 nodes with many crossing edges?
 
 Is it a subsumption lattice or type hierarchy?
   → GraphViz dot (for large) or PlantUML class diagram (for small)
-
-Is it a Gantt chart or pie chart?
-  → Mermaid (no PlantUML equivalent)
-
-Is it HTML-only output and a simple flowchart?
-  → Mermaid acceptable; PlantUML still preferred
 ```
 
 ## Authoring Mechanics
@@ -199,35 +163,24 @@ Key elements:
    must have a descriptive title. This renders as a figure caption and
    serves as alt text for accessibility.
 
-2. **Block attribute** (`[mermaid]`, `[plantuml]`, `[graphviz]`) —
-   Required. Identifies the rendering engine.
+2. **Block attribute** (`[plantuml]` or `[graphviz]`) — Required.
+   Identifies the rendering engine.
 
 3. **Delimiter** (`----`) — Standard listing block delimiters.
 
-### Format Attribute
+### Format
 
-Override the default SVG format when renderer compatibility requires it:
-
-```asciidoc
-[mermaid, format=png]
-----
-flowchart TD
-    ...
-----
-```
-
-The parent POM defaults to SVG for both Mermaid and PlantUML. SVG is
-preferred because it scales without pixelation and supports text
-selection. Use PNG only when a specific renderer requires it (see
-Renderer Compatibility below).
+The pipeline defaults to SVG for all diagrams. SVG is the correct
+choice because it scales without pixelation and supports text selection.
+Do not override the format unless you have a specific, documented reason.
 
 ### Diagram Sizing
 
 Do not set explicit `width` or `height` on diagram blocks unless the
 rendered output is unreasonably large. Let the renderer and theme
 control sizing. If a diagram is too wide, restructure it (e.g., switch
-`flowchart LR` to `flowchart TD`) rather than forcing a smaller pixel
-size.
+from `left to right direction` to top-down) rather than forcing a
+smaller pixel size.
 
 ### Diagram Placement
 
@@ -255,9 +208,6 @@ tables that provide precise field-level detail.
 
 - Do not rely on color alone to convey meaning. Always pair color
   with labels, shapes, or line styles.
-- Use Mermaid's built-in theme (`%%{init: {'theme': 'neutral'}}%%`)
-  for consistency across topics. Avoid custom CSS overrides in
-  individual diagrams.
 - For PlantUML, use the `!theme plain` directive unless the topic
   requires domain-specific styling.
 
@@ -281,45 +231,17 @@ GraphViz dependency graph where layout precision is critical).
 ## Renderer Compatibility
 
 The IKE pipeline renders diagrams via Kroki and produces SVG by
-default. Not all PDF renderers handle SVG identically. Be aware of
-these constraints:
+default. Both PlantUML and GraphViz emit clean SVG using standard
+`<text>` and `<path>` elements, so diagrams render correctly across
+all PDF backends without format workarounds.
 
 | Renderer | SVG Support | Notes |
 |----------|-------------|-------|
 | HTML / HTML-Single | Full | All diagram types render correctly |
-| Prawn (PDF) | Limited | `prawn-svg` drops `<foreignObject>` — Mermaid diagrams **must use PNG format** |
-| FOP (PDF) | Partial | Batik-based; automated SVG fixes applied by build pipeline. Most diagrams work. |
+| Prawn (PDF) | Full | PlantUML and GraphViz SVGs render without issues |
+| FOP (PDF) | Full | Batik-based; PlantUML and GraphViz SVGs are compatible |
 | Prince (PDF) | Full | Commercial; handles all SVG |
-| WeasyPrint (PDF) | Limited | Cannot render `<foreignObject>` — Mermaid **must use PNG format** |
-
-**Practical guidance:** Use PlantUML or GraphViz for all diagrams that
-may appear in PDF output. Both produce clean SVG without
-`<foreignObject>` and work across all renderers without format
-workarounds. If you must use Mermaid (e.g., Gantt charts), use
-`format=png` for any document that targets PDF.
-
-For the rare case where Mermaid is used in a multi-backend document,
-apply conditional format selection:
-
-```asciidoc
-ifdef::backend-pdf[]
-:diagram-format: png
-endif::[]
-ifndef::backend-pdf[]
-:diagram-format: svg
-endif::[]
-
-[mermaid, format={diagram-format}]
-----
-gantt
-    ...
-----
-```
-
-Set the `:diagram-format:` attribute once at the top of the topic (or
-in the assembly preamble) and reference it in all Mermaid blocks. This
-workaround is unnecessary for PlantUML and GraphViz, which should
-always use the default SVG format.
+| WeasyPrint (PDF) | Full | PlantUML and GraphViz SVGs render without issues |
 
 ## Diagram Density Guidelines
 
@@ -346,15 +268,6 @@ creates review burden without proportional benefit. When a topic is
 revised, evaluate whether a diagram would improve comprehension using
 the Diagram Test criteria above.
 
-## Mermaid Migration
-
-If existing documents contain Mermaid diagrams, convert them to
-PlantUML or GraphViz when the topic is next revised. Do not create new
-Mermaid diagrams for documents that target PDF output. Conversion
-priority: any diagram that currently requires `format=png` workarounds
-should be converted first, as the PNG fallback produces lower-quality
-output than native SVG rendering.
-
 ## Things to Avoid
 
 - **Diagrams as decoration.** A box labeled "System" with an arrow to
@@ -367,6 +280,3 @@ output than native SVG rendering.
 - **Duplicating table content as a diagram.** If the topic has a table
   with columns "Input → Transform → Output", do not also draw a
   three-box flowchart showing the same thing.
-- **Mermaid `classDiagram` for data models with many fields.** Mermaid
-  class diagrams become unreadable beyond ~8 fields per class. Use an
-  ER diagram for schema-like content or a table for field inventories.
