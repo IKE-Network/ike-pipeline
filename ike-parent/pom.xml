@@ -1181,6 +1181,22 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         </configuration>
                     </execution>
 
+                    <!-- Fix bare <rect/> elements in Mermaid-generated inline   -->
+                    <!-- SVGs before PDF renderers process the HTML.                -->
+                    <execution>
+                        <id>fix-svg-prince</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.prince}</skip>
+                            <executable>sh</executable>
+                            <arguments>
+                                <argument>${project.build.directory}/build-tools/scripts/fix-inline-svg.sh</argument>
+                                <argument>${asciidoc.output.directory}/pdf-html-prince/${pdf.source.document}.html</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
                     <!-- Prince: HTML + CSS → PDF -->
                     <execution>
                         <id>prince-html-to-pdf</id>
@@ -1197,6 +1213,20 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <argument>--output</argument>
                                 <argument>${asciidoc.output.directory}/pdf-prince/${ike.document.name}.pdf</argument>
                                 <argument>--pdf-profile=PDF/UA-1</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>fix-svg-ah</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.ah}</skip>
+                            <executable>sh</executable>
+                            <arguments>
+                                <argument>${project.build.directory}/build-tools/scripts/fix-inline-svg.sh</argument>
+                                <argument>${asciidoc.output.directory}/pdf-html-ah/${pdf.source.document}.html</argument>
                             </arguments>
                         </configuration>
                     </execution>
@@ -1222,6 +1252,20 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <argument>${asciidoc.output.directory}/pdf-ah/${ike.document.name}.pdf</argument>
                                 <argument>-p</argument>
                                 <argument>@PDF/UA-1</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>fix-svg-weasyprint</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>${ike.skip.weasyprint}</skip>
+                            <executable>sh</executable>
+                            <arguments>
+                                <argument>${project.build.directory}/build-tools/scripts/fix-inline-svg.sh</argument>
+                                <argument>${asciidoc.output.directory}/pdf-html-weasyprint/${pdf.source.document}.html</argument>
                             </arguments>
                         </configuration>
                     </execution>
