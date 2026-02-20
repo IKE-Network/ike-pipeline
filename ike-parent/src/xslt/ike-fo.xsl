@@ -345,8 +345,11 @@
   <!-- ═══════════════════════════════════════════════════════════════ -->
   <!-- IMAGES & FIGURES                                                -->
   <!-- Allow SVG diagrams from Kroki to scale to page width.           -->
+  <!-- Use absolute body width (page.width minus margins) instead of   -->
+  <!-- 100% because FOP does not support percentage units on           -->
+  <!-- fo:external-graphic width.                                      -->
   <!-- ═══════════════════════════════════════════════════════════════ -->
-  <xsl:param name="default.image.width">100%</xsl:param>
+  <xsl:param name="default.image.width">6.5in</xsl:param>
   <xsl:param name="ignore.image.scaling">0</xsl:param>
 
 

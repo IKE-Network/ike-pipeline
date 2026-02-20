@@ -2,7 +2,7 @@
 
 ## Core Principles
 
-- **Declarative over imperative.** Use proper Maven plugins for their intended purpose. Never use maven-antrun-plugin or exec-maven-plugin for tasks that have a dedicated Maven plugin (file copying, resource filtering, dependency management).
+- **Declarative over imperative.** Use proper Maven plugins for their intended purpose. Never use `exec-maven-plugin` for tasks that have a dedicated Maven plugin (file copying, resource filtering, dependency management). When imperative logic is unavoidable, use `exec-maven-plugin` with an external bash script from `ike-build-tools` — never `maven-antrun-plugin`.
 - **Every artifact must have proper coordinates.** GroupId, artifactId, version, classifier, and type must be explicit. No uncoordinated files floating outside the Maven reactor.
 - **Consumer POM awareness.** Build-time configuration (plugin settings, profiles, properties used only during build) must not leak into the consumer POM. Use `<pluginManagement>` for inherited defaults, `<plugins>` for concrete bindings.
 
@@ -43,12 +43,32 @@ Within the same lifecycle phase, Maven runs plugins in POM declaration order. Wh
 
 ## Prohibited Patterns
 
-- `maven-antrun-plugin` for file manipulation (use `maven-resources-plugin:copy-resources`)
-- `exec-maven-plugin` for file operations (copying, moving, filtering)
-- Shell scripting inside POMs
+- `maven-antrun-plugin` — use `exec-maven-plugin` with an external bash script instead
+- Inline shell commands in POM `<configuration>` blocks — extract to a named script
+- `exec-maven-plugin` for file operations that have dedicated plugins (copying, moving, filtering)
 - Manual file copying instead of resource filtering
 - `<properties>` blocks in profiles that share names across co-activated profiles (last-wins collision)
 - `git add -A` or `git add .` (stage specific files to avoid committing secrets or binaries)
+
+## Shell Scripts in the Build
+
+When the build requires imperative logic (patching files, conditional transforms,
+multi-step operations that no Maven plugin handles), use `exec-maven-plugin` with
+an external bash script. Never embed the logic inline in the POM.
+
+- **Location**: All shared build scripts live in `ike-build-tools` at
+  `src/main/resources/scripts/`. Consumer modules unpack the `-tools` ZIP
+  to `target/build-tools/` and reference scripts via
+  `${build.tools.directory}/scripts/{script-name}.sh`.
+- **Module-specific scripts**: If a script is only used by one module and
+  has no reuse potential, it may live in that module's
+  `src/main/scripts/` directory. Prefer centralizing in `ike-build-tools`
+  when practical.
+- **Conventions**: Scripts must use `#!/usr/bin/env bash`, `set -euo pipefail`,
+  and accept arguments for paths rather than hard-coding them. Include a
+  usage comment block explaining what the script does and why.
+- **Phase binding**: Bind the `exec:exec` execution to the correct lifecycle
+  phase per the phase binding table above.
 
 ## Required Patterns
 
@@ -56,6 +76,7 @@ Within the same lifecycle phase, Maven runs plugins in POM declaration order. Wh
 - `maven-resources-plugin` with filtering for environment-specific config
 - `maven-enforcer-plugin` for prerequisite validation (Java version, Maven version)
 - `maven-dependency-plugin` for artifact unpacking with proper GAV coordinates
+- `exec-maven-plugin` with external bash scripts for imperative build logic
 - Explicit `<version>` on every plugin in `<pluginManagement>`
 
 ## Dependency Management
