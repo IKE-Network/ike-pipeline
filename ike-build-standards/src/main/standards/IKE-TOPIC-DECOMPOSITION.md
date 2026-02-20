@@ -29,9 +29,33 @@ Every topic must be classified as exactly one of:
 | `concept`   | Explains what something is or why it exists | "Coordinate-Based Versioning"        |
 | `task`      | Step-by-step procedure to accomplish a goal | "Configuring a New Module Namespace" |
 | `reference` | Lookup information (tables, schemas, APIs)  | "Coordinate Field Definitions"       |
+| `dialog`    | Socratic or dramatic dialogue exploring a domain question | "On the Naming of Clinical Things" |
 
 If a source section mixes explanation with procedure, split it into a concept topic and a task
 topic. Do not create hybrid topics.
+
+### Dialog Topics
+
+Dialogs are a distinct content form: structured conversations (typically Socratic or dramatic
+in style) that explore domain questions through the interplay of multiple voices. They differ
+from expository topics in several important ways:
+
+- **Narrative unity**: A dialog's argument unfolds through the sequence of exchanges. Splitting
+  it into fragments destroys the rhetorical structure — the "aha" moments depend on what came
+  before.
+- **No decomposition**: Dialog topics are **never decomposed** into smaller topics. They are
+  ingested as a single file regardless of length. The 5000-character hard maximum does not
+  apply to dialog topics. Document the exception in the registry entry with a note.
+- **Single file on ingestion**: When ingesting a dialog document, skip the decomposition step
+  entirely. Convert the source to a conforming AsciiDoc fragment (strip document-level
+  attributes, add topic metadata, add anchor and level-1 heading) and place it as one file.
+- **Domain placement**: Dialog topics live under `topics/dialog/` in the topic library and use
+  the `dialog` domain prefix in their topic-id.
+- **Assembly**: Dialogs are included in the dedicated `dialogs` assembly and in the compendium.
+  They may also be included in targeted guides when relevant.
+- **Index terms**: Dialog topics should have 5–15 index terms (higher than the standard 3–10
+  range) because they cover more ground in a single file. Place index terms at the points of
+  first substantive discussion, not clustered at the top.
 
 ## Granularity Rules
 
@@ -43,7 +67,8 @@ topic. Do not create hybrid topics.
 - **Hard maximum**: 5000 characters. Above this, the topic almost certainly addresses multiple
   concerns and should be decomposed further.
 - **Exceptions**: Reference topics (tables, schemas) may exceed 5000 characters when the table
-  or listing is indivisible. Document the exception in the registry entry with a note.
+  or listing is indivisible. Dialog topics are exempt from size bounds entirely — they are
+  never decomposed. Document the exception in the registry entry with a note.
 
 ### Structural Integrity
 

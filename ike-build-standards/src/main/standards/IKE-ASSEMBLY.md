@@ -24,6 +24,14 @@ A focused assembly that selects a subset of topics for a specific audience or pu
 "Versioning Guide," "Safety Analysis Report," "API Reference"). Targeted guides may include
 brief transitional prose between included topics to provide narrative flow.
 
+### Dialog Collection
+
+A collection assembly that gathers all dialog topics into a single document. Dialogs are
+Socratic or dramatic dialogues that explore domain questions through conversational structure.
+Each dialog is included as a single topic (dialogs are never decomposed). The collection
+provides minimal scaffolding — a preface explaining the dialog form, then one `include::`
+per dialog. New dialogs are added to this assembly as they are ingested.
+
 ### Module Documentation
 
 A per-module assembly that documents a single Maven module's functionality. Typically lives

@@ -142,6 +142,13 @@ architecture
   module namespace
   service architecture
 
+clinical naming
+  complex concept
+  composite complex concept
+  compound code
+  expansion specification
+  qualified complex concept
+
 classification
   classifier
   EL++ profile
@@ -181,6 +188,7 @@ safety
   unsafe control action
 
 terminology
+  concept layer
   concept model
   description logic
   fully specified name

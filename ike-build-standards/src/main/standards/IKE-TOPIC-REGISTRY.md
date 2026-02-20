@@ -107,7 +107,7 @@ assemblies:                        # catalog of assembly documents
 | `id`           | string     | Unique topic identifier. Format: `{domain-prefix}-{slug}`, lowercase kebab-case. Immutable once assigned. |
 | `file`         | string     | Relative path from the `src/docs/asciidoc/` root to the `.adoc` file. |
 | `title`        | string     | Human-readable title. Should match the level-1 heading in the `.adoc` file. |
-| `type`         | enum       | One of: `concept`, `task`, `reference`.                      |
+| `type`         | enum       | One of: `concept`, `task`, `reference`, `dialog`.            |
 | `keywords`     | string[]   | 3–8 searchable terms. Include synonyms and abbreviations that a searcher might use. Do not repeat words from the title. |
 | `status`       | enum       | One of: `draft`, `review`, `published`, `deprecated`.        |
 | `summary`      | string     | 1–2 sentences describing the topic's content. Written in indicative mood ("Describes the..." not "This topic describes..."). Must be useful for search — include key terms not covered by `keywords`. |

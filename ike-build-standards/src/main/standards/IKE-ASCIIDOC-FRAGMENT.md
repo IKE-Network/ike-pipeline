@@ -15,7 +15,7 @@ Every topic `.adoc` file must follow this structure:
 ```asciidoc
 // {topic-id}
 // Topic: {title}
-// Type: {concept|task|reference}
+// Type: {concept|task|reference|dialog}
 // Status: {draft|review|published|deprecated}
 :topic-id: arch-coord-versioning
 :topic-type: concept
@@ -103,7 +103,7 @@ labels for empty sections or as organizational placeholders.
 | Attribute            | Purpose                          | Example                                |
 |----------------------|----------------------------------|----------------------------------------|
 | `:topic-id:`         | Unique identifier                | `arch-coord-versioning`                |
-| `:topic-type:`       | concept, task, or reference      | `concept`                              |
+| `:topic-type:`       | concept, task, reference, or dialog | `concept`                           |
 | `:topic-status:`     | Lifecycle status                 | `published`                            |
 | `:topic-keywords:`   | Comma-separated keyword list     | `versioning, coordinates, STAMP`       |
 | `:topic-scope-note:` | Optional. Clarifies this topic's angle when it intentionally overlaps with a related topic. References the related topic-id. | `Covers classifiers from the authoring perspective. For classifier architecture, see arch-dl-classifier.` |
@@ -346,6 +346,42 @@ This reference defines all fields in the STAMP coordinate system.
 ```
 
 Reference topics should minimize narrative and maximize scannable structure.
+
+## Dialog-Type Topic Conventions
+
+Dialog topics preserve the original conversational structure of Socratic or dramatic dialogues.
+They are never decomposed — the entire dialog is one topic file. See
+`IKE-TOPIC-DECOMPOSITION.md` § "Dialog Topics."
+
+```asciidoc
+= On the Naming of Clinical Things
+
+A dialogue on complex concepts, compound codes, and the nature of
+clinical naming — in the spirit of Cratylus.
+
+== Persons of the Dialogue
+
+**Kleos** — An informaticist. Builder of systems...
+
+**Phaedra** — A physician. Documenter of patient care...
+
+== Part I: The Hardest Problem
+
+**Kleos:** We have a problem to solve...
+```
+
+Key conventions for dialog fragments:
+
+- Retain the original heading structure (`== Part I`, `== Epilogue`, etc.) — these are
+  internal to the topic and shift via `leveloffset` like any other fragment.
+- Speakers are rendered as bold (`**Name:**`) at the start of each speech.
+- Stage directions and narrative framing use AsciiDoc italics (`_text_`).
+- Epigraphs and block quotes use AsciiDoc `quote` blocks.
+- Strip document-level attributes (`:doctype:`, `:toc:`, `:icons:`, etc.) — these belong
+  to the assembly.
+- The opening paragraph after the title should describe the dialog's subject matter, not
+  begin with dialog text. This establishes context for readers encountering the topic in
+  an assembly or search result.
 
 ## Index Terms
 

@@ -132,6 +132,35 @@ mvn clean verify
 - Registry topic-count matches actual count.
 - Every new topic appears in the compendium assembly.
 
+## Dialog Ingestion
+
+Dialogs (Socratic or dramatic dialogues) follow a simplified ingestion
+workflow. They are **not decomposed** — the entire document becomes a
+single topic. See `IKE-TOPIC-DECOMPOSITION.md` § "Dialog Topics."
+
+### Dialog Ingestion Workflow
+
+1. **Import**: Receive the source dialog document.
+2. **Convert to fragment**: Strip document-level AsciiDoc attributes
+   (`:doctype:`, `:toc:`, `:icons:`, etc.). Add topic metadata
+   attributes (`:topic-id:`, `:topic-type: dialog`, etc.), the
+   anchor, and a level-1 heading per `IKE-ASCIIDOC-FRAGMENT.md`.
+   Preserve all dialog content — speakers, stage directions, and
+   structure — intact.
+3. **Add index terms**: Insert 5–15 index terms at points of first
+   substantive discussion per `IKE-INDEX.md`.
+4. **Place**: Put the single `.adoc` file in
+   `topics/src/docs/asciidoc/topics/dialog/`.
+5. **Register**: Add the topic entry to `topic-registry.yaml` under
+   the `dialog` domain. Include a `notes` field documenting that this
+   is a dialog topic exempt from size bounds.
+6. **Assemble**: Add the topic to the `dialogs` assembly and to the
+   compendium. If a `dialogs` assembly module does not yet exist,
+   create one following the assembly module template in `IKE-DOC.md`.
+7. **Update reactor**: Add the `dialogs` assembly module to the
+   reactor POM's `<subprojects>` if it is new.
+8. **Validate**: Build and verify per Step 6 of the standard workflow.
+
 ## Ingestion into an Existing Corpus
 
 When the target project already has topics, follow the integration
