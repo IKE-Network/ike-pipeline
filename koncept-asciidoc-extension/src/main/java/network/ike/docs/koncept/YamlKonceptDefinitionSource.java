@@ -53,7 +53,7 @@ public class YamlKonceptDefinitionSource implements KonceptDefinitionSource {
     public static YamlKonceptDefinitionSource fromClasspath(String resource) {
         InputStream is = YamlKonceptDefinitionSource.class.getResourceAsStream(resource);
         if (is == null) {
-            LOG.warn("Koncept definitions not found on classpath: {}", resource);
+            LOG.debug("Koncept definitions not found on classpath: {}", resource);
             return new YamlKonceptDefinitionSource(Map.of());
         }
         try (Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8)) {

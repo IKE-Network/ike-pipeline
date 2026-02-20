@@ -31,18 +31,23 @@ example-project/
 
 The project inherits from IKE parent POMs:
 
-[mermaid]
+[plantuml]
 ....
-graph TB
-    A[ike-parent] --> B[java-parent]
-    B --> C[example-project]
+@startuml
+skinparam rectangleBorderColor #999999
+skinparam arrowColor #666666
+skinparam defaultFontName Noto Sans
 
-    A -.provides.-> D[AsciiDoc Pipeline]
-    B -.provides.-> E[Java 25 Config]
-    B -.provides.-> F[Test Frameworks]
-    C -.produces.-> G[JAR + Docs]
+rectangle "ike-parent" as A #e1f5ff
+rectangle "java-parent" as B #fff4e1
+rectangle "example-project" as C #e8f5e9
 
-    style A fill:#e1f5ff
-    style B fill:#fff4e1
-    style C fill:#e8f5e9
+A --> B
+B --> C
+
+A ..> "AsciiDoc Pipeline" : provides
+B ..> "Java 25 Config" : provides
+B ..> "Test Frameworks" : provides
+C ..> "JAR + Docs" : produces
+@enduml
 ....

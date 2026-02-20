@@ -30,7 +30,7 @@ echo "── Renderer Log Summary ───────────────�
 for log_file in $LOG_FILES; do
     name=$(basename "$log_file" .log | sed 's/^renderer-//')
     lines=$(wc -l < "$log_file" | tr -d ' ')
-    errors=$(grep -c -i -E 'error|fatal|exception|failed|not found' "$log_file" 2>/dev/null || echo 0)
+    errors=$(grep -c -i -E 'error|fatal|exception|failed|not found' "$log_file" 2>/dev/null) || true
 
     if [ "$errors" -gt 0 ]; then
         echo "  [$name] $errors error(s) — see $log_file"
