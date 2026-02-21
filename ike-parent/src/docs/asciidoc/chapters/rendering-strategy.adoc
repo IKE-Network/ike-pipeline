@@ -4,37 +4,41 @@ The pipeline produces HTML and PDF from the same AsciiDoc source. HTML generatio
 
 === Pipeline Overview
 
-[mermaid]
+[plantuml]
 ....
-flowchart LR
-    SRC["AsciiDoc<br/>source"]
+@startuml
+skinparam defaultFontName Noto Sans
+left to right direction
 
-    subgraph "Intermediate Forms"
-        HTML5["HTML5"]
-        DB["DocBook5 XML"]
-        FO["XSL-FO"]
-    end
+rectangle "AsciiDoc\nsource" as SRC
 
-    subgraph "PDF Outputs"
-        PRAWN["Prawn PDF<br/><i>pdf-prawn/</i>"]
-        PRINCE["Prince PDF<br/><i>pdf-prince/</i>"]
-        AH["AH PDF<br/><i>pdf-ah/</i>"]
-        WP["WeasyPrint PDF<br/><i>pdf-weasyprint/</i>"]
-        FOP["FOP PDF<br/><i>pdf-fop/</i>"]
-        XEP["XEP PDF<br/><i>pdf-xep/</i>"]
-    end
+package "Intermediate Forms" {
+  rectangle "HTML5" as HTML5
+  rectangle "DocBook5 XML" as DB
+  rectangle "XSL-FO" as FO
+}
 
-    SRC --> |"asciidoctorj-pdf<br/>(JRuby/Prawn)"| PRAWN
-    SRC --> HTML5
-    SRC --> DB
+package "PDF Outputs" {
+  rectangle "Prawn PDF\n//pdf-prawn//" as PRAWN #fbb
+  rectangle "Prince PDF\n//pdf-prince//" as PRINCE #bbf
+  rectangle "AH PDF\n//pdf-ah//" as AH #bbf
+  rectangle "WeasyPrint PDF\n//pdf-weasyprint//" as WP #bbf
+  rectangle "FOP PDF\n//pdf-fop//" as FOP #bbf
+  rectangle "XEP PDF\n//pdf-xep//" as XEP #bbf
+}
 
-    HTML5 --> |"prince"| PRINCE
-    HTML5 --> |"AHFCmd -cssmode"| AH
-    HTML5 --> |"weasyprint"| WP
+SRC --> PRAWN : asciidoctorj-pdf\n(JRuby/Prawn)
+SRC --> HTML5
+SRC --> DB
 
-    DB --> |"Saxon-HE<br/>+ DocBook XSL"| FO
-    FO --> |"Apache FOP"| FOP
-    FO --> |"xep"| XEP
+HTML5 --> PRINCE : prince
+HTML5 --> AH : AHFCmd -cssmode
+HTML5 --> WP : weasyprint
+
+DB --> FO : Saxon-HE\n+ DocBook XSL
+FO --> FOP : Apache FOP
+FO --> XEP : xep
+@enduml
 ....
 
 === Renderer Comparison

@@ -43,34 +43,34 @@ Parent POM chain::
 
 === Module Dependency Graph
 
-[mermaid]
+[plantuml]
 ....
-graph TD
-    A["pipeline<br/>(aggregator POM)"]
+@startuml
+skinparam defaultFontName Noto Sans
+top to bottom direction
 
-    B["minimal-fonts<br/>JAR: Noto TTF fonts"]
-    C["docbook-xsl<br/>JAR: DocBook XSL 1.79.2"]
-    G["koncept-asciidoc-extension<br/>JAR: k:Name[] macro"]
-    D["ike-parent<br/>POM: AsciiDoc pipeline"]
-    E["java-parent<br/>POM: Java 25 + test"]
-    F["example-project<br/>JAR: demo app + docs"]
+rectangle "pipeline\n(aggregator POM)" as A #f9f
 
-    A -- "lists module" --> B
-    A -- "lists module" --> C
-    A -- "lists module" --> G
-    A -- "lists module" --> D
-    A -- "lists module" --> E
-    A -- "lists module" --> F
+rectangle "minimal-fonts\nJAR: Noto TTF fonts" as B
+rectangle "docbook-xsl\nJAR: DocBook XSL 1.79.2" as C
+rectangle "koncept-asciidoc-extension\nJAR: k:Name[] macro" as G
+rectangle "ike-parent\nPOM: AsciiDoc pipeline" as D #bbf
+rectangle "java-parent\nPOM: Java 25 + test" as E #bbf
+rectangle "example-project\nJAR: demo app + docs" as F
 
-    D -. "uses in pdf-xep profile" .-> C
-    D -. "plugin dependency" .-> G
-    E -- "parent" --> D
-    F -- "parent" --> E
-    F -- "dependency" --> B
+A --> B : lists module
+A --> C : lists module
+A --> G : lists module
+A --> D : lists module
+A --> E : lists module
+A --> F : lists module
 
-    style A fill:#f9f,stroke:#333
-    style D fill:#bbf,stroke:#333
-    style E fill:#bbf,stroke:#333
+D ..> C : uses in pdf-xep profile
+D ..> G : plugin dependency
+E --> D : parent
+F --> E : parent
+F --> B : dependency
+@enduml
 ....
 
 === Build Order

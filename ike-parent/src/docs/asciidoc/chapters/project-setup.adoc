@@ -169,10 +169,12 @@ Embed diagrams directly in AsciiDoc. The Kroki server renders them at build time
 
 [source,asciidoc]
 -----
-[mermaid]
+[plantuml]
 ....
-graph LR
-    A[Source] --> B[Build] --> C[Output]
+@startuml
+A -> B : Build
+B -> C : Output
+@enduml
 ....
 -----
 

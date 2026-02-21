@@ -143,6 +143,7 @@
         <subproject>koncept-asciidoc-extension</subproject>
         <subproject>ike-parent</subproject>
         <subproject>java-parent</subproject>
+        <subproject>semantic-linebreak</subproject>
         <subproject>doc-example</subproject>
         <subproject>example-project</subproject>
     </subprojects>

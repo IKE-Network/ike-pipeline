@@ -43,6 +43,7 @@ a multi-renderer AsciiDoc-to-PDF/HTML pipeline for IKE Community projects.
 | `koncept-asciidoc-extension` | AsciidoctorJ `k:Name[]` inline macro + glossary | JAR |
 | `ike-parent` | Parent POM — AsciiDoc toolchain, renderer profiles | POM |
 | `java-parent` | Parent POM — Java 25 compiler, test frameworks | POM |
+| `semantic-linebreak` | CLI tool — AsciiDoc semantic linefeed reformatter | JAR |
 | `doc-example` | Doc-only project exercising all pipeline features | JAR (empty) |
 | `example-project` | Java+docs demo project | JAR + docs |
 
@@ -50,6 +51,7 @@ a multi-renderer AsciiDoc-to-PDF/HTML pipeline for IKE Community projects.
 
 ```
 ike-parent → java-parent → example-project
+ike-parent → java-parent → semantic-linebreak
 ike-parent → doc-example
 ```
 

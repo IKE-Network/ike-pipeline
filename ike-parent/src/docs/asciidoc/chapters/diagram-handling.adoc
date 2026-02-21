@@ -35,30 +35,30 @@ Kroki supports 20+ diagram types including Mermaid, PlantUML, GraphViz, BPMN, By
 
 The choice between SVG and PNG depends on the PDF renderer:
 
-[mermaid]
+[plantuml]
 ....
-flowchart TD
-    START["Diagram source<br/>(Mermaid, PlantUML, GraphViz)"]
-    KROKI["Kroki server"]
-    START --> KROKI
+@startuml
+skinparam defaultFontName Noto Sans
+top to bottom direction
 
-    KROKI --> SVG["SVG output"]
-    KROKI --> PNG["PNG output"]
+rectangle "Diagram source\n(PlantUML, GraphViz)" as START
+rectangle "Kroki server" as KROKI
+START --> KROKI
 
-    SVG --> HTML["HTML5 backend<br/><i>Always SVG (inline)</i>"]
-    SVG --> SVGO{"svgo fix needed?"}
+rectangle "SVG output" as SVG
+rectangle "PNG output" as PNG
+KROKI --> SVG
+KROKI --> PNG
 
-    SVGO --> |"Mermaid diagrams"| FIX["svgo-xep.config.mjs<br/>foreignObject to text<br/>HSL to hex"]
-    SVGO --> |"PlantUML / GraphViz"| PASS["Pass through<br/>(native text, hex colors)"]
+rectangle "HTML5 backend\n//Always SVG (inline)//" as HTML #bfb
+SVG --> HTML
 
-    FIX --> PRINCE["Prince / AH / XEP"]
-    PASS --> PRINCE
+rectangle "Prince / AH / FOP / XEP" as PRINCE #bbf
+SVG --> PRINCE : native text,\nhex colors
 
-    PNG --> PRAWN["Prawn / WeasyPrint"]
-
-    style HTML fill:#bfb,stroke:#333
-    style PRAWN fill:#fbb,stroke:#333
-    style PRINCE fill:#bbf,stroke:#333
+rectangle "Prawn / WeasyPrint" as PRAWN #fbb
+PNG --> PRAWN
+@enduml
 ....
 
 [cols="1,1,3"]
