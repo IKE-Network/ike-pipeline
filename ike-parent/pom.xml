@@ -554,7 +554,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <artifactItem>
                                     <groupId>network.ike</groupId>
                                     <artifactId>ike-build-standards</artifactId>
-                                    <version>3-SNAPSHOT</version>
+                                    <version>4-SNAPSHOT</version>
                                     <classifier>claude</classifier>
                                     <type>zip</type>
                                     <overWrite>true</overWrite>
