@@ -161,6 +161,24 @@ Prawn has two permanent limitations affecting Koncept support:
 For full Koncept support (SVG badges + glossary), use WeasyPrint instead.
 ====
 
+==== Font-lookup warnings on source blocks
+
+Prawn emits a spurious warning for every document that contains a listing or source block:
+
+----
+asciidoctor: WARN: Could not locate the character `\n` (\u000a)
+  in the following fonts: NotoSansMono, NotoSansMath, ...
+----
+
+The root cause is in asciidoctor-pdf's preformatted-text renderer:
+when it lays out a code block, literal newline characters inside the text run are passed to Prawn's font glyph-lookup instead of being consumed as line-break control characters.
+The warning is cosmetic -- the PDF renders correctly -- but it cannot be suppressed or fixed without patching the Ruby gem.
+Switching source highlighters (CodeRay, Rouge, or none) and switching diagram formats (SVG vs PNG) have no effect;
+the warning fires for any multi-line listing block.
+
+This issue does not affect any other renderer.
+Prince, WeasyPrint, AH, FOP, and XEP all handle source blocks through their native text layout engines without font-lookup warnings.
+
 Diagrams are rendered as PNG because `prawn-svg` cannot handle `<foreignObject>` elements, CSS `<style>` blocks, or HSL color values.
 
 [source,bash]

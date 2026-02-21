@@ -18,17 +18,30 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Reformats AsciiDoc files to use semantic linefeeds (one sentence per line).
+ * Reformats AsciiDoc files to use semantic linefeeds.
+ * <p>
+ * Line breaks are placed at logical boundaries — sentences, clauses, asides,
+ * introductions, and compound-sentence joints — producing source text that is
+ * easier to diff, edit, and reason about.
  * <p>
  * Uses AsciidoctorJ to parse the document AST, identifying paragraph blocks that
  * contain prose. Only those blocks are reformatted; delimited blocks (listings,
  * diagrams, tables, passthroughs, etc.) are never touched.
  * <p>
- * Breaking rules:
- * <ul>
- *   <li>Sentence breaks: {@code . ? !} followed by a space and uppercase letter</li>
- *   <li>Clause breaks (optional): {@code , ;} followed by a space, when line exceeds threshold</li>
- * </ul>
+ * Default breaking rules (in priority order):
+ * <ol>
+ *   <li>Sentence ends: {@code . ? !} followed by a space and uppercase letter</li>
+ *   <li>Closing quote after sentence: {@code ." ?" !"} followed by space and uppercase</li>
+ *   <li>Em-dash (Unicode {@code \u2014}) followed by space</li>
+ *   <li>Em-dash (AsciiDoc {@code --}) surrounded by spaces</li>
+ *   <li>Semicolon followed by space</li>
+ *   <li>Colon followed by space (guarded against URLs, times, definition lists)</li>
+ *   <li>Comma followed by coordinating conjunction ({@code and, but, or, yet, so, nor})</li>
+ *   <li>Simple comma clause break (optional, threshold-gated)</li>
+ * </ol>
+ * <p>
+ * Use {@code --sentences-only} to restrict breaking to sentence boundaries only
+ * (rules 1-2 above).
  * <p>
  * Hard line breaks ({@code " +"} at end of line) are preserved.
  * Abbreviations (Dr., Mr., e.g., i.e., etc.) are recognized and not treated as sentence ends.
@@ -55,8 +68,14 @@ public class SemanticLineBreaker {
             "U.S", "U.K", "A.M", "P.M", "a.m", "p.m"
     );
 
+    // ── Coordinating conjunctions for comma+conjunction breaks ─────────────────
+
+    private static final List<String> CONJUNCTIONS =
+            List.of("and ", "but ", "or ", "yet ", "so ", "nor ");
+
     // ── Configuration ───────────────────────────────────────────────────────────
 
+    private boolean sentencesOnly = false;
     private boolean clauseBreak = false;
     private int clauseBreakThreshold = 80;
     private boolean dryRun = false;
@@ -81,6 +100,7 @@ public class SemanticLineBreaker {
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "--output", "-o" -> outputPath = args[++i];
+                case "--sentences-only" -> sentencesOnly = true;
                 case "--clause-break" -> clauseBreak = true;
                 case "--clause-threshold" -> clauseBreakThreshold = Integer.parseInt(args[++i]);
                 case "--dry-run", "-n" -> dryRun = true;
@@ -152,7 +172,7 @@ public class SemanticLineBreaker {
                 String joined = joinParagraph(paragraphLines);
 
                 // Apply sentence breaking
-                List<String> broken = breakSentences(joined);
+                List<String> broken = breakSemanticLines(joined);
 
                 // Only replace if we actually changed something
                 if (!broken.equals(new ArrayList<>(paragraphLines))) {
@@ -244,7 +264,7 @@ public class SemanticLineBreaker {
         return sb.toString();
     }
 
-    // ── Sentence Breaking ───────────────────────────────────────────────────────
+    // ── Semantic Line Breaking ─────────────────────────────────────────────────
 
     /**
      * Break a joined paragraph into one-sentence-per-line.
@@ -252,7 +272,7 @@ public class SemanticLineBreaker {
      * If the paragraph contains hard line breaks ({@code \n} from " +" markers),
      * each segment is broken independently.
      */
-    List<String> breakSentences(String text) {
+    List<String> breakSemanticLines(String text) {
         // Handle hard line breaks as independent segments
         if (text.contains(" +\n")) {
             List<String> result = new ArrayList<>();
@@ -336,9 +356,94 @@ public class SemanticLineBreaker {
                 }
             }
 
-            // ── Optional clause breaks: , ; (only when line is long) ────────
+            // ── Em-dash (Unicode \u2014) ──────────────────────────────────────
+            if (!sentencesOnly
+                    && c == '\u2014'
+                    && i + 1 < len
+                    && text.charAt(i + 1) == ' ') {
+
+                result.add(current.toString().trim());
+                current.setLength(0);
+                i += 2; // skip past the space
+                continue;
+            }
+
+            // ── Em-dash (AsciiDoc: space-dash-dash-space) ────────────────────
+            if (!sentencesOnly
+                    && c == '-'
+                    && i + 2 < len
+                    && text.charAt(i + 1) == '-'
+                    && text.charAt(i + 2) == ' '
+                    && current.length() >= 2
+                    && current.charAt(current.length() - 2) == ' ') {
+
+                current.append('-'); // append second dash
+                result.add(current.toString().trim());
+                current.setLength(0);
+                i += 3; // skip past second dash + space
+                continue;
+            }
+
+            // ── Semicolon ────────────────────────────────────────────────────
+            if (!sentencesOnly
+                    && c == ';'
+                    && i + 2 < len
+                    && text.charAt(i + 1) == ' ') {
+
+                result.add(current.toString().trim());
+                current.setLength(0);
+                i += 2;
+                continue;
+            }
+
+            // ── Colon (guarded) ──────────────────────────────────────────────
+            if (!sentencesOnly
+                    && c == ':'
+                    && i + 2 < len
+                    && text.charAt(i + 1) == ' '
+                    && text.charAt(i + 2) != '/') { // not URL scheme (://)
+
+                // Guard: preceded by digit → likely time (10:30)
+                boolean isTime = current.length() >= 2
+                        && Character.isDigit(current.charAt(current.length() - 2));
+
+                // Guard: preceded by colon → AsciiDoc definition list (Term::)
+                boolean isDefList = current.length() >= 2
+                        && current.charAt(current.length() - 2) == ':';
+
+                // Guard: preceded by URL scheme
+                String accumulated = current.toString();
+                boolean isUrl = accumulated.endsWith("http:")
+                        || accumulated.endsWith("https:")
+                        || accumulated.endsWith("ftp:")
+                        || accumulated.endsWith("mailto:");
+
+                if (!isTime && !isDefList && !isUrl) {
+                    result.add(current.toString().trim());
+                    current.setLength(0);
+                    i += 2;
+                    continue;
+                }
+            }
+
+            // ── Comma + conjunction ──────────────────────────────────────────
+            if (!sentencesOnly
+                    && c == ','
+                    && i + 2 < len
+                    && text.charAt(i + 1) == ' ') {
+
+                String rest = text.substring(i + 2);
+                if (startsWithConjunction(rest)) {
+                    result.add(current.toString().trim());
+                    current.setLength(0);
+                    i += 2; // conjunction starts the new line
+                    continue;
+                }
+            }
+
+            // ── Simple comma/semicolon clause breaks (threshold-gated) ───────
             if (clauseBreak
-                    && (c == ',' || c == ';')
+                    && c == ','
                     && i + 2 < len
                     && text.charAt(i + 1) == ' '
                     && current.length() > clauseBreakThreshold) {
@@ -387,28 +492,45 @@ public class SemanticLineBreaker {
         return false;
     }
 
+    // ── Conjunction Detection ────────────────────────────────────────────────────
+
+    /**
+     * Check if the given text starts with a coordinating conjunction followed by
+     * a space (e.g., "and ", "but ", "or ").
+     */
+    private static boolean startsWithConjunction(String text) {
+        for (String conj : CONJUNCTIONS) {
+            if (text.startsWith(conj)) return true;
+        }
+        return false;
+    }
+
     // ── Usage ───────────────────────────────────────────────────────────────────
 
     private void printUsage() {
         System.err.println("""
                 Usage: semantic-linebreak [options] <file.adoc>
 
-                Reformats AsciiDoc prose paragraphs to use one-sentence-per-line.
-                Only paragraph blocks are modified; listings, diagrams, tables,
-                and all other block types are preserved unchanged.
+                Reformats AsciiDoc prose paragraphs to use semantic linefeeds.
+                Breaks lines at logical boundaries: sentences, em-dashes, semicolons,
+                colons, and comma+conjunction joints. Only paragraph blocks are
+                modified; listings, diagrams, tables, and all other block types are
+                preserved unchanged.
 
                 Options:
                   -o, --output <file>     Write to file (default: in-place)
                   -n, --dry-run           Print result to stdout, don't modify files
                   -v, --verbose           Show which paragraphs are being reformatted
-                  --clause-break          Also break on , and ; (for long lines)
-                  --clause-threshold <n>  Min line length before clause break (default: 80)
+                  --sentences-only        Break only at sentence boundaries (. ? !)
+                  --clause-break          Also break on simple commas (for long lines)
+                  --clause-threshold <n>  Min line length before comma break (default: 80)
                   -h, --help              Show this message
 
                 Examples:
-                  semantic-linebreak doc.adoc                     # in-place reformat
+                  semantic-linebreak doc.adoc                     # semantic linefeeds
                   semantic-linebreak -n doc.adoc                  # preview to stdout
-                  semantic-linebreak --clause-break doc.adoc      # also break at clauses
+                  semantic-linebreak --sentences-only doc.adoc    # sentences only
+                  semantic-linebreak --clause-break doc.adoc      # also break at commas
                   semantic-linebreak -o reformatted.adoc doc.adoc # write to new file
                 """);
     }

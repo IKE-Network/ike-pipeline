@@ -811,6 +811,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         <configuration>
                             <skip>${ike.skip.prawn}</skip>
                             <backend>pdf</backend>
+                            <sourceDocumentName>${pdf.source.document}.adoc</sourceDocumentName>
                             <outputDirectory>${asciidoc.output.directory}/pdf-prawn</outputDirectory>
                             <attributes>
                                 <pdf-themesdir>${asciidoc.theme.directory}</pdf-themesdir>
