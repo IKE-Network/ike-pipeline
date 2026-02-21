@@ -54,24 +54,28 @@ k:EndocrineDisorder[] and k:MetabolicDisorder[] through
 subsumption, while its definition includes existential restrictions
 to k:PancreaticStructure[] and k:Hyperglycemia[].
 
-[mermaid]
+[plantuml]
 ....
-%%{init: {"flowchart": {"htmlLabels": false, "useMaxWidth": false}} }%%
-graph LR
-    A[Diabetes mellitus] -->|is-a| B[Endocrine disorder]
-    A -->|is-a| C[Metabolic disorder]
-    B -->|is-a| D[Disease]
-    C -->|is-a| D
+@startuml
+skinparam rectangleBorderColor #999999
+skinparam arrowColor #666666
+skinparam defaultFontName Noto Sans
+left to right direction
 
-    A -->|finding-site| E[Pancreatic structure]
-    A -->|has-finding| F[Hyperglycemia]
+rectangle "Diabetes mellitus" as A #ffcccc
+rectangle "Endocrine disorder" as B #cce5ff
+rectangle "Metabolic disorder" as C #cce5ff
+rectangle "Disease" as D #e6f3ff
+rectangle "Pancreatic structure" as E #ffe6cc
+rectangle "Hyperglycemia" as F #ccffcc
 
-    style A fill:#ffcccc,color:#333333
-    style B fill:#cce5ff,color:#333333
-    style C fill:#cce5ff,color:#333333
-    style D fill:#e6f3ff,color:#333333
-    style E fill:#ffe6cc,color:#333333
-    style F fill:#ccffcc,color:#333333
+A --> B : is-a
+A --> C : is-a
+B --> D : is-a
+C --> D : is-a
+A --> E : finding-site
+A --> F : has-finding
+@enduml
 ....
 
 === Description Logic Representation
