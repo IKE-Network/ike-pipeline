@@ -51,6 +51,10 @@
             <id>ike-snapshots</id>
             <url>${deploy.snapshot.url}</url>
         </snapshotRepository>
+        <site child.site.url.inherit.append.path="false">
+            <id>local</id>
+            <url>scp://localhost/tmp/ike-site/ike-parent</url>
+        </site>
     </distributionManagement>
 
     <properties>
@@ -335,6 +339,66 @@
                     <artifactId>maven-clean-plugin</artifactId>
                     <version>${maven-clean-plugin.version}</version>
                 </plugin>
+                <!-- ── Maven Site Plugin ──────────────────────────────────── -->
+                <!-- Inherited by all projects in the ike-parent chain.       -->
+                <!-- Docs Maven Skin + AsciiDoc via Doxia converter module.   -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-site-plugin</artifactId>
+                    <version>3.21.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.asciidoctor</groupId>
+                            <artifactId>asciidoctor-converter-doxia-module</artifactId>
+                            <version>3.2.0</version>
+                        </dependency>
+                        <!-- Diagram support (PlantUML via Kroki) -->
+                        <dependency>
+                            <groupId>org.asciidoctor</groupId>
+                            <artifactId>asciidoctorj-diagram</artifactId>
+                            <version>2.3.1</version>
+                        </dependency>
+                    </dependencies>
+                    <configuration>
+                        <asciidoc>
+                            <requires>
+                                <require>asciidoctor-diagram</require>
+                            </requires>
+                            <attributes>
+                                <source-highlighter>coderay</source-highlighter>
+                                <icons>font</icons>
+                                <diagram-server-url>${kroki.server.url}</diagram-server-url>
+                                <diagram-server-type>kroki_io</diagram-server-type>
+                                <diagram-format>svg</diagram-format>
+                                <diagram-svg-type>inline</diagram-svg-type>
+                                <allow-uri-read>true</allow-uri-read>
+                            </attributes>
+                        </asciidoc>
+                        <moduleExcludes>
+                            <asciidoc>**/_*.adoc,**/_*/</asciidoc>
+                        </moduleExcludes>
+                    </configuration>
+                </plugin>
+
+                <!-- ── Maven Project Info Reports ────────────────────────── -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-project-info-reports-plugin</artifactId>
+                    <version>3.9.0</version>
+                </plugin>
+
+                <!-- ── Maven Javadoc Plugin ──────────────────────────────── -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.11.2</version>
+                    <configuration>
+                        <doclint>all,-missing</doclint>
+                        <quiet>true</quiet>
+                        <show>protected</show>
+                    </configuration>
+                </plugin>
+
                 <!-- Lock default lifecycle plugin versions (suppresses Maven 4 warning) -->
                 <plugin><artifactId>maven-compiler-plugin</artifactId><version>3.14.0</version></plugin>
                 <plugin><artifactId>maven-surefire-plugin</artifactId><version>3.5.2</version></plugin>

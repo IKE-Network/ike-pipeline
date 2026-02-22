@@ -57,7 +57,32 @@
             <id>ike-snapshots</id>
             <url>${deploy.snapshot.url}</url>
         </snapshotRepository>
+        <site>
+            <id>local</id>
+            <url>scp://localhost/tmp/ike-site</url>
+        </site>
     </distributionManagement>
+
+    <properties>
+        <!-- ── IKE Build Infrastructure Versions ─────────────────────── -->
+        <!-- These properties are needed because maven-dependency-plugin  -->
+        <!-- <artifactItems> require explicit GAV — they do not resolve   -->
+        <!-- from <dependencyManagement>.                                 -->
+        <ike-build-standards.version>4-SNAPSHOT</ike-build-standards.version>
+        <ike-build-tools.version>1.0.0-SNAPSHOT</ike-build-tools.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>network.ike</groupId>
+                <artifactId>ike-bom</artifactId>
+                <version>1.1.0-SNAPSHOT</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <!--
       Module order mirrors the dependency graph (Maven reactor sorts
@@ -76,13 +101,123 @@
     <build>
         <pluginManagement>
             <plugins>
-                <plugin><artifactId>maven-clean-plugin</artifactId><version>3.4.0</version></plugin>
+                <plugin>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>3.4.0</version>
+                </plugin>
                 <plugin><artifactId>maven-install-plugin</artifactId><version>3.1.3</version></plugin>
                 <plugin><artifactId>maven-deploy-plugin</artifactId><version>3.1.3</version></plugin>
+
+                <!-- ── Maven Site Plugin ────────────────────────────────── -->
+                <!-- Sentry Maven Skin + AsciiDoc via Doxia converter module. -->
+                <!-- Run: mvn site site:stage for aggregated multi-module.    -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-site-plugin</artifactId>
+                    <version>3.21.0</version>
+                    <dependencies>
+                        <!-- AsciiDoc support in site pages -->
+                        <dependency>
+                            <groupId>org.asciidoctor</groupId>
+                            <artifactId>asciidoctor-converter-doxia-module</artifactId>
+                            <version>3.2.0</version>
+                        </dependency>
+                        <!-- Diagram support (PlantUML via Kroki) -->
+                        <dependency>
+                            <groupId>org.asciidoctor</groupId>
+                            <artifactId>asciidoctorj-diagram</artifactId>
+                            <version>2.3.1</version>
+                        </dependency>
+                        <!-- Sentry Maven Skin custom Velocity tools -->
+                        <dependency>
+                            <groupId>org.sentrysoftware.maven</groupId>
+                            <artifactId>maven-skin-tools</artifactId>
+                            <version>1.7.00</version>
+                            <exclusions>
+                                <!-- GraalJS 23.0.x uses sun.misc.Unsafe.ensureClassInitialized()
+                                     removed in JDK 22+.  Replace with Polyglot 25.0.x below. -->
+                                <exclusion>
+                                    <groupId>org.graalvm.js</groupId>
+                                    <artifactId>js</artifactId>
+                                </exclusion>
+                            </exclusions>
+                        </dependency>
+                        <!-- GraalJS 25.0.x — JDK 22+ compatible replacement for
+                             the org.graalvm.js:js:23.0.11 JAR bundled with skin-tools -->
+                        <dependency>
+                            <groupId>org.graalvm.polyglot</groupId>
+                            <artifactId>polyglot</artifactId>
+                            <version>25.0.2</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.graalvm.polyglot</groupId>
+                            <artifactId>js</artifactId>
+                            <version>25.0.2</version>
+                            <type>pom</type>
+                        </dependency>
+                    </dependencies>
+                    <configuration>
+                        <asciidoc>
+                            <requires>
+                                <require>asciidoctor-diagram</require>
+                            </requires>
+                            <attributes>
+                                <source-highlighter>coderay</source-highlighter>
+                                <icons>font</icons>
+                                <diagram-server-url>https://kroki.komet.sh</diagram-server-url>
+                                <diagram-server-type>kroki_io</diagram-server-type>
+                                <diagram-format>svg</diagram-format>
+                                <diagram-svg-type>inline</diagram-svg-type>
+                                <allow-uri-read>true</allow-uri-read>
+                            </attributes>
+                        </asciidoc>
+                        <moduleExcludes>
+                            <asciidoc>**/_*.adoc,**/_*/</asciidoc>
+                        </moduleExcludes>
+                    </configuration>
+                </plugin>
+
+                <!-- ── Maven Project Info Reports ──────────────────────── -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-project-info-reports-plugin</artifactId>
+                    <version>3.9.0</version>
+                </plugin>
+
+                <!-- ── Maven Javadoc Plugin ─────────────────────────────── -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.11.2</version>
+                    <configuration>
+                        <doclint>all,-missing</doclint>
+                        <quiet>true</quiet>
+                        <show>protected</show>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
 
         <plugins>
+            <!-- Preserve staging/ across clean so that
+                 mvn clean site site:stage works in a single invocation.
+                 Without this, the root module's clean (which runs last)
+                 would delete submodule sites already staged. -->
+            <plugin>
+                <artifactId>maven-clean-plugin</artifactId>
+                <configuration>
+                    <excludeDefaultDirectories>true</excludeDefaultDirectories>
+                    <filesets>
+                        <fileset>
+                            <directory>${project.build.directory}</directory>
+                            <excludes>
+                                <exclude>staging/**</exclude>
+                            </excludes>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
+
             <!-- Unpack build infrastructure artifacts at the reactor root.
                  This gives Claude Code access to standards and tools from
                  the working directory where it runs. Inheriting modules
@@ -101,7 +236,7 @@
                                 <artifactItem>
                                     <groupId>network.ike</groupId>
                                     <artifactId>ike-build-standards</artifactId>
-                                    <version>3-SNAPSHOT</version>
+                                    <version>${ike-build-standards.version}</version>
                                     <classifier>claude</classifier>
                                     <type>zip</type>
                                     <overWrite>true</overWrite>
@@ -119,7 +254,7 @@
                                 <artifactItem>
                                     <groupId>network.ike</groupId>
                                     <artifactId>ike-build-tools</artifactId>
-                                    <version>1.0.0-SNAPSHOT</version>
+                                    <version>${ike-build-tools.version}</version>
                                     <classifier>tools</classifier>
                                     <type>zip</type>
                                     <overWrite>true</overWrite>
@@ -132,6 +267,30 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!-- Reporting — generates site reports via mvn site.                -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <reporting>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-project-info-reports-plugin</artifactId>
+                <version>3.9.0</version>
+                <reportSets>
+                    <reportSet>
+                        <reports>
+                            <report>index</report>
+                            <report>summary</report>
+                            <report>modules</report>
+                            <report>licenses</report>
+                            <report>dependency-info</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+            </plugin>
+        </plugins>
+    </reporting>
 
     <subprojects>
         <subproject>ike-build-standards</subproject>

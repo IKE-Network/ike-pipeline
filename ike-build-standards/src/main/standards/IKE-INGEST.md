@@ -75,7 +75,37 @@ Receive the source document. Identify its structure:
 - Cross-references and dependencies between sections
 - Existing index terms or glossary entries
 
-### Step 2: Decompose
+### Step 2: Normalize line structure
+
+Apply semantic line breaks to the source before any structural editing.
+Run the `semantic-linebreak` tool on every AsciiDoc file being ingested:
+
+```bash
+mvn exec:java -pl semantic-linebreak \
+  -Dexec.args="path/to/source.adoc"
+```
+
+If the source is not yet AsciiDoc (e.g., DocBook, Markdown, HTML),
+convert it to AsciiDoc first, then run the tool.
+
+Semantic line breaks place newlines at logical boundaries — sentences,
+em-dashes, semicolons, colons, and comma+conjunction joints. This
+normalization must happen **before** decomposition because:
+
+- **Decomposition splits** become line-range operations instead of
+  mid-line edits, eliminating copy-paste truncation errors.
+- **Index term insertion** targets an exact line without disturbing
+  adjacent sentences.
+- **Subsequent edits** (xrefs, koncept macros, wording changes)
+  produce minimal, reviewable diffs that touch only the affected line.
+- **Granularity estimation** against the 500–5000 character bounds is
+  easier when each line is a semantic unit.
+
+The tool only modifies paragraph blocks identified by the AsciidoctorJ
+AST. Source listings, diagrams, tables, and all other block types are
+preserved unchanged.
+
+### Step 3: Decompose
 
 Split the source into topic fragments per `IKE-TOPIC-DECOMPOSITION.md`:
 
@@ -85,7 +115,7 @@ Split the source into topic fragments per `IKE-TOPIC-DECOMPOSITION.md`:
 4. Author each fragment per `IKE-ASCIIDOC-FRAGMENT.md` with index
    terms per `IKE-INDEX.md`.
 
-### Step 3: Index
+### Step 4: Index
 
 Register every topic in `topic-registry.yaml` per
 `IKE-TOPIC-REGISTRY.md`:
@@ -94,7 +124,7 @@ Register every topic in `topic-registry.yaml` per
 - Check for redundancy against existing topics in the registry.
 - Resolve any overlaps before proceeding.
 
-### Step 4: Place
+### Step 5: Place
 
 Put topic files into the target project's `topics/` module:
 
@@ -105,7 +135,7 @@ Put topic files into the target project's `topics/` module:
    topics for the HTML preview.
 4. Merge registry entries into `topic-registry.yaml`.
 
-### Step 5: Assemble
+### Step 6: Assemble
 
 Create or update an assembly in the target project:
 
@@ -117,7 +147,7 @@ Create or update an assembly in the target project:
    `sections` mirroring the heading hierarchy.
 4. Add the new module to the reactor POM's `<subprojects>`.
 
-### Step 6: Validate
+### Step 7: Validate
 
 Build and verify:
 
@@ -159,7 +189,7 @@ single topic. See `IKE-TOPIC-DECOMPOSITION.md` § "Dialog Topics."
    create one following the assembly module template in `IKE-DOC.md`.
 7. **Update reactor**: Add the `dialogs` assembly module to the
    reactor POM's `<subprojects>` if it is new.
-8. **Validate**: Build and verify per Step 6 of the standard workflow.
+8. **Validate**: Build and verify per Step 7 of the standard workflow.
 
 ## Ingestion into an Existing Corpus
 

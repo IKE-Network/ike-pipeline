@@ -51,6 +51,13 @@
         <url>https://ike.network</url>
     </organization>
 
+    <distributionManagement>
+        <site>
+            <id>local</id>
+            <url>scp://localhost/tmp/ike-site/doc-example</url>
+        </site>
+    </distributionManagement>
+
     <dependencies>
         <!-- IKE Build Standards — Claude instruction files.
              Version resolved from ike-bom via parent dependencyManagement.

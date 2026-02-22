@@ -143,9 +143,44 @@
     }
 }
 
-/* Suppress header/footer on the first page (title page) */
+/* ── Named Pages for Front Matter ──────────────────────────────── */
+/* Colophon (first page of PDF — Prince watermark lands here),      */
+/* title page, and TOC get no running headers or footers.           */
+/* Body content restarts the page counter at Arabic 1.              */
+
+@page colophon {
+    @top-left     { content: none; }
+    @top-right    { content: none; }
+    @bottom-left  { content: none; }
+    @bottom-right { content: none; }
+    @bottom-center { content: none; }
+}
+
+@page title-page {
+    @top-left     { content: none; }
+    @top-right    { content: none; }
+    @bottom-left  { content: none; }
+    @bottom-right { content: none; }
+    @bottom-center { content: none; }
+}
+
+@page toc-page {
+    @top-left     { content: none; }
+    @top-right    { content: none; }
+    @bottom-left  { content: none; }
+    @bottom-right { content: none; }
+    @bottom-center {
+        content: counter(page, lower-roman);
+        font-family: 'Noto Sans', sans-serif;
+        font-size: 9pt;
+        color: #999999;
+    }
+}
+
+/* Suppress header/footer on the first page (belt-and-suspenders    */
+/* with the named pages above — :first targets the colophon page). */
 @page :first {
-    @top-right  { content: none; }
+    @top-right    { content: none; }
     @bottom-left  { content: none; }
     @bottom-right { content: none; }
 }
@@ -216,6 +251,12 @@ h6 { font-size: 10pt; }
 /* First h2 shouldn't force a page break if immediately after the title */
 #content h2:first-child {
     page-break-before: auto;
+}
+
+/* Reset page counter at body content — front matter (colophon,     */
+/* title, TOC) uses the implicit counter; body starts at Arabic 1. */
+#content {
+    counter-reset: page 1;
 }
 
 
@@ -313,6 +354,7 @@ thead {
 /* ── Table of Contents ─────────────────────────────────────────── */
 
 #toc {
+    page: toc-page;
     font-family: 'Noto Sans', sans-serif;
     font-size: 10pt;
     line-height: 1.4;
@@ -340,9 +382,81 @@ thead {
 }
 
 
+/* ── Colophon Page ─────────────────────────────────────────────── */
+/* First page of the PDF. Prince free-edition watermark lands here, */
+/* contextually alongside the acknowledgment of Prince's support.   */
+/* JS in docinfo.html moves this div before #header at render time. */
+
+#ike-colophon {
+    display: block;                  /* override screen display:none */
+    page: colophon;
+    break-after: right;              /* blank verso → title on next recto */
+    padding-top: 60%;
+    font-family: 'Noto Sans', sans-serif;
+    font-size: 9.5pt;
+    color: #555555;
+}
+
+.colophon-inner {
+    max-width: 80%;
+    margin: 0 auto;
+}
+
+.colophon-heading {
+    font-size: 14pt;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 1em;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.colophon-intro {
+    margin-bottom: 1.5em;
+    line-height: 1.5;
+}
+
+table.colophon-credits {
+    border: none;
+    border-collapse: collapse;
+    margin-bottom: 1.5em;
+    font-size: 9pt;
+    width: 100%;
+}
+
+table.colophon-credits td {
+    border: none;
+    padding: 3pt 8pt 3pt 0;
+    vertical-align: top;
+}
+
+.colophon-label {
+    font-weight: 600;
+    color: #2c3e50;
+    white-space: nowrap;
+    width: 25%;
+}
+
+.colophon-acknowledgment {
+    margin-top: 1.5em;
+    font-style: italic;
+    line-height: 1.5;
+}
+
+.colophon-license {
+    margin-top: 2em;
+    font-size: 8.5pt;
+    color: #999999;
+}
+
+
 /* ── Title Page ────────────────────────────────────────────────── */
+/* break-before: right forces the title onto a recto (odd) page,    */
+/* auto-inserting a blank verso after the colophon if needed.       */
 
 #header {
+    page: title-page;
+    break-before: right;             /* always start on recto */
     text-align: center;
     padding-top: 30%;
     page-break-after: always;

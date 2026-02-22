@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site xmlns="http://maven.apache.org/SITE/2.0.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://maven.apache.org/SITE/2.0.0
+      https://maven.apache.org/xsd/site-2.0.0.xsd"
+      name="Koncept AsciiDoc Extension">
+
+    <skin>
+        <groupId>org.sentrysoftware.maven</groupId>
+        <artifactId>sentry-maven-skin</artifactId>
+        <version>7.0.00</version>
+    </skin>
+
+    <custom>
+        <keywords>Koncept, AsciiDoc extension, AsciidoctorJ, description logic,
+                   SNOMED CT, clinical terminology, SVG badge</keywords>
+    </custom>
+
+    <body>
+        <menu name="Overview">
+            <item name="About"       href="index.html"/>
+        </menu>
+
+        <menu name="Reports" ref="reports"/>
+
+        <menu ref="parent"/>
+    </body>
+</site>

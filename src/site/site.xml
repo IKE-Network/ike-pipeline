@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright 2025 IKE Community
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<site xmlns="http://maven.apache.org/SITE/2.0.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://maven.apache.org/SITE/2.0.0
+      https://maven.apache.org/xsd/site-2.0.0.xsd"
+      name="IKE Documentation Pipeline">
+
+    <skin>
+        <groupId>org.sentrysoftware.maven</groupId>
+        <artifactId>sentry-maven-skin</artifactId>
+        <version>7.0.00</version>
+    </skin>
+
+    <custom>
+        <keywords>AsciiDoc, documentation pipeline, Maven, PDF, IKE Community,
+                   Koncept, semantic linebreaks, knowledge engineering</keywords>
+    </custom>
+
+    <bannerLeft name="IKE Documentation Pipeline" href="https://ike.network"/>
+
+    <body>
+        <menu name="Documentation">
+            <item name="Overview"             href="index.html"/>
+            <item name="Getting Started"      href="getting-started.html"/>
+            <item name="Architecture"         href="architecture.html"/>
+            <item name="Renderers"            href="renderers.html"/>
+            <item name="Koncept Reference"    href="koncept-reference.html"/>
+            <item name="Semantic Lines"       href="semantic-lines.html"/>
+            <item name="Build Guide"          href="build-guide.html"/>
+        </menu>
+
+        <menu name="Modules" ref="modules"/>
+
+        <menu name="Reports" ref="reports"/>
+    </body>
+</site>

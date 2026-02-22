@@ -47,6 +47,13 @@
         <url>https://ike.network</url>
     </organization>
 
+    <distributionManagement>
+        <site>
+            <id>local</id>
+            <url>scp://localhost/tmp/ike-site/semantic-linebreak</url>
+        </site>
+    </distributionManagement>
+
     <!-- Skip all doc-pipeline renderers — this is a tool module, not a doc project -->
     <properties>
         <ike.skip.html>true</ike.skip.html>

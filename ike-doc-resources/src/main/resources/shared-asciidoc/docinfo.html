@@ -11,6 +11,44 @@
 
   Copyright 2025 IKE Community — Apache License 2.0
 -->
+
+<!-- ── Colophon: hide on screen, relocate for print renderers ── -->
+<style>
+/* Hide the colophon in browser / screen HTML output.
+   The print stylesheet (ike-print.css) makes it visible and
+   styles it as the first page of the PDF.                     */
+#ike-colophon {
+    display: none;
+}
+</style>
+<script>
+/* Move the colophon div from end-of-body (where docinfo-footer
+   injects it) to before #header, making it the first page when
+   a CSS Paged Media renderer processes the document.
+
+   Prince XML and Antenna House execute this script before
+   rendering.  WeasyPrint ignores it (no JS support) — the
+   colophon stays at the end for WeasyPrint output.            */
+document.addEventListener('DOMContentLoaded', function() {
+    var colophon = document.getElementById('ike-colophon');
+    var header   = document.getElementById('header');
+    if (colophon && header && header.parentNode) {
+        header.parentNode.insertBefore(colophon, header);
+    }
+
+    /* Detect the renderer and populate the credits table.      */
+    var rendererCell = document.querySelector('.colophon-renderer');
+    if (rendererCell) {
+        if (typeof prince !== 'undefined') {
+            rendererCell.textContent = 'Prince XML — princexml.com';
+        } else if (typeof AHFormatter !== 'undefined') {
+            rendererCell.textContent = 'Antenna House Formatter — antennahouse.com';
+        }
+        /* WeasyPrint: no JS, so the static fallback text remains. */
+    }
+});
+</script>
+
 <style>
 /* ── Koncept SVG Badge Styling ──────────────────────────────── */
 /* Styles for the k:Name[] inline macro SVG badges and           */

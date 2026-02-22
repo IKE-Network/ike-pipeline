@@ -64,6 +64,10 @@
             <id>ike-snapshots</id>
             <url>${deploy.snapshot.url}</url>
         </snapshotRepository>
+        <site>
+            <id>local</id>
+            <url>scp://localhost/tmp/ike-site/${project.artifactId}</url>
+        </site>
     </distributionManagement>
 
     <properties>

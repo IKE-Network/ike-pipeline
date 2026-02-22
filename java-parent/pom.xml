@@ -48,6 +48,13 @@
         <url>https://ike.network</url>
     </organization>
 
+    <distributionManagement>
+        <site>
+            <id>local</id>
+            <url>scp://localhost/tmp/ike-site/java-parent</url>
+        </site>
+    </distributionManagement>
+
     <properties>
         <!-- Java Version -->
         <java.version>25</java.version>
