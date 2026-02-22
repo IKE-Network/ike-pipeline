@@ -36,6 +36,11 @@
   <!-- ═══════════════════════════════════════════════════════════════ -->
   <xsl:import href="../fo/docbook.xsl"/>
 
+  <!-- Suppress stock "Making portrait pages on USletter paper" message.
+       The stock template writes an xsl:message to stderr, which Maven
+       flags as [WARNING] [stderr].  Override with empty template. -->
+  <xsl:template name="root.messages"/>
+
 
   <!-- ═══════════════════════════════════════════════════════════════ -->
   <!-- IKE PDF RENDERER PARAMETER                                      -->
