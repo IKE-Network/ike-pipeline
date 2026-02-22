@@ -73,11 +73,22 @@ public class SemanticLineBreaker {
     private static final List<String> CONJUNCTIONS =
             List.of("and ", "but ", "or ", "yet ", "so ", "nor ");
 
+    // ── AsciiDoc inline macros that should start on their own line ────────────
+    // These are block-level annotations embedded in paragraph text.  The tool
+    // emits a line break *before* each one so they sit on a dedicated line,
+    // and never breaks *inside* their bracket arguments.
+
+    private static final List<String> OWN_LINE_MACROS =
+            List.of("indexterm:[", "indexterm2:[", "footnote:[");
+
     // ── Configuration ───────────────────────────────────────────────────────────
 
     private boolean sentencesOnly = false;
-    private boolean clauseBreak = false;
-    private int clauseBreakThreshold = 80;
+    private boolean clauseBreak = true;
+    private int clauseBreakThreshold = 0;
+    private int maxLineLength = 64;
+    private int minRemainder = 15;
+    private int minLineLength = 10;
     private boolean dryRun = false;
     private boolean verbose = false;
 
@@ -103,6 +114,10 @@ public class SemanticLineBreaker {
                 case "--sentences-only" -> sentencesOnly = true;
                 case "--clause-break" -> clauseBreak = true;
                 case "--clause-threshold" -> clauseBreakThreshold = Integer.parseInt(args[++i]);
+                case "--max-line-length" -> maxLineLength = Integer.parseInt(args[++i]);
+                case "--min-remainder" -> minRemainder = Integer.parseInt(args[++i]);
+                case "--min-line-length" -> minLineLength = Integer.parseInt(args[++i]);
+                case "--no-wrap" -> maxLineLength = Integer.MAX_VALUE;
                 case "--dry-run", "-n" -> dryRun = true;
                 case "--verbose", "-v" -> verbose = true;
                 case "--help", "-h" -> { printUsage(); System.exit(0); }
@@ -278,7 +293,7 @@ public class SemanticLineBreaker {
             List<String> result = new ArrayList<>();
             String[] segments = text.split(" \\+\n");
             for (int s = 0; s < segments.length; s++) {
-                List<String> broken = breakSegment(segments[s].trim());
+                List<String> broken = mergeShortLines(softWrap(breakSegment(segments[s].trim())));
                 if (s < segments.length - 1 && !broken.isEmpty()) {
                     // Re-attach the hard break marker to the last line of this segment
                     int last = broken.size() - 1;
@@ -288,7 +303,7 @@ public class SemanticLineBreaker {
             }
             return result;
         }
-        return breakSegment(text);
+        return mergeShortLines(softWrap(breakSegment(text)));
     }
 
     /**
@@ -304,10 +319,99 @@ public class SemanticLineBreaker {
 
         int len = text.length();
         int i = 0;
+        int bracketDepth = 0; // track nesting inside [...] (macro arguments)
 
         while (i < len) {
             char c = text.charAt(i);
+
+            // ── Break before AsciiDoc macros that get their own line ─────────
+            // indexterm:[], indexterm2:[], footnote:[], and shorthand index
+            // entries (((…))) and ((…)).  Emit accumulated prose as one line,
+            // then consume the entire macro (including brackets) into a new line.
+            if (bracketDepth == 0) {
+                String rest = text.substring(i);
+
+                // Check for named macros: indexterm:[…], indexterm2:[…], footnote:[…]
+                String matchedMacro = null;
+                for (String macro : OWN_LINE_MACROS) {
+                    if (rest.startsWith(macro)) {
+                        matchedMacro = macro;
+                        break;
+                    }
+                }
+
+                if (matchedMacro != null) {
+                    // Flush any accumulated prose before the macro
+                    String prose = current.toString().trim();
+                    if (!prose.isEmpty()) {
+                        result.add(prose);
+                        current.setLength(0);
+                    }
+                    // Consume the macro through its closing bracket
+                    int depth = 0;
+                    int j = i;
+                    while (j < len) {
+                        char mc = text.charAt(j);
+                        current.append(mc);
+                        if (mc == '[') depth++;
+                        else if (mc == ']') {
+                            depth--;
+                            if (depth == 0) { j++; break; }
+                        }
+                        j++;
+                    }
+                    result.add(current.toString().trim());
+                    current.setLength(0);
+                    i = j;
+                    // Skip trailing space after macro
+                    if (i < len && text.charAt(i) == ' ') i++;
+                    continue;
+                }
+
+                // Check for hidden shorthand index: (((…)))
+                // Only triple-paren gets its own line — it's invisible in output.
+                // Double-paren ((…)) is a visible inline term; leave it in prose.
+                if (rest.startsWith("(((")) {
+                    String prose = current.toString().trim();
+                    if (!prose.isEmpty()) {
+                        result.add(prose);
+                        current.setLength(0);
+                    }
+                    String closer = ")))";
+                    int closeIdx = rest.indexOf(closer, 3);
+                    if (closeIdx >= 0) {
+                        int endIdx = closeIdx + closer.length();
+                        current.append(rest, 0, endIdx);
+                        result.add(current.toString().trim());
+                        current.setLength(0);
+                        i += endIdx;
+                        if (i < len && text.charAt(i) == ' ') i++;
+                        continue;
+                    }
+                    // No closing found — fall through to normal processing
+                }
+            }
+
             current.append(c);
+
+            // ── Track square bracket depth ───────────────────────────────────
+            // Skip all breaking rules inside [...] — these contain AsciiDoc
+            // macro arguments (indexterm, link, image, xref, etc.) where
+            // commas and punctuation are syntax, not prose boundaries.
+            if (c == '[') {
+                bracketDepth++;
+                i++;
+                continue;
+            }
+            if (c == ']' && bracketDepth > 0) {
+                bracketDepth--;
+                i++;
+                continue;
+            }
+            if (bracketDepth > 0) {
+                i++;
+                continue;
+            }
 
             // ── Sentence-ending punctuation: . ? ! ──────────────────────────
             if ((c == '.' || c == '?' || c == '!')
@@ -466,6 +570,162 @@ public class SemanticLineBreaker {
         return result;
     }
 
+    // ── Soft Wrap ──────────────────────────────────────────────────────────────
+
+    /**
+     * Wrap lines that exceed {@code maxLineLength} at the last word boundary
+     * before the limit.  This is a post-processing pass applied after semantic
+     * breaks, ensuring that long single-clause sentences don't produce
+     * excessively wide lines in source.
+     * <p>
+     * Guards:
+     * <ul>
+     *   <li>Never breaks inside square brackets (macro arguments).</li>
+     *   <li>Skips a break if the remainder would be shorter than
+     *       {@code minRemainder} characters (avoids orphan words).</li>
+     * </ul>
+     */
+    private List<String> softWrap(List<String> lines) {
+        if (maxLineLength == Integer.MAX_VALUE) {
+            return lines;
+        }
+        List<String> wrapped = new ArrayList<>();
+        for (String line : lines) {
+            if (line.length() <= maxLineLength) {
+                wrapped.add(line);
+                continue;
+            }
+            String remaining = line;
+            while (remaining.length() > maxLineLength) {
+                int breakAt = findSoftBreak(remaining);
+                if (breakAt < 0) {
+                    break; // no valid break point, keep as-is
+                }
+                String remainder = remaining.substring(breakAt + 1);
+                // Skip break if remainder is too short (orphan guard)
+                if (remainder.length() < minRemainder) {
+                    break;
+                }
+                wrapped.add(remaining.substring(0, breakAt));
+                remaining = remainder;
+            }
+            if (!remaining.isEmpty()) {
+                wrapped.add(remaining);
+            }
+        }
+        return wrapped;
+    }
+
+    // ── Merge Short Lines ────────────────────────────────────────────────────────
+
+    /**
+     * Merge lines shorter than {@code minLineLength} with the following line.
+     * This prevents orphan words or very short fragments (like "A" or "The")
+     * from sitting alone on a line before a macro or long phrase.
+     * <p>
+     * Lines that are own-line macros (indexterm, footnote, (((…))) are never
+     * merged — they are intentionally on their own line.
+     */
+    private List<String> mergeShortLines(List<String> lines) {
+        if (lines.size() <= 1) {
+            return lines;
+        }
+        List<String> merged = new ArrayList<>();
+        int i = 0;
+        while (i < lines.size()) {
+            String line = lines.get(i);
+            // Merge forward if this line is short, not the last line,
+            // and neither this line nor the next is an own-line macro
+            if (line.length() < minLineLength
+                    && i + 1 < lines.size()
+                    && !isOwnLineMacro(line)
+                    && !isOwnLineMacro(lines.get(i + 1))) {
+                merged.add(line + " " + lines.get(i + 1));
+                i += 2;
+            } else {
+                merged.add(line);
+                i++;
+            }
+        }
+        return merged;
+    }
+
+    /**
+     * Check whether a line is an own-line macro that should not be merged.
+     */
+    private static boolean isOwnLineMacro(String line) {
+        for (String macro : OWN_LINE_MACROS) {
+            if (line.startsWith(macro.substring(0, macro.length() - 1))) {
+                return true;
+            }
+        }
+        return line.startsWith("(((");
+    }
+
+    // ── Macros whose bracket content is structured syntax (no wrapping) ────────
+
+    private static final List<String> NO_WRAP_MACROS =
+            List.of("indexterm:[", "indexterm2:[");
+
+    /**
+     * Find the best soft-wrap break point in a line: the last space at or
+     * before {@code maxLineLength} that is not inside a no-wrap bracket
+     * region (e.g. {@code indexterm:[…]}).  Spaces inside {@code footnote:[…]}
+     * are valid break points because footnote content is prose.
+     * Returns -1 if no valid break point exists.
+     */
+    private int findSoftBreak(String line) {
+        int noWrapDepth = 0;   // depth inside no-wrap macro brackets
+        int bestBreak = -1;
+
+        int limit = Math.min(line.length(), maxLineLength);
+        for (int j = 0; j < limit; j++) {
+            char ch = line.charAt(j);
+            if (ch == '[' && isNoWrapMacroAt(line, j)) {
+                noWrapDepth++;
+            } else if (ch == '[') {
+                // footnote or other prose brackets — wrappable, ignore
+            } else if (ch == ']' && noWrapDepth > 0) {
+                noWrapDepth--;
+            }
+            if (ch == ' ' && noWrapDepth == 0) {
+                bestBreak = j;
+            }
+        }
+
+        if (bestBreak > 0) {
+            return bestBreak;
+        }
+
+        // No space found before limit — find first space after limit
+        // that's outside no-wrap brackets
+        for (int j = limit; j < line.length(); j++) {
+            char ch = line.charAt(j);
+            if (ch == '[' && isNoWrapMacroAt(line, j)) {
+                noWrapDepth++;
+            } else if (ch == ']' && noWrapDepth > 0) {
+                noWrapDepth--;
+            }
+            if (ch == ' ' && noWrapDepth == 0) return j;
+        }
+
+        return -1;
+    }
+
+    /**
+     * Check whether the {@code '['} at position {@code bracketPos} is the
+     * opening bracket of a no-wrap macro (indexterm, indexterm2).
+     */
+    private static boolean isNoWrapMacroAt(String line, int bracketPos) {
+        for (String macro : NO_WRAP_MACROS) {
+            int start = bracketPos - (macro.length() - 1); // macro ends with '['
+            if (start >= 0 && line.startsWith(macro, start)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // ── Abbreviation Detection ──────────────────────────────────────────────────
 
     /**
@@ -522,15 +782,19 @@ public class SemanticLineBreaker {
                   -n, --dry-run           Print result to stdout, don't modify files
                   -v, --verbose           Show which paragraphs are being reformatted
                   --sentences-only        Break only at sentence boundaries (. ? !)
-                  --clause-break          Also break on simple commas (for long lines)
-                  --clause-threshold <n>  Min line length before comma break (default: 80)
+                  --clause-break          Also break on simple commas (default: on)
+                  --clause-threshold <n>  Min line length before comma break (default: 0)
+                  --max-line-length <n>   Soft-wrap long lines at word boundary (default: 64)
+                  --min-remainder <n>     Skip wrap if remainder < n chars (default: 15)
+                  --min-line-length <n>   Merge short lines with next line (default: 10)
+                  --no-wrap               Disable soft wrapping
                   -h, --help              Show this message
 
                 Examples:
                   semantic-linebreak doc.adoc                     # semantic linefeeds
                   semantic-linebreak -n doc.adoc                  # preview to stdout
                   semantic-linebreak --sentences-only doc.adoc    # sentences only
-                  semantic-linebreak --clause-break doc.adoc      # also break at commas
+                  semantic-linebreak --max-line-length 100 doc.adoc  # wider soft wrap
                   semantic-linebreak -o reformatted.adoc doc.adoc # write to new file
                 """);
     }

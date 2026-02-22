@@ -1,10 +1,13 @@
 === Supported Diagram Types
 
-The IKE AsciiDoc pipeline supports PlantUML and GraphViz diagrams, all rendered to SVG at build time via the Kroki server.
+The IKE AsciiDoc pipeline supports PlantUML and GraphViz diagrams,
+all rendered to SVG at build time via the Kroki server.
 
 ==== PlantUML Diagrams
 
-PlantUML is the preferred diagram engine for IKE documentation. It covers the widest range of diagram types with reliable SVG output across all renderers.
+PlantUML is the preferred diagram engine for IKE documentation.
+It covers the widest range of diagram types with reliable SVG
+output across all renderers.
 
 **PlantUML Sequence Diagram:**
 
@@ -147,7 +150,11 @@ CONCEPT ||--o{ REFSET_MEMBER : "member of"
 
 ==== GraphViz Diagrams
 
-GraphViz excels at complex graph structures where layout precision matters, including dependency graphs, subsumption hierarchies, and large node-count diagrams:
+GraphViz excels at complex graph structures where layout
+precision matters,
+including dependency graphs,
+subsumption hierarchies,
+and large node-count diagrams:
 
 [graphviz]
 ....
@@ -183,7 +190,9 @@ digraph ConceptHierarchy {
 
 ==== Custom Diagram Extension Points
 
-For specialized diagrams (e.g., DL axiom visualizations), you can:
+For specialized diagrams (e.g.,
+DL axiom visualizations),
+you can:
 
 1. Create a custom diagram generator (Java, Python, etc.)
 2. Output SVG to a file
@@ -194,7 +203,8 @@ For specialized diagrams (e.g., DL axiom visualizations), you can:
 image::diagrams/custom-axiom-diagram.svg[Custom DL Axiom]
 ----
 
-Or integrate with asciidoctorj-diagram as a custom diagram type (requires Ruby extension).
+Or integrate with asciidoctorj-diagram as a custom diagram type
+(requires Ruby extension).
 
 === Diagram Best Practices
 

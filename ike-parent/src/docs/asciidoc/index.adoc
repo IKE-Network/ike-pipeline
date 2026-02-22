@@ -14,7 +14,14 @@
 
 [abstract]
 --
-This manual documents the IKE Community Maven AsciiDoc pipeline -- the build infrastructure that transforms AsciiDoc source into HTML and PDF through five independent rendering backends. It covers reactor structure, rendering strategies, diagram handling, build profiles, and how to set up new documentation projects.
+This manual documents the IKE Community Maven AsciiDoc pipeline --
+the build infrastructure that transforms AsciiDoc source into
+HTML and PDF through five independent rendering backends.
+It covers reactor structure,
+rendering strategies,
+diagram handling,
+build profiles,
+and how to set up new documentation projects.
 --
 
 include::chapters/reactor-structure.adoc[]
@@ -31,4 +38,5 @@ include::chapters/extensions-and-theming.adoc[]
 
 ---
 
-_Generated from IKE Documentation Pipeline version {project-version} on {docdate}_
+_Generated from IKE Documentation Pipeline version
+{project-version} on {docdate}_

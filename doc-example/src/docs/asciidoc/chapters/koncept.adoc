@@ -4,7 +4,8 @@ The `Concept` record embodies key principles from SNOMED CT:
 
 ==== Immutability
 
-Records provide immutable data structures, ensuring Koncepts cannot be modified after creation:
+Records provide immutable data structures,
+ensuring Koncepts cannot be modified after creation:
 
 [source,java]
 ----
@@ -48,11 +49,13 @@ Concept finding = Concept.clinicalFinding(
 
 === Koncept Relationships
 
-In a full implementation, Koncepts are connected through formal relationships.
-For example, k:DiabetesMellitus[] is related to both
-k:EndocrineDisorder[] and k:MetabolicDisorder[] through
-subsumption, while its definition includes existential restrictions
-to k:PancreaticStructure[] and k:Hyperglycemia[].
+In a full implementation,
+Koncepts are connected through formal relationships.
+For example,
+k:DiabetesMellitus[] is related to both k:EndocrineDisorder[]
+and k:MetabolicDisorder[] through subsumption,
+while its definition includes existential restrictions to
+k:PancreaticStructure[] and k:Hyperglycemia[].
 
 [plantuml]
 ....
@@ -90,10 +93,8 @@ Diabetes mellitus ⊑ Endocrine disorder ⊓ Metabolic disorder ⊓
     ∃ has-finding.Hyperglycemia
 ----
 
-Where:
-* `⊑` represents subsumption (is-a)
-* `⊓` represents intersection (and)
-* `∃` represents existential restriction (some)
+Where: * `⊑` represents subsumption (is-a) * `⊓` represents
+intersection (and) * `∃` represents existential restriction (some)
 
 === Primitive vs. Fully Defined
 
@@ -111,11 +112,11 @@ Where:
 |===
 
 The distinction is critical for automated classification.
-A fully defined Koncept like k:DiabetesMellitus[]
-provides necessary _and_ sufficient conditions, enabling a DL reasoner
-to infer its position in the hierarchy.  A primitive Koncept like
-k:Disease[] provides only necessary conditions — subsumption
-relationships must be asserted by human modelers.
+A fully defined Koncept like k:DiabetesMellitus[] provides
+necessary _and_ sufficient conditions,
+enabling a DL reasoner to infer its position in the hierarchy. 
+A primitive Koncept like k:Disease[] provides only necessary conditions —
+subsumption relationships must be asserted by human modelers.
 
 The `isPrimitive()` method provides a simplified check:
 

@@ -62,8 +62,10 @@ CAUTION: This is a caution admonition. Potential for data loss.
 
 [quote, The IKE Community, Documentation Standards]
 ____
-Good documentation is not just accurate — it is discoverable,
-consistent, and beautiful across every output format.
+Good documentation is not just accurate —
+it is discoverable,
+consistent,
+and beautiful across every output format.
 ____
 
 === Sidebar
@@ -71,7 +73,8 @@ ____
 .Pipeline Architecture
 ****
 The IKE documentation pipeline is built on Maven 4's reactor model.
-Infrastructure modules (fonts, themes, extensions) are installed first,
+Infrastructure modules (fonts,
+themes, extensions) are installed first,
 then child projects inherit the full toolchain via parent POM inheritance.
 ****
 
@@ -102,11 +105,14 @@ PDF renderers.
 
 === Page Breaks
 
-In PDF output, a new chapter (level-2 heading) forces a page break.
-This is controlled by the CSS rule `h2 { page-break-before: always; }`
-in the print stylesheet, and by the Prawn theme's heading configuration.
+In PDF output,
+a new chapter (level-2 heading) forces a page break.
+This is controlled by the CSS rule `h2 { page-break-before:
+always; }` in the print stylesheet,
+and by the Prawn theme's heading configuration.
 
 === Images
 
-The pipeline supports inline SVG diagrams (rendered by Kroki) and
-raster images. SVG is preferred for scalability and print quality.
+The pipeline supports inline SVG diagrams (rendered by Kroki)
+and raster images.
+SVG is preferred for scalability and print quality.

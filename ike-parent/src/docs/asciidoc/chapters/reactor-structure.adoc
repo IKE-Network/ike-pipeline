@@ -1,6 +1,9 @@
 == Reactor Structure
 
-The IKE pipeline is organized as a Maven reactor with a clear separation between the *aggregator* POM (which lists modules) and the *parent* POM chain (which provides inherited configuration).
+The IKE pipeline is organized as a Maven reactor with a clear
+separation between the *aggregator* POM (which lists modules)
+and the *parent* POM chain (which provides inherited
+configuration).
 
 === Aggregator vs Parent
 
@@ -75,7 +78,8 @@ F --> B : dependency
 
 === Build Order
 
-Maven's reactor sorts modules by their dependency graph. The explicit order in the aggregator POM mirrors this:
+Maven's reactor sorts modules by their dependency graph.
+The explicit order in the aggregator POM mirrors this:
 
 . `minimal-fonts` -- no dependencies, built first
 . `docbook-xsl` -- no dependencies
@@ -84,4 +88,6 @@ Maven's reactor sorts modules by their dependency graph. The explicit order in t
 . `java-parent` -- parent is `ike-parent`
 . `example-project` -- parent is `java-parent`, depends on `minimal-fonts`
 
-The `build-all.sh` script exploits this by first installing infrastructure modules (`mvn install -pl '!example-project'`), then building the example project with the selected PDF renderer.
+The `build-all.sh` script exploits this by first installing
+infrastructure modules (`mvn install -pl '!example-project'`),
+then building the example project with the selected PDF renderer.

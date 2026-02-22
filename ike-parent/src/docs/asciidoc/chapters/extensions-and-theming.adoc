@@ -1,6 +1,8 @@
 == Extensions and Theming
 
-The pipeline includes custom AsciiDoctor extensions, shared document metadata, and theme files that apply consistently across all projects.
+The pipeline includes custom AsciiDoctor extensions,
+shared document metadata,
+and theme files that apply consistently across all projects.
 
 === Directory Layout
 
@@ -40,7 +42,10 @@ koncept-asciidoc-extension/src/
 
 === Koncept Inline Macro (`k:Name[]`)
 
-The `koncept-asciidoc-extension` module provides a Java/SPI-based AsciidoctorJ extension that replaces the earlier Ruby macro. It is loaded automatically via `META-INF/services` when the JAR is on the asciidoctor-maven-plugin classpath.
+The `koncept-asciidoc-extension` module provides a
+Java/SPI-based AsciidoctorJ extension that replaces the earlier Ruby macro.
+It is loaded automatically via `META-INF/services` when the JAR
+is on the asciidoctor-maven-plugin classpath.
 
 Use it in AsciiDoc source:
 
@@ -61,7 +66,9 @@ Prawn:: Plain text rendering (`*K*` + `Label` in code font). Prawn's HTML parser
 
 === Auto-Generated Glossary
 
-The `KonceptGlossaryProcessor` postprocessor automatically appends a "Referenced Koncepts" glossary section at the end of each document. Each entry includes:
+The `KonceptGlossaryProcessor` postprocessor automatically
+appends a "Referenced Koncepts" glossary section at the end of each document.
+Each entry includes:
 
 * Natural language definition
 * Description logic axiom in Unicode DL notation
@@ -69,7 +76,9 @@ The `KonceptGlossaryProcessor` postprocessor automatically appends a "Referenced
 * OWL IRI (when available)
 * Reference count
 
-Definitions are loaded from `koncepts.yml` (bundled in the extension JAR or overridden via document attributes `koncept-definitions-file` or `koncept-definitions-classpath`).
+Definitions are loaded from `koncepts.yml` (bundled in the
+extension JAR or overridden via document attributes
+`koncept-definitions-file` or `koncept-definitions-classpath`).
 
 The glossary is generated for all backends except Prawn:
 
@@ -79,18 +88,25 @@ The glossary is generated for all backends except Prawn:
 
 === Shared `docinfo.html`
 
-The `docinfo.html` file is injected into all documents via the `docinfo=shared` attribute. It provides:
+The `docinfo.html` file is injected into all documents via the
+`docinfo=shared` attribute.
+It provides:
 
 * *Koncept CSS* -- blue K prefix, small-caps name, pill-shaped background
 * *Mermaid ER fix* -- JavaScript that strips the `undefined;undefined` prefix from ER diagram relationship labels
 
-All projects inherit the shared docinfo directory through the `ike.shared.asciidoc.directory` property. Projects needing additional docinfo can override `docinfodir` and merge files.
+All projects inherit the shared docinfo directory through the
+`ike.shared.asciidoc.directory` property.
+Projects needing additional docinfo can override `docinfodir`
+and merge files.
 
 === PDF Themes
 
 ==== Prawn Theme (`ike-default-theme.yml`)
 
-The Prawn PDF theme controls typography, page layout, and styling for the `asciidoctorj-pdf` backend.
+The Prawn PDF theme controls typography,
+page layout,
+and styling for the `asciidoctorj-pdf` backend.
 
 Font catalog:
 
@@ -106,11 +122,16 @@ Page setup:
 * Running headers with chapter titles
 * Running footers with page numbers
 
-Projects can override the theme by placing their own `ike-default-theme.yml` in `src/theme/`. The `pdf-themesdir` attribute points to the project's theme directory first.
+Projects can override the theme by placing their own
+`ike-default-theme.yml` in `src/theme/`.
+The `pdf-themesdir` attribute points to the project's theme
+directory first.
 
 ==== Print CSS (`ike-print.css`)
 
-The CSS Paged Media stylesheet is used by Prince, AH, and WeasyPrint. It defines:
+The CSS Paged Media stylesheet is used by Prince,
+AH, and WeasyPrint.
+It defines:
 
 * `@font-face` rules for all Noto fonts
 * `@page` rules for margins and page regions
@@ -118,7 +139,8 @@ The CSS Paged Media stylesheet is used by Prince, AH, and WeasyPrint. It defines
 * Table, list, admonition, and code block styling
 * Image sizing and page break rules
 
-The stylesheet path is configured via `pdf.print.stylesheet` and copied to the print HTML output directory at build time.
+The stylesheet path is configured via `pdf.print.stylesheet`
+and copied to the print HTML output directory at build time.
 
 === Customization Points
 
@@ -144,4 +166,7 @@ Override these properties in your project POM to customize behavior:
 | Change the master document name from `index`
 |===
 
-To add project-specific AsciidoctorJ extensions, add them as dependencies of the asciidoctor-maven-plugin in your project POM. Java SPI extensions are discovered automatically from the classpath.
+To add project-specific AsciidoctorJ extensions,
+add them as dependencies of the asciidoctor-maven-plugin in
+your project POM.
+Java SPI extensions are discovered automatically from the classpath.

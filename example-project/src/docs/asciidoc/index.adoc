@@ -14,20 +14,24 @@
 
 [abstract]
 --
-This document demonstrates the IKE Community Maven AsciiDoc pipeline
-integrated with a Java project. It shows how to combine Java source code,
+This document demonstrates the IKE Community Maven AsciiDoc
+pipeline integrated with a Java project.
+It shows how to combine Java source code,
 tests, and professional documentation generation in a single Maven module.
 --
 
 == Introduction
 
-The IKE Example Project demonstrates how Java projects use the IKE
-documentation pipeline. It inherits from `java-parent`, which provides
-both the Java 25 compiler configuration and the full AsciiDoc toolchain
-from `ike-parent`.
+The IKE Example Project demonstrates how Java projects use the
+IKE documentation pipeline.
+It inherits from `java-parent`,
+which provides both the Java 25 compiler configuration and the
+full AsciiDoc toolchain from `ike-parent`.
 
-For a comprehensive test of all pipeline features (diagrams, typography,
-layout, all 6 PDF renderers), see the `doc-example` module instead.
+For a comprehensive test of all pipeline features (diagrams,
+typography,
+layout, all 6 PDF renderers),
+see the `doc-example` module instead.
 
 === What This Project Shows
 
@@ -46,12 +50,15 @@ include::chapters/architecture.adoc[]
 [NOTE]
 .Koncept Notation
 ====
-This document uses _Koncept_ (with a K) to refer to formally identified
-terminology atoms -- entities with a UUID, a position in the subsumption
-hierarchy, and a machine-readable definition.  When you see
-k:DiabetesMellitus[], that is a specific, formally identified
-Koncept.  The word "concept" (lowercase, no brackets) retains its
-ordinary English meaning.
+This document uses _Koncept_ (with a K) to refer to formally
+identified terminology atoms --
+entities with a UUID,
+a position in the subsumption hierarchy,
+and a machine-readable definition.  When you see
+k:DiabetesMellitus[],
+that is a specific,
+formally identified Koncept.  The word "concept" (lowercase,
+no brackets) retains its ordinary English meaning.
 ====
 
 The core `Concept` class represents a clinical terminology Koncept:

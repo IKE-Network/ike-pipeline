@@ -1,6 +1,12 @@
 == Build Profiles
 
-The documentation pipeline uses a **property-driven build** pattern. All build logic lives in the main `<build>` section of `ike-parent/pom.xml`, with per-renderer skip flags that default to `true`. Profiles are thin toggles that flip their skip flag to `false`. This makes profiles discoverable in IntelliJ's Maven Profiles panel and composable via `-D` properties or `-P` flags.
+The documentation pipeline uses a **property-driven build** pattern.
+All build logic lives in the main `<build>` section of
+`ike-parent/pom.xml`,
+with per-renderer skip flags that default to `true`.
+Profiles are thin toggles that flip their skip flag to `false`.
+This makes profiles discoverable in IntelliJ's Maven Profiles
+panel and composable via `-D` properties or `-P` flags.
 
 === Profile Activation
 
@@ -45,7 +51,9 @@ TIP: Profiles are composable. Activate multiple renderers in a single build by p
 
 === Skip Properties
 
-Each renderer has a skip flag that defaults to `true` (disabled). Profiles flip the relevant flag to `false`. You can also override skip flags directly from the command line.
+Each renderer has a skip flag that defaults to `true` (disabled).
+Profiles flip the relevant flag to `false`.
+You can also override skip flags directly from the command line.
 
 [cols="3,2,3"]
 |===
@@ -98,7 +106,9 @@ mvn clean verify -Dike.skip.html=false -Dike.skip.prawn=false
 
 === ZIP Artifacts
 
-Each renderer creates a ZIP of its output directory and attaches it as a classified Maven artifact. This makes documentation output publishable to Maven repositories.
+Each renderer creates a ZIP of its output directory and
+attaches it as a classified Maven artifact.
+This makes documentation output publishable to Maven repositories.
 
 [cols="2,3"]
 |===
@@ -167,7 +177,8 @@ mvn verify -Dkroki.server.url=http://localhost:8000 \
 
 === `build-all.sh` Behavior
 
-The `build-all.sh` script wraps the reactor build with PDF renderer selection and SVG post-processing:
+The `build-all.sh` script wraps the reactor build with PDF
+renderer selection and SVG post-processing:
 
 [source,bash]
 ----
@@ -191,7 +202,8 @@ The script:
 
 === Build Lifecycle
 
-The following diagram shows when each plugin runs during the Maven lifecycle:
+The following diagram shows when each plugin runs during the
+Maven lifecycle:
 
 [plantuml]
 ....

@@ -1,6 +1,7 @@
 == Setting Up a New Project
 
-This chapter walks through creating a new documentation project that inherits the full pipeline.
+This chapter walks through creating a new documentation project
+that inherits the full pipeline.
 
 === Prerequisites
 
@@ -8,11 +9,13 @@ This chapter walks through creating a new documentation project that inherits th
 * *Java 17+* -- minimum for asciidoctorj; Java 25 if using `java-parent`
 * *Node.js 18+* -- optional, only needed for `svgo` (Prawn SVG fixing)
 
-The Maven enforcer plugin validates these at build time with clear error messages.
+The Maven enforcer plugin validates these at build time with
+clear error messages.
 
 === Step 1: Create the POM
 
-Create a minimal `pom.xml` that inherits from the documentation parent (or Java parent if you have source code):
+Create a minimal `pom.xml` that inherits from the documentation
+parent (or Java parent if you have source code):
 
 [source,xml]
 ----
@@ -154,18 +157,21 @@ mvn clean verify -pl my-project -Dike.pdf.prawn
 
 === Adding Chapters
 
-Create chapter files in `src/docs/asciidoc/chapters/` and include them from `index.adoc`:
+Create chapter files in `src/docs/asciidoc/chapters/` and
+include them from `index.adoc`:
 
 [source,asciidoc]
 ----
 \include::chapters/my-chapter.adoc[]
 ----
 
-Each chapter file starts at the `==` heading level (the `index.adoc` book structure provides the `=` level).
+Each chapter file starts at the `==` heading level (the
+`index.adoc` book structure provides the `=` level).
 
 === Adding Diagrams
 
-Embed diagrams directly in AsciiDoc. The Kroki server renders them at build time:
+Embed diagrams directly in AsciiDoc.
+The Kroki server renders them at build time:
 
 [source,asciidoc]
 -----
@@ -178,11 +184,15 @@ B -> C : Output
 ....
 -----
 
-No local diagram tools needed. Kroki handles Mermaid, PlantUML, GraphViz, and 20+ other diagram types.
+No local diagram tools needed.
+Kroki handles Mermaid,
+PlantUML, GraphViz,
+and 20+ other diagram types.
 
 === Cross-Module Includes
 
-To include documentation from another module, add a dependency with the `asciidoc` classifier:
+To include documentation from another module,
+add a dependency with the `asciidoc` classifier:
 
 [source,xml]
 ----
@@ -202,4 +212,5 @@ Then include using the `{generated}` attribute:
 \include::{generated}/other-project/chapters/shared-chapter.adoc[]
 ----
 
-The `maven-dependency-plugin` unpacks these to `target/generated-sources/asciidoc/`.
+The `maven-dependency-plugin` unpacks these to
+`target/generated-sources/asciidoc/`.

@@ -1,6 +1,11 @@
 == Rendering Strategy
 
-The pipeline produces HTML and PDF from the same AsciiDoc source. HTML generation uses the built-in `html5` backend. PDF generation supports six independent renderers, each with different trade-offs in quality, licensing, and diagram handling.
+The pipeline produces HTML and PDF from the same AsciiDoc source.
+HTML generation uses the built-in `html5` backend.
+PDF generation supports six independent renderers,
+each with different trade-offs in quality,
+licensing,
+and diagram handling.
 
 === Pipeline Overview
 
@@ -100,9 +105,19 @@ NOTE: *Apache FOP is the recommended free PDF renderer.* It is pure Java (resolv
 
 === Apache FOP (Recommended Free)
 
-The recommended free PDF renderer. Apache FOP is a pure-Java XSL-FO processor (Apache License 2.0) that slots into the DocBook -> XSL-FO -> PDF pipeline. FOP is resolved from Maven Central as a plugin dependency — no local binary install, no Python, no external tools beyond Node.js (for svgo).
+The recommended free PDF renderer.
+Apache FOP is a pure-Java XSL-FO processor (Apache License 2.0)
+that slots into the DocBook -> XSL-FO -> PDF pipeline.
+FOP is resolved from Maven Central as a plugin dependency —
+no local binary install,
+no Python,
+no external tools beyond Node.js (for svgo).
 
-The pipeline is the same as XEP: AsciiDoc -> DocBook5 -> XSL-FO -> PDF. Koncept badges render as styled text (`K[Label]`) via `ike-fo.xsl`, and the auto-generated glossary is included as a native DocBook `<glossary>` element.
+The pipeline is the same as XEP:
+AsciiDoc -> DocBook5 -> XSL-FO -> PDF.
+Koncept badges render as styled text (`K[Label]`) via `ike-fo.xsl`,
+and the auto-generated glossary is included as a native DocBook
+`<glossary>` element.
 
 [source,bash]
 ----
@@ -111,9 +126,15 @@ mvn clean verify -pl example-project -Dike.pdf.fop
 
 === WeasyPrint (Alternative Free — CSS Path)
 
-A free alternative using the HTML -> CSS Paged Media pipeline. Requires Python 3.8+ (`pip install weasyprint`). WeasyPrint produces full Koncept SVG badges and auto-generated glossary output.
+A free alternative using the HTML -> CSS Paged Media pipeline.
+Requires Python 3.8+ (`pip install weasyprint`).
+WeasyPrint produces full Koncept SVG badges and auto-generated
+glossary output.
 
-WeasyPrint cannot render `<foreignObject>` in SVGs, so diagrams use PNG format (rasterized server-side by Kroki). This is the same approach as Prawn and produces clear, legible diagrams.
+WeasyPrint cannot render `<foreignObject>` in SVGs,
+so diagrams use PNG format (rasterized server-side by Kroki).
+This is the same approach as Prawn and produces clear,
+legible diagrams.
 
 Limitations vs Prince/AH:
 
@@ -128,9 +149,14 @@ mvn clean verify -pl example-project -Dike.pdf.weasyprint
 
 === Prince XML
 
-Prince has a full CSS engine with CSS Paged Media support. The pipeline generates print-ready HTML (inline TOC, `<object>` SVG references), then runs `svgo` to convert `<foreignObject>` to `<text>` in the SVG files, then invokes Prince.
+Prince has a full CSS engine with CSS Paged Media support.
+The pipeline generates print-ready HTML (inline TOC,
+`<object>` SVG references),
+then runs `svgo` to convert `<foreignObject>` to `<text>` in the SVG files,
+then invokes Prince.
 
-Prince supports `PDF/UA-1` for accessible output. The `--pdf-profile=PDF/UA-1` flag is enabled by default.
+Prince supports `PDF/UA-1` for accessible output.
+The `--pdf-profile=PDF/UA-1` flag is enabled by default.
 
 [source,bash]
 ----
@@ -139,7 +165,11 @@ mvn clean verify -pl example-project -Dike.pdf.prince
 
 === Antenna House Formatter
 
-AH Formatter supports both XSL-FO and CSS Paged Media engines. The pipeline uses CSS mode (`-cssmode`) for consistency with the Prince profile. Like Prince, it supports `PDF/UA-1`.
+AH Formatter supports both XSL-FO and CSS Paged Media engines.
+The pipeline uses CSS mode (`-cssmode`) for consistency with
+the Prince profile.
+Like Prince,
+it supports `PDF/UA-1`.
 
 [source,bash]
 ----
@@ -149,7 +179,10 @@ mvn clean verify -pl example-project -Dike.pdf.ah
 [[prawn-limitations]]
 === Prawn (Preview Quality)
 
-The simplest pipeline. The `asciidoctorj-pdf` library renders AsciiDoc directly to PDF using JRuby and the Prawn PDF library. No external tools required.
+The simplest pipeline.
+The `asciidoctorj-pdf` library renders AsciiDoc directly to PDF
+using JRuby and the Prawn PDF library.
+No external tools required.
 
 [WARNING]
 ====
@@ -158,12 +191,14 @@ Prawn has two permanent limitations affecting Koncept support:
 * *No glossary* -- The asciidoctorj-pdf backend returns a Ruby PDF object (not a String) from its converter, which means Java Postprocessors cannot intercept the output. This is an architectural limitation present since 2014 with no path to resolution.
 * *Plain text Koncept rendering* -- Prawn's HTML parser only supports basic inline elements. SVG badges are not supported. Koncepts render as bold blue *K* followed by the label in code font.
 
-For full Koncept support (SVG badges + glossary), use WeasyPrint instead.
+For full Koncept support (SVG badges + glossary),
+use WeasyPrint instead.
 ====
 
 ==== Font-lookup warnings on source blocks
 
-Prawn emits a spurious warning for every document that contains a listing or source block:
+Prawn emits a spurious warning for every document that contains
+a listing or source block:
 
 ----
 asciidoctor: WARN: Could not locate the character `\n` (\u000a)
@@ -171,15 +206,27 @@ asciidoctor: WARN: Could not locate the character `\n` (\u000a)
 ----
 
 The root cause is in asciidoctor-pdf's preformatted-text renderer:
-when it lays out a code block, literal newline characters inside the text run are passed to Prawn's font glyph-lookup instead of being consumed as line-break control characters.
-The warning is cosmetic -- the PDF renders correctly -- but it cannot be suppressed or fixed without patching the Ruby gem.
-Switching source highlighters (CodeRay, Rouge, or none) and switching diagram formats (SVG vs PNG) have no effect;
+when it lays out a code block,
+literal newline characters inside the text run are passed to
+Prawn's font glyph-lookup instead of being consumed as
+line-break control characters.
+The warning is cosmetic --
+the PDF renders correctly --
+but it cannot be suppressed or fixed without patching the Ruby gem.
+Switching source highlighters (CodeRay,
+Rouge, or none) and switching diagram formats (SVG vs PNG) have no effect;
 the warning fires for any multi-line listing block.
 
 This issue does not affect any other renderer.
-Prince, WeasyPrint, AH, FOP, and XEP all handle source blocks through their native text layout engines without font-lookup warnings.
+Prince, WeasyPrint,
+AH, FOP,
+and XEP all handle source blocks through their native text
+layout engines without font-lookup warnings.
 
-Diagrams are rendered as PNG because `prawn-svg` cannot handle `<foreignObject>` elements, CSS `<style>` blocks, or HSL color values.
+Diagrams are rendered as PNG because `prawn-svg` cannot handle
+`<foreignObject>` elements,
+CSS `<style>` blocks,
+or HSL color values.
 
 [source,bash]
 ----
@@ -188,13 +235,18 @@ mvn clean verify -pl example-project -Dike.pdf.prawn
 
 === RenderX XEP
 
-The only pipeline that goes through DocBook and XSL-FO rather than HTML. This is a fundamentally different rendering path:
+The only pipeline that goes through DocBook and XSL-FO rather than HTML.
+This is a fundamentally different rendering path:
 
 . AsciiDoc -> DocBook5 XML (asciidoctor `docbook5` backend)
 . DocBook5 -> XSL-FO (Saxon-HE + DocBook XSL + IKE customization layer)
 . XSL-FO -> PDF (RenderX XEP)
 
-All dependencies are Maven-managed. Saxon-HE resolves from Maven Central. DocBook XSL is unpacked from the `docbook-xsl` artifact. Only the XEP binary itself requires local installation (free personal license from renderx.com).
+All dependencies are Maven-managed.
+Saxon-HE resolves from Maven Central.
+DocBook XSL is unpacked from the `docbook-xsl` artifact.
+Only the XEP binary itself requires local installation (free
+personal license from renderx.com).
 
 Intermediate outputs are preserved for debugging:
 
@@ -210,7 +262,10 @@ mvn clean verify -pl example-project -Dike.pdf.xep
 === The foreignObject Problem
 
 ****
-Mermaid renders diagram labels inside `<foreignObject>` elements in SVG. This is an HTML-in-SVG escape hatch that works in browsers but fails in most PDF renderers:
+Mermaid renders diagram labels inside `<foreignObject>`
+elements in SVG.
+This is an HTML-in-SVG escape hatch that works in browsers but
+fails in most PDF renderers:
 
 * *Prawn*: `prawn-svg` silently drops `<foreignObject>` -- labels vanish
 * *Prince*: Does not render `<foreignObject>` inside `<object>`-referenced SVGs
@@ -218,7 +273,14 @@ Mermaid renders diagram labels inside `<foreignObject>` elements in SVG. This is
 * *FOP*: No `<foreignObject>` support
 * *XEP*: No `<foreignObject>` support
 
-PlantUML and GraphViz do not use `<foreignObject>` -- they render labels as native SVG `<text>` elements with hex colors. These pass through all renderers without modification.
+PlantUML and GraphViz do not use `<foreignObject>` --
+they render labels as native SVG `<text>` elements with hex colors.
+These pass through all renderers without modification.
 
-The `svgo-xep.config.mjs` plugin converts `<foreignObject>` to `<text>` and HSL to hex colors, making Mermaid SVGs compatible with Prince, AH, FOP, and XEP. For Prawn and WeasyPrint, the simpler solution is PNG.
+The `svgo-xep.config.mjs` plugin converts `<foreignObject>` to
+`<text>` and HSL to hex colors,
+making Mermaid SVGs compatible with Prince,
+AH, FOP,
+and XEP. For Prawn and WeasyPrint,
+the simpler solution is PNG.
 ****

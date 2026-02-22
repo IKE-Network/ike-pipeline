@@ -15,8 +15,8 @@
 [abstract]
 --
 This document exercises all features of the IKE documentation pipeline.
-It serves as both a comprehensive test vehicle for all 6 PDF renderers
-and a template for new documentation projects.
+It serves as both a comprehensive test vehicle for all 6 PDF
+renderers and a template for new documentation projects.
 --
 
 == Introduction
@@ -39,12 +39,15 @@ This document tests each feature across all renderers.
 [NOTE]
 .Koncept Notation
 ====
-This document uses _Koncept_ (with a K) to refer to formally identified
-terminology atoms -- entities with a UUID, a position in the subsumption
-hierarchy, and a machine-readable definition.  When you see
-k:DiabetesMellitus[], that is a specific, formally identified
-Koncept.  The word "concept" (lowercase, no brackets) retains its
-ordinary English meaning.
+This document uses _Koncept_ (with a K) to refer to formally
+identified terminology atoms --
+entities with a UUID,
+a position in the subsumption hierarchy,
+and a machine-readable definition.  When you see
+k:DiabetesMellitus[],
+that is a specific,
+formally identified Koncept.  The word "concept" (lowercase,
+no brackets) retains its ordinary English meaning.
 ====
 
 include::chapters/koncept.adoc[]
@@ -115,4 +118,5 @@ mvn clean verify -Dike.pdf.prawn -Dike.pdf.fop
 
 ---
 
-_Generated from IKE Documentation Example version {project-version} on {docdate}_
+_Generated from IKE Documentation Example version
+{project-version} on {docdate}_

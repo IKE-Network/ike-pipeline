@@ -1,6 +1,7 @@
 === Font Families
 
-The IKE pipeline ships the Noto font family for consistent cross-platform rendering:
+The IKE pipeline ships the Noto font family for consistent
+cross-platform rendering:
 
 Serif (body text):: Noto Serif — used for paragraph text throughout.
 
@@ -77,10 +78,20 @@ mvn clean verify -pl doc-example -Dike.pdf.prawn -Dike.pdf.fop -Dike.pdf.xep -Di
 
 === Inline Formatting
 
-This paragraph has *bold text*, _italic text_, `inline code`, *_bold italic_*, and a footnote.footnote:[This is a test footnote to verify footnote rendering across all PDF backends.]
+This paragraph has *bold text*,
+_italic text_,
+`inline code`,
+*_bold italic_*,
+and a footnote.
+footnote:[This is a test footnote to verify footnote rendering
+across all PDF backends.]
 
-Keyboard shortcuts: kbd:[Ctrl+C], kbd:[Ctrl+V], kbd:[Cmd+Shift+P]
+Keyboard shortcuts:
+kbd:[Ctrl+C],
+kbd:[Ctrl+V],
+kbd:[Cmd+Shift+P]
 
-Menu navigation: menu:File[Save As... > PDF]
+Menu navigation:
+menu:File[Save As... > PDF]
 
 Button: btn:[OK]

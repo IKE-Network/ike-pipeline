@@ -6,14 +6,17 @@
 :toc:
 :toclevels: 3
 
-The IKE Documentation Pipeline is a Maven 4 reactor that provides a multi-renderer
-AsciiDoc-to-PDF/HTML pipeline for IKE Community projects.
-It supports six PDF rendering backends, custom AsciiDoc extensions for clinical
-knowledge markup, and a semantic linebreak tool for version-control-friendly prose.
+The IKE Documentation Pipeline is a Maven 4 reactor that
+provides a multi-renderer AsciiDoc-to-PDF/HTML pipeline for IKE
+Community projects.
+It supports six PDF rendering backends,
+custom AsciiDoc extensions for clinical knowledge markup,
+and a semantic linebreak tool for version-control-friendly prose.
 
 == Module Architecture
 
-The reactor contains twelve modules organized into four functional groups:
+The reactor contains twelve modules organized into four
+functional groups:
 infrastructure artifacts that are consumed as Maven dependencies,
 parent POMs that establish the inheritance chain,
 tools that extend the authoring workflow,
@@ -86,8 +89,8 @@ endlegend
 == Rendering Pipelines
 
 All renderers start from the same AsciiDoc source.
-The pipeline splits into three families based on how intermediate
-formats reach the final PDF.
+The pipeline splits into three families based on how
+intermediate formats reach the final PDF.
 
 [plantuml,renderer-pipelines,svg]
 ----
@@ -158,10 +161,11 @@ end fork
 
 == Artifact Distribution Pattern
 
-IKE projects share build infrastructure through Maven artifacts rather than
-checked-in files.
+IKE projects share build infrastructure through Maven artifacts
+rather than checked-in files.
 Three infrastructure modules are packaged and deployed to Nexus,
-then unpacked at build time into each consuming module's `target/` directory.
+then unpacked at build time into each consuming module's
+`target/` directory.
 
 [plantuml,artifact-distribution,svg]
 ----
@@ -328,4 +332,5 @@ This produces cleaner `git diff` output and makes sentence-level review practica
 == License
 
 Copyright 2025 IKE Community.
-Licensed under the Apache License, Version 2.0.
+Licensed under the Apache License,
+Version 2.0.

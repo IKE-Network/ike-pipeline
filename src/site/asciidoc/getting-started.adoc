@@ -16,8 +16,8 @@ Download from https://maven.apache.org/download.cgi.
 == For Document Authors
 
 If you are writing documentation using the IKE pipeline,
-your project inherits from `ike-parent` (documentation only)
-or `java-parent` (Java + documentation).
+your project inherits from `ike-parent` (documentation only) or
+`java-parent` (Java + documentation).
 
 === Minimal `pom.xml`
 
@@ -75,7 +75,8 @@ The HTML profile is active by default.
 mvn clean verify -Dike.pdf.prawn
 ----
 
-The Prawn renderer is free and built-in — no external tool installation required.
+The Prawn renderer is free and built-in —
+no external tool installation required.
 PDF output lands in `target/generated-docs/pdf-prawn/`.
 
 === Multiple renderers
@@ -90,8 +91,9 @@ mvn clean verify -Dike.pdf.prawn -Dike.pdf.prince -Dike.html.single
 
 == For Java Developers
 
-Java projects inherit from `java-parent`, which extends `ike-parent`
-with compiler, test, and JPMS configuration.
+Java projects inherit from `java-parent`,
+which extends `ike-parent` with compiler,
+test, and JPMS configuration.
 
 === Minimal `pom.xml`
 
@@ -126,7 +128,8 @@ Reference clinical concepts with the `k:Name[]` inline macro:
 The patient presented with k:HeartFailure[] and k:AorticStenosis[].
 ----
 
-This renders as clickable SVG badges that link to an auto-generated glossary.
+This renders as clickable SVG badges that link to an
+auto-generated glossary.
 Supply definitions via a `koncepts.yml` file:
 
 [source,yaml]
@@ -144,8 +147,8 @@ See the link:koncept-reference.html[Koncept Reference] for full details.
 
 == Using Semantic Linebreaks
 
-Format your AsciiDoc source with one sentence per line
-for cleaner git diffs:
+Format your AsciiDoc source with one sentence per line for
+cleaner git diffs:
 
 [source,bash]
 ----
@@ -153,7 +156,8 @@ java -jar semantic-linebreak/target/semantic-linebreak-1.0.0-SNAPSHOT.jar \
     src/docs/asciidoc/index.adoc
 ----
 
-See link:semantic-lines.html[Semantic Lines] for the specification and rationale.
+See link:semantic-lines.html[Semantic Lines] for the
+specification and rationale.
 
 == Available Renderers
 
