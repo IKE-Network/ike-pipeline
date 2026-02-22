@@ -78,15 +78,60 @@ Receive the source document. Identify its structure:
 ### Step 2: Normalize line structure
 
 Apply semantic line breaks to the source before any structural editing.
-Run the `semantic-linebreak` tool on every AsciiDoc file being ingested:
+Run the `semantic-linebreak` tool on every AsciiDoc file being ingested.
+
+If the source is not yet AsciiDoc (e.g., DocBook, Markdown, HTML),
+convert it to AsciiDoc first, then run the tool.
+
+#### Invocation
+
+The tool accepts individual files, multiple files, or entire
+directories. When given a directory it walks recursively for `*.adoc`
+files, skipping `target/` directories. AsciidoctorJ is initialized
+once and reused across all files, so batch mode is significantly
+faster than invoking per file.
+
+**Batch — entire directory (recommended):**
+
+```bash
+# From the ike-pipeline reactor root:
+mvn exec:java -pl semantic-linebreak \
+  -Dexec.args="path/to/src/docs/asciidoc"
+```
+
+**Batch — multiple files:**
+
+```bash
+mvn exec:java -pl semantic-linebreak \
+  -Dexec.args="chapter1.adoc chapter2.adoc chapter3.adoc"
+```
+
+**Single file:**
 
 ```bash
 mvn exec:java -pl semantic-linebreak \
   -Dexec.args="path/to/source.adoc"
 ```
 
-If the source is not yet AsciiDoc (e.g., DocBook, Markdown, HTML),
-convert it to AsciiDoc first, then run the tool.
+**Dry run — preview to stdout without modifying:**
+
+```bash
+mvn exec:java -pl semantic-linebreak \
+  -Dexec.args="-n path/to/source.adoc"
+```
+
+**Direct Java invocation (outside reactor):**
+
+```bash
+java -jar semantic-linebreak/target/semantic-linebreak-*.jar \
+  path/to/src/docs/asciidoc
+```
+
+All invocations modify files in-place by default. Use `-n` (dry run)
+to preview changes to stdout, or `-o <file>` to write to a different
+file (single-file mode only).
+
+#### Why normalize before decomposition
 
 Semantic line breaks place newlines at logical boundaries — sentences,
 em-dashes, semicolons, colons, and comma+conjunction joints. This
@@ -104,6 +149,13 @@ normalization must happen **before** decomposition because:
 The tool only modifies paragraph blocks identified by the AsciidoctorJ
 AST. Source listings, diagrams, tables, and all other block types are
 preserved unchanged.
+
+#### Re-normalize after authoring
+
+Run the tool again after Step 5 (Place) on any files authored or
+substantially edited during ingestion — fragment files, assembly
+documents, and updated `index.adoc` previews. This ensures all
+committed AsciiDoc follows uniform line structure.
 
 ### Step 3: Decompose
 

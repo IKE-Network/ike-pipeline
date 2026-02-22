@@ -12,6 +12,9 @@
     </skin>
 
     <body>
+        <menu name="Overview">
+            <item name="About" href="index.html"/>
+        </menu>
         <menu ref="parent"/>
         <menu name="Reports" ref="reports"/>
     </body>

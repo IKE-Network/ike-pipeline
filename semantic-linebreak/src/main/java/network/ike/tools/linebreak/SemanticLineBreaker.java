@@ -9,8 +9,12 @@ import org.asciidoctor.ast.Document;
 import org.asciidoctor.ast.StructuralNode;
 
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -105,7 +109,7 @@ public class SemanticLineBreaker {
             System.exit(1);
         }
 
-        String inputPath = null;
+        List<String> inputPaths = new ArrayList<>();
         String outputPath = null;
 
         for (int i = 0; i < args.length; i++) {
@@ -126,101 +130,171 @@ public class SemanticLineBreaker {
                         System.err.println("Unknown option: " + args[i]);
                         System.exit(1);
                     }
-                    inputPath = args[i];
+                    inputPaths.add(args[i]);
                 }
             }
         }
 
-        if (inputPath == null) {
+        if (inputPaths.isEmpty()) {
             System.err.println("No input file specified.");
             System.exit(1);
         }
 
-        Path inPath = Path.of(inputPath);
-        if (!Files.exists(inPath)) {
-            System.err.println("File not found: " + inputPath);
+        // ── Resolve input paths: expand directories to *.adoc files ─────────
+        List<Path> filesToProcess = new ArrayList<>();
+        for (String input : inputPaths) {
+            Path p = Path.of(input);
+            if (!Files.exists(p)) {
+                System.err.println("File not found: " + input);
+                System.exit(1);
+            }
+            if (Files.isDirectory(p)) {
+                collectAdocFiles(p, filesToProcess);
+            } else {
+                filesToProcess.add(p);
+            }
+        }
+
+        if (filesToProcess.isEmpty()) {
+            System.err.println("No .adoc files found.");
+            System.exit(0);
+        }
+
+        // --output is only valid with a single file
+        if (outputPath != null && filesToProcess.size() > 1) {
+            System.err.println("--output cannot be used with multiple input files.");
             System.exit(1);
         }
 
-        // Default: write to stdout if --dry-run, otherwise in-place
-        if (outputPath == null && !dryRun) {
-            outputPath = inputPath;
-        }
+        // ── Create AsciidoctorJ once, process all files ─────────────────────
+        try (Asciidoctor asciidoctor = Asciidoctor.Factory.create()) {
+            int totalFiles = filesToProcess.size();
+            int totalReformatted = 0;
 
-        // ── Read source ─────────────────────────────────────────────────────
+            if (totalFiles > 1) {
+                System.err.printf("Processing %d file(s)...%n", totalFiles);
+            }
+
+            for (int f = 0; f < totalFiles; f++) {
+                Path inPath = filesToProcess.get(f);
+                String effectiveOutput = outputPath;
+                if (effectiveOutput == null && !dryRun) {
+                    effectiveOutput = inPath.toString();
+                }
+
+                int reformatted = processFile(asciidoctor, inPath, effectiveOutput);
+                if (reformatted > 0) totalReformatted++;
+            }
+
+            if (totalFiles > 1) {
+                System.err.printf("Done. %d of %d file(s) had changes.%n",
+                        totalReformatted, totalFiles);
+            }
+        }
+    }
+
+    // ── Single-file processing ───────────────────────────────────────────────
+
+    /**
+     * Process a single AsciiDoc file. Returns 1 if any paragraphs were
+     * reformatted, 0 otherwise.
+     */
+    private int processFile(Asciidoctor asciidoctor, Path inPath,
+                            String outputPath) throws IOException {
         List<String> sourceLines = Files.readAllLines(inPath);
         String source = String.join("\n", sourceLines);
 
-        // ── Parse with AsciidoctorJ ─────────────────────────────────────────
-        try (Asciidoctor asciidoctor = Asciidoctor.Factory.create()) {
-            Options options = Options.builder()
-                    .sourcemap(true)
-                    .safe(SafeMode.SAFE)
-                    .build();
+        Options options = Options.builder()
+                .sourcemap(true)
+                .safe(SafeMode.SAFE)
+                .build();
 
-            Document doc = asciidoctor.load(source, options);
+        Document doc = asciidoctor.load(source, options);
 
-            // ── Collect paragraph line ranges ───────────────────────────────
-            List<int[]> paragraphRanges = new ArrayList<>();
-            collectParagraphRanges(doc, paragraphRanges);
+        // ── Collect paragraph line ranges ───────────────────────────────
+        List<int[]> paragraphRanges = new ArrayList<>();
+        collectParagraphRanges(doc, paragraphRanges);
 
-            // Sort by start line (should already be in order, but be safe)
-            paragraphRanges.sort(Comparator.comparingInt(r -> r[0]));
+        paragraphRanges.sort(Comparator.comparingInt(r -> r[0]));
 
-            if (verbose) {
-                System.err.printf("Found %d paragraph(s) to process.%n", paragraphRanges.size());
-                for (int[] range : paragraphRanges) {
-                    System.err.printf("  lines %d-%d%n", range[0] + 1, range[1] + 1);
-                }
-            }
-
-            // ── Apply sentence breaks in reverse order ──────────────────────
-            List<String> result = new ArrayList<>(sourceLines);
-            int changes = 0;
-
-            for (int i = paragraphRanges.size() - 1; i >= 0; i--) {
-                int start = paragraphRanges.get(i)[0];
-                int end = paragraphRanges.get(i)[1];
-
-                // Extract and join the paragraph lines
-                var paragraphLines = result.subList(start, end + 1);
-                String joined = joinParagraph(paragraphLines);
-
-                // Apply sentence breaking
-                List<String> broken = breakSemanticLines(joined);
-
-                // Only replace if we actually changed something
-                if (!broken.equals(new ArrayList<>(paragraphLines))) {
-                    changes++;
-                    if (verbose) {
-                        System.err.printf("  Reformatting lines %d-%d (%d lines -> %d lines)%n",
-                                start + 1, end + 1, end - start + 1, broken.size());
-                    }
-                    // Remove old lines, insert new
-                    for (int j = end; j >= start; j--) {
-                        result.remove(j);
-                    }
-                    result.addAll(start, broken);
-                }
-            }
-
-            System.err.printf("Processed %d paragraph(s), reformatted %d.%n",
-                    paragraphRanges.size(), changes);
-
-            // ── Write output ────────────────────────────────────────────────
-            String output = String.join("\n", result);
-            // Preserve trailing newline if original had one
-            if (source.endsWith("\n")) {
-                output += "\n";
-            }
-
-            if (dryRun) {
-                System.out.print(output);
-            } else {
-                Files.writeString(Path.of(outputPath), output);
-                System.err.println("Wrote: " + outputPath);
+        if (verbose) {
+            System.err.printf("%s: %d paragraph(s) to process.%n",
+                    inPath, paragraphRanges.size());
+            for (int[] range : paragraphRanges) {
+                System.err.printf("  lines %d-%d%n", range[0] + 1, range[1] + 1);
             }
         }
+
+        // ── Apply sentence breaks in reverse order ──────────────────────
+        List<String> result = new ArrayList<>(sourceLines);
+        int changes = 0;
+
+        for (int i = paragraphRanges.size() - 1; i >= 0; i--) {
+            int start = paragraphRanges.get(i)[0];
+            int end = paragraphRanges.get(i)[1];
+
+            var paragraphLines = result.subList(start, end + 1);
+            String joined = joinParagraph(paragraphLines);
+
+            List<String> broken = breakSemanticLines(joined);
+
+            if (!broken.equals(new ArrayList<>(paragraphLines))) {
+                changes++;
+                if (verbose) {
+                    System.err.printf("  Reformatting lines %d-%d (%d lines -> %d lines)%n",
+                            start + 1, end + 1, end - start + 1, broken.size());
+                }
+                for (int j = end; j >= start; j--) {
+                    result.remove(j);
+                }
+                result.addAll(start, broken);
+            }
+        }
+
+        System.err.printf("%s: %d paragraph(s), reformatted %d.%n",
+                inPath.getFileName(), paragraphRanges.size(), changes);
+
+        // ── Write output ────────────────────────────────────────────────
+        String output = String.join("\n", result);
+        if (source.endsWith("\n")) {
+            output += "\n";
+        }
+
+        if (dryRun) {
+            System.out.print(output);
+        } else if (changes > 0) {
+            Files.writeString(Path.of(outputPath), output);
+            System.err.println("  Wrote: " + outputPath);
+        }
+
+        return changes > 0 ? 1 : 0;
+    }
+
+    // ── Directory Walking ────────────────────────────────────────────────────
+
+    /**
+     * Recursively collect all {@code *.adoc} files under a directory,
+     * skipping {@code target/} directories.
+     */
+    private static void collectAdocFiles(Path dir, List<Path> result) throws IOException {
+        PathMatcher matcher = dir.getFileSystem().getPathMatcher("glob:*.adoc");
+        Files.walkFileTree(dir, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path d, BasicFileAttributes attrs) {
+                if (d.getFileName() != null && d.getFileName().toString().equals("target")) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                if (matcher.matches(file.getFileName())) {
+                    result.add(file);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
     }
 
     // ── AST Walking ─────────────────────────────────────────────────────────────
@@ -769,7 +843,8 @@ public class SemanticLineBreaker {
 
     private void printUsage() {
         System.err.println("""
-                Usage: semantic-linebreak [options] <file.adoc>
+                Usage: semantic-linebreak [options] <file.adoc ...>
+                       semantic-linebreak [options] <directory ...>
 
                 Reformats AsciiDoc prose paragraphs to use semantic linefeeds.
                 Breaks lines at logical boundaries: sentences, em-dashes, semicolons,
@@ -777,8 +852,12 @@ public class SemanticLineBreaker {
                 modified; listings, diagrams, tables, and all other block types are
                 preserved unchanged.
 
+                Accepts one or more files or directories. Directories are walked
+                recursively for *.adoc files, skipping target/ directories.
+                AsciidoctorJ is initialized once and reused across all files.
+
                 Options:
-                  -o, --output <file>     Write to file (default: in-place)
+                  -o, --output <file>     Write to file (single-file mode only)
                   -n, --dry-run           Print result to stdout, don't modify files
                   -v, --verbose           Show which paragraphs are being reformatted
                   --sentences-only        Break only at sentence boundaries (. ? !)
@@ -791,11 +870,12 @@ public class SemanticLineBreaker {
                   -h, --help              Show this message
 
                 Examples:
-                  semantic-linebreak doc.adoc                     # semantic linefeeds
-                  semantic-linebreak -n doc.adoc                  # preview to stdout
-                  semantic-linebreak --sentences-only doc.adoc    # sentences only
-                  semantic-linebreak --max-line-length 100 doc.adoc  # wider soft wrap
-                  semantic-linebreak -o reformatted.adoc doc.adoc # write to new file
+                  semantic-linebreak doc.adoc                        # single file, in-place
+                  semantic-linebreak -n doc.adoc                     # preview to stdout
+                  semantic-linebreak ch1.adoc ch2.adoc ch3.adoc      # multiple files
+                  semantic-linebreak src/docs/asciidoc/               # entire directory tree
+                  semantic-linebreak --sentences-only doc.adoc        # sentences only
+                  semantic-linebreak -o reformatted.adoc doc.adoc    # write to new file
                 """);
     }
 }
