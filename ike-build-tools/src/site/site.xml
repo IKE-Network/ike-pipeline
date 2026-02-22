@@ -13,6 +13,9 @@
 
     <body>
         <menu ref="parent"/>
+        <menu name="Overview">
+            <item name="Workspace Conventions" href="ike-workspace-conventions.html"/>
+        </menu>
         <menu name="Reports" ref="reports"/>
     </body>
 </site>

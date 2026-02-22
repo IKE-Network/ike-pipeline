@@ -42,7 +42,7 @@ definitions, axioms, and SNOMED CT identifiers.
 - Koncept definitions live in `src/main/resources/koncepts.yml`
 - SVG badges rendered for HTML; DocBook phrases for FOP/XEP; plain
   text for Prawn
-- This is a standalone module — does not inherit from `ike-parent`
+- Java version: 17 (minimum for AsciidoctorJ compatibility)
 
 ## Build
 

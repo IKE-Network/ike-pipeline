@@ -63,7 +63,7 @@ public class KonceptGlossaryProcessor extends Postprocessor {
         Map<String, KonceptEntry> rawRegistry = KonceptInlineMacro.removeRegistry(document);
         if (rawRegistry != null && !rawRegistry.isEmpty()) {
             Map<String, KonceptEntry> registry = new TreeMap<>(rawRegistry);
-            LOG.info("Generating glossary for {} referenced koncepts", registry.size());
+            LOG.debug("Generating glossary for {} referenced koncepts", registry.size());
             KonceptDefinitionSource defSource = resolveDefinitionSource(document);
 
             if ("docbook5".equals(backend) || "docbook".equals(backend)) {
@@ -105,19 +105,19 @@ public class KonceptGlossaryProcessor extends Postprocessor {
         // Check for explicit filesystem path
         Object filePath = document.getAttribute(ATTR_DEFS_FILE);
         if (filePath != null && !filePath.toString().isBlank()) {
-            LOG.info("Loading koncept definitions from file: {}", filePath);
+            LOG.debug("Loading koncept definitions from file: {}", filePath);
             return KonceptDefinitionSource.fromFile(filePath.toString());
         }
 
         // Check for explicit classpath resource
         Object cpPath = document.getAttribute(ATTR_DEFS_CLASSPATH);
         if (cpPath != null && !cpPath.toString().isBlank()) {
-            LOG.info("Loading koncept definitions from classpath: {}", cpPath);
+            LOG.debug("Loading koncept definitions from classpath: {}", cpPath);
             return KonceptDefinitionSource.fromClasspath(cpPath.toString());
         }
 
         // Default
-        LOG.info("Loading koncept definitions from default classpath: {}",
+        LOG.debug("Loading koncept definitions from default classpath: {}",
                 DEFAULT_CLASSPATH_RESOURCE);
         return KonceptDefinitionSource.fromClasspath(DEFAULT_CLASSPATH_RESOURCE);
     }

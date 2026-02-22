@@ -39,14 +39,14 @@
          http://maven.apache.org/xsd/maven-4.1.0.xsd">
     <modelVersion>4.1.0</modelVersion>
 
-    <groupId>network.ike</groupId>
+    <parent>
+        <groupId>network.ike</groupId>
+        <artifactId>ike-parent</artifactId>
+    </parent>
+
     <artifactId>docbook-xsl</artifactId>
-    <!--
-      Version scheme: {docbook-xsl-version}-ike.{revision}
-      Bump the ike.N suffix when ike-fo.xsl changes.
-      Bump the base version when upgrading DocBook XSL.
-    -->
-    <version>1.79.2-ike.2-SNAPSHOT</version>
+    <!-- Wraps upstream DocBook XSL 1.79.2. The artifact version follows
+         the unified pipeline version, not the upstream version. -->
     <packaging>jar</packaging>
 
     <name>IKE DocBook XSL Stylesheets</name>
@@ -103,8 +103,8 @@
         <docbook-xsl.version>1.79.2</docbook-xsl.version>
         <download-maven-plugin.version>1.13.0</download-maven-plugin.version>
 
-        <!-- Staging directory where download-maven-plugin unpacks the distribution -->
-        <staging.directory>${project.build.directory}/staging</staging.directory>
+        <!-- Staging directory: unzip creates docbook-xsl-{version}/ under target/ -->
+        <staging.directory>${project.build.directory}/docbook-xsl-${docbook-xsl.version}</staging.directory>
 
         <!-- Build tools unpack location -->
         <build.tools.directory>${project.build.directory}/build-tools</build.tools.directory>
@@ -168,7 +168,7 @@
                                 <artifactItem>
                                     <groupId>network.ike</groupId>
                                     <artifactId>ike-build-tools</artifactId>
-                                    <version>1.0.0-SNAPSHOT</version>
+                                    <version>${project.version}</version>
                                     <classifier>tools</classifier>
                                     <type>zip</type>
                                     <overWrite>true</overWrite>
@@ -180,10 +180,11 @@
                 </executions>
             </plugin>
 
-            <!-- 1. Download DocBook XSL 1.79.2 from GitHub releases        -->
+            <!-- 1. Download DocBook XSL 1.79.2 zip from GitHub releases.     -->
             <!--    Cached in ~/.m2/repository/.cache/download-maven-plugin/ -->
-            <!--    after first download — no network hit on subsequent      -->
-            <!--    builds.                                                   -->
+            <!--    after first download.  We download only (no unpack) to   -->
+            <!--    avoid 1800+ Plexus Archiver case-sensitivity warnings    -->
+            <!--    on macOS.                                                -->
             <plugin>
                 <groupId>com.googlecode.maven-download-plugin</groupId>
                 <artifactId>download-maven-plugin</artifactId>
@@ -195,35 +196,35 @@
                         <goals><goal>wget</goal></goals>
                         <configuration>
                             <url>https://github.com/docbook/xslt10-stylesheets/releases/download/release/${docbook-xsl.version}/docbook-xsl-${docbook-xsl.version}.zip</url>
-                            <unpack>true</unpack>
-                            <outputDirectory>${staging.directory}</outputDirectory>
-                            <!-- Strip the docbook-xsl-1.79.2/ wrapper directory during unpack -->
-                            <fileMappers>
-                                <fileMapper implementation="org.codehaus.plexus.components.io.filemappers.RegExpFileMapper">
-                                    <pattern>^docbook-xsl-[^/]+/</pattern>
-                                    <replacement>./</replacement>
-                                </fileMapper>
-                            </fileMappers>
+                            <unpack>false</unpack>
+                            <outputDirectory>${project.build.directory}</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
 
-            <!-- Patch stock DocBook XSL to suppress Saxon warnings.          -->
-            <!-- Runs after download-maven-plugin unpacks to staging/.          -->
-            <!--                                                                 -->
-            <!-- 1. fo/docbook.xsl: remove direct include of utility.xsl —      -->
-            <!--    it is already imported via addns.xsl, causing Saxon          -->
-            <!--    SXWN9019 "included or imported more than once."              -->
-            <!--                                                                 -->
-            <!-- 2. fo/math.xsl: remove dead variable in TeX equation            -->
-            <!--    template — Saxon SXWN9001 "variable with no following        -->
-            <!--    sibling instructions has no effect."                          -->
+            <!-- 2. Unzip with system unzip (silent on macOS case collisions) -->
+            <!--    then patch stock XSL to suppress Saxon warnings.         -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
                 <executions>
+                    <execution>
+                        <id>unzip-docbook-xsl</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <executable>unzip</executable>
+                            <arguments>
+                                <argument>-o</argument>
+                                <argument>-q</argument>
+                                <argument>${project.build.directory}/docbook-xsl-${docbook-xsl.version}.zip</argument>
+                                <argument>-d</argument>
+                                <argument>${project.build.directory}</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>patch-docbook-xsl</id>
                         <phase>generate-resources</phase>

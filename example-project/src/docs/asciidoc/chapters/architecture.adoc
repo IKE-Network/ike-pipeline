@@ -29,7 +29,7 @@ example-project/
 
 === Maven Parent Hierarchy
 
-The project inherits from IKE parent POMs:
+The project inherits from the single IKE parent POM:
 
 [plantuml]
 ....
@@ -39,15 +39,13 @@ skinparam arrowColor #666666
 skinparam defaultFontName Noto Sans
 
 rectangle "ike-parent" as A #e1f5ff
-rectangle "java-parent" as B #fff4e1
 rectangle "example-project" as C #e8f5e9
 
-A --> B
-B --> C
+A --> C
 
 A ..> "AsciiDoc Pipeline" : provides
-B ..> "Java 25 Config" : provides
-B ..> "Test Frameworks" : provides
+A ..> "Java 25 Config" : provides
+A ..> "Test Frameworks" : provides
 C ..> "JAR + Docs" : produces
 @enduml
 ....

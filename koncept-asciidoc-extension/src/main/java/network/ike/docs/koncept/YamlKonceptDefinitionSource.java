@@ -111,7 +111,7 @@ public class YamlKonceptDefinitionSource implements KonceptDefinitionSource {
             defs.put(identifier, def);
         }
 
-        LOG.info("Loaded {} koncept definitions", defs.size());
+        LOG.debug("Loaded {} koncept definitions", defs.size());
         return new YamlKonceptDefinitionSource(defs);
     }
 

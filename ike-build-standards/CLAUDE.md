@@ -12,20 +12,21 @@ Read these files in `src/main/standards/`:
 
 ## Module Overview
 
-This module produces a classified ZIP artifact (`classifier=claude`,
-`format=zip`) containing modular Claude instruction files. Consumer
-modules unpack this artifact at `validate` phase into `.claude/standards/`
-via `maven-dependency-plugin`.
+This module produces two classified ZIP artifacts:
+- `classifier=claude` — Claude instruction files (Markdown)
+- `classifier=docs` — human-readable convention documents (AsciiDoc)
 
-- **Artifact**: `network.ike:ike-build-standards:4-SNAPSHOT:zip:claude`
+Consumer modules unpack the `claude` artifact at `validate` phase into
+`.claude/standards/` via `maven-dependency-plugin`.
+
+- **Artifact**: `network.ike:ike-build-standards:1.1.0-SNAPSHOT:zip:claude`
 - **Packaging**: POM (no compiled code)
-- **Versioning**: Monotonic integers (1, 2, 3...) — not semver, not SNAPSHOT
+- **Versioning**: Unified pipeline version (matches all reactor modules)
 
 ## Key Conventions
 
-- Never use SNAPSHOT versions for this artifact
-- Increment version by 1 for every release — no major/minor distinction
-- The assembly descriptor is `src/assembly/claude-standards.xml`
+- Uses the unified pipeline version (e.g., `1.1.0-SNAPSHOT`)
+- Assembly descriptors: `src/assembly/claude-standards.xml`, `src/assembly/docs.xml`
 - Version is managed in `ike-bom`, not in parent POMs
 
 ## Build

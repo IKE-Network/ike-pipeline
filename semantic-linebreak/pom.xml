@@ -22,12 +22,10 @@
 
     <parent>
         <groupId>network.ike</groupId>
-        <artifactId>java-parent</artifactId>
-        <version>1.1.0-SNAPSHOT</version>
+        <artifactId>ike-parent</artifactId>
     </parent>
 
     <artifactId>semantic-linebreak</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
 
     <name>Semantic Linebreak</name>
     <description>CLI tool that reformats AsciiDoc prose to one-sentence-per-line using AsciidoctorJ AST parsing</description>
@@ -53,21 +51,6 @@
             <url>scp://localhost/tmp/ike-site/semantic-linebreak</url>
         </site>
     </distributionManagement>
-
-    <!-- Skip all doc-pipeline renderers — this is a tool module, not a doc project -->
-    <properties>
-        <ike.skip.html>true</ike.skip.html>
-        <ike.skip.html-single>true</ike.skip.html-single>
-        <ike.skip.prawn>true</ike.skip.prawn>
-        <ike.skip.prince>true</ike.skip.prince>
-        <ike.skip.ah>true</ike.skip.ah>
-        <ike.skip.weasyprint>true</ike.skip.weasyprint>
-        <ike.skip.xep>true</ike.skip.xep>
-        <ike.skip.fop>true</ike.skip.fop>
-        <ike.skip.pdf-default>true</ike.skip.pdf-default>
-        <ike.skip.docbook>true</ike.skip.docbook>
-        <ike.skip.asciidoc-zip>true</ike.skip.asciidoc-zip>
-    </properties>
 
     <dependencies>
         <!-- AsciidoctorJ — version managed by ike-parent dependencyManagement -->

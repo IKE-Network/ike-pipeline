@@ -31,33 +31,46 @@ to a task you are performing.
 This is the IKE Documentation Pipeline — a Maven 4 reactor that provides
 a multi-renderer AsciiDoc-to-PDF/HTML pipeline for IKE Community projects.
 
+The root POM (`ike-parent`) serves as both the reactor aggregator and
+the single parent POM for all modules. All 11 subproject modules are
+versionless (parent is the aggregator).
+
 ### Module Structure
 
 | Module | Purpose | Packaging |
 |---|---|---|
 | `ike-build-tools` | Shared build scripts + release automation | POM + ZIP |
 | `ike-build-standards` | Versioned Claude instruction files | POM + ZIP |
+| `ike-bom` | Bill of Materials for centralized dependency versions | POM |
 | `ike-doc-resources` | Shared doc build resources (themes, configs, assembly descriptors) | JAR |
 | `minimal-fonts` | Noto font subset for PDF rendering | JAR |
 | `docbook-xsl` | DocBook XSL 1.79.2 + IKE FO customization | JAR |
 | `koncept-asciidoc-extension` | AsciidoctorJ `k:Name[]` inline macro + glossary | JAR |
-| `ike-parent` | Parent POM — AsciiDoc toolchain, renderer profiles | POM |
-| `java-parent` | Parent POM — Java 25 compiler, test frameworks | POM |
+| `ike-maven-plugin` | Maven plugin wrapping build-tools bash scripts | maven-plugin |
 | `semantic-linebreak` | CLI tool — AsciiDoc semantic linefeed reformatter | JAR |
 | `doc-example` | Doc-only project exercising all pipeline features | JAR (empty) |
 | `example-project` | Java+docs demo project | JAR + docs |
 
-### Parent Inheritance Chain
+### Parent Architecture
 
-```
-ike-parent → java-parent → example-project
-ike-parent → java-parent → semantic-linebreak
-ike-parent → doc-example
+All modules inherit directly from `ike-parent` (the root POM). There
+is no intermediate parent hierarchy.
+
+The doc pipeline (~50 plugin executions for 6 PDF renderers) is
+activated by a file-based profile:
+
+```xml
+<profile>
+    <id>doc-pipeline</id>
+    <activation>
+        <file><exists>src/docs/asciidoc</exists></file>
+    </activation>
+</profile>
 ```
 
-Infrastructure modules (`ike-build-tools`, `ike-build-standards`, `ike-doc-resources`,
-`minimal-fonts`, `docbook-xsl`, `koncept-asciidoc-extension`) are standalone — they
-do not inherit from the parent chain.
+- Infrastructure modules lack `src/docs/asciidoc` → no doc pipeline
+- Doc projects have it → full pipeline automatically
+- External consumers inherit the same behavior
 
 ### Key Build Commands
 
@@ -80,9 +93,12 @@ mvn clean verify -pl example-project -Dike.skip.html=false
 - Group ID: `network.ike`
 - Model version: `4.1.0` for all POMs
 - Java baseline: 21+ (JRuby 10 requirement)
+- Java version: 25 (default), overridden by koncept-asciidoc-extension (17)
+  and ike-maven-plugin (21)
 - 6 PDF renderers: Prawn (free), FOP (free), Prince, AH, WeasyPrint, XEP
-- Property-driven build: profiles are thin toggles, all logic in main `<build>`
+- Property-driven build: profiles are thin toggles, all logic in `doc-pipeline` profile
 - Output filenames use `${ike.document.name}` (defaults to `${project.artifactId}`)
+- Version in exactly 2 places in root `pom.xml`: `<version>` and `<ike.pipeline.version>`
 
 ## Project-Specific Overrides
 

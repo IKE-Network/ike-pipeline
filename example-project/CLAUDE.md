@@ -34,7 +34,7 @@ documentation using diagrams, Koncept macros, and all renderer profiles.
 
 - **Artifact**: `network.ike:example-project`
 - **Packaging**: JAR + docs
-- **Parent**: `java-parent`
+- **Parent**: `ike-parent`
 
 ## Key Build Commands
 

@@ -24,14 +24,20 @@ This module produces a classified ZIP artifact (`classifier=tools`,
 and configuration files. Consumer modules unpack this artifact at
 `initialize` phase into `target/build-tools/`.
 
-- **Artifact**: `network.ike:ike-build-tools:1.0.0:zip:tools`
+- **Artifact**: `network.ike:ike-build-tools:1.1.0-SNAPSHOT:zip:tools`
 - **Packaging**: POM (no compiled code)
 
 ## Contents
 
+- `scripts/common-functions.sh` — shared shell utilities (log, git helpers)
+- `scripts/ike-workspace.sh` — IKE Workspace management
 - `scripts/release-from-feature.sh` — create release branches
+- `scripts/merge-to-main.sh` — merge feature to main (placeholder)
+- `scripts/create-checkpoint.sh` — create checkpoint (placeholder)
+- `scripts/prepare-release.sh` — prepare release (placeholder)
+- `scripts/post-release.sh` — post-release version bump (placeholder)
 - `scripts/validate-pr.sh` — PR validation (stub)
-- `scripts/common-functions.sh` — shared shell utilities (stub)
+- `config/.stignore.template` — Syncthing ignore patterns
 - `config/checkstyle.xml` — checkstyle rules (stub)
 - `config/.editorconfig` — editor settings (stub)
 

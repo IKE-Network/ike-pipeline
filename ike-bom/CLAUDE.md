@@ -28,8 +28,8 @@ for all IKE artifacts. Other projects import this BOM in their
 
 ## Key Conventions
 
-- This BOM manages the `ike-build-standards` version (monotonic integer)
-- Bumping the standards version = one property change here
+- This BOM manages infrastructure module versions (unified pipeline version)
+- Bumping versions = property changes here
 - Do not add plugin configuration to this POM — it is purely for
   dependency version alignment
 

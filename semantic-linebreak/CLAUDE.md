@@ -28,7 +28,7 @@ listings, diagrams, tables, and other block types are preserved.
 
 - **Artifact**: `network.ike:semantic-linebreak`
 - **Packaging**: JAR (executable)
-- **Parent**: `java-parent`
+- **Parent**: `ike-parent`
 
 ## Key Build Commands
 

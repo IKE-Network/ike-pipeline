@@ -6,22 +6,27 @@ All IKE artifacts use `network.ike` as the group ID.
 
 ## Parent POM Inheritance
 
-The parent chain for IKE projects:
+All IKE projects inherit from a single parent:
 
 ```
-ike-parent                    (documentation pipeline, renderer profiles)
-  └── java-parent             (Java compiler, test frameworks, JPMS support)
-       └── [your-project]     (inherits both documentation and Java config)
+ike-parent                    (root POM — aggregator + parent)
+  └── [your-project]          (inherits documentation + Java config)
 ```
 
-- `ike-parent` provides: AsciiDoc toolchain, PDF renderer profiles, font management, assembly descriptors, skip-flag property pattern.
-- `java-parent` provides: Java 25 compiler config, JUnit 5 + AssertJ + Mockito dependency management, Surefire/Failsafe configuration, source/javadoc attachment.
+`ike-parent` provides everything:
+- AsciiDoc toolchain, PDF renderer profiles, font management, assembly descriptors, skip-flag property pattern
+- Java 25 compiler config, JUnit 5 + AssertJ + Mockito dependency management, Surefire/Failsafe configuration
+- JPMS support, source/javadoc attachment
 
-Projects that need only documentation (no Java code) inherit directly from `ike-parent` (see `doc-example`). Projects with Java code inherit from `java-parent` (see `example-project`).
+The doc pipeline is activated by a file-based profile (`doc-pipeline`).
+Projects with `src/docs/asciidoc/` get the full pipeline automatically.
+Projects without that directory (infrastructure modules, tool modules)
+get only the universal build config (compiler, surefire, enforcer).
 
 ## Infrastructure Modules
 
-Infrastructure modules are standalone (no parent inheritance):
+Infrastructure modules inherit from `ike-parent` like all other modules,
+but the doc pipeline does not activate (they lack `src/docs/asciidoc/`):
 
 | Module | Purpose | Packaging |
 |---|---|---|
@@ -30,9 +35,10 @@ Infrastructure modules are standalone (no parent inheritance):
 | `ike-doc-resources` | Shared doc build resources (themes, assembly descriptors, configs) | JAR |
 | `minimal-fonts` | Noto font subset for PDF | JAR |
 | `docbook-xsl` | DocBook XSL stylesheets + IKE FO layer | JAR |
-| `koncept-asciidoc-extension` | AsciidoctorJ inline macro + glossary | JAR |
+| `koncept-asciidoc-extension` | AsciidoctorJ inline macro + glossary | JAR (Java 17) |
+| `ike-maven-plugin` | Maven plugin wrapping build-tools scripts | maven-plugin (Java 21) |
 
-These are built and installed first (`mvn install`) before the main project build. The `build-all.sh` script handles this ordering.
+These are built and installed first in the reactor. The `build-all.sh` script handles this ordering.
 
 ## pluginManagement Pattern
 
@@ -78,50 +84,68 @@ IKE-specific properties use the `ike.` prefix:
 
 ## Version Strategy
 
-- All modules use `-SNAPSHOT` versions during development.
-- Infrastructure modules have independent version tracks (e.g.,
-  `minimal-fonts:1.0.0-SNAPSHOT`, `docbook-xsl:1.79.2-ike.2-SNAPSHOT`).
-- Parent POMs and project modules use coordinated SNAPSHOT versions
-  (e.g., `1.1.0-SNAPSHOT`).
+### Unified Versioning
 
-### Release Process — NEVER manually edit versions
+All modules in the IKE pipeline reactor share a single version.
+The version is declared in the root `pom.xml` (`ike-parent`) in
+exactly 2 places: `<version>` and `<ike.pipeline.version>`.
+All subproject modules are versionless (parent is the aggregator).
 
-**Releases MUST use a proper release tool** — either the
-`maven-release-plugin`, the `gitflow-maven-plugin`, or an equivalent
-SCM-integrated release process. A valid release:
+- Pipeline versions are sequential: 1.1.0, 1.2.0, 1.3.0, etc.
+- No semantic versioning contract is implied. Each release supersedes
+  the previous one.
+- All modules in the reactor share the unified version.
+- The BOM exports all module versions at the unified pipeline version.
 
-1. Is performed by a release plugin (not manual version edits)
-2. Removes `-SNAPSHOT`, builds, deploys the release artifact
-3. Tags the commit in SCM (e.g., `v1.0.0`)
-4. Bumps to the next `-SNAPSHOT` for continued development
-5. Pushes both the tag and the version bump commit
+### Branch-Qualified Versions
 
-**Prohibited**: Manually removing `-SNAPSHOT` from `<version>` elements
-and running `mvn deploy`. This produces untagged, unreproducible artifacts
-in the release repository. The Nexus release repository rejects
-redeployment, so a botched manual release permanently burns that version
-number.
+Feature branches use a branch-qualified SNAPSHOT version:
 
-**During development**, all versions remain `-SNAPSHOT`. Only a release
-plugin may transition a version to a non-SNAPSHOT release.
+    1.2.0-shield-terminology-SNAPSHOT
+
+The qualifier is the branch name with `/` replaced by `-`.
+The `main` branch retains the unqualified version:
+
+    1.2.0-SNAPSHOT
+
+The `ike-workspace` script sets this automatically at workspace creation.
+See the IKE Workspace Conventions document for the full rationale.
 
 ### Standards Artifact Versioning
 
-The `ike-build-standards` artifact uses **monotonic integer versioning**: 1, 2, 3, 4, etc. No dots, no semantic versioning, no calver. These are build standards documents, not a library API — there is no compatibility contract to encode in the version number.
+The `ike-build-standards` artifact now uses the unified pipeline version
+(`1.1.0-SNAPSHOT`, etc.) like all other reactor modules. The previous
+monotonic integer scheme (1, 2, 3...) is deprecated.
 
-- Increment by 1 for every release. No major/minor/patch distinction.
-- Do NOT use SNAPSHOT versions for this artifact. It must be a release version.
-- Do NOT use semantic versioning. If you find yourself wondering whether a standards change is "major" or "minor," you are overthinking it. Increment by 1.
+### Release Process
+
+Releases are performed by composable bash scripts in `ike-build-tools`,
+not by `maven-release-plugin` or `maven-gitflow-plugin`. A valid release:
+
+1. Sets version to release version (strip `-SNAPSHOT`)
+2. Builds and verifies
+3. Tags the commit in Git (e.g., `release/1.2.0`)
+4. Deploys the release artifact
+5. Bumps to the next `-SNAPSHOT` for continued development
+
+**Prohibited**: Manually removing `-SNAPSHOT` from `<version>` elements
+and running `mvn deploy`. This produces untagged, unreproducible artifacts.
+
+**During development**, all versions remain `-SNAPSHOT`. Only release
+scripts may transition a version to a non-SNAPSHOT release.
 
 ### Standards Version Coordination
 
-The `ike-build-standards` version is managed in `ike-bom`, not in the parent POM. This keeps the parent POM stable.
+The `ike-build-standards` version is managed in `ike-bom`, not in the
+parent POM. This keeps the parent POM stable.
 
-- The BOM declares `ike-build-standards` in `<dependencyManagement>` with the current version, classifier=claude, type=zip.
-- The parent POM's `<pluginManagement>` defines the `unpack-dependencies` execution filtered by artifactId and classifier. No version appears in the parent POM.
-- Child Java projects declare `ike-build-standards` as a `<dependency>` with `scope=provided` (version resolved from BOM). Then activate the dependency plugin from pluginManagement.
-- Non-BOM projects (standalone modules not inheriting from the parent chain) declare an explicit version in their own dependency.
-- Bumping standards version = one property change in the BOM, included in the next BOM release. The parent POM does not change.
+- The BOM declares `ike-build-standards` in `<dependencyManagement>` with
+  the current version, classifier=claude, type=zip.
+- The parent POM's `<pluginManagement>` defines the `unpack-dependencies`
+  execution filtered by artifactId and classifier. No version appears in
+  the parent POM.
+- Non-BOM projects (standalone modules not inheriting from the parent
+  chain) declare an explicit version in their own dependency.
 
 ### IKE BOM
 
@@ -143,6 +167,27 @@ The `ike-bom` artifact (`network.ike:ike-bom`) provides centralized version mana
 
 Child modules then declare dependencies without `<version>` — versions are resolved from the BOM.
 
+## Project-Local Repository (Maven 4)
+
+The IKE pipeline uses Maven 4's split local repository to isolate
+installed artifacts per workspace.
+
+In `.mvn/maven.properties`:
+
+    maven.repo.local.path.installed=${session.rootDirectory}/.mvn/local-repo
+
+This ensures that `mvn install` writes artifacts to a directory within
+the project tree, not to the shared `~/.m2/repository`. Each IKE Workspace
+has its own project-local repository, preventing SNAPSHOT cross-contamination
+between branches.
+
+The shared `~/.m2/repository` remains a read-only cache for artifacts
+downloaded from remote repositories.
+
+The `.mvn/local-repo/` directory is excluded from:
+- Git (via `.gitignore`)
+- Syncthing (via `.stignore`)
+
 ## POM Element Names
 
 Always use full element names in POM files. Maven 4.1.0 supports
@@ -159,4 +204,4 @@ universally supported by tools. **Never use abbreviated element names.**
 
 ## Reactor Build
 
-The reactor aggregator POM (`pipeline/pom.xml`) is a pure aggregator — it is NOT a parent. It lists all modules in dependency order via `<subprojects>`. Module ordering aids readability but Maven sorts automatically by dependency graph.
+The root POM (`ike-parent`) is both the reactor aggregator and the single parent POM. It lists all 11 subproject modules via `<subprojects>`. Module ordering aids readability but Maven sorts automatically by dependency graph.

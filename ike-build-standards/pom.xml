@@ -12,7 +12,7 @@
   standards files to read.
 
   Build:    mvn install
-  Artifact: network.ike:ike-build-standards:4-SNAPSHOT:zip:claude
+  Artifact: network.ike:ike-build-standards:<version>:zip:claude
 -->
 <project xmlns="http://maven.apache.org/POM/4.1.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -20,9 +20,12 @@
          http://maven.apache.org/xsd/maven-4.1.0.xsd">
     <modelVersion>4.1.0</modelVersion>
 
-    <groupId>network.ike</groupId>
+    <parent>
+        <groupId>network.ike</groupId>
+        <artifactId>ike-parent</artifactId>
+    </parent>
+
     <artifactId>ike-build-standards</artifactId>
-    <version>4-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>IKE Build Standards</name>
@@ -77,6 +80,22 @@
         </pluginManagement>
 
         <plugins>
+            <!-- Disable inherited unpack of ike-build-standards — circular dependency -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>unpack-claude-standards-direct</id>
+                        <phase>none</phase>
+                    </execution>
+                    <execution>
+                        <id>unpack-build-tools</id>
+                        <phase>none</phase>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
@@ -89,6 +108,16 @@
                         <configuration>
                             <descriptors>
                                 <descriptor>src/assembly/claude-standards.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>package-docs</id>
+                        <phase>package</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/docs.xml</descriptor>
                             </descriptors>
                         </configuration>
                     </execution>

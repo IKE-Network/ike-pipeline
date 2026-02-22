@@ -23,9 +23,9 @@ no Java source code.
 
 ## Module Overview
 
-Documentation-only project that inherits from `ike-parent` directly
-(not `java-parent`). Exercises all pipeline features across all 6 PDF
-renderers: diagrams, Koncept macros, typography, tables, and layout.
+Documentation-only project that inherits from `ike-parent` (the root
+POM). Exercises all pipeline features across all 6 PDF renderers:
+diagrams, Koncept macros, typography, tables, and layout.
 
 - **Artifact**: `network.ike:doc-example`
 - **Packaging**: JAR (empty JAR — doc-only projects use `jar` packaging

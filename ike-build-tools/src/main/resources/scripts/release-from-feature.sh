@@ -2,6 +2,12 @@
 # ────────────────────────────────────────────────────────────────────
 # release-from-feature.sh — Create a release branch from a feature branch
 # ────────────────────────────────────────────────────────────────────
+# NOTE: This script predates the IKE Workspace conventions and unified
+# versioning. It uses mvn versions:set which works correctly with unified
+# versioning. A full rework to integrate with the workspace script
+# inventory is deferred to iterative development.
+# See ike-workspace-conventions.adoc for context.
+# ────────────────────────────────────────────────────────────────────
 #
 # Usage:
 #   ./release-from-feature.sh <release-version> [--dry-run]
