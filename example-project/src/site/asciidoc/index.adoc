@@ -1,0 +1,45 @@
+= IKE Example Project
+
+A Java + documentation demo project showing how the IKE
+pipeline integrates with a standard Java module.
+Contains Java source code,
+comprehensive tests,
+and AsciiDoc documentation using diagrams,
+Koncept macros,
+and all renderer profiles.
+
+== Purpose
+
+This module demonstrates the typical structure of an IKE
+Community project that combines Java code with rendered documentation.
+It inherits from `ike-parent` and activates the doc pipeline
+via the `src/docs/asciidoc` directory.
+
+== Project Structure
+
+----
+example-project/
+  src/
+    main/java/          ← Java source code
+    test/java/          ← JUnit 5 tests
+    docs/asciidoc/      ← AsciiDoc documentation source
+  target/
+    generated-docs/
+      html/             ← Rendered HTML
+      pdf-prawn/        ← Prawn PDF output
+      pdf-fop/          ← FOP PDF output
+----
+
+== Building
+
+[source,bash]
+----
+# Compile + test + HTML docs:
+mvn clean verify -pl example-project
+
+# With Prawn PDF:
+mvn clean verify -pl example-project -Dike.pdf.prawn
+
+# Multiple renderers:
+mvn clean verify -pl example-project -Dike.pdf.prawn -Dike.pdf.fop
+----

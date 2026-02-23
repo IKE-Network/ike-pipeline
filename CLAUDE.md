@@ -93,8 +93,7 @@ mvn clean verify -pl example-project -Dike.skip.html=false
 - Group ID: `network.ike`
 - Model version: `4.1.0` for all POMs
 - Java baseline: 21+ (JRuby 10 requirement)
-- Java version: 25 (default), overridden by koncept-asciidoc-extension (17)
-  and ike-maven-plugin (21)
+- Java version: 25 with preview features, uniform across all modules
 - 6 PDF renderers: Prawn (free), FOP (free), Prince, AH, WeasyPrint, XEP
 - Property-driven build: profiles are thin toggles, all logic in `doc-pipeline` profile
 - Output filenames use `${ike.document.name}` (defaults to `${project.artifactId}`)

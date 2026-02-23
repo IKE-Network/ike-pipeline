@@ -1,0 +1,50 @@
+= IKE Build Tools
+
+Shared build scripts,
+release automation,
+and configuration for IKE Community projects.
+Distributed as a classified Maven artifact and unpacked at
+build time into each consuming project's `target/` directory.
+
+== Contents
+
+Build scripts::
+Bash scripts for SVG post-processing (`fix-inline-svg.sh`),
+renderer log scanning (`scan-renderer-logs.sh`),
+and other build-time operations.
+
+Release automation::
+Scripts implementing the IKE Workspace release workflow:
+workspace creation,
+checkpoint tagging,
+merge-to-main with version qualifier stripping,
+and release preparation.
+
+Maven plugin shims::
+Each script is wrapped by a corresponding goal in `ike-maven-plugin`
+for IDE discoverability.
+
+== Distribution
+
+The scripts are packaged as a classified ZIP artifact and
+unpacked by `maven-dependency-plugin` during the `initialize` phase.
+No scripts are committed to consuming projects --
+they are ephemeral and regenerated on each build.
+
+[source,xml]
+----
+<groupId>network.ike</groupId>
+<artifactId>ike-build-tools</artifactId>
+<classifier>scripts</classifier>
+<type>zip</type>
+----
+
+== Design Philosophy
+
+Bash provides transparency (readable,
+debuggable with `set -x`),
+iterability (edit a script,
+not fork a plugin),
+and composability (scripts call other scripts).
+The logic lives in bash;
+Maven provides the integration and discoverability layer.

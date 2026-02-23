@@ -31,15 +31,14 @@
             <url>${deploy.snapshot.url}</url>
         </snapshotRepository>
         <site>
-            <id>local</id>
-            <url>scp://localhost/tmp/ike-site/${project.artifactId}</url>
+            <id>ike-site</id>
+            <url>scpexe://proxy/srv/ike-site/ike-pipeline/${project.artifactId}</url>
         </site>
     </distributionManagement>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <java.version>17</java.version>
-        <maven.compiler.release>17</maven.compiler.release>
+        <!-- Inherits java.version=25 and enable-preview from parent -->
         <asciidoctorj.version>2.5.13</asciidoctorj.version>
         <jruby.version>10.0.3.0</jruby.version>
         <snakeyaml.version>2.2</snakeyaml.version>
@@ -122,14 +121,7 @@
         <plugins>
             <!-- Standards unpacked via inherited parent execution (unpack-claude-standards-direct) -->
 
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
-                <configuration>
-                    <release>17</release>
-                </configuration>
-            </plugin>
+            <!-- Compiler inherited from parent (Java 25, enable-preview) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>

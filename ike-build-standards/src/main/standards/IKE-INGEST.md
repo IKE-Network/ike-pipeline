@@ -213,6 +213,10 @@ mvn clean verify
 - No content from the source document was lost.
 - Registry topic-count matches actual count.
 - Every new topic appears in the compendium assembly.
+- Every new topic is included in `topics/src/docs/asciidoc/index.adoc`
+  (the all-topics preview). This ensures cross-topic `xref:` links
+  resolve in the topics module build and do not produce "possible
+  invalid reference" warnings.
 
 ## Dialog Ingestion
 

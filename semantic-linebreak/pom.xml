@@ -47,8 +47,8 @@
 
     <distributionManagement>
         <site>
-            <id>local</id>
-            <url>scp://localhost/tmp/ike-site/semantic-linebreak</url>
+            <id>ike-site</id>
+            <url>scpexe://proxy/srv/ike-site/ike-pipeline/${project.artifactId}</url>
         </site>
     </distributionManagement>
 

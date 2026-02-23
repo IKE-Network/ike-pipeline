@@ -31,7 +31,7 @@ definitions, axioms, and SNOMED CT identifiers.
 
 - **Artifact**: `network.ike:koncept-asciidoc-extension`
 - **Packaging**: JAR
-- **Java**: 17 (minimum for AsciidoctorJ compatibility)
+- **Java**: 25 with preview (inherited from parent)
 - **Registration**: SPI via `META-INF/services`
 
 ## Key Conventions
@@ -42,7 +42,7 @@ definitions, axioms, and SNOMED CT identifiers.
 - Koncept definitions live in `src/main/resources/koncepts.yml`
 - SVG badges rendered for HTML; DocBook phrases for FOP/XEP; plain
   text for Prawn
-- Java version: 17 (minimum for AsciidoctorJ compatibility)
+- Java version: 25 with preview (inherited from parent)
 
 ## Build
 

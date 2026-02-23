@@ -1,0 +1,44 @@
+= IKE Documentation Example
+
+A documentation-only project demonstrating the full IKE
+AsciiDoc pipeline.
+This module exercises all diagram types,
+Koncept macros,
+typography features,
+and layout options across all six PDF renderers.
+
+== Purpose
+
+This project serves as both a test fixture and a reference
+implementation.
+It verifies that the pipeline handles every supported feature
+correctly and provides authors with working examples to copy from.
+
+== Features Demonstrated
+
+* PlantUML, Mermaid, and Ditaa diagrams via Kroki
+* `k:ConceptName[]` Koncept inline macros with auto-generated glossary
+* Admonition blocks (NOTE, TIP, WARNING, CAUTION, IMPORTANT)
+* Source code listings with syntax highlighting
+* Tables with complex formatting
+* Cross-references and bibliography
+* Custom IKE theme styling
+
+== Building
+
+[source,bash]
+----
+# HTML only:
+mvn clean verify -pl doc-example
+
+# With Prawn PDF:
+mvn clean verify -pl doc-example -Dike.pdf.prawn
+
+# All renderers:
+mvn clean verify -pl doc-example -Dike.pdf.prawn -Dike.pdf.fop -Dike.pdf.prince
+----
+
+== Output
+
+* HTML: `target/generated-docs/html/index.html`
+* PDF: `target/generated-docs/pdf-{renderer}/doc-example.pdf`

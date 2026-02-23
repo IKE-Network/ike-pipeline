@@ -1,0 +1,12 @@
+// .asciidoctorconfig — shared AsciiDoc attributes for IDE previews
+//
+// Read by IntelliJ AsciiDoc Plugin, VS Code, and Eclipse editors.
+// NOT read by maven-site-plugin or asciidoctor-maven-plugin.
+// Maven Site attributes are configured in pom.xml <asciidoc> block.
+:source-highlighter: coderay
+:icons: font
+:diagram-server-url: https://kroki.komet.sh
+:diagram-server-type: kroki_io
+:diagram-format: svg
+:diagram-svg-type: inline
+:allow-uri-read:

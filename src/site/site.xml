@@ -27,25 +27,36 @@
     </skin>
 
     <custom>
-        <keywords>AsciiDoc, documentation pipeline, Maven, PDF, IKE Community,
-                   Koncept, semantic linebreaks, knowledge engineering</keywords>
+        <bodyClass>sentry-purple</bodyClass>
+        <checkImageLinks>false</checkImageLinks>
+        <convertImagesToWebp>false</convertImagesToWebp>
+        <convertImagesToThumbnails>false</convertImagesToThumbnails>
+        <setExplicitImageSize>false</setExplicitImageSize>
+        <keywords>AsciiDoc, documentation pipeline, Maven, PDF,
+                   IKE Community, knowledge engineering</keywords>
     </custom>
 
-    <bannerLeft name="IKE Documentation Pipeline" href="https://ike.network"/>
+    <bannerLeft name="IKE Documentation Pipeline" href="https://ike.network">
+        <image src="images/ike-logo.svg" alt="IKE"/>
+    </bannerLeft>
+
+    <bannerRight name="GitHub &lt;i class='fa-brands fa-github'&gt;&lt;/i&gt;"
+        href="https://github.com/IKE-Network/ike-pipeline"/>
+
+    <publishDate format="yyyy-MM-dd"/>
 
     <body>
+        <breadcrumbs>
+            <item name="IKE Pipeline" href="index.html"/>
+        </breadcrumbs>
+        <links>
+            <item name="GitHub" href="https://github.com/IKE-Network"/>
+        </links>
         <menu name="Documentation">
-            <item name="Overview"             href="index.html"/>
-            <item name="Getting Started"      href="getting-started.html"/>
-            <item name="Architecture"         href="architecture.html"/>
-            <item name="Renderers"            href="renderers.html"/>
-            <item name="Koncept Reference"    href="koncept-reference.html"/>
-            <item name="Semantic Lines"       href="semantic-lines.html"/>
-            <item name="Build Guide"          href="build-guide.html"/>
+            <item name="Overview"          href="index.html"/>
+            <item name="Getting Started"   href="getting-started.html"/>
         </menu>
-
         <menu name="Modules" ref="modules"/>
-
         <menu name="Reports" ref="reports"/>
     </body>
 </site>

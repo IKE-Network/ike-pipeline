@@ -57,8 +57,8 @@
             <url>${deploy.snapshot.url}</url>
         </snapshotRepository>
         <site>
-            <id>local</id>
-            <url>scp://localhost/tmp/ike-site</url>
+            <id>ike-site</id>
+            <url>scpexe://proxy/srv/ike-site/ike-pipeline</url>
         </site>
     </distributionManagement>
 

@@ -1,0 +1,52 @@
+= IKE Maven Plugin
+
+IDE-discoverable Maven goals wrapping the bash scripts in
+`ike-build-tools`.
+Each Maven goal maps to one bash script --
+the plugin is a discoverability shim,
+not an engine.
+
+== Purpose
+
+Bash scripts have a discoverability problem:
+a developer must know that scripts exist,
+where they are,
+and what arguments they take.
+Maven plugin goals solve this --
+they appear in the IDE's Maven tool window as clickable,
+runnable targets with parameter prompts.
+
+== Architecture
+
+Each Mojo is a minimal `ProcessBuilder` invocation calling bash
+with the script path and arguments derived from Maven configuration.
+No business logic lives in Java.
+The bash script is the source of truth;
+the Maven plugin is the discoverability layer.
+
+== Goals
+
+[cols="2,3",options="header"]
+|===
+| Goal | Script
+
+| `ike:workspace`
+| `ike-workspace.sh` -- create, list, resume, or remove IKE Workspaces
+
+| `ike:help`
+| Displays available goals and usage
+|===
+
+Additional goals will wrap release automation scripts as they stabilize:
+`ike:checkpoint`,
+`ike:merge-to-main`,
+`ike:prepare-release`,
+and `ike:post-release`.
+
+== Design Philosophy
+
+Bash holds the logic (transparent,
+iterable, composable).
+Maven provides the discoverability (IDE integration,
+goal listing).
+Neither depends on the internals of the other.

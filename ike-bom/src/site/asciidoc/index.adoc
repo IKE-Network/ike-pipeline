@@ -1,0 +1,46 @@
+= IKE Bill of Materials
+
+Centralized dependency version management for IKE Community projects.
+Import this BOM to align artifact versions across modules
+without declaring explicit versions on each dependency.
+
+== Usage
+
+Add the BOM to your project's `<dependencyManagement>` section:
+
+[source,xml]
+----
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>network.ike</groupId>
+            <artifactId>ike-bom</artifactId>
+            <version>${ike.pipeline.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+----
+
+Then declare dependencies without version:
+
+[source,xml]
+----
+<dependency>
+    <groupId>network.ike</groupId>
+    <artifactId>koncept-asciidoc-extension</artifactId>
+</dependency>
+----
+
+== Managed Artifacts
+
+The BOM manages versions for all IKE pipeline artifacts:
+`ike-doc-resources`,
+`minimal-fonts`,
+`docbook-xsl`,
+`koncept-asciidoc-extension`,
+`semantic-linebreak`,
+and `ike-build-tools`.
+
+All artifacts share the unified pipeline version.

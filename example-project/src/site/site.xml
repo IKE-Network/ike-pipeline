@@ -11,7 +11,18 @@
         <version>7.0.00</version>
     </skin>
 
+    <custom>
+        <bodyClass>sentry-purple</bodyClass>
+        <checkImageLinks>false</checkImageLinks>
+        <convertImagesToWebp>false</convertImagesToWebp>
+        <convertImagesToThumbnails>false</convertImagesToThumbnails>
+        <setExplicitImageSize>false</setExplicitImageSize>
+    </custom>
+
     <body>
+        <breadcrumbs>
+            <item name="IKE Pipeline" href="../index.html"/>
+        </breadcrumbs>
         <menu ref="parent"/>
         <menu name="Reports" ref="reports"/>
     </body>
