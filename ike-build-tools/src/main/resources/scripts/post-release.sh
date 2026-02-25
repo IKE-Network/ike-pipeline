@@ -7,20 +7,32 @@
 #   ./post-release.sh <next-version> [--dry-run]
 #
 # Example:
-#   ./post-release.sh 1.2.0-SNAPSHOT
+#   ./post-release.sh 2-SNAPSHOT
 #
 # Prerequisites:
-#   - CI has merged the release branch back to main
+#   - Release has been completed (prepare-release.sh)
 #   - On main branch
 #   - Working tree clean
 #
 # What it does:
-#   1. Pulls latest main (to pick up CI merge)
-#   2. Sets all POM versions to <next-version>
-#   3. Commits and pushes
+#   1. Pulls latest main (to pick up release merge)
+#   2. Logs build environment for audit/traceability
+#   3. Sets root POM version to <next-version>
+#   4. Commits and pushes
 #
 # ────────────────────────────────────────────────────────────────────
 set -euo pipefail
+
+# ── Resolve project root and Maven wrapper ─────────────────────────────
+GIT_ROOT="$(git rev-parse --show-toplevel)"
+ROOT_POM="${GIT_ROOT}/pom.xml"
+if [[ -x "${GIT_ROOT}/mvnw" ]]; then
+    MVN="${GIT_ROOT}/mvnw"
+else
+    echo "ERROR: mvnw not found at ${GIT_ROOT}/mvnw"
+    echo "       Maven 4.x wrapper is required for this project."
+    exit 1
+fi
 
 # ── Defaults ──────────────────────────────────────────────────────
 DRY_RUN=false
@@ -31,7 +43,7 @@ usage() {
     cat <<EOF
 Usage: $0 <next-version> [--dry-run]
 
-  next-version   Next development version (e.g., 1.2.0-SNAPSHOT)
+  next-version   Next development version (e.g., 2-SNAPSHOT)
   --dry-run      Show what would happen without making changes
 
 EOF
@@ -73,32 +85,45 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
     exit 1
 fi
 
-# ── Summary ───────────────────────────────────────────────────────
+# Extract current version from root POM
+OLD_VERSION=$(sed -n 's/.*<version>\(.*\)<\/version>.*/\1/p' "${ROOT_POM}" | head -1)
+
+# ── Build environment audit ───────────────────────────────────────
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo "  Next version:  ${NEXT_VERSION}"
+echo "  POST-RELEASE VERSION BUMP"
+echo "═══════════════════════════════════════════════════════════"
+echo "  Version:       ${OLD_VERSION} → ${NEXT_VERSION}"
 echo "  Branch:        ${CURRENT_BRANCH}"
 echo "  Dry run:       ${DRY_RUN}"
+echo ""
+echo "  BUILD ENVIRONMENT"
+echo "  ─────────────────────────────────────────────────────"
+echo "  Date:          $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+echo "  User:          $(whoami)@$(hostname)"
+echo "  Git commit:    $(git rev-parse --short HEAD)"
+echo "  Git root:      ${GIT_ROOT}"
+echo "  Maven wrapper: ${MVN}"
+echo "  Maven version: $("${MVN}" --version 2>&1 | head -1)"
+echo "  OS:            $(uname -mrs)"
 echo "═══════════════════════════════════════════════════════════"
 echo ""
 
 if [[ "${DRY_RUN}" == "true" ]]; then
     echo "[DRY RUN] Would pull latest main"
-    echo "[DRY RUN] Would set version to: ${NEXT_VERSION}"
+    echo "[DRY RUN] Would set version: ${OLD_VERSION} → ${NEXT_VERSION}"
     echo "[DRY RUN] Would commit and push"
     exit 0
 fi
 
-# ── Pull latest (CI merge) ────────────────────────────────────────
+# ── Pull latest (release merge) ──────────────────────────────────
 echo "» Pulling latest main..."
 git pull origin main
 
-# ── Set versions ──────────────────────────────────────────────────
-# Maven 4.1.0 implicit version inheritance: only root POM has <version>.
-ROOT_POM="$(git rev-parse --show-toplevel)/pom.xml"
-OLD_VERSION=$(sed -n 's/.*<version>\(.*\)<\/version>.*/\1/p' "${ROOT_POM}" | head -1)
-echo "» Setting POM version: ${OLD_VERSION} → ${NEXT_VERSION}"
-sed -i '' "s|<version>${OLD_VERSION}</version>|<version>${NEXT_VERSION}</version>|" "${ROOT_POM}"
+# ── Set version ───────────────────────────────────────────────────
+# Must use mvnw (Maven 4) for modelVersion 4.1.0 compatibility.
+echo "» Setting version → ${NEXT_VERSION}"
+"${MVN}" versions:set -DnewVersion="${NEXT_VERSION}" -DgenerateBackupPoms=false -q
 
 # ── Commit and push ───────────────────────────────────────────────
 echo "» Committing version bump..."
