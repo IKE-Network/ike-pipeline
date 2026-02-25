@@ -30,6 +30,18 @@
 # ────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
+# ── Resolve Maven command ─────────────────────────────────────────
+# Maven 4.1.0 features (implicit version inheritance, <subprojects>)
+# require Maven 4.x. Use the wrapper to ensure the correct version.
+GIT_ROOT="$(git rev-parse --show-toplevel)"
+if [[ -x "${GIT_ROOT}/mvnw" ]]; then
+    MVN="${GIT_ROOT}/mvnw"
+else
+    echo "ERROR: mvnw not found at ${GIT_ROOT}/mvnw"
+    echo "       Maven 4.x wrapper is required for this project."
+    exit 1
+fi
+
 # ── Defaults ──────────────────────────────────────────────────────
 DRY_RUN=false
 RELEASE_VERSION=""
@@ -119,7 +131,7 @@ if [[ "${DRY_RUN}" == "true" ]]; then
     echo "[DRY RUN] Would set version to: ${RELEASE_VERSION}"
     echo "[DRY RUN] Would run: mvn clean verify -B"
     echo "[DRY RUN] Would commit, tag v${RELEASE_VERSION}"
-    echo "[DRY RUN] Would deploy to Nexus: mvn deploy -B -DskipTests"
+    echo "[DRY RUN] Would deploy to Nexus: mvnw deploy -B -DskipTests"
     echo "[DRY RUN] Would push tag and create GitHub Release"
     echo "[DRY RUN] Would merge ${RELEASE_BRANCH} to main and push"
     exit 0
@@ -146,7 +158,7 @@ sed -i '' "s|<version>${OLD_VERSION}</version>|<version>${RELEASE_VERSION}</vers
 # ── Verify build ──────────────────────────────────────────────────
 if [[ "${SKIP_VERIFY}" == "false" ]]; then
     echo "» Building and verifying..."
-    mvn clean verify -B
+    "${MVN}" clean verify -B
 else
     echo "» Skipping verify (--skip-verify)"
 fi
@@ -162,7 +174,7 @@ git tag -a "v${RELEASE_VERSION}" -m "Release ${RELEASE_VERSION}"
 
 # ── Deploy to Nexus ───────────────────────────────────────────────
 echo "» Deploying to Nexus..."
-mvn deploy -B -DskipTests
+"${MVN}" deploy -B -DskipTests
 
 # ── Push tag (needed before gh release create) ────────────────────
 echo "» Pushing tag v${RELEASE_VERSION}..."
