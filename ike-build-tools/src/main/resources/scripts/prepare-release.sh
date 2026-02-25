@@ -130,8 +130,18 @@ echo "» Creating branch: ${RELEASE_BRANCH}"
 git checkout -b "${RELEASE_BRANCH}"
 
 # ── Set versions ──────────────────────────────────────────────────
+# Maven 4.1.0 implicit version inheritance means only the root POM
+# declares <version>. All submodules inherit it. A single sed on the
+# root POM is sufficient; versions:set doesn't understand 4.1.0.
 echo "» Setting POM versions to: ${RELEASE_VERSION}"
-mvn versions:set -DnewVersion="${RELEASE_VERSION}" -DgenerateBackupPoms=false -q
+ROOT_POM="$(git rev-parse --show-toplevel)/pom.xml"
+OLD_VERSION=$(sed -n 's/.*<version>\(.*\)<\/version>.*/\1/p' "${ROOT_POM}" | head -1)
+if [[ -z "${OLD_VERSION}" ]]; then
+    echo "ERROR: Could not extract current version from ${ROOT_POM}"
+    exit 1
+fi
+echo "  Replacing ${OLD_VERSION} → ${RELEASE_VERSION}"
+sed -i '' "s|<version>${OLD_VERSION}</version>|<version>${RELEASE_VERSION}</version>|" "${ROOT_POM}"
 
 # ── Verify build ──────────────────────────────────────────────────
 if [[ "${SKIP_VERIFY}" == "false" ]]; then

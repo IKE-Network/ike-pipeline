@@ -94,8 +94,11 @@ echo "» Pulling latest main..."
 git pull origin main
 
 # ── Set versions ──────────────────────────────────────────────────
-echo "» Setting POM versions to: ${NEXT_VERSION}"
-mvn versions:set -DnewVersion="${NEXT_VERSION}" -DgenerateBackupPoms=false -q
+# Maven 4.1.0 implicit version inheritance: only root POM has <version>.
+ROOT_POM="$(git rev-parse --show-toplevel)/pom.xml"
+OLD_VERSION=$(sed -n 's/.*<version>\(.*\)<\/version>.*/\1/p' "${ROOT_POM}" | head -1)
+echo "» Setting POM version: ${OLD_VERSION} → ${NEXT_VERSION}"
+sed -i '' "s|<version>${OLD_VERSION}</version>|<version>${NEXT_VERSION}</version>|" "${ROOT_POM}"
 
 # ── Commit and push ───────────────────────────────────────────────
 echo "» Committing version bump..."
