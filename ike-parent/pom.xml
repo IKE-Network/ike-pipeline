@@ -1,19 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  IKE Community — Bill of Materials (BOM)
-  ═══════════════════════════════════════
+  IKE Community — Parent POM
+  ═══════════════════════════
 
-  Centralized version management for IKE artifacts. Import this BOM
-  in your project's <dependencyManagement> to align versions across
-  all IKE dependencies.
+  The standard parent for all IKE Community projects. Inheriting this
+  POM provides two things through a single <parent> declaration:
 
-  Usage:
+    1. Build conventions — Java 25 compiler configuration, ASM 9.9 for
+       annotation processing, surefire/failsafe with JPMS --add-opens,
+       GPG signing with Bouncy Castle, platform classifier profiles,
+       enforcer rules, and the AsciiDoc documentation pipeline (activated
+       when src/docs/asciidoc exists). Inherited from ike-pipeline.
+
+    2. Dependency version management — centralized <dependencyManagement>
+       entries for IKE infrastructure artifacts (ike-build-standards,
+       ike-doc-resources, ike-build-tools), shared test dependencies
+       (JUnit 5, AssertJ, Mockito), and workspace-specific BOMs as
+       the ecosystem grows.
+
+  Usage (inheritance — recommended):
+
+    <parent>
+        <groupId>network.ike</groupId>
+        <artifactId>ike-parent</artifactId>
+        <version>1.1.0</version>
+    </parent>
+
+  Usage (import only — for projects that inherit a different parent):
+
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>network.ike</groupId>
-                <artifactId>ike-bom</artifactId>
-                <version>${ike-bom.version}</version>
+                <artifactId>ike-parent</artifactId>
+                <version>1.1.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -28,16 +48,21 @@
 
     <parent>
         <groupId>network.ike</groupId>
-        <artifactId>ike-parent</artifactId>
+        <artifactId>ike-pipeline</artifactId>
     </parent>
 
-    <artifactId>ike-bom</artifactId>
+    <artifactId>ike-parent</artifactId>
     <packaging>pom</packaging>
 
-    <name>IKE Bill of Materials</name>
+    <name>IKE Parent</name>
     <description>
-        Centralized dependency version management for IKE Community projects.
-        Import this BOM to align artifact versions across modules.
+        Standard parent POM for IKE Community projects. Provides build
+        conventions (Java 25 compiler, test harness, GPG signing, and the
+        AsciiDoc documentation pipeline) together with centralized dependency
+        version management — combining the roles of a traditional parent POM
+        and a bill-of-materials (BOM) in a single artifact. Projects that
+        cannot inherit may import this POM with scope=import for dependency
+        version alignment only.
     </description>
     <url>https://github.com/IKE-Network/ike-pipeline</url>
     <inceptionYear>2026</inceptionYear>
@@ -70,10 +95,11 @@
         </site>
     </distributionManagement>
 
-    <!-- All infrastructure modules use unified pipeline version.
-         No version properties needed — ${project.version} is the
-         single source of truth. -->
-
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!-- Dependency Management — IKE infrastructure + test dependencies. -->
+    <!-- Workspace BOMs (Tinkar, Komet, JavaFX, ELK) added here as the  -->
+    <!-- ecosystem grows.                                                -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
     <dependencyManagement>
         <dependencies>
             <!-- IKE Build Standards (Claude instruction files) -->
@@ -120,7 +146,5 @@
                 <plugin><artifactId>maven-deploy-plugin</artifactId><version>3.1.3</version></plugin>
             </plugins>
         </pluginManagement>
-
-        <!-- Standards and build-tools unpacked via inherited parent executions -->
     </build>
 </project>

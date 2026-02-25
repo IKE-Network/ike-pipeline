@@ -36,7 +36,7 @@
                    IKE Community, knowledge engineering</keywords>
     </custom>
 
-    <bannerLeft name="IKE Documentation Pipeline" href="https://ike.network">
+    <bannerLeft name="IKE Documentation Pipeline" href="../index.html">
         <image src="images/ike-logo.svg" alt="IKE"/>
     </bannerLeft>
 
@@ -47,6 +47,7 @@
 
     <body>
         <breadcrumbs>
+            <item name="IKE" href="../index.html"/>
             <item name="IKE Pipeline" href="index.html"/>
         </breadcrumbs>
         <links>

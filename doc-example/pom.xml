@@ -3,7 +3,7 @@
   IKE Community — Documentation Example
   ══════════════════════════════════════
 
-  A doc-only project that inherits from ike-parent directly (no java-parent).
+  A doc-only project that inherits from ike-pipeline directly.
   Serves as:
     1. Proof that doc-only inheritance works
     2. Comprehensive renderer/pipeline test vehicle

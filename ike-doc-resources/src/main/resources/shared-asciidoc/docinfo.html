@@ -12,6 +12,50 @@
   Copyright 2025 IKE Community — Apache License 2.0
 -->
 
+<!-- ── Site Navigation Bar ─────────────────────────────────── -->
+<!-- Breadcrumb bar matching the sentry-purple theme.           -->
+<!-- Inserted before #header by DOMContentLoaded script below.  -->
+<!-- Hidden for PDF renderers via @media print.                 -->
+<style>
+@media print {
+    #ike-site-nav { display: none !important; }
+}
+#ike-site-nav {
+    position: sticky;
+    top: 0;
+    z-index: 10000;
+    /* Full viewport width — break out of any parent padding */
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px;
+    background: #4a2a6a;
+    color: #fff;
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+#ike-site-nav a {
+    color: #dcc8f0;
+    text-decoration: none;
+}
+#ike-site-nav a:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+#ike-site-nav .nav-sep {
+    color: #a88cc0;
+    margin: 0 2px;
+}
+#ike-site-nav .nav-current {
+    color: #fff;
+    font-weight: 600;
+}
+</style>
+
 <!-- ── Colophon: hide on screen, relocate for print renderers ── -->
 <style>
 /* Hide the colophon in browser / screen HTML output.
@@ -30,8 +74,27 @@
    rendering.  WeasyPrint ignores it (no JS support) — the
    colophon stays at the end for WeasyPrint output.            */
 document.addEventListener('DOMContentLoaded', function() {
+    var header = document.getElementById('header');
+
+    /* ── Site navigation breadcrumb bar ──────────────────────── */
+    /* Build a breadcrumb bar from the document title.  When the
+       rendered doc lives in target/site/docs/, "../index.html"
+       navigates back to the module's Maven site page.            */
+    var nav = document.createElement('div');
+    nav.id = 'ike-site-nav';
+    var docTitle = document.querySelector('#header h1')
+                 || document.querySelector('#header h2');
+    var title = docTitle ? docTitle.textContent.trim() : 'Document';
+    nav.innerHTML =
+        '<a href="../index.html">Site</a>' +
+        '<span class="nav-sep">\u203a</span>' +
+        '<span class="nav-current">' + title + '</span>';
+    if (header && header.parentNode) {
+        header.parentNode.insertBefore(nav, header);
+    }
+
+    /* ── Colophon relocation ────────────────────────────────── */
     var colophon = document.getElementById('ike-colophon');
-    var header   = document.getElementById('header');
     if (colophon && header && header.parentNode) {
         header.parentNode.insertBefore(colophon, header);
     }

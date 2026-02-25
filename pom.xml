@@ -21,15 +21,18 @@
     <modelVersion>4.1.0</modelVersion>
 
     <groupId>network.ike</groupId>
-    <artifactId>ike-parent</artifactId>
+    <artifactId>ike-pipeline</artifactId>
     <version>1.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>IKE Parent</name>
+    <name>IKE Pipeline</name>
     <description>
-        Parent POM and reactor aggregator for IKE Community projects.
+        Reactor root and build infrastructure for the IKE Community.
         Provides the AsciiDoc documentation pipeline (6 PDF renderers),
-        Java 25 compiler/test configuration, and shared build infrastructure.
+        Java 25 compiler/test configuration, GPG signing, and shared
+        plugin management. Projects inherit network.ike:ike-parent
+        (a submodule of this reactor) which combines build conventions
+        with centralized dependency version management.
     </description>
     <url>https://github.com/IKE-Network/ike-pipeline</url>
     <inceptionYear>2025</inceptionYear>
@@ -69,6 +72,8 @@
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!-- Reproducible builds — maven-release-plugin updates automatically -->
+        <project.build.outputTimestamp>2026-02-22T00:00:00Z</project.build.outputTimestamp>
 
         <!-- IKE Pipeline Version — the version of this parent and its sibling
              infrastructure artifacts (ike-doc-resources, minimal-fonts, docbook-xsl,
@@ -90,15 +95,20 @@
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
         <maven-clean-plugin.version>3.4.0</maven-clean-plugin.version>
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
-        <maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
-        <maven-failsafe-plugin.version>3.5.2</maven-failsafe-plugin.version>
+        <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
+        <maven-failsafe-plugin.version>3.5.3</maven-failsafe-plugin.version>
         <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
         <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
         <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
         <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
+        <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
         <exec-maven-plugin.version>3.5.0</exec-maven-plugin.version>
         <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
         <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
+
+        <!-- ── Java Toolchain Dependencies ─────────────────────────── -->
+        <asm.version>9.9</asm.version>
+        <record-builder-core.version>34</record-builder-core.version>
 
         <!-- ── AsciiDoc Toolchain Versions ────────────────────────────── -->
         <asciidoctor-maven-plugin.version>3.1.0</asciidoctor-maven-plugin.version>
@@ -153,21 +163,22 @@
         <ike.assembly.directory>${ike.doc.resources.directory}/assembly</ike.assembly.directory>
 
         <!-- ── Renderer Skip Flags ────────────────────────────────────── -->
-        <!-- All renderers off by default. Activate via profile or -D. -->
-        <ike.skip.html>true</ike.skip.html>
-        <ike.skip.html-single>true</ike.skip.html-single>
+        <!-- HTML + single-page HTML + Prince PDF on by default.              -->
+        <!-- Other renderers off. Activate via profile or -D.                 -->
+        <ike.skip.html>false</ike.skip.html>
+        <ike.skip.html-single>false</ike.skip.html-single>
         <ike.skip.prawn>true</ike.skip.prawn>
-        <ike.skip.prince>true</ike.skip.prince>
+        <ike.skip.prince>false</ike.skip.prince>
         <ike.skip.ah>true</ike.skip.ah>
         <ike.skip.weasyprint>true</ike.skip.weasyprint>
         <ike.skip.xep>true</ike.skip.xep>
         <ike.skip.fop>true</ike.skip.fop>
-        <ike.skip.pdf-default>true</ike.skip.pdf-default>
+        <ike.skip.pdf-default>false</ike.skip.pdf-default>
         <ike.skip.docbook>true</ike.skip.docbook>
         <ike.skip.asciidoc-zip>true</ike.skip.asciidoc-zip>
 
         <!-- Default renderer for the pdf-default copy -->
-        <ike.pdf.default>prawn</ike.pdf.default>
+        <ike.pdf.default>prince</ike.pdf.default>
 
         <!-- ── Test Framework Versions (from java-parent) ────────────── -->
         <junit-jupiter.version>5.11.4</junit-jupiter.version>
@@ -180,6 +191,22 @@
     <!-- ════════════════════════════════════════════════════════════════ -->
     <dependencyManagement>
         <dependencies>
+            <!-- NOTE: ike-parent (the BOM submodule) is NOT imported here
+                 because it shares this reactor. Maven 4 correctly detects
+                 reactor-internal import cycles. Consumer projects inherit
+                 network.ike:ike-parent directly:
+
+                   <parent>
+                     <groupId>network.ike</groupId>
+                     <artifactId>ike-parent</artifactId>
+                     <version>1.1.0</version>
+                   </parent>
+
+                 ike-parent inherits this POM (ike-pipeline) for build
+                 conventions and adds centralized dependencyManagement,
+                 so consumers get everything through a single declaration.
+            -->
+
             <!-- AsciiDoc Documentation Dependencies -->
             <dependency>
                 <groupId>org.asciidoctor</groupId>
@@ -436,6 +463,30 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>${maven-compiler-plugin.version}</version>
+                    <dependencies>
+                        <!-- ASM 9.9 required for Java 25 classfile parsing
+                             during annotation processing -->
+                        <dependency>
+                            <groupId>org.ow2.asm</groupId>
+                            <artifactId>asm</artifactId>
+                            <version>${asm.version}</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.ow2.asm</groupId>
+                            <artifactId>asm-commons</artifactId>
+                            <version>${asm.version}</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.ow2.asm</groupId>
+                            <artifactId>asm-tree</artifactId>
+                            <version>${asm.version}</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.ow2.asm</groupId>
+                            <artifactId>asm-util</artifactId>
+                            <version>${asm.version}</version>
+                        </dependency>
+                    </dependencies>
                     <configuration>
                         <source>${java.version}</source>
                         <target>${java.version}</target>
@@ -446,6 +497,13 @@
                         </compilerArgs>
                         <showWarnings>true</showWarnings>
                         <showDeprecation>true</showDeprecation>
+                        <annotationProcessorPaths>
+                            <annotationProcessorPath>
+                                <groupId>io.soabase.record-builder</groupId>
+                                <artifactId>record-builder-processor</artifactId>
+                                <version>${record-builder-core.version}</version>
+                            </annotationProcessorPath>
+                        </annotationProcessorPaths>
                     </configuration>
                 </plugin>
 
@@ -454,9 +512,26 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${maven-surefire-plugin.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.ow2.asm</groupId>
+                            <artifactId>asm</artifactId>
+                            <version>${asm.version}</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.ow2.asm</groupId>
+                            <artifactId>asm-commons</artifactId>
+                            <version>${asm.version}</version>
+                        </dependency>
+                    </dependencies>
                     <configuration>
+                        <useModulePath>false</useModulePath>
                         <argLine>
                             --enable-preview
+                            --add-opens java.base/java.lang=ALL-UNNAMED
+                            --add-opens java.base/java.util=ALL-UNNAMED
+                            --add-opens java.base/java.lang.reflect=ALL-UNNAMED
+                            --add-opens java.base/java.io=ALL-UNNAMED
                         </argLine>
                     </configuration>
                 </plugin>
@@ -466,6 +541,18 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>${maven-failsafe-plugin.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.ow2.asm</groupId>
+                            <artifactId>asm</artifactId>
+                            <version>${asm.version}</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.ow2.asm</groupId>
+                            <artifactId>asm-commons</artifactId>
+                            <version>${asm.version}</version>
+                        </dependency>
+                    </dependencies>
                     <executions>
                         <execution>
                             <goals>
@@ -475,8 +562,13 @@
                         </execution>
                     </executions>
                     <configuration>
+                        <useModulePath>false</useModulePath>
                         <argLine>
                             --enable-preview
+                            --add-opens java.base/java.lang=ALL-UNNAMED
+                            --add-opens java.base/java.util=ALL-UNNAMED
+                            --add-opens java.base/java.lang.reflect=ALL-UNNAMED
+                            --add-opens java.base/java.io=ALL-UNNAMED
                         </argLine>
                     </configuration>
                 </plugin>
@@ -603,6 +695,18 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             </configuration>
                         </execution>
                     </executions>
+                </plugin>
+
+                <!-- ── Maven GPG Plugin (Bouncy Castle signer) ────────── -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>${maven-gpg-plugin.version}</version>
+                    <configuration>
+                        <!-- Use Bouncy Castle signer for parallel-safe signing
+                             without gpg-agent contention -->
+                        <signer>bc</signer>
+                    </configuration>
                 </plugin>
 
                 <!-- AsciiDoctor Maven Plugin -->
@@ -1457,6 +1561,21 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                     </arguments>
                                 </configuration>
                             </execution>
+                            <execution>
+                                <id>copy-docs-to-site</id>
+                                <phase>post-site</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <skip>${ike.skip.html}</skip>
+                                    <executable>sh</executable>
+                                    <arguments>
+                                        <argument>${project.build.directory}/build-tools/scripts/copy-docs-to-site.sh</argument>
+                                        <argument>${asciidoc.output.directory}/html</argument>
+                                        <argument>${project.reporting.outputDirectory}</argument>
+                                        <argument>${ike.document.name}</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
                         </executions>
                     </plugin>
 
@@ -1581,17 +1700,6 @@ IKE projects require Java 21+ (JRuby 10 baseline).
             </build>
         </profile>
 
-        <!-- ── HTML5 (active by default) ──────────────────────────────── -->
-        <profile>
-            <id>html</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <properties>
-                <ike.skip.html>false</ike.skip.html>
-            </properties>
-        </profile>
-
         <!-- ── Self-contained HTML (single file, data-uri) ─────────────── -->
         <profile>
             <id>html-single</id>
@@ -1710,7 +1818,79 @@ IKE projects require Java 21+ (JRuby 10 baseline).
             </properties>
         </profile>
 
-        <!-- ── JPMS (from java-parent) ────────────────────────────────── -->
+        <!-- ── GPG Signing ──────────────────────────────────── -->
+        <profile>
+            <id>signArtifacts</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- ── Platform Classifier Profiles ─────────────────────── -->
+        <profile>
+            <id>macos-aarch64</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <platform.classifier>osx</platform.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>macos-x86_64</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>x86_64</arch>
+                </os>
+            </activation>
+            <properties>
+                <platform.classifier>osx</platform.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>linux-x86_64</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <arch>amd64</arch>
+                </os>
+            </activation>
+            <properties>
+                <platform.classifier>linux64</platform.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>windows-x86_64</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                    <arch>amd64</arch>
+                </os>
+            </activation>
+            <properties>
+                <platform.classifier>win64</platform.classifier>
+            </properties>
+        </profile>
+
+        <!-- ── JPMS ───────────────────────────────────────────────── -->
         <profile>
             <id>jpms</id>
             <build>
@@ -1750,7 +1930,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
     <subprojects>
         <subproject>ike-build-standards</subproject>
         <subproject>ike-build-tools</subproject>
-        <subproject>ike-bom</subproject>
+        <subproject>ike-parent</subproject>
         <subproject>minimal-fonts</subproject>
         <subproject>docbook-xsl</subproject>
         <subproject>ike-doc-resources</subproject>
