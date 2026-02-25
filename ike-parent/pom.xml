@@ -6,8 +6,8 @@
   The standard parent for all IKE Community projects. Inheriting this
   POM provides two things through a single <parent> declaration:
 
-    1. Build conventions — Java 25 compiler configuration, ASM 9.9 for
-       annotation processing, surefire/failsafe with JPMS --add-opens,
+    1. Build conventions: Java 25 compiler configuration, ASM 9.9 for
+       annotation processing, surefire/failsafe with JPMS add-opens,
        GPG signing with Bouncy Castle, platform classifier profiles,
        enforcer rules, and the AsciiDoc documentation pipeline (activated
        when src/docs/asciidoc exists). Inherited from ike-pipeline.
