@@ -117,8 +117,13 @@ if git ls-remote --exit-code --heads origin "${RELEASE_BRANCH}" >/dev/null 2>&1;
     exit 1
 fi
 
-# Extract current version for display in audit trail
-OLD_VERSION=$("${MVN}" help:evaluate -Dexpression=project.version -q -DforceStdout 2>/dev/null || sed -n 's/.*<version>\(.*\)<\/version>.*/\1/p' "${ROOT_POM}" | head -1)
+# Extract current version from root POM for audit trail display.
+# Cannot use help:evaluate — Maven 3 plugins choke on 4.1.0 model.
+OLD_VERSION=$(sed -n 's/.*<version>\(.*\)<\/version>.*/\1/p' "${ROOT_POM}" | head -1)
+if [[ -z "${OLD_VERSION}" ]]; then
+    echo "ERROR: Could not extract current version from ${ROOT_POM}"
+    exit 1
+fi
 
 # ── Build environment audit ───────────────────────────────────────
 echo ""
@@ -161,11 +166,15 @@ echo "» Creating branch: ${RELEASE_BRANCH}"
 git checkout -b "${RELEASE_BRANCH}"
 
 # ── Set version ───────────────────────────────────────────────────
-# Must use mvnw (Maven 4) so the 4.1.0 model with implicit version
-# inheritance is parsed correctly. System mvn (Maven 3) cannot read
-# modelVersion 4.1.0 and will fail with 'parent.version is missing'.
+# Maven 4.1.0 implicit version inheritance: only the root POM declares
+# <version>. All submodules inherit it automatically. We sed the single
+# version in the root POM. Neither versions:set nor help:evaluate work
+# because the versions-maven-plugin uses the Maven 3 model API internally
+# and cannot parse modelVersion 4.1.0 (fails with 'parent.version is
+# missing'). This is a known limitation of Maven 3 era plugins running
+# under Maven 4.
 echo "» Setting version: ${OLD_VERSION} → ${RELEASE_VERSION}"
-"${MVN}" versions:set -DnewVersion="${RELEASE_VERSION}" -DgenerateBackupPoms=false -q
+sed -i '' "s|<version>${OLD_VERSION}</version>|<version>${RELEASE_VERSION}</version>|" "${ROOT_POM}"
 
 # ── Verify build ──────────────────────────────────────────────────
 if [[ "${SKIP_VERIFY}" == "false" ]]; then

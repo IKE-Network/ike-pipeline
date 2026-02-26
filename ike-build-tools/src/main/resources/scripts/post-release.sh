@@ -121,9 +121,10 @@ echo "» Pulling latest main..."
 git pull origin main
 
 # ── Set version ───────────────────────────────────────────────────
-# Must use mvnw (Maven 4) for modelVersion 4.1.0 compatibility.
-echo "» Setting version → ${NEXT_VERSION}"
-"${MVN}" versions:set -DnewVersion="${NEXT_VERSION}" -DgenerateBackupPoms=false -q
+# Re-extract version after pull (merge may have changed it).
+OLD_VERSION=$(sed -n 's/.*<version>\(.*\)<\/version>.*/\1/p' "${ROOT_POM}" | head -1)
+echo "» Setting version: ${OLD_VERSION} → ${NEXT_VERSION}"
+sed -i '' "s|<version>${OLD_VERSION}</version>|<version>${NEXT_VERSION}</version>|" "${ROOT_POM}"
 
 # ── Commit and push ───────────────────────────────────────────────
 echo "» Committing version bump..."
