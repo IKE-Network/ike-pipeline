@@ -79,6 +79,18 @@
         </dependencies>
     </dependencyManagement>
 
+    <dependencies>
+        <!-- Standards unpacked by inherited unpack-claude-standards
+             (unpack-dependencies, reactor-aware) -->
+        <dependency>
+            <groupId>network.ike</groupId>
+            <artifactId>ike-build-standards</artifactId>
+            <classifier>claude</classifier>
+            <type>zip</type>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <pluginManagement>
             <plugins>
@@ -92,31 +104,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.8.1</version>
                 <executions>
                     <execution>
                         <id>unpack-claude-standards</id>
-                        <phase>validate</phase>
-                        <goals><goal>unpack</goal></goals>
-                        <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>network.ike</groupId>
-                                    <artifactId>ike-build-standards</artifactId>
-                                    <version>${project.version}</version>
-                                    <classifier>claude</classifier>
-                                    <type>zip</type>
-                                    <overWrite>true</overWrite>
-                                    <outputDirectory>${project.basedir}/.claude/standards</outputDirectory>
-                                </artifactItem>
-                            </artifactItems>
-                        </configuration>
+                        <!-- inherits config from pluginManagement -->
                     </execution>
-                    <!-- Disable inherited executions — circular: can't unpack self -->
-                    <execution>
-                        <id>unpack-claude-standards-direct</id>
-                        <phase>none</phase>
-                    </execution>
+                    <!-- Circular: can't unpack self -->
                     <execution>
                         <id>unpack-build-tools</id>
                         <phase>none</phase>

@@ -80,6 +80,32 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- IKE Build Tools — shared scripts (fix-inline-svg.sh, scan-renderer-logs.sh, etc.).
+             Unpacked to target/build-tools/ by inherited unpack-build-tools execution. -->
+        <dependency>
+            <groupId>network.ike</groupId>
+            <artifactId>ike-build-tools</artifactId>
+            <classifier>tools</classifier>
+            <type>zip</type>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- IKE Documentation Resources — themes, assembly descriptors, configs.
+             Unpacked to target/ike-doc-resources/ by inherited unpack-doc-resources execution. -->
+        <dependency>
+            <groupId>network.ike</groupId>
+            <artifactId>ike-doc-resources</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- DocBook XSL — stylesheets for XEP/FOP DocBook→XSL-FO→PDF pipeline.
+             Unpacked when docbook renderers are active. -->
+        <dependency>
+            <groupId>network.ike</groupId>
+            <artifactId>docbook-xsl</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Fonts for PDF generation (minimal subset - 10 files, ~2MB) -->
         <dependency>
             <groupId>network.ike</groupId>

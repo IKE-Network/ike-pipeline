@@ -197,7 +197,9 @@
                 <plugin><artifactId>maven-install-plugin</artifactId><version>3.1.3</version></plugin>
                 <plugin><artifactId>maven-deploy-plugin</artifactId><version>3.1.3</version></plugin>
 
-                <!-- Maven Dependency Plugin -->
+                <!-- Maven Dependency Plugin — all unpacks use unpack-dependencies
+                     (reactor-aware). Modules declare the artifacts as dependencies;
+                     unpack-dependencies is a no-op when the dependency is absent. -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-dependency-plugin</artifactId>
@@ -206,27 +208,19 @@
                         <execution>
                             <id>unpack-doc-resources</id>
                             <phase>initialize</phase>
-                            <goals><goal>unpack</goal></goals>
+                            <goals><goal>unpack-dependencies</goal></goals>
                             <configuration>
-                                <artifactItems>
-                                    <artifactItem>
-                                        <groupId>network.ike</groupId>
-                                        <artifactId>ike-doc-resources</artifactId>
-                                        <version>${project.version}</version>
-                                        <type>jar</type>
-                                        <overWrite>true</overWrite>
-                                        <outputDirectory>${ike.doc.resources.directory}</outputDirectory>
-                                        <excludes>META-INF/**</excludes>
-                                    </artifactItem>
-                                </artifactItems>
+                                <includeArtifactIds>ike-doc-resources</includeArtifactIds>
+                                <excludes>META-INF/**</excludes>
+                                <outputDirectory>${ike.doc.resources.directory}</outputDirectory>
+                                <overWriteReleases>true</overWriteReleases>
+                                <overWriteSnapshots>true</overWriteSnapshots>
                             </configuration>
                         </execution>
                         <execution>
                             <id>unpack-doc-dependencies</id>
                             <phase>generate-sources</phase>
-                            <goals>
-                                <goal>unpack-dependencies</goal>
-                            </goals>
+                            <goals><goal>unpack-dependencies</goal></goals>
                             <configuration>
                                 <classifier>asciidoc</classifier>
                                 <type>zip</type>
@@ -240,29 +234,20 @@
                         <execution>
                             <id>unpack-build-tools</id>
                             <phase>initialize</phase>
-                            <goals>
-                                <goal>unpack</goal>
-                            </goals>
+                            <goals><goal>unpack-dependencies</goal></goals>
                             <configuration>
-                                <artifactItems>
-                                    <artifactItem>
-                                        <groupId>network.ike</groupId>
-                                        <artifactId>ike-build-tools</artifactId>
-                                        <version>${project.version}</version>
-                                        <classifier>tools</classifier>
-                                        <type>zip</type>
-                                        <overWrite>true</overWrite>
-                                        <outputDirectory>${project.build.directory}/build-tools</outputDirectory>
-                                    </artifactItem>
-                                </artifactItems>
+                                <includeArtifactIds>ike-build-tools</includeArtifactIds>
+                                <includeClassifiers>tools</includeClassifiers>
+                                <includeTypes>zip</includeTypes>
+                                <outputDirectory>${project.build.directory}/build-tools</outputDirectory>
+                                <overWriteReleases>true</overWriteReleases>
+                                <overWriteSnapshots>true</overWriteSnapshots>
                             </configuration>
                         </execution>
                         <execution>
                             <id>unpack-claude-standards</id>
                             <phase>validate</phase>
-                            <goals>
-                                <goal>unpack-dependencies</goal>
-                            </goals>
+                            <goals><goal>unpack-dependencies</goal></goals>
                             <configuration>
                                 <includeArtifactIds>ike-build-standards</includeArtifactIds>
                                 <includeClassifiers>claude</includeClassifiers>
@@ -273,23 +258,27 @@
                             </configuration>
                         </execution>
                         <execution>
+                            <id>unpack-docbook-xsl</id>
+                            <phase>generate-resources</phase>
+                            <goals><goal>unpack-dependencies</goal></goals>
+                            <configuration>
+                                <skip>${ike.skip.docbook}</skip>
+                                <includeArtifactIds>docbook-xsl</includeArtifactIds>
+                                <excludes>META-INF/**</excludes>
+                                <outputDirectory>${docbook.xsl.directory}</outputDirectory>
+                                <overWriteReleases>true</overWriteReleases>
+                                <overWriteSnapshots>true</overWriteSnapshots>
+                            </configuration>
+                        </execution>
+                        <execution>
                             <id>unpack-fonts</id>
                             <phase>generate-resources</phase>
-                            <goals>
-                                <goal>unpack</goal>
-                            </goals>
+                            <goals><goal>unpack-dependencies</goal></goals>
                             <configuration>
-                                <artifactItems>
-                                    <artifactItem>
-                                        <groupId>network.ike</groupId>
-                                        <artifactId>minimal-fonts</artifactId>
-                                        <version>${project.version}</version>
-                                        <type>jar</type>
-                                        <outputDirectory>${fonts.output.directory}</outputDirectory>
-                                        <includes>**/*.ttf</includes>
-                                        <excludes>META-INF/**</excludes>
-                                    </artifactItem>
-                                </artifactItems>
+                                <includeArtifactIds>minimal-fonts</includeArtifactIds>
+                                <includes>**/*.ttf</includes>
+                                <excludes>META-INF/**</excludes>
+                                <outputDirectory>${fonts.output.directory}</outputDirectory>
                                 <overWriteReleases>true</overWriteReleases>
                                 <overWriteSnapshots>true</overWriteSnapshots>
                             </configuration>
@@ -725,35 +714,6 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                 <artifactId>maven-surefire-plugin</artifactId>
             </plugin>
 
-            <!-- Unpack Claude standards for all modules -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>unpack-claude-standards-direct</id>
-                        <phase>validate</phase>
-                        <goals><goal>unpack</goal></goals>
-                        <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>network.ike</groupId>
-                                    <artifactId>ike-build-standards</artifactId>
-                                    <version>${project.version}</version>
-                                    <classifier>claude</classifier>
-                                    <type>zip</type>
-                                    <overWrite>true</overWrite>
-                                    <outputDirectory>${project.basedir}/.claude/standards</outputDirectory>
-                                </artifactItem>
-                            </artifactItems>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>unpack-build-tools</id>
-                        <!-- inherits config from pluginManagement -->
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
 
@@ -797,56 +757,8 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                 <file><exists>src/docs/asciidoc</exists></file>
             </activation>
 
-            <dependencies>
-                <!-- Fonts for PDF generation (required for Prawn PDF profile) -->
-                <dependency>
-                    <groupId>network.ike</groupId>
-                    <artifactId>minimal-fonts</artifactId>
-                    <version>${project.version}</version>
-                </dependency>
-            </dependencies>
-
             <build>
                 <plugins>
-                    <!-- ── maven-dependency-plugin ──────────────────────── -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-dependency-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>unpack-doc-resources</id>
-                                <phase>initialize</phase>
-                                <goals><goal>unpack</goal></goals>
-                            </execution>
-                            <execution>
-                                <id>unpack-fonts</id>
-                                <!-- inherits config from pluginManagement -->
-                            </execution>
-                            <execution>
-                                <id>unpack-docbook-xsl</id>
-                                <phase>generate-resources</phase>
-                                <goals>
-                                    <goal>unpack</goal>
-                                </goals>
-                                <configuration>
-                                    <skip>${ike.skip.docbook}</skip>
-                                    <artifactItems>
-                                        <artifactItem>
-                                            <groupId>network.ike</groupId>
-                                            <artifactId>docbook-xsl</artifactId>
-                                            <version>${project.version}</version>
-                                            <type>jar</type>
-                                            <outputDirectory>${docbook.xsl.directory}</outputDirectory>
-                                            <excludes>META-INF/**</excludes>
-                                        </artifactItem>
-                                    </artifactItems>
-                                    <overWriteReleases>true</overWriteReleases>
-                                    <overWriteSnapshots>true</overWriteSnapshots>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
                     <!-- ── maven-resources-plugin ──────────────────────── -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
@@ -854,7 +766,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         <executions>
                             <execution>
                                 <id>prepare-xep-assets</id>
-                                <phase>generate-resources</phase>
+                                <phase>process-resources</phase>
                                 <goals><goal>copy-resources</goal></goals>
                                 <configuration>
                                     <skip>${ike.skip.xep}</skip>
@@ -878,7 +790,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             </execution>
                             <execution>
                                 <id>prepare-fop-assets</id>
-                                <phase>generate-resources</phase>
+                                <phase>process-resources</phase>
                                 <goals><goal>copy-resources</goal></goals>
                                 <configuration>
                                     <skip>${ike.skip.fop}</skip>

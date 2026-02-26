@@ -110,6 +110,28 @@
         </dependencies>
     </dependencyManagement>
 
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!-- Dependencies — inherited by external projects.                   -->
+    <!-- ike-build-standards is unpacked at validate phase by the          -->
+    <!-- inherited unpack-claude-standards execution (unpack-dependencies).-->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <dependencies>
+        <dependency>
+            <groupId>network.ike</groupId>
+            <artifactId>ike-build-standards</artifactId>
+            <classifier>claude</classifier>
+            <type>zip</type>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>network.ike</groupId>
+            <artifactId>ike-build-tools</artifactId>
+            <classifier>tools</classifier>
+            <type>zip</type>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <pluginManagement>
             <plugins>
@@ -118,5 +140,83 @@
                 <plugin><artifactId>maven-deploy-plugin</artifactId><version>3.1.3</version></plugin>
             </plugins>
         </pluginManagement>
+
+        <!-- Activate standard unpacks for all inheriting projects.
+             unpack-dependencies resolves from reactor; no-op if
+             the dependency is absent. -->
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>unpack-claude-standards</id>
+                        <!-- inherits config from pluginManagement -->
+                    </execution>
+                    <execution>
+                        <id>unpack-build-tools</id>
+                        <!-- inherits config from pluginManagement -->
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!-- Profiles                                                        -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <profiles>
+        <!-- ── doc-pipeline ─────────────────────────────────────────── -->
+        <!-- Activated when src/docs/asciidoc exists. Provides doc       -->
+        <!-- artifact dependencies and their unpack executions.          -->
+        <!-- The rest of the doc pipeline (asciidoctor, resources,       -->
+        <!-- assembly) is inherited from the root POM’s doc-pipeline     -->
+        <!-- profile.                                                    -->
+        <profile>
+            <id>doc-pipeline-deps</id>
+            <activation>
+                <file><exists>src/docs/asciidoc</exists></file>
+            </activation>
+
+            <dependencies>
+                <dependency>
+                    <groupId>network.ike</groupId>
+                    <artifactId>ike-doc-resources</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>network.ike</groupId>
+                    <artifactId>minimal-fonts</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>network.ike</groupId>
+                    <artifactId>docbook-xsl</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
+
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>unpack-doc-resources</id>
+                                <!-- inherits config from pluginManagement -->
+                            </execution>
+                            <execution>
+                                <id>unpack-fonts</id>
+                                <!-- inherits config from pluginManagement -->
+                            </execution>
+                            <execution>
+                                <id>unpack-docbook-xsl</id>
+                                <!-- inherits config from pluginManagement -->
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

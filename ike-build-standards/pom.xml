@@ -92,13 +92,13 @@
         </pluginManagement>
 
         <plugins>
-            <!-- Disable inherited unpack of ike-build-standards — circular dependency -->
+            <!-- Disable inherited unpacks — circular: can't unpack self -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>unpack-claude-standards-direct</id>
+                        <id>unpack-claude-standards</id>
                         <phase>none</phase>
                     </execution>
                     <execution>
