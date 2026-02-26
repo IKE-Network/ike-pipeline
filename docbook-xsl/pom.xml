@@ -40,8 +40,7 @@
     <modelVersion>4.1.0</modelVersion>
 
     <parent>
-        <groupId>network.ike</groupId>
-        <artifactId>ike-parent</artifactId>
+        <relativePath>../ike-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>docbook-xsl</artifactId>
