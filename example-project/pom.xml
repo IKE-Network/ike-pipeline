@@ -21,7 +21,8 @@
     <modelVersion>4.1.0</modelVersion>
 
     <parent>
-        <relativePath>../ike-parent/pom.xml</relativePath>
+        <groupId>network.ike</groupId>
+        <artifactId>ike-pipeline</artifactId>
     </parent>
 
     <artifactId>example-project</artifactId>
@@ -51,9 +52,21 @@
         </site>
     </distributionManagement>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>network.ike</groupId>
+                <artifactId>ike-bom</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <!-- IKE Build Standards — Claude instruction files.
-             Version resolved from ike-bom via parent dependencyManagement.
+             Version resolved from ike-bom.
              scope=provided: not needed at runtime, only unpacked at validate. -->
         <dependency>
             <groupId>network.ike</groupId>

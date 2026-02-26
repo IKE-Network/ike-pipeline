@@ -21,7 +21,8 @@
     <modelVersion>4.1.0</modelVersion>
 
     <parent>
-        <relativePath>../ike-parent/pom.xml</relativePath>
+        <groupId>network.ike</groupId>
+        <artifactId>ike-pipeline</artifactId>
     </parent>
 
     <artifactId>semantic-linebreak</artifactId>
@@ -51,8 +52,20 @@
         </site>
     </distributionManagement>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>network.ike</groupId>
+                <artifactId>ike-bom</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
-        <!-- AsciidoctorJ — version managed by ike-parent dependencyManagement -->
+        <!-- AsciidoctorJ — version managed by ike-bom -->
         <dependency>
             <groupId>org.asciidoctor</groupId>
             <artifactId>asciidoctorj</artifactId>

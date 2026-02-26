@@ -6,7 +6,8 @@
     <modelVersion>4.1.0</modelVersion>
 
     <parent>
-        <relativePath>../ike-parent/pom.xml</relativePath>
+        <groupId>network.ike</groupId>
+        <artifactId>ike-pipeline</artifactId>
     </parent>
 
     <artifactId>koncept-asciidoc-extension</artifactId>
@@ -45,6 +46,18 @@
         <slf4j.version>2.0.12</slf4j.version>
         <log4j.version>3.0.0-beta2</log4j.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>network.ike</groupId>
+                <artifactId>ike-bom</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- AsciidoctorJ — provided at runtime by asciidoctor-maven-plugin -->

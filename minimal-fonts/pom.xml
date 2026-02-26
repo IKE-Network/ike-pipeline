@@ -27,7 +27,8 @@
     <modelVersion>4.1.0</modelVersion>
 
     <parent>
-        <relativePath>../ike-parent/pom.xml</relativePath>
+        <groupId>network.ike</groupId>
+        <artifactId>ike-pipeline</artifactId>
     </parent>
 
     <artifactId>minimal-fonts</artifactId>
@@ -87,6 +88,18 @@
         <noto.symbols.base>https://github.com/notofonts/symbols/releases/download</noto.symbols.base>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>network.ike</groupId>
+                <artifactId>ike-bom</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <build>
         <pluginManagement>
             <plugins>
@@ -126,7 +139,7 @@
                                 <artifactItem>
                                     <groupId>network.ike</groupId>
                                     <artifactId>ike-build-standards</artifactId>
-                                    <version>3-SNAPSHOT</version>
+                                    <version>${project.version}</version>
                                     <classifier>claude</classifier>
                                     <type>zip</type>
                                     <overWrite>true</overWrite>

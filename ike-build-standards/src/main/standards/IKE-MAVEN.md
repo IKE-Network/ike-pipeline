@@ -87,9 +87,10 @@ IKE-specific properties use the `ike.` prefix:
 ### Unified Versioning
 
 All modules in the IKE pipeline reactor share a single version.
-The version is declared in the root `pom.xml` (`ike-parent`) in
-exactly 2 places: `<version>` and `<ike.pipeline.version>`.
+The version is declared once in the root `pom.xml` `<version>` element.
 All subproject modules are versionless (parent is the aggregator).
+Maven 4's consumer POM resolves `${project.version}` to literals
+before deployment, so no version indirection property is needed.
 
 - Pipeline versions are sequential: 1.1.0, 1.2.0, 1.3.0, etc.
 - No semantic versioning contract is implied. Each release supersedes

@@ -10,13 +10,12 @@
        annotation processing, surefire/failsafe with JPMS add-opens,
        GPG signing with Bouncy Castle, platform classifier profiles,
        enforcer rules, and the AsciiDoc documentation pipeline (activated
-       when src/docs/asciidoc exists). Inherited from ike-pipeline.
+       when src/docs/asciidoc exists). Inherited from ike-pipeline (root).
 
-    2. Dependency version management — centralized <dependencyManagement>
-       entries for IKE infrastructure artifacts (ike-build-standards,
-       ike-doc-resources, ike-build-tools), shared test dependencies
-       (JUnit 5, AssertJ, Mockito), and workspace-specific BOMs as
-       the ecosystem grows.
+    2. Dependency version management — centralized versions for IKE
+       infrastructure artifacts, AsciiDoc toolchain dependencies, and
+       shared test dependencies (JUnit 5, AssertJ, Mockito). Imported
+       from ike-bom.
 
   Usage (inheritance — recommended):
 
@@ -26,13 +25,13 @@
         <version>1.1.0</version>
     </parent>
 
-  Usage (import only — for projects that inherit a different parent):
+  Usage (BOM import only — for projects with a different parent):
 
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>network.ike</groupId>
-                <artifactId>ike-parent</artifactId>
+                <artifactId>ike-bom</artifactId>
                 <version>1.1.0</version>
                 <type>pom</type>
                 <scope>import</scope>
@@ -56,13 +55,12 @@
 
     <name>IKE Parent</name>
     <description>
-        Standard parent POM for IKE Community projects. Provides build
-        conventions (Java 25 compiler, test harness, GPG signing, and the
-        AsciiDoc documentation pipeline) together with centralized dependency
-        version management — combining the roles of a traditional parent POM
-        and a bill-of-materials (BOM) in a single artifact. Projects that
-        cannot inherit may import this POM with scope=import for dependency
-        version alignment only.
+        Standard parent POM for IKE Community projects. Inheriting this
+        POM provides build conventions (Java 25 compiler, test harness,
+        GPG signing, AsciiDoc documentation pipeline) from ike-pipeline
+        and centralized dependency version management from ike-bom.
+        Projects that cannot inherit may import ike-bom directly for
+        dependency version alignment only.
     </description>
     <url>https://github.com/IKE-Network/ike-pipeline</url>
     <inceptionYear>2026</inceptionYear>
@@ -96,44 +94,18 @@
     </distributionManagement>
 
     <!-- ════════════════════════════════════════════════════════════════ -->
-    <!-- Dependency Management — IKE infrastructure + test dependencies. -->
-    <!-- Workspace BOMs (Tinkar, Komet, JavaFX, ELK) added here as the  -->
-    <!-- ecosystem grows.                                                -->
+    <!-- Dependency Management — imports ike-bom for centralized          -->
+    <!-- version management. External consumers inheriting this POM get   -->
+    <!-- build conventions (from root) + dependency versions (from BOM).  -->
     <!-- ════════════════════════════════════════════════════════════════ -->
     <dependencyManagement>
         <dependencies>
-            <!-- IKE Build Standards (Claude instruction files) -->
             <dependency>
                 <groupId>network.ike</groupId>
-                <artifactId>ike-build-standards</artifactId>
+                <artifactId>ike-bom</artifactId>
                 <version>${project.version}</version>
-                <classifier>claude</classifier>
-                <type>zip</type>
-            </dependency>
-
-            <!-- IKE Build Standards (human-readable convention documents) -->
-            <dependency>
-                <groupId>network.ike</groupId>
-                <artifactId>ike-build-standards</artifactId>
-                <version>${project.version}</version>
-                <classifier>docs</classifier>
-                <type>zip</type>
-            </dependency>
-
-            <!-- IKE Build Tools (shared scripts, release automation) -->
-            <dependency>
-                <groupId>network.ike</groupId>
-                <artifactId>ike-build-tools</artifactId>
-                <version>${project.version}</version>
-                <classifier>tools</classifier>
-                <type>zip</type>
-            </dependency>
-
-            <!-- IKE Documentation Resources (themes, assembly descriptors, configs) -->
-            <dependency>
-                <groupId>network.ike</groupId>
-                <artifactId>ike-doc-resources</artifactId>
-                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -97,7 +97,15 @@ mvn clean verify -pl example-project -Dike.skip.html=false
 - 6 PDF renderers: Prawn (free), FOP (free), Prince, AH, WeasyPrint, XEP
 - Property-driven build: profiles are thin toggles, all logic in `doc-pipeline` profile
 - Output filenames use `${ike.document.name}` (defaults to `${project.artifactId}`)
-- Version in exactly 2 places in root `pom.xml`: `<version>` and `<ike.pipeline.version>`
+- Version in root `pom.xml` `<version>` only; all modules are versionless.
+  Maven 4's consumer POM resolves `${project.version}` to literals before deploy
+
+## Project-Specific Conventions
+
+- In `<artifactItem>` blocks (maven-dependency-plugin unpack), use
+  `${project.version}` for IKE artifact versions — never hardcode.
+  Maven 4's consumer POM bakes all `${project.*}` expressions to
+  literals before deployment, so external consumers see concrete values.
 
 ## Project-Specific Overrides
 

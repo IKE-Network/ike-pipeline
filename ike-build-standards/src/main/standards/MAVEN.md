@@ -111,6 +111,6 @@ an external bash script. Never embed the logic inline in the POM.
       <modelVersion>4.1.0</modelVersion>
   ```
 - `<subprojects>` replaces `<modules>` in reactor aggregator POMs.
-- `<parent>` element: use either `<relativePath>` alone or GAV alone, not both.
+- `<parent>` element: use either `<relativePath>` alone (when parent is at the default `../pom.xml`) or GAV alone with `<relativePath/>` (empty element — disables filesystem lookup, uses reactor/repo resolution). Never combine a non-empty `<relativePath>` with GAV.
 - **Aggregator as parent.** When child modules inherit from an external parent (outside the reactor), the aggregator POM should declare that external parent and child modules should declare the aggregator as their parent. This forms the correct chain (child → aggregator → external parent) and ensures the default `../pom.xml` resolution matches the declared parent.
 - Consumer POM is automatic — build-only config is stripped from the published POM.

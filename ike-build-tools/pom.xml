@@ -19,7 +19,8 @@
     <modelVersion>4.1.0</modelVersion>
 
     <parent>
-        <relativePath>../ike-parent/pom.xml</relativePath>
+        <groupId>network.ike</groupId>
+        <artifactId>ike-pipeline</artifactId>
     </parent>
 
     <artifactId>ike-build-tools</artifactId>
@@ -65,6 +66,18 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>network.ike</groupId>
+                <artifactId>ike-bom</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <pluginManagement>
