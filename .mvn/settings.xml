@@ -10,6 +10,13 @@
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/2.0.0
           https://maven.apache.org/xsd/settings-2.0.0.xsd">
+    <!-- Allow 'mvn ike:help' shorthand instead of full GAV.
+         Maven only searches org.apache.maven.plugins and
+         org.codehaus.mojo by default. -->
+    <pluginGroups>
+        <pluginGroup>network.ike</pluginGroup>
+    </pluginGroups>
+
     <mirrors>
         <!-- Block the mavengem:https://rubygems.org repository declared
              transitively by jruby-stdlib. Maven cannot access mavengem:

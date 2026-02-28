@@ -1,0 +1,26 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="ike:prepare-release" type="MavenRunConfiguration" factoryName="Maven">
+    <MavenSettings>
+      <option name="myGeneralSettings" />
+      <option name="myRunnerSettings" />
+      <option name="myRunnerParameters">
+        <MavenRunnerParameters>
+          <option name="workingDirPath" value="$PROJECT_DIR$" />
+          <option name="goals">
+            <list>
+              <option value="network.ike:ike-maven-plugin:prepare-release" />
+            </list>
+          </option>
+          <option name="profilesMap">
+            <map />
+          </option>
+        </MavenRunnerParameters>
+      </option>
+      <option name="myRunnerParameters2">
+        <MavenRunnerParameters>
+          <option name="commandLine" value="-DreleaseVersion=CHANGE_ME" />
+        </MavenRunnerParameters>
+      </option>
+    </MavenSettings>
+  </configuration>
+</component>

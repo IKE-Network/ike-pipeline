@@ -3,7 +3,6 @@
 # release-from-feature.sh — Create a release branch from a feature branch
 # ────────────────────────────────────────────────────────────────────
 # NOTE: This script predates the IKE Workspace conventions and unified
-# versioning. It uses mvn versions:set which works correctly with unified
 # versioning. A full rework to integrate with the workspace script
 # inventory is deferred to iterative development.
 # See ike-workspace-conventions.adoc for context.
@@ -99,9 +98,16 @@ echo ""
 echo "Creating release branch: ${RELEASE_BRANCH}"
 git checkout -b "${RELEASE_BRANCH}"
 
-# ── Update POM versions ──────────────────────────────────────────
-echo "Setting version to: ${RELEASE_VERSION}"
-mvn versions:set -DnewVersion="${RELEASE_VERSION}" -DgenerateBackupPoms=false -q
+# ── Update POM version ───────────────────────────────────────────
+# Maven 4.1.0 implicit version inheritance: only the root POM declares
+# <version>. All submodules inherit automatically. We update the single
+# version element in the root POM using perl (portable across macOS and
+# Linux — sed -i is not).
+GIT_ROOT="$(git rev-parse --show-toplevel)"
+ROOT_POM="${GIT_ROOT}/pom.xml"
+OLD_VERSION=$(sed -n 's/.*<version>\(.*\)<\/version>.*/\1/p' "${ROOT_POM}" | head -1)
+echo "Setting version: ${OLD_VERSION} → ${RELEASE_VERSION}"
+perl -pi -e "s|<version>${OLD_VERSION}</version>|<version>${RELEASE_VERSION}</version>|" "${ROOT_POM}"
 
 # ── Commit and push ──────────────────────────────────────────────
 echo "Committing version change..."

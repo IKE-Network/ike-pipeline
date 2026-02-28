@@ -67,6 +67,10 @@ an external bash script. Never embed the logic inline in the POM.
 - **Conventions**: Scripts must use `#!/usr/bin/env bash`, `set -euo pipefail`,
   and accept arguments for paths rather than hard-coding them. Include a
   usage comment block explaining what the script does and why.
+- **In-place file editing**: Use `perl -pi -e` instead of `sed -i`. The
+  `sed -i` flag is incompatible between macOS (`sed -i ''`) and GNU/Linux
+  (`sed -i`). Perl's `-pi -e` syntax is identical on all platforms. Use
+  `sed` only for non-in-place operations (piping, filtering output).
 - **Phase binding**: Bind the `exec:exec` execution to the correct lifecycle
   phase per the phase binding table above.
 

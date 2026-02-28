@@ -124,7 +124,11 @@ git pull origin main
 # Re-extract version after pull (merge may have changed it).
 OLD_VERSION=$(sed -n 's/.*<version>\(.*\)<\/version>.*/\1/p' "${ROOT_POM}" | head -1)
 echo "» Setting version: ${OLD_VERSION} → ${NEXT_VERSION}"
-sed -i '' "s|<version>${OLD_VERSION}</version>|<version>${NEXT_VERSION}</version>|" "${ROOT_POM}"
+perl -pi -e "s|<version>${OLD_VERSION}</version>|<version>${NEXT_VERSION}</version>|" "${ROOT_POM}"
+
+# ── Verify build ─────────────────────────────────────────────────
+echo "» Verifying snapshot build..."
+"${MVN}" clean verify -B
 
 # ── Commit and push ───────────────────────────────────────────────
 echo "» Committing version bump..."

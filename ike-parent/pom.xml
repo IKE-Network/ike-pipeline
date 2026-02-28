@@ -159,6 +159,16 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- IKE Maven Plugin — release and workspace goals.
+                 No lifecycle bindings; purely for IDE discoverability
+                 and command-line invocation (ike:help, etc.).
+                 Inherited by external projects via ike-parent. -->
+            <plugin>
+                <groupId>network.ike</groupId>
+                <artifactId>ike-maven-plugin</artifactId>
+                <version>${project.version}</version>
+            </plugin>
         </plugins>
     </build>
 

@@ -35,8 +35,8 @@ but the doc pipeline does not activate (they lack `src/docs/asciidoc/`):
 | `ike-doc-resources` | Shared doc build resources (themes, assembly descriptors, configs) | JAR |
 | `minimal-fonts` | Noto font subset for PDF | JAR |
 | `docbook-xsl` | DocBook XSL stylesheets + IKE FO layer | JAR |
-| `koncept-asciidoc-extension` | AsciidoctorJ inline macro + glossary | JAR (Java 17) |
-| `ike-maven-plugin` | Maven plugin wrapping build-tools scripts | maven-plugin (Java 21) |
+| `koncept-asciidoc-extension` | AsciidoctorJ inline macro + glossary | JAR |
+| `ike-maven-plugin` | Maven plugin wrapping build-tools scripts | maven-plugin |
 
 These are built and installed first in the reactor. The `build-all.sh` script handles this ordering.
 

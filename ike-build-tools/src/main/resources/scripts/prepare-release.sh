@@ -174,7 +174,7 @@ git checkout -b "${RELEASE_BRANCH}"
 # missing'). This is a known limitation of Maven 3 era plugins running
 # under Maven 4.
 echo "» Setting version: ${OLD_VERSION} → ${RELEASE_VERSION}"
-sed -i '' "s|<version>${OLD_VERSION}</version>|<version>${RELEASE_VERSION}</version>|" "${ROOT_POM}"
+perl -pi -e "s|<version>${OLD_VERSION}</version>|<version>${RELEASE_VERSION}</version>|" "${ROOT_POM}"
 
 # ── Verify build ──────────────────────────────────────────────────
 if [[ "${SKIP_VERIFY}" == "false" ]]; then
@@ -194,8 +194,8 @@ echo "» Tagging: v${RELEASE_VERSION}"
 git tag -a "v${RELEASE_VERSION}" -m "Release ${RELEASE_VERSION}"
 
 # ── Deploy to Nexus ───────────────────────────────────────────────
-echo "» Deploying to Nexus..."
-"${MVN}" deploy -B -DskipTests
+echo "» Deploying to Nexus (with source, javadoc, GPG)..."
+"${MVN}" deploy -B -DskipTests -P release,signArtifacts
 
 # ── Push tag (needed before gh release create) ────────────────────
 echo "» Pushing tag v${RELEASE_VERSION}..."
