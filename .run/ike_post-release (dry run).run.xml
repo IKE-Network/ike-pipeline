@@ -9,16 +9,13 @@
           <option name="goals">
             <list>
               <option value="network.ike:ike-maven-plugin:post-release" />
+              <option value="-DnextVersion=CHANGE_ME-SNAPSHOT" />
+              <option value="-DdryRun=true" />
             </list>
           </option>
           <option name="profilesMap">
             <map />
           </option>
-        </MavenRunnerParameters>
-      </option>
-      <option name="myRunnerParameters2">
-        <MavenRunnerParameters>
-          <option name="commandLine" value="-DnextVersion=CHANGE_ME-SNAPSHOT -DdryRun=true" />
         </MavenRunnerParameters>
       </option>
     </MavenSettings>

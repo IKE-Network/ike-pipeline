@@ -68,6 +68,9 @@ public class PostReleaseMojo extends AbstractMojo {
         // Build environment audit
         logAudit(gitRoot, mvnw, currentBranch, oldVersion);
 
+        // Validate clean worktree (before dry run so it catches problems early)
+        ReleaseSupport.requireCleanWorktree(gitRoot);
+
         if (dryRun) {
             getLog().info("[DRY RUN] Would pull latest main");
             getLog().info("[DRY RUN] Would set version: " + oldVersion +
@@ -77,12 +80,15 @@ public class PostReleaseMojo extends AbstractMojo {
             return;
         }
 
-        // Validate clean worktree (skip for dry run)
-        ReleaseSupport.requireCleanWorktree(gitRoot);
+        boolean hasOrigin = ReleaseSupport.hasRemote(gitRoot, "origin");
 
-        // Pull latest
-        ReleaseSupport.exec(gitRoot, getLog(),
-                "git", "pull", "origin", "main");
+        // Pull latest (skip if no remote)
+        if (hasOrigin) {
+            ReleaseSupport.exec(gitRoot, getLog(),
+                    "git", "pull", "origin", "main");
+        } else {
+            getLog().info("No 'origin' remote — skipping pull");
+        }
 
         // Re-read version after pull (merge may have changed it)
         String currentVersion = ReleaseSupport.readPomVersion(rootPom);
@@ -101,8 +107,12 @@ public class PostReleaseMojo extends AbstractMojo {
         ReleaseSupport.exec(gitRoot, getLog(),
                 "git", "commit", "-m",
                 "post-release: bump to " + nextVersion);
-        ReleaseSupport.exec(gitRoot, getLog(),
-                "git", "push", "origin", "main");
+        if (hasOrigin) {
+            ReleaseSupport.exec(gitRoot, getLog(),
+                    "git", "push", "origin", "main");
+        } else {
+            getLog().info("No 'origin' remote — skipping push to main");
+        }
 
         getLog().info("");
         getLog().info("main is now at " + nextVersion);

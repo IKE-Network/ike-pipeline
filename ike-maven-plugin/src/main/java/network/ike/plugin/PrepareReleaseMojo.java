@@ -91,6 +91,9 @@ public class PrepareReleaseMojo extends AbstractMojo {
         // Build environment audit
         logAudit(gitRoot, mvnw, currentBranch, releaseBranch, oldVersion);
 
+        // Validate clean worktree (before dry run so it catches problems early)
+        ReleaseSupport.requireCleanWorktree(gitRoot);
+
         if (dryRun) {
             getLog().info("[DRY RUN] Would create branch: " + releaseBranch);
             getLog().info("[DRY RUN] Would set version: " + oldVersion +
@@ -105,9 +108,6 @@ public class PrepareReleaseMojo extends AbstractMojo {
             getLog().info("[DRY RUN] Would merge " + releaseBranch + " to main and push");
             return;
         }
-
-        // Validate clean worktree (skip for dry run)
-        ReleaseSupport.requireCleanWorktree(gitRoot);
 
         // Create release branch
         ReleaseSupport.exec(gitRoot, getLog(),
@@ -162,21 +162,31 @@ public class PrepareReleaseMojo extends AbstractMojo {
                     "release: restore ${project.version} references");
         }
 
-        // Push tag
-        ReleaseSupport.exec(gitRoot, getLog(),
-                "git", "push", "origin", "v" + releaseVersion);
+        boolean hasOrigin = ReleaseSupport.hasRemote(gitRoot, "origin");
 
-        // Create GitHub Release (graceful fallback if gh not available)
-        try {
+        // Push tag (skip if no remote)
+        if (hasOrigin) {
             ReleaseSupport.exec(gitRoot, getLog(),
-                    "gh", "release", "create", "v" + releaseVersion,
-                    "--title", releaseVersion,
-                    "--generate-notes", "--verify-tag");
-        } catch (MojoExecutionException e) {
-            getLog().warn("GitHub Release creation failed (gh CLI may not be installed): " +
-                    e.getMessage());
-            getLog().warn("Run manually: gh release create v" + releaseVersion +
-                    " --title " + releaseVersion + " --generate-notes");
+                    "git", "push", "origin", "v" + releaseVersion);
+        } else {
+            getLog().info("No 'origin' remote — skipping tag push");
+        }
+
+        // Create GitHub Release (skip if no remote; graceful fallback if gh not available)
+        if (hasOrigin) {
+            try {
+                ReleaseSupport.exec(gitRoot, getLog(),
+                        "gh", "release", "create", "v" + releaseVersion,
+                        "--title", releaseVersion,
+                        "--generate-notes", "--verify-tag");
+            } catch (MojoExecutionException e) {
+                getLog().warn("GitHub Release creation failed (gh CLI may not be installed): " +
+                        e.getMessage());
+                getLog().warn("Run manually: gh release create v" + releaseVersion +
+                        " --title " + releaseVersion + " --generate-notes");
+            }
+        } else {
+            getLog().info("No 'origin' remote — skipping GitHub Release");
         }
 
         // Merge back to main
@@ -185,8 +195,12 @@ public class PrepareReleaseMojo extends AbstractMojo {
         ReleaseSupport.exec(gitRoot, getLog(),
                 "git", "merge", "--no-ff", releaseBranch,
                 "-m", "merge: release " + releaseVersion);
-        ReleaseSupport.exec(gitRoot, getLog(),
-                "git", "push", "origin", "main");
+        if (hasOrigin) {
+            ReleaseSupport.exec(gitRoot, getLog(),
+                    "git", "push", "origin", "main");
+        } else {
+            getLog().info("No 'origin' remote — skipping push to main");
+        }
 
         // Clean up release branch
         ReleaseSupport.exec(gitRoot, getLog(),

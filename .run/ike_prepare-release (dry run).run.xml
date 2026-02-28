@@ -9,16 +9,13 @@
           <option name="goals">
             <list>
               <option value="network.ike:ike-maven-plugin:prepare-release" />
+              <option value="-DreleaseVersion=CHANGE_ME" />
+              <option value="-DdryRun=true" />
             </list>
           </option>
           <option name="profilesMap">
             <map />
           </option>
-        </MavenRunnerParameters>
-      </option>
-      <option name="myRunnerParameters2">
-        <MavenRunnerParameters>
-          <option name="commandLine" value="-DreleaseVersion=CHANGE_ME -DdryRun=true" />
         </MavenRunnerParameters>
       </option>
     </MavenSettings>

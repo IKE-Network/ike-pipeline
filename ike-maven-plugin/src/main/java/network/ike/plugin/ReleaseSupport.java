@@ -176,6 +176,18 @@ class ReleaseSupport {
     }
 
     /**
+     * Check whether a named git remote exists.
+     */
+    static boolean hasRemote(File workDir, String remoteName) {
+        try {
+            String remotes = execCapture(workDir, "git", "remote");
+            return remotes.lines().anyMatch(line -> line.trim().equals(remoteName));
+        } catch (MojoExecutionException _) {
+            return false;
+        }
+    }
+
+    /**
      * Derive the release version from a SNAPSHOT version.
      * {@code "2-SNAPSHOT"} becomes {@code "2"};
      * {@code "1.1.0-SNAPSHOT"} becomes {@code "1.1.0"}.
