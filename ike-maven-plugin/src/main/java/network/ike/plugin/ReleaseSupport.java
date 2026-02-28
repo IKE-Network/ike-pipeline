@@ -169,4 +169,30 @@ class ReleaseSupport {
     static String currentBranch(File workDir) throws MojoExecutionException {
         return execCapture(workDir, "git", "rev-parse", "--abbrev-ref", "HEAD");
     }
+
+    /**
+     * Derive the release version from a SNAPSHOT version.
+     * {@code "2-SNAPSHOT"} becomes {@code "2"};
+     * {@code "1.1.0-SNAPSHOT"} becomes {@code "1.1.0"}.
+     */
+    static String deriveReleaseVersion(String snapshotVersion) {
+        return snapshotVersion.replace("-SNAPSHOT", "");
+    }
+
+    /**
+     * Derive the next SNAPSHOT version by incrementing the last numeric
+     * segment. {@code "2"} becomes {@code "3-SNAPSHOT"};
+     * {@code "1.1.0"} becomes {@code "1.1.1-SNAPSHOT"}.
+     */
+    static String deriveNextSnapshot(String releaseVersion) {
+        String base = releaseVersion.replace("-SNAPSHOT", "");
+        int lastDot = base.lastIndexOf('.');
+        if (lastDot >= 0) {
+            String prefix = base.substring(0, lastDot + 1);
+            String last = base.substring(lastDot + 1);
+            return prefix + (Integer.parseInt(last) + 1) + "-SNAPSHOT";
+        }
+        // Simple integer version (e.g., "2" -> "3-SNAPSHOT")
+        return (Integer.parseInt(base) + 1) + "-SNAPSHOT";
+    }
 }

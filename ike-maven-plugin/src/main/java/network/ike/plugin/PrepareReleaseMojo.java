@@ -22,14 +22,16 @@ import java.time.Instant;
  *   <li>Merge back to main, push, clean up</li>
  * </ol>
  *
- * <p>Usage: {@code mvn ike:prepare-release -DreleaseVersion=2}
+ * <p>Usage: {@code mvn ike:prepare-release} (defaults to current
+ * version minus {@code -SNAPSHOT}), or override with
+ * {@code mvn ike:prepare-release -DreleaseVersion=2}
  *
  * @see PostReleaseMojo
  */
 @Mojo(name = "prepare-release", requiresProject = false, aggregator = true)
 public class PrepareReleaseMojo extends AbstractMojo {
 
-    @Parameter(property = "releaseVersion", required = true)
+    @Parameter(property = "releaseVersion")
     private String releaseVersion;
 
     @Parameter(property = "dryRun", defaultValue = "false")
@@ -46,6 +48,13 @@ public class PrepareReleaseMojo extends AbstractMojo {
         File gitRoot = ReleaseSupport.gitRoot(new File("."));
         File mvnw = ReleaseSupport.resolveMavenWrapper(gitRoot);
         File rootPom = new File(gitRoot, "pom.xml");
+
+        // Default releaseVersion from current POM version
+        if (releaseVersion == null || releaseVersion.isBlank()) {
+            String pomVersion = ReleaseSupport.readPomVersion(rootPom);
+            releaseVersion = ReleaseSupport.deriveReleaseVersion(pomVersion);
+            getLog().info("No -DreleaseVersion specified; defaulting to: " + releaseVersion);
+        }
 
         // Reject SNAPSHOT versions
         if (releaseVersion.contains("-SNAPSHOT")) {

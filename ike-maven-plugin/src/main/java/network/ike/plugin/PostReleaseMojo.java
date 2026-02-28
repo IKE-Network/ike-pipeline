@@ -20,14 +20,16 @@ import java.time.Instant;
  *   <li>Commit and push</li>
  * </ol>
  *
- * <p>Usage: {@code mvn ike:post-release -DnextVersion=3-SNAPSHOT}
+ * <p>Usage: {@code mvn ike:post-release} (defaults to current
+ * version incremented with {@code -SNAPSHOT}), or override with
+ * {@code mvn ike:post-release -DnextVersion=3-SNAPSHOT}
  *
  * @see PrepareReleaseMojo
  */
 @Mojo(name = "post-release", requiresProject = false, aggregator = true)
 public class PostReleaseMojo extends AbstractMojo {
 
-    @Parameter(property = "nextVersion", required = true)
+    @Parameter(property = "nextVersion")
     private String nextVersion;
 
     @Parameter(property = "dryRun", defaultValue = "false")
@@ -38,6 +40,13 @@ public class PostReleaseMojo extends AbstractMojo {
         File gitRoot = ReleaseSupport.gitRoot(new File("."));
         File mvnw = ReleaseSupport.resolveMavenWrapper(gitRoot);
         File rootPom = new File(gitRoot, "pom.xml");
+
+        // Default nextVersion from current POM version
+        if (nextVersion == null || nextVersion.isBlank()) {
+            String pomVersion = ReleaseSupport.readPomVersion(rootPom);
+            nextVersion = ReleaseSupport.deriveNextSnapshot(pomVersion);
+            getLog().info("No -DnextVersion specified; defaulting to: " + nextVersion);
+        }
 
         // Enforce SNAPSHOT suffix
         if (!nextVersion.endsWith("-SNAPSHOT")) {
