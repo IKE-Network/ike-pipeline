@@ -9,9 +9,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Shared utilities for release mojos.
@@ -194,5 +199,115 @@ class ReleaseSupport {
         }
         // Simple integer version (e.g., "2" -> "3-SNAPSHOT")
         return (Integer.parseInt(base) + 1) + "-SNAPSHOT";
+    }
+
+    private static final String PROJECT_VERSION_EXPR = "${project.version}";
+    private static final String BACKUP_SUFFIX = ".ike-backup";
+
+    /**
+     * Find all {@code pom.xml} files under the git root, excluding
+     * {@code target/} directories and the {@code .mvn/} directory.
+     */
+    static List<File> findPomFiles(File gitRoot) throws MojoExecutionException {
+        try (Stream<Path> walk = Files.walk(gitRoot.toPath())) {
+            return walk
+                    .filter(p -> p.getFileName().toString().equals("pom.xml"))
+                    .filter(p -> {
+                        String rel = gitRoot.toPath().relativize(p).toString();
+                        return !rel.contains("target" + File.separator)
+                                && !rel.startsWith(".mvn" + File.separator);
+                    })
+                    .map(Path::toFile)
+                    .collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new MojoExecutionException("Failed to scan for POM files", e);
+        }
+    }
+
+    /**
+     * Replace all occurrences of {@code ${project.version}} with a
+     * literal version string in every POM file under the git root.
+     * Before replacing, each affected file is saved as
+     * {@code pom.xml.ike-backup} so it can be restored later.
+     *
+     * @return the list of POM files that were modified
+     */
+    static List<File> replaceProjectVersionRefs(File gitRoot, String version,
+                                                 Log log)
+            throws MojoExecutionException {
+        List<File> pomFiles = findPomFiles(gitRoot);
+        List<File> modified = new ArrayList<>();
+
+        for (File pom : pomFiles) {
+            try {
+                String content = Files.readString(pom.toPath(), StandardCharsets.UTF_8);
+                if (!content.contains(PROJECT_VERSION_EXPR)) {
+                    continue;
+                }
+                // Save backup before modifying
+                Path backup = pom.toPath().resolveSibling(pom.getName() + BACKUP_SUFFIX);
+                Files.copy(pom.toPath(), backup, StandardCopyOption.REPLACE_EXISTING);
+
+                // Replace all occurrences
+                String updated = content.replace(PROJECT_VERSION_EXPR, version);
+                Files.writeString(pom.toPath(), updated, StandardCharsets.UTF_8);
+
+                String rel = gitRoot.toPath().relativize(pom.toPath()).toString();
+                log.info("  Resolved ${project.version} -> " + version +
+                        " in " + rel);
+                modified.add(pom);
+            } catch (IOException e) {
+                throw new MojoExecutionException(
+                        "Failed to process " + pom, e);
+            }
+        }
+        return modified;
+    }
+
+    /**
+     * Restore all POM files from their {@code .ike-backup} copies and
+     * delete the backup files. This reverses
+     * {@link #replaceProjectVersionRefs}.
+     *
+     * @return the list of POM files that were restored
+     */
+    static List<File> restoreBackups(File gitRoot, Log log)
+            throws MojoExecutionException {
+        List<File> pomFiles = findPomFiles(gitRoot);
+        List<File> restored = new ArrayList<>();
+
+        for (File pom : pomFiles) {
+            Path backup = pom.toPath().resolveSibling(pom.getName() + BACKUP_SUFFIX);
+            if (!Files.exists(backup)) {
+                continue;
+            }
+            try {
+                Files.copy(backup, pom.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                Files.delete(backup);
+
+                String rel = gitRoot.toPath().relativize(pom.toPath()).toString();
+                log.info("  Restored ${project.version} in " + rel);
+                restored.add(pom);
+            } catch (IOException e) {
+                throw new MojoExecutionException(
+                        "Failed to restore backup for " + pom, e);
+            }
+        }
+        return restored;
+    }
+
+    /**
+     * Stage a list of files with {@code git add}.
+     */
+    static void gitAddFiles(File gitRoot, Log log, List<File> files)
+            throws MojoExecutionException {
+        if (files.isEmpty()) return;
+        List<String> command = new ArrayList<>();
+        command.add("git");
+        command.add("add");
+        for (File f : files) {
+            command.add(gitRoot.toPath().relativize(f.toPath()).toString());
+        }
+        exec(gitRoot, log, command.toArray(new String[0]));
     }
 }

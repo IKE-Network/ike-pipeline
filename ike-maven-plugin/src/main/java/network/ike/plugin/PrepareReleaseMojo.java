@@ -7,6 +7,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.File;
 import java.time.Instant;
+import java.util.List;
 
 /**
  * Prepare and deploy a release from the main branch.
@@ -94,10 +95,13 @@ public class PrepareReleaseMojo extends AbstractMojo {
             getLog().info("[DRY RUN] Would create branch: " + releaseBranch);
             getLog().info("[DRY RUN] Would set version: " + oldVersion +
                     " -> " + releaseVersion);
+            getLog().info("[DRY RUN] Would resolve ${project.version} -> " +
+                    releaseVersion + " in all POMs");
             getLog().info("[DRY RUN] Would run: mvnw clean verify -B");
             getLog().info("[DRY RUN] Would commit, tag v" + releaseVersion);
             getLog().info("[DRY RUN] Would deploy to Nexus: mvnw deploy -B -DskipTests");
             getLog().info("[DRY RUN] Would push tag and create GitHub Release");
+            getLog().info("[DRY RUN] Would restore ${project.version} references");
             getLog().info("[DRY RUN] Would merge " + releaseBranch + " to main and push");
             return;
         }
@@ -113,6 +117,12 @@ public class PrepareReleaseMojo extends AbstractMojo {
         getLog().info("Setting version: " + oldVersion + " -> " + releaseVersion);
         ReleaseSupport.setPomVersion(rootPom, oldVersion, releaseVersion);
 
+        // Replace ${project.version} with literal version in all POMs.
+        // Backups are saved so originals can be restored after deploy.
+        getLog().info("Resolving ${project.version} references:");
+        List<File> resolvedPoms =
+                ReleaseSupport.replaceProjectVersionRefs(gitRoot, releaseVersion, getLog());
+
         // Verify build
         if (!skipVerify) {
             ReleaseSupport.exec(gitRoot, getLog(),
@@ -121,9 +131,10 @@ public class PrepareReleaseMojo extends AbstractMojo {
             getLog().info("Skipping verify (-DskipVerify=true)");
         }
 
-        // Commit
+        // Commit — stage root POM + all POMs that had ${project.version} resolved
         ReleaseSupport.exec(gitRoot, getLog(),
                 "git", "add", "pom.xml");
+        ReleaseSupport.gitAddFiles(gitRoot, getLog(), resolvedPoms);
         ReleaseSupport.exec(gitRoot, getLog(),
                 "git", "commit", "-m",
                 "release: set version to " + releaseVersion);
@@ -133,10 +144,23 @@ public class PrepareReleaseMojo extends AbstractMojo {
                 "git", "tag", "-a", "v" + releaseVersion,
                 "-m", "Release " + releaseVersion);
 
-        // Deploy
+        // Deploy — consumer POMs now have literal versions
         ReleaseSupport.exec(gitRoot, getLog(),
                 mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests",
                 "-P", "release,signArtifacts");
+
+        // Restore ${project.version} references from backups.
+        // This ensures main gets ${project.version} after merge,
+        // not hardcoded literals that would break external consumers.
+        getLog().info("Restoring ${project.version} references:");
+        List<File> restoredPoms =
+                ReleaseSupport.restoreBackups(gitRoot, getLog());
+        if (!restoredPoms.isEmpty()) {
+            ReleaseSupport.gitAddFiles(gitRoot, getLog(), restoredPoms);
+            ReleaseSupport.exec(gitRoot, getLog(),
+                    "git", "commit", "-m",
+                    "release: restore ${project.version} references");
+        }
 
         // Push tag
         ReleaseSupport.exec(gitRoot, getLog(),

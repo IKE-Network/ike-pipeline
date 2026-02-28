@@ -2,6 +2,7 @@
 target/
 pom.xml.tag
 pom.xml.releaseBackup
+pom.xml.ike-backup
 pom.xml.versionsBackup
 pom.xml.next
 release.properties
