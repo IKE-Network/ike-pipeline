@@ -21,9 +21,10 @@ public class IkeHelpMojo extends AbstractMojo {
         getLog().info("  ike:help                                        This help message");
         getLog().info("  ike:prepare-release                              Prepare and deploy a release");
         getLog().info("  ike:post-release                                 Bump to next SNAPSHOT");
+        getLog().info("  ike:checkpoint                                   Create immutable checkpoint");
+        getLog().info("  ike:deploy-site                                  Deploy site to versioned URL");
         getLog().info("  ike:release-from-feature                        Release from feature branch (stub)");
         getLog().info("  ike:workspace                                   Manage IKE Workspaces (stub)");
-        getLog().info("  ike:checkpoint                                  Create checkpoint (stub)");
         getLog().info("  ike:merge-to-main                               Merge feature to main (stub)");
         getLog().info("");
         getLog().info("Options for ike:prepare-release:");
@@ -31,10 +32,23 @@ public class IkeHelpMojo extends AbstractMojo {
         getLog().info("  -DdryRun=true          Show plan without executing");
         getLog().info("  -DskipVerify=true      Skip 'mvnw clean verify'");
         getLog().info("  -DallowBranch=<name>   Allow release from non-main branch");
+        getLog().info("  -DdeploySite=false     Skip site deployment during release");
         getLog().info("");
         getLog().info("Options for ike:post-release:");
         getLog().info("  -DnextVersion=<v>      Next SNAPSHOT version (required)");
         getLog().info("  -DdryRun=true          Show plan without executing");
+        getLog().info("");
+        getLog().info("Options for ike:checkpoint:");
+        getLog().info("  -DdryRun=true          Show plan without executing");
+        getLog().info("  -DskipVerify=true      Skip 'mvnw clean verify'");
+        getLog().info("  -DdeploySite=false     Skip site deployment");
+        getLog().info("  -DcheckpointLabel=<v>  Custom checkpoint version label");
+        getLog().info("");
+        getLog().info("Options for ike:deploy-site:");
+        getLog().info("  -DsiteType=<type>      One of: release, snapshot, checkpoint");
+        getLog().info("  -DsiteVersion=<v>      Version for checkpoint URL path");
+        getLog().info("  -DdryRun=true          Show plan without executing");
+        getLog().info("  -DskipBuild=true       Skip 'mvnw clean verify'");
         getLog().info("");
     }
 }

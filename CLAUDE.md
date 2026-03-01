@@ -98,14 +98,16 @@ mvn clean verify -pl example-project -Dike.skip.html=false
 - Property-driven build: profiles are thin toggles, all logic in `doc-pipeline` profile
 - Output filenames use `${ike.document.name}` (defaults to `${project.artifactId}`)
 - Version in root `pom.xml` `<version>` only; all modules are versionless.
-  Maven 4's consumer POM resolves `${project.version}` to literals before deploy
+  Maven 4's consumer POM only partially resolves `${project.version}` —
+  `<dependencies>` yes, but `<build><plugins>` and `<dependencyManagement>` no.
+  The `ike:prepare-release` goal works around this (see IKE-MAVEN.md Version Strategy)
 
 ## Project-Specific Conventions
 
 - In `<artifactItem>` blocks (maven-dependency-plugin unpack), use
   `${project.version}` for IKE artifact versions — never hardcode.
-  Maven 4's consumer POM bakes all `${project.*}` expressions to
-  literals before deployment, so external consumers see concrete values.
+  The release process replaces `${project.version}` with literals before
+  deploying, then restores the originals for the main branch merge.
 
 ## Project-Specific Overrides
 

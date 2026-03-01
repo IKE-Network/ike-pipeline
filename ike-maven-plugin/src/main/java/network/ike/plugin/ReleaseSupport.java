@@ -11,6 +11,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -321,5 +323,62 @@ class ReleaseSupport {
             command.add(gitRoot.toPath().relativize(f.toPath()).toString());
         }
         exec(gitRoot, log, command.toArray(new String[0]));
+    }
+
+    private static final DateTimeFormatter CHECKPOINT_DATE_FMT =
+            DateTimeFormatter.ofPattern("yyyyMMdd");
+
+    /**
+     * Derive a checkpoint version from the current POM version.
+     *
+     * <p>Format: {@code {base}-checkpoint.{yyyyMMdd}.{seq}} where
+     * {@code base} is the POM version minus {@code -SNAPSHOT}, and
+     * {@code seq} is auto-incremented if a tag for the same date
+     * already exists.
+     *
+     * @param pomVersion current POM version (may include -SNAPSHOT)
+     * @param gitRoot    git repository root (for tag existence checks)
+     */
+    static String deriveCheckpointVersion(String pomVersion, File gitRoot)
+            throws MojoExecutionException {
+        String base = pomVersion.replace("-SNAPSHOT", "");
+        String date = LocalDate.now().format(CHECKPOINT_DATE_FMT);
+        int seq = 1;
+        while (tagExists(gitRoot, "checkpoint/" + base + "-checkpoint." + date + "." + seq)) {
+            seq++;
+        }
+        return base + "-checkpoint." + date + "." + seq;
+    }
+
+    /**
+     * Check whether a git tag exists (locally).
+     */
+    static boolean tagExists(File gitRoot, String tagName) {
+        try {
+            execCapture(gitRoot, "git", "rev-parse", "--verify", "refs/tags/" + tagName);
+            return true;
+        } catch (MojoExecutionException _) {
+            return false;
+        }
+    }
+
+    private static final Pattern ARTIFACT_ID_PATTERN =
+            Pattern.compile("<artifactId>([^<]+)</artifactId>");
+
+    /**
+     * Read the first {@code <artifactId>} value from a POM file.
+     */
+    static String readPomArtifactId(File pomFile) throws MojoExecutionException {
+        try {
+            String content = Files.readString(pomFile.toPath(), StandardCharsets.UTF_8);
+            Matcher matcher = ARTIFACT_ID_PATTERN.matcher(content);
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+            throw new MojoExecutionException(
+                    "Could not extract <artifactId> from " + pomFile);
+        } catch (IOException e) {
+            throw new MojoExecutionException("Failed to read " + pomFile, e);
+        }
     }
 }

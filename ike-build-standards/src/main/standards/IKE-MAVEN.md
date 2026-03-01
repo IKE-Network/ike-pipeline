@@ -89,8 +89,26 @@ IKE-specific properties use the `ike.` prefix:
 All modules in the IKE pipeline reactor share a single version.
 The version is declared once in the root `pom.xml` `<version>` element.
 All subproject modules are versionless (parent is the aggregator).
-Maven 4's consumer POM resolves `${project.version}` to literals
-before deployment, so no version indirection property is needed.
+
+**Consumer POM workaround (Maven 4.0.0-rc-5):** Maven 4's consumer POM
+resolves `${project.version}` to literals in `<dependencies>`, but does
+NOT resolve it in `<build><plugins>`, `<pluginManagement>`, or
+`<dependencyManagement>`. This means external projects inheriting
+`ike-parent` would get unresolved `${project.version}` references for
+the `ike-maven-plugin` declaration and the `ike-bom` import.
+
+The `ike:prepare-release` goal works around this by replacing all
+`${project.version}` occurrences with the literal release version in
+every POM before deploying, then restoring from backups after deploy.
+This ensures deployed consumer POMs contain only concrete versions.
+
+**When to remove:** When Maven resolves `${project.version}` in all
+consumer POM sections (not just `<dependencies>`), the backup/replace/
+restore logic in `PrepareReleaseMojo` and `ReleaseSupport` can be
+removed. Test by deploying without the workaround and checking the
+consumer POM (`~/.m2/repository/.../ike-parent-X.pom`) for any
+remaining `${project.version}` references. No version indirection
+property is needed regardless — use `${project.version}` in source POMs.
 
 - Pipeline versions are sequential: 1.1.0, 1.2.0, 1.3.0, etc.
 - No semantic versioning contract is implied. Each release supersedes

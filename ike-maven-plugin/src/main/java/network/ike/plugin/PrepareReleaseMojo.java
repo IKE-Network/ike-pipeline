@@ -44,6 +44,9 @@ public class PrepareReleaseMojo extends AbstractMojo {
     @Parameter(property = "allowBranch")
     private String allowBranch;
 
+    @Parameter(property = "deploySite", defaultValue = "true")
+    private boolean deploySite;
+
     @Override
     public void execute() throws MojoExecutionException {
         File gitRoot = ReleaseSupport.gitRoot(new File("."));
@@ -103,6 +106,11 @@ public class PrepareReleaseMojo extends AbstractMojo {
             getLog().info("[DRY RUN] Would run: mvnw clean verify -B");
             getLog().info("[DRY RUN] Would commit, tag v" + releaseVersion);
             getLog().info("[DRY RUN] Would deploy to Nexus: mvnw deploy -B -DskipTests");
+            if (deploySite) {
+                getLog().info("[DRY RUN] Would deploy release site to: " +
+                        "scpexe://proxy/srv/ike-site/" +
+                        ReleaseSupport.readPomArtifactId(rootPom) + "/release");
+            }
             getLog().info("[DRY RUN] Would push tag and create GitHub Release");
             getLog().info("[DRY RUN] Would restore ${project.version} references");
             getLog().info("[DRY RUN] Would merge " + releaseBranch + " to main and push");
@@ -117,8 +125,14 @@ public class PrepareReleaseMojo extends AbstractMojo {
         getLog().info("Setting version: " + oldVersion + " -> " + releaseVersion);
         ReleaseSupport.setPomVersion(rootPom, oldVersion, releaseVersion);
 
-        // Replace ${project.version} with literal version in all POMs.
-        // Backups are saved so originals can be restored after deploy.
+        // WORKAROUND: Maven 4.0.0-rc-5 consumer POM resolves ${project.version}
+        // in <dependencies> but NOT in <build><plugins>, <pluginManagement>, or
+        // <dependencyManagement>. External consumers inheriting ike-parent would
+        // get unresolved ${project.version} for ike-maven-plugin and ike-bom.
+        // We replace all occurrences with the literal version before deploy,
+        // then restore from backups after deploy so main keeps ${project.version}.
+        // REMOVE WHEN: Maven fixes consumer POM resolution for all sections.
+        // TEST: deploy without this, check ~/.m2/.../ike-parent-X.pom for refs.
         getLog().info("Resolving ${project.version} references:");
         List<File> resolvedPoms =
                 ReleaseSupport.replaceProjectVersionRefs(gitRoot, releaseVersion, getLog());
@@ -148,6 +162,17 @@ public class PrepareReleaseMojo extends AbstractMojo {
         ReleaseSupport.exec(gitRoot, getLog(),
                 mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests",
                 "-P", "release,signArtifacts");
+
+        // Deploy release site (while POMs still have release versions)
+        String projectId = ReleaseSupport.readPomArtifactId(rootPom);
+        if (deploySite) {
+            getLog().info("Generating and deploying release site...");
+            ReleaseSupport.exec(gitRoot, getLog(),
+                    mvnw.getAbsolutePath(), "site", "site:stage", "-B");
+            ReleaseSupport.exec(gitRoot, getLog(),
+                    mvnw.getAbsolutePath(), "site:deploy", "-B",
+                    "-DtopSiteURL=scpexe://proxy/srv/ike-site/" + projectId + "/release");
+        }
 
         // Restore ${project.version} references from backups.
         // This ensures main gets ${project.version} after merge,
@@ -210,6 +235,9 @@ public class PrepareReleaseMojo extends AbstractMojo {
         getLog().info("Release " + releaseVersion + " complete.");
         getLog().info("  Tagged: v" + releaseVersion);
         getLog().info("  Deployed to Nexus");
+        if (deploySite) {
+            getLog().info("  Site: http://ike.komet.sh/" + projectId + "/release/");
+        }
         getLog().info("  Merged to main");
         getLog().info("");
         getLog().info("Next: mvn ike:post-release -DnextVersion=<next>-SNAPSHOT");
