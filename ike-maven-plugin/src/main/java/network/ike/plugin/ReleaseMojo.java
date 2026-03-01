@@ -10,30 +10,34 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Prepare and deploy a release from the main branch.
+ * Full release: build, deploy, tag, merge, and bump to next SNAPSHOT.
  *
- * <p>This goal automates the full release workflow:
+ * <p>This goal automates the complete release workflow in one command:
  * <ol>
  *   <li>Validate prerequisites (branch, clean worktree)</li>
  *   <li>Create {@code release/<version>} branch</li>
  *   <li>Set POM version to release version</li>
- *   <li>Build and verify</li>
- *   <li>Commit, tag, deploy to Nexus</li>
+ *   <li>Build, verify, commit, tag</li>
+ *   <li>Deploy to Nexus (with GPG signing)</li>
+ *   <li>Deploy release site</li>
  *   <li>Push tag, create GitHub Release</li>
- *   <li>Merge back to main, push, clean up</li>
+ *   <li>Restore {@code ${project.version}}, merge to main</li>
+ *   <li>Bump to next SNAPSHOT version</li>
  * </ol>
  *
- * <p>Usage: {@code mvn ike:prepare-release} (defaults to current
- * version minus {@code -SNAPSHOT}), or override with
- * {@code mvn ike:prepare-release -DreleaseVersion=2}
+ * <p>Usage: {@code mvn ike:release} (auto-derives version from POM),
+ * or override with {@code mvn ike:release -DreleaseVersion=2}
  *
- * @see PostReleaseMojo
+ * @see CheckpointMojo
  */
-@Mojo(name = "prepare-release", requiresProject = false, aggregator = true)
-public class PrepareReleaseMojo extends AbstractMojo {
+@Mojo(name = "release", requiresProject = false, aggregator = true)
+public class ReleaseMojo extends AbstractMojo {
 
     @Parameter(property = "releaseVersion")
     private String releaseVersion;
+
+    @Parameter(property = "nextVersion")
+    private String nextVersion;
 
     @Parameter(property = "dryRun", defaultValue = "false")
     private boolean dryRun;
@@ -54,16 +58,27 @@ public class PrepareReleaseMojo extends AbstractMojo {
         File rootPom = new File(gitRoot, "pom.xml");
 
         // Default releaseVersion from current POM version
+        String oldVersion = ReleaseSupport.readPomVersion(rootPom);
         if (releaseVersion == null || releaseVersion.isBlank()) {
-            String pomVersion = ReleaseSupport.readPomVersion(rootPom);
-            releaseVersion = ReleaseSupport.deriveReleaseVersion(pomVersion);
+            releaseVersion = ReleaseSupport.deriveReleaseVersion(oldVersion);
             getLog().info("No -DreleaseVersion specified; defaulting to: " + releaseVersion);
         }
 
-        // Reject SNAPSHOT versions
+        // Default nextVersion
+        if (nextVersion == null || nextVersion.isBlank()) {
+            nextVersion = ReleaseSupport.deriveNextSnapshot(releaseVersion);
+        }
+
+        // Reject SNAPSHOT release versions
         if (releaseVersion.contains("-SNAPSHOT")) {
             throw new MojoExecutionException(
                     "Release version must not contain -SNAPSHOT.");
+        }
+
+        // Enforce SNAPSHOT suffix on next version
+        if (!nextVersion.endsWith("-SNAPSHOT")) {
+            throw new MojoExecutionException(
+                    "Next version must end with -SNAPSHOT (got '" + nextVersion + "').");
         }
 
         // Validate branch
@@ -88,13 +103,12 @@ public class PrepareReleaseMojo extends AbstractMojo {
             // Expected — branch does not exist
         }
 
-        // Read current version
-        String oldVersion = ReleaseSupport.readPomVersion(rootPom);
+        String projectId = ReleaseSupport.readPomArtifactId(rootPom);
 
         // Build environment audit
-        logAudit(gitRoot, mvnw, currentBranch, releaseBranch, oldVersion);
+        logAudit(gitRoot, mvnw, currentBranch, releaseBranch, oldVersion, projectId);
 
-        // Validate clean worktree (before dry run so it catches problems early)
+        // Validate clean worktree
         ReleaseSupport.requireCleanWorktree(gitRoot);
 
         if (dryRun) {
@@ -108,14 +122,16 @@ public class PrepareReleaseMojo extends AbstractMojo {
             getLog().info("[DRY RUN] Would deploy to Nexus: mvnw deploy -B -DskipTests");
             if (deploySite) {
                 getLog().info("[DRY RUN] Would deploy release site to: " +
-                        "scpexe://proxy/srv/ike-site/" +
-                        ReleaseSupport.readPomArtifactId(rootPom) + "/release");
+                        "scpexe://proxy/srv/ike-site/" + projectId + "/release");
             }
             getLog().info("[DRY RUN] Would push tag and create GitHub Release");
             getLog().info("[DRY RUN] Would restore ${project.version} references");
             getLog().info("[DRY RUN] Would merge " + releaseBranch + " to main and push");
+            getLog().info("[DRY RUN] Would bump to next version: " + nextVersion);
             return;
         }
+
+        // ── Release ───────────────────────────────────────────────────
 
         // Create release branch
         ReleaseSupport.exec(gitRoot, getLog(),
@@ -125,14 +141,8 @@ public class PrepareReleaseMojo extends AbstractMojo {
         getLog().info("Setting version: " + oldVersion + " -> " + releaseVersion);
         ReleaseSupport.setPomVersion(rootPom, oldVersion, releaseVersion);
 
-        // WORKAROUND: Maven 4.0.0-rc-5 consumer POM resolves ${project.version}
-        // in <dependencies> but NOT in <build><plugins>, <pluginManagement>, or
-        // <dependencyManagement>. External consumers inheriting ike-parent would
-        // get unresolved ${project.version} for ike-maven-plugin and ike-bom.
-        // We replace all occurrences with the literal version before deploy,
-        // then restore from backups after deploy so main keeps ${project.version}.
-        // REMOVE WHEN: Maven fixes consumer POM resolution for all sections.
-        // TEST: deploy without this, check ~/.m2/.../ike-parent-X.pom for refs.
+        // WORKAROUND: Maven 4 consumer POM doesn't resolve ${project.version}
+        // in <build><plugins>, <pluginManagement>, or <dependencyManagement>.
         getLog().info("Resolving ${project.version} references:");
         List<File> resolvedPoms =
                 ReleaseSupport.replaceProjectVersionRefs(gitRoot, releaseVersion, getLog());
@@ -145,9 +155,8 @@ public class PrepareReleaseMojo extends AbstractMojo {
             getLog().info("Skipping verify (-DskipVerify=true)");
         }
 
-        // Commit — stage root POM + all POMs that had ${project.version} resolved
-        ReleaseSupport.exec(gitRoot, getLog(),
-                "git", "add", "pom.xml");
+        // Commit
+        ReleaseSupport.exec(gitRoot, getLog(), "git", "add", "pom.xml");
         ReleaseSupport.gitAddFiles(gitRoot, getLog(), resolvedPoms);
         ReleaseSupport.exec(gitRoot, getLog(),
                 "git", "commit", "-m",
@@ -158,13 +167,12 @@ public class PrepareReleaseMojo extends AbstractMojo {
                 "git", "tag", "-a", "v" + releaseVersion,
                 "-m", "Release " + releaseVersion);
 
-        // Deploy — consumer POMs now have literal versions
+        // Deploy to Nexus
         ReleaseSupport.exec(gitRoot, getLog(),
                 mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests",
                 "-P", "release,signArtifacts");
 
-        // Deploy release site (while POMs still have release versions)
-        String projectId = ReleaseSupport.readPomArtifactId(rootPom);
+        // Deploy release site
         if (deploySite) {
             getLog().info("Generating and deploying release site...");
             ReleaseSupport.exec(gitRoot, getLog(),
@@ -172,12 +180,9 @@ public class PrepareReleaseMojo extends AbstractMojo {
                     "-Dsite.deploy.url=scpexe://proxy/srv/ike-site/" + projectId + "/release");
         }
 
-        // Restore ${project.version} references from backups.
-        // This ensures main gets ${project.version} after merge,
-        // not hardcoded literals that would break external consumers.
+        // Restore ${project.version} references
         getLog().info("Restoring ${project.version} references:");
-        List<File> restoredPoms =
-                ReleaseSupport.restoreBackups(gitRoot, getLog());
+        List<File> restoredPoms = ReleaseSupport.restoreBackups(gitRoot, getLog());
         if (!restoredPoms.isEmpty()) {
             ReleaseSupport.gitAddFiles(gitRoot, getLog(), restoredPoms);
             ReleaseSupport.exec(gitRoot, getLog(),
@@ -187,7 +192,7 @@ public class PrepareReleaseMojo extends AbstractMojo {
 
         boolean hasOrigin = ReleaseSupport.hasRemote(gitRoot, "origin");
 
-        // Push tag (skip if no remote)
+        // Push tag
         if (hasOrigin) {
             ReleaseSupport.exec(gitRoot, getLog(),
                     "git", "push", "origin", "v" + releaseVersion);
@@ -195,7 +200,7 @@ public class PrepareReleaseMojo extends AbstractMojo {
             getLog().info("No 'origin' remote — skipping tag push");
         }
 
-        // Create GitHub Release (skip if no remote; graceful fallback if gh not available)
+        // Create GitHub Release
         if (hasOrigin) {
             try {
                 ReleaseSupport.exec(gitRoot, getLog(),
@@ -213,8 +218,7 @@ public class PrepareReleaseMojo extends AbstractMojo {
         }
 
         // Merge back to main
-        ReleaseSupport.exec(gitRoot, getLog(),
-                "git", "checkout", "main");
+        ReleaseSupport.exec(gitRoot, getLog(), "git", "checkout", "main");
         ReleaseSupport.exec(gitRoot, getLog(),
                 "git", "merge", "--no-ff", releaseBranch,
                 "-m", "merge: release " + releaseVersion);
@@ -229,6 +233,31 @@ public class PrepareReleaseMojo extends AbstractMojo {
         ReleaseSupport.exec(gitRoot, getLog(),
                 "git", "branch", "-d", releaseBranch);
 
+        // ── Post-release bump ─────────────────────────────────────────
+
+        getLog().info("");
+        getLog().info("Bumping to next version: " + nextVersion);
+
+        // Re-read version after merge (it's the release version on main now)
+        String currentVersion = ReleaseSupport.readPomVersion(rootPom);
+        ReleaseSupport.setPomVersion(rootPom, currentVersion, nextVersion);
+
+        // Verify build with new SNAPSHOT version
+        ReleaseSupport.exec(gitRoot, getLog(),
+                mvnw.getAbsolutePath(), "clean", "verify", "-B");
+
+        // Commit and push
+        ReleaseSupport.exec(gitRoot, getLog(), "git", "add", "pom.xml");
+        ReleaseSupport.exec(gitRoot, getLog(),
+                "git", "commit", "-m",
+                "post-release: bump to " + nextVersion);
+        if (hasOrigin) {
+            ReleaseSupport.exec(gitRoot, getLog(),
+                    "git", "push", "origin", "main");
+        } else {
+            getLog().info("No 'origin' remote — skipping push to main");
+        }
+
         getLog().info("");
         getLog().info("Release " + releaseVersion + " complete.");
         getLog().info("  Tagged: v" + releaseVersion);
@@ -237,13 +266,12 @@ public class PrepareReleaseMojo extends AbstractMojo {
             getLog().info("  Site: http://ike.komet.sh/" + projectId + "/release/");
         }
         getLog().info("  Merged to main");
-        getLog().info("");
-        getLog().info("Next: mvn ike:post-release -DnextVersion=<next>-SNAPSHOT");
+        getLog().info("  Next version: " + nextVersion);
     }
 
     private void logAudit(File gitRoot, File mvnw, String branch,
-                          String releaseBranch, String oldVersion)
-            throws MojoExecutionException {
+                          String releaseBranch, String oldVersion,
+                          String projectId) throws MojoExecutionException {
         String gitCommit = ReleaseSupport.execCapture(gitRoot,
                 "git", "rev-parse", "--short", "HEAD");
         String mavenVersion = ReleaseSupport.execCapture(gitRoot,
@@ -253,9 +281,12 @@ public class PrepareReleaseMojo extends AbstractMojo {
         getLog().info("");
         getLog().info("RELEASE PARAMETERS");
         getLog().info("  Version:        " + oldVersion + " -> " + releaseVersion);
+        getLog().info("  Next version:   " + nextVersion);
         getLog().info("  Source branch:  " + branch);
         getLog().info("  Release branch: " + releaseBranch);
         getLog().info("  Tag:            v" + releaseVersion);
+        getLog().info("  Project:        " + projectId);
+        getLog().info("  Deploy site:    " + deploySite);
         getLog().info("  Skip verify:    " + skipVerify);
         getLog().info("  Dry run:        " + dryRun);
         getLog().info("");
@@ -264,8 +295,7 @@ public class PrepareReleaseMojo extends AbstractMojo {
         getLog().info("  User:           " + System.getProperty("user.name", "unknown"));
         getLog().info("  Git commit:     " + gitCommit);
         getLog().info("  Git root:       " + gitRoot.getAbsolutePath());
-        getLog().info("  Maven wrapper:  " + mvnw.getAbsolutePath());
-        getLog().info("  Maven version:  " + mavenVersion.lines().findFirst().orElse("unknown"));
+        getLog().info("  Maven:          " + mavenVersion.lines().findFirst().orElse("unknown"));
         getLog().info("  Java version:   " + javaVersion);
         getLog().info("  OS:             " + System.getProperty("os.name") + " " +
                 System.getProperty("os.arch"));

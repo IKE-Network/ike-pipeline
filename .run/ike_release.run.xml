@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="ike:post-release" type="MavenRunConfiguration" factoryName="Maven">
+  <configuration default="false" name="ike:release" type="MavenRunConfiguration" factoryName="Maven">
     <MavenSettings>
       <option name="myGeneralSettings" />
       <option name="myRunnerSettings" />
@@ -8,7 +8,7 @@
           <option name="workingDirPath" value="$PROJECT_DIR$" />
           <option name="goals">
             <list>
-              <option value="network.ike:ike-maven-plugin:post-release" />
+              <option value="network.ike:ike-maven-plugin:release" />
             </list>
           </option>
           <option name="profilesMap">
