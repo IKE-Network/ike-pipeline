@@ -113,24 +113,25 @@ public class CheckpointMojo extends AbstractMojo {
                 "git", "tag", "-a", tagName,
                 "-m", "Checkpoint " + checkpointVersion);
 
-        // Build, verify, and deploy to Nexus in one pass (no GPG)
-        if (!skipVerify) {
-            ReleaseSupport.exec(gitRoot, getLog(),
-                    mvnw.getAbsolutePath(), "clean", "deploy", "-B");
-        } else {
+        // Build, verify, and deploy to Nexus (and site in parallel if enabled)
+        String siteUrl = null;
+        String[] deployCommand = skipVerify
+                ? new String[]{mvnw.getAbsolutePath(), "clean", "deploy", "-B", "-DskipTests"}
+                : new String[]{mvnw.getAbsolutePath(), "clean", "deploy", "-B"};
+        if (skipVerify) {
             getLog().info("Skipping verify (-DskipVerify=true)");
-            ReleaseSupport.exec(gitRoot, getLog(),
-                    mvnw.getAbsolutePath(), "clean", "deploy", "-B", "-DskipTests");
         }
 
-        // Deploy site (if enabled)
-        String siteUrl = null;
         if (deploySite) {
             siteUrl = SITE_BASE + projectId + "/checkpoint/" + checkpointVersion;
-            getLog().info("Generating and deploying checkpoint site...");
-            ReleaseSupport.exec(gitRoot, getLog(),
-                    mvnw.getAbsolutePath(), "site", "site:stage", "site:deploy", "-B",
-                    "-Dsite.deploy.url=" + siteUrl);
+            ReleaseSupport.execParallel(gitRoot, getLog(),
+                    new ReleaseSupport.LabeledTask("nexus", deployCommand),
+                    new ReleaseSupport.LabeledTask("site",
+                            new String[]{mvnw.getAbsolutePath(), "site", "site:stage",
+                                    "site:deploy", "-B",
+                                    "-Dsite.deploy.url=" + siteUrl}));
+        } else {
+            ReleaseSupport.exec(gitRoot, getLog(), deployCommand);
         }
 
         // Restore ${project.version} references from backups

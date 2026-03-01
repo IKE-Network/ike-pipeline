@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.StructuredTaskScope;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -54,6 +55,74 @@ class ReleaseSupport {
         } catch (IOException | InterruptedException e) {
             throw new MojoExecutionException(
                     "Failed to execute: " + String.join(" ", command), e);
+        }
+    }
+
+    record LabeledTask(String label, String[] command) {}
+
+    /**
+     * Run multiple commands concurrently, prefixing each line of output
+     * with the task's label (e.g., {@code [nexus] ...}).
+     *
+     * <p>Uses {@link StructuredTaskScope} with virtual threads to read
+     * stdout and stderr from each process concurrently. All processes
+     * run to completion even if one fails — the exception reports
+     * which task(s) failed.
+     */
+    static void execParallel(File workDir, Log log, LabeledTask... tasks)
+            throws MojoExecutionException {
+        for (LabeledTask task : tasks) {
+            log.info("» [" + task.label() + "] " + String.join(" ", task.command()));
+        }
+
+        record TaskResult(String label, int exitCode) {}
+
+        try (var scope = StructuredTaskScope.open()) {
+            List<StructuredTaskScope.Subtask<TaskResult>> subtasks = new ArrayList<>();
+
+            for (LabeledTask task : tasks) {
+                subtasks.add(scope.fork(() -> {
+                    Process process = new ProcessBuilder(task.command())
+                            .directory(workDir)
+                            .redirectErrorStream(true)
+                            .start();
+
+                    try (BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(process.getInputStream(),
+                                    StandardCharsets.UTF_8))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            synchronized (log) {
+                                log.info("[" + task.label() + "] " + line);
+                            }
+                        }
+                    }
+                    int exit = process.waitFor();
+                    return new TaskResult(task.label(), exit);
+                }));
+            }
+
+            scope.join();
+
+            // Collect failures
+            List<String> failures = new ArrayList<>();
+            for (var subtask : subtasks) {
+                TaskResult result = subtask.get();
+                if (result.exitCode() != 0) {
+                    failures.add(result.label() + " (exit " + result.exitCode() + ")");
+                }
+            }
+
+            if (!failures.isEmpty()) {
+                throw new MojoExecutionException(
+                        "Parallel tasks failed: " + String.join(", ", failures));
+            }
+        } catch (InterruptedException e) {
+            throw new MojoExecutionException("Parallel execution interrupted", e);
+        } catch (MojoExecutionException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new MojoExecutionException("Parallel execution failed", e);
         }
     }
 

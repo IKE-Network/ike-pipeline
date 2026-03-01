@@ -167,17 +167,21 @@ public class ReleaseMojo extends AbstractMojo {
                 "git", "tag", "-a", "v" + releaseVersion,
                 "-m", "Release " + releaseVersion);
 
-        // Deploy to Nexus
-        ReleaseSupport.exec(gitRoot, getLog(),
-                mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests",
-                "-P", "release,signArtifacts");
-
-        // Deploy release site
+        // Deploy to Nexus (and site in parallel if enabled)
         if (deploySite) {
-            getLog().info("Generating and deploying release site...");
+            ReleaseSupport.execParallel(gitRoot, getLog(),
+                    new ReleaseSupport.LabeledTask("nexus",
+                            new String[]{mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests",
+                                    "-P", "release,signArtifacts"}),
+                    new ReleaseSupport.LabeledTask("site",
+                            new String[]{mvnw.getAbsolutePath(), "site", "site:stage",
+                                    "site:deploy", "-B",
+                                    "-Dsite.deploy.url=scpexe://proxy/srv/ike-site/" +
+                                            projectId + "/release"}));
+        } else {
             ReleaseSupport.exec(gitRoot, getLog(),
-                    mvnw.getAbsolutePath(), "site", "site:stage", "site:deploy", "-B",
-                    "-Dsite.deploy.url=scpexe://proxy/srv/ike-site/" + projectId + "/release");
+                    mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests",
+                    "-P", "release,signArtifacts");
         }
 
         // Restore ${project.version} references
