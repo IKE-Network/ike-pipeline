@@ -9,7 +9,6 @@
           <option name="goals">
             <list>
               <option value="network.ike:ike-maven-plugin:prepare-release" />
-              <option value="-DreleaseVersion=CHANGE_ME" />
             </list>
           </option>
           <option name="profilesMap">

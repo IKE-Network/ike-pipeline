@@ -9,7 +9,6 @@
           <option name="goals">
             <list>
               <option value="network.ike:ike-maven-plugin:post-release" />
-              <option value="-DnextVersion=CHANGE_ME-SNAPSHOT" />
               <option value="-DdryRun=true" />
             </list>
           </option>
