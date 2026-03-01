@@ -130,7 +130,7 @@ class ReleaseSupport {
     /**
      * Resolve the Maven executable. Prefers the Maven wrapper
      * ({@code mvnw}) at the git root; falls back to {@code mvn}
-     * from the system PATH.
+     * from the system PATH (resolved via {@code which}).
      */
     static File resolveMavenWrapper(File gitRoot, Log log) throws MojoExecutionException {
         String name = System.getProperty("os.name", "")
@@ -139,10 +139,17 @@ class ReleaseSupport {
         if (wrapper.exists()) {
             return wrapper;
         }
-        // Fall back to system mvn
+        // Fall back to system mvn — resolve via PATH
         String systemName = name.replace("mvnw", "mvn");
-        log.info("No Maven wrapper found; using system '" + systemName + "'");
-        return new File(systemName);
+        try {
+            String path = execCapture(gitRoot, "which", systemName);
+            log.info("No Maven wrapper found; using system '" + path + "'");
+            return new File(path);
+        } catch (MojoExecutionException _) {
+            throw new MojoExecutionException(
+                    "Neither Maven wrapper (" + wrapper.getAbsolutePath() +
+                            ") nor system '" + systemName + "' found on PATH.");
+        }
     }
 
     /**
