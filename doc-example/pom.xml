@@ -61,7 +61,7 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-bom</artifactId>
-                <version>7-checkpoint.20260228.1</version>
+                <version>${project.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
