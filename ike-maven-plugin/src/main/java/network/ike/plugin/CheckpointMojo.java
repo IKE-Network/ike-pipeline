@@ -71,12 +71,13 @@ public class CheckpointMojo extends AbstractMojo {
                     " -> " + checkpointVersion);
             getLog().info("[DRY RUN] Would resolve ${project.version} -> " +
                     checkpointVersion + " in all POMs");
-            if (!skipVerify) {
-                getLog().info("[DRY RUN] Would run: mvnw clean verify -B");
-            }
             getLog().info("[DRY RUN] Would commit: checkpoint: " + checkpointVersion);
             getLog().info("[DRY RUN] Would tag: " + tagName);
-            getLog().info("[DRY RUN] Would deploy to Nexus: mvnw deploy -B -DskipTests");
+            if (!skipVerify) {
+                getLog().info("[DRY RUN] Would run: mvnw clean deploy -B");
+            } else {
+                getLog().info("[DRY RUN] Would run: mvnw clean deploy -B -DskipTests");
+            }
             if (deploySite) {
                 getLog().info("[DRY RUN] Would deploy site to: " +
                         SITE_BASE + projectId + "/checkpoint/" + checkpointVersion);
@@ -100,14 +101,6 @@ public class CheckpointMojo extends AbstractMojo {
         List<File> resolvedPoms =
                 ReleaseSupport.replaceProjectVersionRefs(gitRoot, checkpointVersion, getLog());
 
-        // Build and verify
-        if (!skipVerify) {
-            ReleaseSupport.exec(gitRoot, getLog(),
-                    mvnw.getAbsolutePath(), "clean", "verify", "-B");
-        } else {
-            getLog().info("Skipping verify (-DskipVerify=true)");
-        }
-
         // Commit — stage root POM + all POMs that had ${project.version} resolved
         ReleaseSupport.exec(gitRoot, getLog(), "git", "add", "pom.xml");
         ReleaseSupport.gitAddFiles(gitRoot, getLog(), resolvedPoms);
@@ -120,9 +113,15 @@ public class CheckpointMojo extends AbstractMojo {
                 "git", "tag", "-a", tagName,
                 "-m", "Checkpoint " + checkpointVersion);
 
-        // Deploy to Nexus (no GPG signing for checkpoints)
-        ReleaseSupport.exec(gitRoot, getLog(),
-                mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests");
+        // Build, verify, and deploy to Nexus in one pass (no GPG)
+        if (!skipVerify) {
+            ReleaseSupport.exec(gitRoot, getLog(),
+                    mvnw.getAbsolutePath(), "clean", "deploy", "-B");
+        } else {
+            getLog().info("Skipping verify (-DskipVerify=true)");
+            ReleaseSupport.exec(gitRoot, getLog(),
+                    mvnw.getAbsolutePath(), "clean", "deploy", "-B", "-DskipTests");
+        }
 
         // Deploy site (if enabled)
         String siteUrl = null;
