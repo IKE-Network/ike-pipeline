@@ -128,19 +128,21 @@ class ReleaseSupport {
     }
 
     /**
-     * Resolve the Maven wrapper script from the git root.
-     * Returns {@code mvnw} on Unix, {@code mvnw.cmd} on Windows.
+     * Resolve the Maven executable. Prefers the Maven wrapper
+     * ({@code mvnw}) at the git root; falls back to {@code mvn}
+     * from the system PATH.
      */
-    static File resolveMavenWrapper(File gitRoot) throws MojoExecutionException {
+    static File resolveMavenWrapper(File gitRoot, Log log) throws MojoExecutionException {
         String name = System.getProperty("os.name", "")
                 .toLowerCase().contains("win") ? "mvnw.cmd" : "mvnw";
         File wrapper = new File(gitRoot, name);
-        if (!wrapper.exists()) {
-            throw new MojoExecutionException(
-                    "Maven wrapper not found: " + wrapper.getAbsolutePath() +
-                            "\nMaven 4.x wrapper is required for this project.");
+        if (wrapper.exists()) {
+            return wrapper;
         }
-        return wrapper;
+        // Fall back to system mvn
+        String systemName = name.replace("mvnw", "mvn");
+        log.info("No Maven wrapper found; using system '" + systemName + "'");
+        return new File(systemName);
     }
 
     /**

@@ -38,7 +38,7 @@ public class PostReleaseMojo extends AbstractMojo {
     @Override
     public void execute() throws MojoExecutionException {
         File gitRoot = ReleaseSupport.gitRoot(new File("."));
-        File mvnw = ReleaseSupport.resolveMavenWrapper(gitRoot);
+        File mvnw = ReleaseSupport.resolveMavenWrapper(gitRoot, getLog());
         File rootPom = new File(gitRoot, "pom.xml");
 
         // Default nextVersion from current POM version
