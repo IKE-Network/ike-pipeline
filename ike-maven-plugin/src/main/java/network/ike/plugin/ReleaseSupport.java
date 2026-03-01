@@ -15,7 +15,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.StructuredTaskScope;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -64,10 +64,9 @@ class ReleaseSupport {
      * Run multiple commands concurrently, prefixing each line of output
      * with the task's label (e.g., {@code [nexus] ...}).
      *
-     * <p>Uses {@link StructuredTaskScope} with virtual threads to read
-     * stdout and stderr from each process concurrently. All processes
-     * run to completion even if one fails — the exception reports
-     * which task(s) failed.
+     * <p>Spawns virtual threads to read stdout/stderr from each process.
+     * All processes run to completion even if one fails — the exception
+     * reports which task(s) failed.
      */
     static void execParallel(File workDir, Log log, LabeledTask... tasks)
             throws MojoExecutionException {
@@ -75,54 +74,52 @@ class ReleaseSupport {
             log.info("» [" + task.label() + "] " + String.join(" ", task.command()));
         }
 
-        record TaskResult(String label, int exitCode) {}
+        List<String> failures = new CopyOnWriteArrayList<>();
+        List<Thread> threads = new ArrayList<>();
 
-        try (var scope = StructuredTaskScope.open()) {
-            List<StructuredTaskScope.Subtask<TaskResult>> subtasks = new ArrayList<>();
+        for (LabeledTask task : tasks) {
+            Thread thread = Thread.ofVirtual()
+                    .name("exec-" + task.label())
+                    .start(() -> {
+                        try {
+                            Process process = new ProcessBuilder(task.command())
+                                    .directory(workDir)
+                                    .redirectErrorStream(true)
+                                    .start();
 
-            for (LabeledTask task : tasks) {
-                subtasks.add(scope.fork(() -> {
-                    Process process = new ProcessBuilder(task.command())
-                            .directory(workDir)
-                            .redirectErrorStream(true)
-                            .start();
-
-                    try (BufferedReader reader = new BufferedReader(
-                            new InputStreamReader(process.getInputStream(),
-                                    StandardCharsets.UTF_8))) {
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            synchronized (log) {
-                                log.info("[" + task.label() + "] " + line);
+                            try (BufferedReader reader = new BufferedReader(
+                                    new InputStreamReader(process.getInputStream(),
+                                            StandardCharsets.UTF_8))) {
+                                String line;
+                                while ((line = reader.readLine()) != null) {
+                                    synchronized (log) {
+                                        log.info("[" + task.label() + "] " + line);
+                                    }
+                                }
                             }
+
+                            int exit = process.waitFor();
+                            if (exit != 0) {
+                                failures.add(task.label() + " (exit " + exit + ")");
+                            }
+                        } catch (IOException | InterruptedException e) {
+                            failures.add(task.label() + " (" + e.getMessage() + ")");
                         }
-                    }
-                    int exit = process.waitFor();
-                    return new TaskResult(task.label(), exit);
-                }));
-            }
+                    });
+            threads.add(thread);
+        }
 
-            scope.join();
-
-            // Collect failures
-            List<String> failures = new ArrayList<>();
-            for (var subtask : subtasks) {
-                TaskResult result = subtask.get();
-                if (result.exitCode() != 0) {
-                    failures.add(result.label() + " (exit " + result.exitCode() + ")");
-                }
-            }
-
-            if (!failures.isEmpty()) {
-                throw new MojoExecutionException(
-                        "Parallel tasks failed: " + String.join(", ", failures));
+        try {
+            for (Thread thread : threads) {
+                thread.join();
             }
         } catch (InterruptedException e) {
             throw new MojoExecutionException("Parallel execution interrupted", e);
-        } catch (MojoExecutionException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new MojoExecutionException("Parallel execution failed", e);
+        }
+
+        if (!failures.isEmpty()) {
+            throw new MojoExecutionException(
+                    "Parallel tasks failed: " + String.join(", ", failures));
         }
     }
 
