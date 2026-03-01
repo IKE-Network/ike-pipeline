@@ -78,8 +78,7 @@ public class DeploySiteMojo extends AbstractMojo {
             if (!skipBuild) {
                 getLog().info("[DRY RUN] Would run: mvnw clean verify -B");
             }
-            getLog().info("[DRY RUN] Would run: mvnw site site:stage -B");
-            getLog().info("[DRY RUN] Would run: mvnw site:deploy -B -DtopSiteURL=" + targetUrl);
+            getLog().info("[DRY RUN] Would run: mvnw site site:stage site:deploy -B -Dsite.deploy.url=" + targetUrl);
             return;
         }
 
@@ -89,14 +88,12 @@ public class DeploySiteMojo extends AbstractMojo {
                     mvnw.getAbsolutePath(), "clean", "verify", "-B");
         }
 
-        // Generate and stage site
+        // Generate, stage, and deploy site in a single reactor pass.
+        // Override site.deploy.url to control the deployment target —
+        // this feeds into <distributionManagement><site><url>.
         ReleaseSupport.exec(gitRoot, getLog(),
-                mvnw.getAbsolutePath(), "site", "site:stage", "-B");
-
-        // Deploy to versioned URL
-        ReleaseSupport.exec(gitRoot, getLog(),
-                mvnw.getAbsolutePath(), "site:deploy", "-B",
-                "-DtopSiteURL=" + targetUrl);
+                mvnw.getAbsolutePath(), "site", "site:stage", "site:deploy", "-B",
+                "-Dsite.deploy.url=" + targetUrl);
 
         getLog().info("");
         getLog().info("Site deployed to: " + targetUrl.replace("scpexe://proxy/srv/ike-site",

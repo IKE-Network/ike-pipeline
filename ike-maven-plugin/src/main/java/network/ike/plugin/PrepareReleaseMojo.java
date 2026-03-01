@@ -168,10 +168,8 @@ public class PrepareReleaseMojo extends AbstractMojo {
         if (deploySite) {
             getLog().info("Generating and deploying release site...");
             ReleaseSupport.exec(gitRoot, getLog(),
-                    mvnw.getAbsolutePath(), "site", "site:stage", "-B");
-            ReleaseSupport.exec(gitRoot, getLog(),
-                    mvnw.getAbsolutePath(), "site:deploy", "-B",
-                    "-DtopSiteURL=scpexe://proxy/srv/ike-site/" + projectId + "/release");
+                    mvnw.getAbsolutePath(), "site", "site:stage", "site:deploy", "-B",
+                    "-Dsite.deploy.url=scpexe://proxy/srv/ike-site/" + projectId + "/release");
         }
 
         // Restore ${project.version} references from backups.

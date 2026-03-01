@@ -60,7 +60,7 @@
         </snapshotRepository>
         <site>
             <id>ike-site</id>
-            <url>scpexe://proxy/srv/ike-site/ike-pipeline</url>
+            <url>${site.deploy.url}</url>
         </site>
     </distributionManagement>
 
@@ -68,6 +68,10 @@
     <!-- Properties — merged from ike-parent + java-parent + root.       -->
     <!-- ════════════════════════════════════════════════════════════════ -->
     <properties>
+        <!-- Site deployment URL — override with -Dsite.deploy.url=... for
+             versioned deployments (release, snapshot, checkpoint). -->
+        <site.deploy.url>scpexe://proxy/srv/ike-site/${project.artifactId}</site.deploy.url>
+
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -189,6 +193,15 @@
     <build>
         <pluginManagement>
             <plugins>
+                <!-- IKE Maven Plugin — pin to reactor version so that
+                     `mvn ike:deploy-site` etc. resolve to the current
+                     SNAPSHOT, not the latest released version. -->
+                <plugin>
+                    <groupId>network.ike</groupId>
+                    <artifactId>ike-maven-plugin</artifactId>
+                    <version>${project.version}</version>
+                </plugin>
+
                 <!-- Maven Clean Plugin -->
                 <plugin>
                     <artifactId>maven-clean-plugin</artifactId>

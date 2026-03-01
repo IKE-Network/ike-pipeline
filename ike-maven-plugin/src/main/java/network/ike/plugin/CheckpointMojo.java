@@ -130,10 +130,8 @@ public class CheckpointMojo extends AbstractMojo {
             siteUrl = SITE_BASE + projectId + "/checkpoint/" + checkpointVersion;
             getLog().info("Generating and deploying checkpoint site...");
             ReleaseSupport.exec(gitRoot, getLog(),
-                    mvnw.getAbsolutePath(), "site", "site:stage", "-B");
-            ReleaseSupport.exec(gitRoot, getLog(),
-                    mvnw.getAbsolutePath(), "site:deploy", "-B",
-                    "-DtopSiteURL=" + siteUrl);
+                    mvnw.getAbsolutePath(), "site", "site:stage", "site:deploy", "-B",
+                    "-Dsite.deploy.url=" + siteUrl);
         }
 
         // Restore ${project.version} references from backups
