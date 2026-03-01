@@ -88,12 +88,18 @@ class ReleaseSupport {
     }
 
     /**
-     * Read the first {@code <version>} value from a POM file.
+     * Read the project's own {@code <version>} from a POM file,
+     * skipping any {@code <version>} inside the {@code <parent>} block.
      */
     static String readPomVersion(File pomFile) throws MojoExecutionException {
         try {
             String content = Files.readString(pomFile.toPath(), StandardCharsets.UTF_8);
-            Matcher matcher = VERSION_PATTERN.matcher(content);
+
+            // Strip the <parent>...</parent> block so we don't match
+            // the parent version instead of the project version.
+            String stripped = content.replaceFirst(
+                    "(?s)<parent>.*?</parent>", "");
+            Matcher matcher = VERSION_PATTERN.matcher(stripped);
             if (matcher.find()) {
                 return matcher.group(1);
             }
@@ -105,8 +111,9 @@ class ReleaseSupport {
     }
 
     /**
-     * Replace the first occurrence of {@code <version>old</version>}
-     * with {@code <version>new</version>} in the given POM file.
+     * Replace the project's own {@code <version>old</version>} with
+     * {@code <version>new</version>}, skipping any version inside
+     * the {@code <parent>} block.
      */
     static void setPomVersion(File pomFile, String oldVersion, String newVersion)
             throws MojoExecutionException {
@@ -114,13 +121,22 @@ class ReleaseSupport {
             String content = Files.readString(pomFile.toPath(), StandardCharsets.UTF_8);
             String oldTag = "<version>" + oldVersion + "</version>";
             String newTag = "<version>" + newVersion + "</version>";
-            if (!content.contains(oldTag)) {
-                throw new MojoExecutionException(
-                        "POM does not contain " + oldTag);
+
+            // Find the end of the <parent> block (if any) so we skip it
+            int searchStart = 0;
+            Matcher parentEnd = Pattern.compile("</parent>").matcher(content);
+            if (parentEnd.find()) {
+                searchStart = parentEnd.end();
             }
-            // Replace first occurrence only
-            String updated = content.replaceFirst(
-                    Pattern.quote(oldTag), Matcher.quoteReplacement(newTag));
+
+            int idx = content.indexOf(oldTag, searchStart);
+            if (idx < 0) {
+                throw new MojoExecutionException(
+                        "POM does not contain " + oldTag +
+                                " (outside <parent> block)");
+            }
+            String updated = content.substring(0, idx) + newTag +
+                    content.substring(idx + oldTag.length());
             Files.writeString(pomFile.toPath(), updated, StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new MojoExecutionException("Failed to update " + pomFile, e);
@@ -375,12 +391,15 @@ class ReleaseSupport {
             Pattern.compile("<artifactId>([^<]+)</artifactId>");
 
     /**
-     * Read the first {@code <artifactId>} value from a POM file.
+     * Read the project's own {@code <artifactId>} from a POM file,
+     * skipping any {@code <artifactId>} inside the {@code <parent>} block.
      */
     static String readPomArtifactId(File pomFile) throws MojoExecutionException {
         try {
             String content = Files.readString(pomFile.toPath(), StandardCharsets.UTF_8);
-            Matcher matcher = ARTIFACT_ID_PATTERN.matcher(content);
+            String stripped = content.replaceFirst(
+                    "(?s)<parent>.*?</parent>", "");
+            Matcher matcher = ARTIFACT_ID_PATTERN.matcher(stripped);
             if (matcher.find()) {
                 return matcher.group(1);
             }
