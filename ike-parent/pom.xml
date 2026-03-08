@@ -103,7 +103,7 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-bom</artifactId>
-                <version>12</version>
+                <version>${project.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -167,7 +167,7 @@
             <plugin>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-maven-plugin</artifactId>
-                <version>12</version>
+                <version>${project.version}</version>
             </plugin>
         </plugins>
     </build>
