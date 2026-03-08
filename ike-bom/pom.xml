@@ -75,7 +75,7 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-build-standards</artifactId>
-                <version>${project.version}</version>
+                <version>12</version>
                 <classifier>claude</classifier>
                 <type>zip</type>
             </dependency>
@@ -84,7 +84,7 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-build-standards</artifactId>
-                <version>${project.version}</version>
+                <version>12</version>
                 <classifier>docs</classifier>
                 <type>zip</type>
             </dependency>
@@ -93,7 +93,7 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-build-tools</artifactId>
-                <version>${project.version}</version>
+                <version>12</version>
                 <classifier>tools</classifier>
                 <type>zip</type>
             </dependency>
@@ -102,21 +102,21 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-doc-resources</artifactId>
-                <version>${project.version}</version>
+                <version>12</version>
             </dependency>
 
             <!-- Noto fonts for PDF generation (minimal subset) -->
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>minimal-fonts</artifactId>
-                <version>${project.version}</version>
+                <version>12</version>
             </dependency>
 
             <!-- DocBook XSL 1.79.2 + IKE FO customization layer -->
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>docbook-xsl</artifactId>
-                <version>${project.version}</version>
+                <version>12</version>
             </dependency>
 
             <!-- ── AsciiDoc Toolchain ─────────────────────────────────── -->
