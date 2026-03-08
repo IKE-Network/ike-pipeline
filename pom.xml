@@ -235,8 +235,8 @@
                             <phase>generate-sources</phase>
                             <goals><goal>unpack-dependencies</goal></goals>
                             <configuration>
-                                <classifier>asciidoc</classifier>
-                                <type>zip</type>
+                                <includeClassifiers>asciidoc</includeClassifiers>
+                                <includeTypes>zip</includeTypes>
                                 <outputDirectory>${asciidoc.generated.directory}</outputDirectory>
                                 <useSubDirectoryPerArtifact>true</useSubDirectoryPerArtifact>
                                 <stripVersion>true</stripVersion>
