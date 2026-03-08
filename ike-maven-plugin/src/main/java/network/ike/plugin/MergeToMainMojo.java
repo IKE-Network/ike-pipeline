@@ -10,7 +10,7 @@ import org.apache.maven.plugins.annotations.Mojo;
  * <p>Not yet implemented. Use the bash script fallback:
  * {@code target/build-tools/scripts/merge-to-main.sh}
  */
-@Mojo(name = "merge-to-main", requiresProject = false)
+@Mojo(name = "merge-to-main", requiresProject = false, threadSafe = true)
 public class MergeToMainMojo extends AbstractMojo {
 
     @Override

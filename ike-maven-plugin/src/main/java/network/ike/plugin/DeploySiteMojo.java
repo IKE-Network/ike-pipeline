@@ -24,7 +24,7 @@ import java.io.File;
  * mvn ike:deploy-site -DsiteType=checkpoint -DsiteVersion=7-checkpoint.20260228.1
  * </pre>
  */
-@Mojo(name = "deploy-site", requiresProject = false, aggregator = true)
+@Mojo(name = "deploy-site", requiresProject = false, aggregator = true, threadSafe = true)
 public class DeploySiteMojo extends AbstractMojo {
 
     private static final String SITE_BASE = "scpexe://proxy/srv/ike-site/";

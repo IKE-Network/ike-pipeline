@@ -9,7 +9,7 @@ import org.apache.maven.plugins.annotations.Mojo;
  *
  * @see <a href="https://github.com/IKE-Network/ike-pipeline">IKE Pipeline</a>
  */
-@Mojo(name = "help", requiresProject = false)
+@Mojo(name = "help", requiresProject = false, threadSafe = true)
 public class IkeHelpMojo extends AbstractMojo {
 
     @Override

@@ -10,7 +10,7 @@ import org.apache.maven.plugins.annotations.Mojo;
  * <p>Not yet implemented. Use the bash script fallback:
  * {@code target/build-tools/scripts/release-from-feature.sh}
  */
-@Mojo(name = "release-from-feature", requiresProject = false)
+@Mojo(name = "release-from-feature", requiresProject = false, threadSafe = true)
 public class ReleaseFromFeatureMojo extends AbstractMojo {
 
     @Override

@@ -10,7 +10,7 @@ import org.apache.maven.plugins.annotations.Mojo;
  * <p>Not yet implemented. Use the bash script fallback:
  * {@code target/build-tools/scripts/ike-workspace.sh}
  */
-@Mojo(name = "workspace", requiresProject = false)
+@Mojo(name = "workspace", requiresProject = false, threadSafe = true)
 public class WorkspaceMojo extends AbstractMojo {
 
     @Override

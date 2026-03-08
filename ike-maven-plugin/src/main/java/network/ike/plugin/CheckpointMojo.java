@@ -31,7 +31,7 @@ import java.util.List;
  * mvn ike:checkpoint -DdeploySite=false
  * </pre>
  */
-@Mojo(name = "checkpoint", requiresProject = false, aggregator = true)
+@Mojo(name = "checkpoint", requiresProject = false, aggregator = true, threadSafe = true)
 public class CheckpointMojo extends AbstractMojo {
 
     private static final String SITE_BASE = "scpexe://proxy/srv/ike-site/";

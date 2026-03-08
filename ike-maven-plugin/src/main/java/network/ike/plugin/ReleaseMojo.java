@@ -30,7 +30,7 @@ import java.util.List;
  *
  * @see CheckpointMojo
  */
-@Mojo(name = "release", requiresProject = false, aggregator = true)
+@Mojo(name = "release", requiresProject = false, aggregator = true, threadSafe = true)
 public class ReleaseMojo extends AbstractMojo {
 
     @Parameter(property = "releaseVersion")
