@@ -20,6 +20,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 
 /**
  * Reformats AsciiDoc files to use semantic linefeeds.
@@ -84,6 +85,14 @@ public class SemanticLineBreaker {
 
     private static final List<String> OWN_LINE_MACROS =
             List.of("indexterm:[", "indexterm2:[", "footnote:[");
+
+    // ── AsciiDoc preprocessor directives ────────────────────────────────────────
+    // These are evaluated and removed before the AST is built, so they are
+    // invisible to the parser.  When a paragraph range in the source contains
+    // directive lines, the tool must preserve them in-place.
+
+    private static final Pattern PREPROCESSOR_DIRECTIVE = Pattern.compile(
+            "^(ifdef::|ifndef::|ifeval::|endif::|include::).*");
 
     // ── Configuration ───────────────────────────────────────────────────────────
 
@@ -233,12 +242,40 @@ public class SemanticLineBreaker {
             int start = paragraphRanges.get(i)[0];
             int end = paragraphRanges.get(i)[1];
 
-            var paragraphLines = result.subList(start, end + 1);
-            String joined = joinParagraph(paragraphLines);
+            // ── Separate preprocessor directives from prose ─────────────
+            // The AST parser strips ifdef/endif/ifndef/ifeval/include
+            // directives before building the tree, so the reported paragraph
+            // line range may span source lines that contain directives.
+            // We extract directives (with their 0-based positions relative
+            // to the range), reformat only the prose lines, then reinsert
+            // the directives at their original relative positions.
 
+            var rawLines = new ArrayList<>(result.subList(start, end + 1));
+            List<int[]> directivePositions = new ArrayList<>(); // [relativeIndex, ...]
+            List<String> proseLines = new ArrayList<>();
+
+            for (int k = 0; k < rawLines.size(); k++) {
+                if (PREPROCESSOR_DIRECTIVE.matcher(rawLines.get(k)).matches()) {
+                    directivePositions.add(new int[]{k, directivePositions.size()});
+                } else {
+                    proseLines.add(rawLines.get(k));
+                }
+            }
+
+            String joined = joinParagraph(proseLines);
             List<String> broken = breakSemanticLines(joined);
 
-            if (!broken.equals(new ArrayList<>(paragraphLines))) {
+            // Reinsert directives at their original positions
+            if (!directivePositions.isEmpty()) {
+                List<String> merged = new ArrayList<>(broken);
+                for (int[] pos : directivePositions) {
+                    int insertAt = Math.min(pos[0], merged.size());
+                    merged.add(insertAt, rawLines.get(pos[0]));
+                }
+                broken = merged;
+            }
+
+            if (!broken.equals(rawLines)) {
                 changes++;
                 if (verbose) {
                     System.err.printf("  Reformatting lines %d-%d (%d lines -> %d lines)%n",
