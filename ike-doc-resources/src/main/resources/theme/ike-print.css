@@ -115,7 +115,7 @@
 
 @page {
     size: letter portrait;
-    margin: 0.75in 1in 0.75in 1in;       /* matches YML: [0.75in, 1in, 0.75in, 1in] */
+    margin: 1in 1in 1in 1in !important;
 
     /* Running footer: document title on left, page number on right */
     @bottom-left {
@@ -336,6 +336,7 @@ td, th {
 thead {
     display: table-header-group;
 }
+
 
 
 /* ── Admonitions ───────────────────────────────────────────────── */
