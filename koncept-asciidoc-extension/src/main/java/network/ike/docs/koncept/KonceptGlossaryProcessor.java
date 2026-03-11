@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.ArrayList;
 
 /**
  * AsciidoctorJ postprocessor that generates a "Referenced Koncepts" glossary
@@ -100,26 +101,36 @@ public class KonceptGlossaryProcessor extends Postprocessor {
 
     /**
      * Determine which definition source to use based on document attributes.
+     * <p>
+     * Always loads the pipeline's classpath {@code /koncepts.yml} as the base.
+     * If a project-local file is specified via {@code :koncept-definitions-file:},
+     * its definitions are layered on top — overriding any classpath entries
+     * with the same identifier. This allows child projects to add
+     * domain-specific concepts without modifying the pipeline.
      */
     private KonceptDefinitionSource resolveDefinitionSource(Document document) {
-        // Check for explicit filesystem path
-        Object filePath = document.getAttribute(ATTR_DEFS_FILE);
-        if (filePath != null && !filePath.toString().isBlank()) {
-            LOG.debug("Loading koncept definitions from file: {}", filePath);
-            return KonceptDefinitionSource.fromFile(filePath.toString());
-        }
-
-        // Check for explicit classpath resource
+        // Always load the pipeline base from classpath
+        KonceptDefinitionSource base;
         Object cpPath = document.getAttribute(ATTR_DEFS_CLASSPATH);
         if (cpPath != null && !cpPath.toString().isBlank()) {
-            LOG.debug("Loading koncept definitions from classpath: {}", cpPath);
-            return KonceptDefinitionSource.fromClasspath(cpPath.toString());
+            LOG.debug("Loading base koncept definitions from classpath: {}", cpPath);
+            base = KonceptDefinitionSource.fromClasspath(cpPath.toString());
+        } else {
+            LOG.debug("Loading base koncept definitions from default classpath: {}",
+                    DEFAULT_CLASSPATH_RESOURCE);
+            base = KonceptDefinitionSource.fromClasspath(DEFAULT_CLASSPATH_RESOURCE);
         }
 
-        // Default
-        LOG.debug("Loading koncept definitions from default classpath: {}",
-                DEFAULT_CLASSPATH_RESOURCE);
-        return KonceptDefinitionSource.fromClasspath(DEFAULT_CLASSPATH_RESOURCE);
+        // Check for project-local file overlay
+        Object filePath = document.getAttribute(ATTR_DEFS_FILE);
+        if (filePath != null && !filePath.toString().isBlank()) {
+            LOG.debug("Loading project koncept definitions from file: {}", filePath);
+            KonceptDefinitionSource overlay = KonceptDefinitionSource.fromFile(filePath.toString());
+            // Overlay takes priority (listed first)
+            return new CompositeKonceptDefinitionSource(List.of(overlay, base));
+        }
+
+        return base;
     }
 
     /**

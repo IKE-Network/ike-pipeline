@@ -491,34 +491,60 @@ table.colophon-credits td {
 
 .imageblock {
     page-break-inside: avoid;
+    text-align: center !important;
+}
+
+.imageblock .content {
+    text-align: center !important;
 }
 
 .imageblock img,
 .imageblock svg {
     max-width: 100%;
     height: auto;
+    display: block !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
 }
 
 /* Captions */
-.title {
-    font-size: 9pt;
-    font-style: italic;
+.imageblock > .title {
+    font-size: 9pt !important;
+    font-style: italic !important;
+    text-align: center !important;
 }
 
 
 /* ── Blockquotes ───────────────────────────────────────────────── */
 
 blockquote, .quoteblock {
-    color: #555555;
-    font-size: 10pt;
-    border-left: 5pt solid #eeeeee;
-    padding-left: 14pt;
+    color: #444444 !important;
+    font-size: 10pt !important;
+    font-style: italic !important;
+    background-color: #f8f7f5 !important;
+    border-top: 0.5pt solid #dddddd !important;
+    border-bottom: 0.5pt solid #dddddd !important;
+    border-left: none !important;
+    border-right: none !important;
+    padding: 12pt 24pt !important;
+    margin: 10pt 18pt !important;
     page-break-inside: avoid;
+}
+
+.quoteblock blockquote::before {
+    content: none !important;  /* suppress the large curly-quote glyph */
+    display: none !important;
+    float: none !important;
+    font-size: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .quoteblock .attribution {
     font-size: 9pt;
-    color: #999999;
+    font-style: normal;
+    color: #888888;
+    margin-top: 4pt;
 }
 
 
