@@ -517,30 +517,48 @@ table.colophon-credits td {
 
 /* ── Blockquotes ───────────────────────────────────────────────── */
 
-blockquote, .quoteblock {
-    color: #444444 !important;
-    font-size: 10pt !important;
+/* Outer wrapper — subtle background, no border */
+.quoteblock {
     background-color: #f8f7f5 !important;
-    border: 0.5pt solid #dddddd !important;
-    padding: 12pt 20pt !important;
+    border: none !important;
+    padding: 14pt 20pt !important;
     margin: 10pt 0 !important;
     page-break-inside: avoid;
 }
 
-.quoteblock blockquote::before {
-    content: none !important;  /* suppress the large curly-quote glyph */
-    display: none !important;
-    float: none !important;
-    font-size: 0 !important;
+/* Inner blockquote — horizontal rules only, no side borders */
+.quoteblock blockquote {
+    color: #444444 !important;
+    font-size: 10pt !important;
+    background-color: transparent !important;
+    border-top: 0.75pt solid #bbbbbb !important;
+    border-bottom: 0.75pt solid #bbbbbb !important;
+    border-left: none !important;
+    border-right: none !important;
+    padding: 10pt 8pt !important;
     margin: 0 !important;
-    padding: 0 !important;
+}
+
+/* Opening curly quote — restored */
+.quoteblock blockquote::before {
+    content: "\201c" !important;
+    display: block !important;
+    float: left !important;
+    font-size: 2.5em !important;
+    font-weight: bold !important;
+    line-height: 0.6em !important;
+    margin-left: -4pt !important;
+    margin-right: 4pt !important;
+    padding-top: 4pt !important;
+    color: #7a2518 !important;
 }
 
 .quoteblock .attribution {
     font-size: 9pt;
     font-style: normal;
     color: #888888;
-    margin-top: 4pt;
+    margin-top: 6pt;
+    text-align: right;
 }
 
 
