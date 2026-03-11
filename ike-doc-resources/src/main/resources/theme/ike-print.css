@@ -520,14 +520,10 @@ table.colophon-credits td {
 blockquote, .quoteblock {
     color: #444444 !important;
     font-size: 10pt !important;
-    font-style: italic !important;
     background-color: #f8f7f5 !important;
-    border-top: 0.5pt solid #dddddd !important;
-    border-bottom: 0.5pt solid #dddddd !important;
-    border-left: none !important;
-    border-right: none !important;
-    padding: 12pt 24pt !important;
-    margin: 10pt 18pt !important;
+    border: 0.5pt solid #dddddd !important;
+    padding: 12pt 20pt !important;
+    margin: 10pt 0 !important;
     page-break-inside: avoid;
 }
 
