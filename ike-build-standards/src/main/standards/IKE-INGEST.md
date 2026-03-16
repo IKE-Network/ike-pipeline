@@ -247,6 +247,204 @@ single topic. See `IKE-TOPIC-DECOMPOSITION.md` § "Dialog Topics."
    reactor POM's `<subprojects>` if it is new.
 8. **Validate**: Build and verify per Step 7 of the standard workflow.
 
+## External Source Ingestion
+
+External source ingestion imports publications, memoranda, regulatory
+guidance, journal articles, and other third-party documents into the
+topic library as curated reference material. External topics are
+available for search and cross-referencing but are **never included in
+assembly documents**.
+
+### Content handling by source type
+
+Different source types have fundamentally different intellectual
+property constraints. The content handling strategy must match the
+source type — there is no single "ingest" operation.
+
+| Source type  | Subdirectory    | Content handling | Quotation rules |
+|--------------|-----------------|------------------|-----------------|
+| **Internal** | `ext/internal/` | Near-verbatim with semantic line breaks. The project has implicit permission to reproduce collaborator-authored content. Apply editorial cleanup (structure, headings, definition lists) but preserve the author's substance and wording. | Attribution by `:topic-citation:`. No quotation marks needed for inline use — the entire topic is attributed to the author. |
+| **Regulatory** | `ext/regulatory/` | Verbatim for US federal government works (public domain). For non-federal regulatory documents (NSHE policy, state regulations, EU directives), check the specific publication's reuse terms. Apply semantic line breaks and structural markup. | Federal works: no restriction — cite for traceability, not copyright. Non-federal: quote short passages with attribution; summarize the rest. |
+| **Standards** | `ext/standards/` | **Fair-use summary only.** Standards documents (HL7, ISO, IEC, DICOM) are copyrighted. Summarize structure, requirements, and key definitions in the project's voice. | Direct quotes must be short (1–2 sentences), in AsciiDoc quote blocks with attribution. Never reproduce tables, figures, or extended normative text. |
+| **Literature** | `ext/literature/` | **Fair-use summary only.** Journal articles and conference papers are copyrighted. Summarize findings, methods, and conclusions in the project's voice. | Direct quotes must be short (1–2 sentences), in AsciiDoc quote blocks with attribution. Never reproduce figures, tables, or extended passages. |
+
+#### Quotation markup for fair-use sources
+
+When quoting copyrighted material (standards, literature), use
+AsciiDoc quote blocks with explicit attribution:
+
+```asciidoc
+[quote, "Author Name, Document Title (Year)"]
+____
+The quoted sentence goes here, exactly as published.
+____
+```
+
+For inline quotations shorter than one sentence, use standard
+quotation marks with a parenthetical citation:
+
+```asciidoc
+The specification defines this as "a formal representation
+of clinical meaning" (Author, Title, Year).
+```
+
+### Mandatory confirmation step
+
+**Before processing any external source, Claude must pause and
+confirm with the user:**
+
+1. **Source type classification** — which of the four types
+   (internal, regulatory, standards, literature) applies, and why.
+2. **Content handling strategy** — verbatim with line breaks,
+   verbatim with structural cleanup, or fair-use summary.
+3. **Quotation approach** — whether direct quotation is planned
+   and how it will be attributed.
+4. **License note** — the proposed `:topic-license:` value.
+
+Example confirmation:
+
+> This appears to be a **literature** source (journal article with
+> DOI, published in JAMIA). I will create a **fair-use summary** in
+> the project's voice — findings, methods, and conclusions only.
+> Direct quotes will be limited to key definitions, in quote blocks
+> with full attribution. License: `Fair use summary of copyrighted
+> work — not for redistribution.`
+>
+> Proceed?
+
+Do not begin content processing until the user confirms. The user
+may reclassify the source or adjust the handling strategy.
+
+### External source ingestion workflow
+
+#### Step 1: Import and classify
+
+Receive the source document. Identify the source type per the
+content handling matrix above. Present the mandatory confirmation
+to the user before proceeding.
+
+#### Step 2: Convert and normalize
+
+Convert to AsciiDoc if necessary (from `.docx`, `.pdf`, Markdown,
+HTML, etc.). Apply semantic line breaks using the `semantic-linebreak`
+tool, exactly as in standard ingestion. External topics follow the
+same line structure conventions as authored topics.
+
+#### Step 3: Process content per source type
+
+Apply the content handling strategy confirmed in Step 1:
+
+- **Internal**: Convert to AsciiDoc fragment structure. Apply
+  semantic line breaks, add headings and definition lists for
+  scannability, but preserve the author's substance and wording.
+- **Regulatory (public domain)**: Convert to AsciiDoc fragment
+  structure. Preserve the regulatory text verbatim with semantic
+  line breaks and structural markup. Add editorial headings for
+  navigation if the original lacks them.
+- **Regulatory (non-federal)**: Check reuse terms. Summarize
+  where reproduction is not permitted; quote short passages with
+  attribution where it is.
+- **Standards / Literature**: Write a curated summary in the
+  project's voice. Capture findings, structure, requirements, and
+  key definitions. Use quote blocks for any direct quotation.
+  Never reproduce tables, figures, or extended normative text.
+
+#### Step 4: Add provenance attributes
+
+Every external topic must include three attributes in its header
+block, in addition to the standard topic attributes:
+
+```asciidoc
+:topic-provenance: external
+:topic-citation: {full bibliographic citation}
+:topic-license: {rights/permissions note}
+```
+
+| Attribute             | Required | Description |
+|-----------------------|----------|-------------|
+| `:topic-provenance:`  | Yes      | Always `external` for this workflow. |
+| `:topic-citation:`    | Yes      | Full citation: author, title, date, publisher, DOI/URL if applicable. |
+| `:topic-license:`     | Yes      | One of: `Internal use — project collaborator content.` / `Public domain — US federal government work.` / `Fair use summary of copyrighted work — not for redistribution.` / or a specific license if known. |
+
+#### Step 5: Add index terms and diagrams
+
+External topics receive the same editorial treatment as authored
+topics:
+
+- **Index terms**: 3–10 per topic, per `IKE-INDEX.md`.
+- **Diagrams**: Apply the Diagram Test from `IKE-DIAGRAMS.md`. If
+  the source's structure, relationships, or processes benefit from
+  visual representation, add inline PlantUML or GraphViz diagrams.
+  These are original illustrations of the source's content — not
+  reproductions of copyrighted figures.
+
+#### Step 6: Place
+
+Place external topic files under the appropriate subdirectory of
+`topics/src/docs/asciidoc/topics/ext/`:
+
+```
+topics/ext/
+├── internal/       # unpublished memoranda, partner correspondence
+├── regulatory/     # FDA guidance, EU MDR/AI Act, NSHE policy
+├── literature/     # journal articles, conference papers
+└── standards/      # HL7, ISO, DICOM, IHE publications
+```
+
+#### Step 7: Register
+
+Add the topic to `topic-registry.yaml` under the `ext` domain.
+
+- Use `status: review` as the ceiling — external topics are never
+  `published` because they are never included in assemblies.
+- Add a `notes` field documenting the content handling strategy
+  that was applied (e.g., `"Fair use summary — no verbatim
+  reproduction."` or `"Near-verbatim — internal collaborator
+  content with implicit permission."`).
+- Add bidirectional `related:` links to any authored topics that
+  reference or were informed by this source.
+
+#### Step 8: Update index.adoc and validate
+
+Add the new topic to `topics/src/docs/asciidoc/index.adoc` so it
+renders in the topic library HTML preview and `xref:` links resolve.
+
+Build and verify:
+
+```bash
+mvn clean verify -pl topics -am
+```
+
+#### Step 9: Re-normalize
+
+Run the `semantic-linebreak` tool on the placed file to ensure
+uniform line structure after any manual editing during Steps 3–5.
+
+### Assembly exclusion rule
+
+External topics (`ext/` domain) must not appear in any assembly's
+`include::` directives or in any assembly's `topic-refs` in the
+registry. Authored topics may cross-reference external topics using
+`xref:`:
+
+```asciidoc
+For details on the three-entity recommendation,
+see xref:ext-plh-open-questions-answers[PLH's answers].
+```
+
+This renders as a link in the topic library HTML preview. In
+assemblies that do not include the external topic, the `xref:` will
+produce a warning — use a conditional include guard if needed:
+
+```asciidoc
+ifdef::ext-plh-open-questions-answers[]
+See xref:ext-plh-open-questions-answers[PLH's answers] for details.
+endif::[]
+ifndef::ext-plh-open-questions-answers[]
+See PLH's 2026-03-11 memorandum for details.
+endif::[]
+```
+
 ## Ingestion into an Existing Corpus
 
 When the target project already has topics, follow the integration

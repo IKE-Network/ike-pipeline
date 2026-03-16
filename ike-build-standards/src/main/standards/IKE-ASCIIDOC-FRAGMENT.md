@@ -108,6 +108,18 @@ labels for empty sections or as organizational placeholders.
 | `:topic-keywords:`   | Comma-separated keyword list     | `versioning, coordinates, STAMP`       |
 | `:topic-scope-note:` | Optional. Clarifies this topic's angle when it intentionally overlaps with a related topic. References the related topic-id. | `Covers classifiers from the authoring perspective. For classifier architecture, see arch-dl-classifier.` |
 
+### External Source Attributes (ext/ domain only)
+
+These attributes are required on all topics in the `ext/` domain and must not appear on
+authored topics. See `IKE-INGEST.md` § "External Source Ingestion" for the full workflow,
+including the mandatory confirmation step and content handling matrix.
+
+| Attribute              | Purpose                                    | Example                                               |
+|------------------------|--------------------------------------------|-------------------------------------------------------|
+| `:topic-provenance:`   | Always `external` for ingested sources     | `external`                                            |
+| `:topic-citation:`     | Full bibliographic citation                | `Hatchett PL. Open Questions PLH Answers. 2026-03-11. Unpublished memorandum.` |
+| `:topic-license:`      | Rights/permissions note                    | `Internal use only — not for publication.`            |
+
 ### Never Include in Fragments
 
 These are document-level concerns controlled by the assembly:
