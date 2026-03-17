@@ -207,8 +207,8 @@
                     <artifactId>maven-clean-plugin</artifactId>
                     <version>${maven-clean-plugin.version}</version>
                 </plugin>
-                <plugin><artifactId>maven-install-plugin</artifactId><version>4.0.0-beta-2</version></plugin>
-                <plugin><artifactId>maven-deploy-plugin</artifactId><version>4.0.0-beta-2</version></plugin>
+                <plugin><artifactId>maven-install-plugin</artifactId><version>3.1.3</version></plugin>
+                <plugin><artifactId>maven-deploy-plugin</artifactId><version>3.1.3</version></plugin>
 
                 <!-- Maven Dependency Plugin — all unpacks use unpack-dependencies
                      (reactor-aware). Modules declare the artifacts as dependencies;
