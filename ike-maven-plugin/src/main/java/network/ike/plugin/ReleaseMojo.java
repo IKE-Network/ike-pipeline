@@ -162,10 +162,15 @@ public class ReleaseMojo extends AbstractMojo {
         List<File> resolvedPoms =
                 ReleaseSupport.replaceProjectVersionRefs(gitRoot, releaseVersion, getLog());
 
-        // Verify build
+        // Build and install (not just verify) — reactor siblings with
+        // BOM imports need installed artifacts to resolve classified
+        // dependencies (e.g., ike-build-standards:zip:claude). The
+        // release version has never been installed, so 'verify' alone
+        // fails on inter-module resolution. Using 'install' puts
+        // artifacts in the local repo for sibling resolution.
         if (!skipVerify) {
             ReleaseSupport.exec(gitRoot, getLog(),
-                    mvnw.getAbsolutePath(), "clean", "verify", "-B");
+                    mvnw.getAbsolutePath(), "clean", "install", "-B");
         } else {
             getLog().info("Skipping verify (-DskipVerify=true)");
         }
@@ -273,10 +278,11 @@ public class ReleaseMojo extends AbstractMojo {
             }
 
             // Nexus deploy LAST — irreversible, only after everything
-            // else has succeeded
+            // else has succeeded. Install first so reactor siblings
+            // with BOM imports can resolve classified artifacts.
             getLog().info("Deploying to Nexus...");
             ReleaseSupport.exec(gitRoot, getLog(),
-                    mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests",
+                    mvnw.getAbsolutePath(), "clean", "deploy", "-B",
                     "-P", "release,signArtifacts");
         } finally {
             // Always return to main, even if deploy fails
