@@ -43,22 +43,22 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
 
     /** Feature name. Branch will be {@code feature/<name>}. Prompted if omitted. */
     @Parameter(property = "feature")
-    private String feature;
+    String feature;
 
     /** Restrict to a named group or component. Default: all cloned. */
     @Parameter(property = "group")
-    private String group;
+    String group;
 
     /**
      * Skip POM version qualification. Useful for document projects
      * that don't have versioned artifacts.
      */
     @Parameter(property = "skipVersion", defaultValue = "false")
-    private boolean skipVersion;
+    boolean skipVersion;
 
     /** Show plan without executing. */
     @Parameter(property = "dryRun", defaultValue = "false")
-    private boolean dryRun;
+    boolean dryRun;
 
     @Override
     public void execute() throws MojoExecutionException {

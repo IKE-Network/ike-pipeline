@@ -58,23 +58,23 @@ public class WsReleaseMojo extends AbstractWorkspaceMojo {
 
     /** Release only components in this group. */
     @Parameter(property = "group")
-    private String group;
+    String group;
 
     /** Release only this specific component. */
     @Parameter(property = "component")
-    private String component;
+    String component;
 
     /** Preview what would be released without executing. */
     @Parameter(property = "dryRun", defaultValue = "false")
-    private boolean dryRun;
+    boolean dryRun;
 
     /** Skip the pre-release checkpoint. */
     @Parameter(property = "skipCheckpoint", defaultValue = "false")
-    private boolean skipCheckpoint;
+    boolean skipCheckpoint;
 
     /** Push releases to remote. Passed through to ike:release. */
     @Parameter(property = "push", defaultValue = "true")
-    private boolean push;
+    boolean push;
 
     @Override
     public void execute() throws MojoExecutionException {

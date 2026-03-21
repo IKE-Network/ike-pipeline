@@ -243,6 +243,88 @@ class WorkspaceMojoIntegrationTest {
         }
     }
 
+    // ── WsCheckpointMojo ──────────────────────────────────────────────
+
+    @Test
+    void wsCheckpoint_writesYamlFile() throws Exception {
+        WsCheckpointMojo mojo = new WsCheckpointMojo();
+        mojo.manifest = helper.workspaceYaml().toFile();
+        mojo.name = "test-cp";
+
+        mojo.execute();
+
+        Path checkpointFile = tempDir.resolve("checkpoints")
+                .resolve("checkpoint-test-cp.yaml");
+        assertThat(checkpointFile).exists();
+
+        String content = Files.readString(checkpointFile, StandardCharsets.UTF_8);
+        assertThat(content).contains("lib-a");
+        assertThat(content).contains("lib-b");
+        assertThat(content).contains("app-c");
+    }
+
+    @Test
+    void wsCheckpoint_withTag_createsGitTags() throws Exception {
+        WsCheckpointMojo mojo = new WsCheckpointMojo();
+        mojo.manifest = helper.workspaceYaml().toFile();
+        mojo.name = "tagged-cp";
+        mojo.tag = true;
+
+        mojo.execute();
+
+        // Verify git tags exist in each component
+        for (String name : new String[]{"lib-a", "lib-b", "app-c"}) {
+            String expectedTag = "checkpoint/tagged-cp/" + name;
+            String tags = execCapture(tempDir.resolve(name),
+                    "git", "tag", "-l", expectedTag);
+            assertThat(tags.strip()).isEqualTo(expectedTag);
+        }
+    }
+
+    // ── WsReleaseMojo ───────────────────────────────────────────────
+
+    @Test
+    void wsRelease_dryRun_showsPlan() throws Exception {
+        // Build a workspace with upstreams so graph loads correctly
+        Path releaseRoot = Files.createTempDirectory(tempDir, "release-");
+        TestWorkspaceHelper releaseHelper = new TestWorkspaceHelper(releaseRoot);
+        releaseHelper.buildWorkspace();
+
+        WsReleaseMojo mojo = new WsReleaseMojo();
+        mojo.manifest = releaseHelper.workspaceYaml().toFile();
+        mojo.dryRun = true;
+
+        assertThatCode(mojo::execute).doesNotThrowAnyException();
+    }
+
+    @Test
+    void wsRelease_noChanges_reportsClean() throws Exception {
+        // Build workspace and tag every component as released
+        Path releaseRoot = Files.createTempDirectory(tempDir, "release-clean-");
+        TestWorkspaceHelper releaseHelper = new TestWorkspaceHelper(releaseRoot);
+        releaseHelper.buildWorkspace();
+
+        for (String name : new String[]{"lib-a", "lib-b", "app-c"}) {
+            exec(releaseRoot.resolve(name), "git", "tag", "v1.0.0");
+        }
+
+        WsReleaseMojo mojo = new WsReleaseMojo();
+        mojo.manifest = releaseHelper.workspaceYaml().toFile();
+        mojo.dryRun = true;
+
+        // Should complete without exception — reports "No components need releasing"
+        assertThatCode(mojo::execute).doesNotThrowAnyException();
+    }
+
+    // ── IkeHelpMojo ─────────────────────────────────────────────────
+
+    @Test
+    void help_execute_printsGoals() {
+        IkeHelpMojo mojo = new IkeHelpMojo();
+
+        assertThatCode(mojo::execute).doesNotThrowAnyException();
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────
 
     private void exec(Path workDir, String... command) throws Exception {

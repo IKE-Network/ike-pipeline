@@ -41,15 +41,15 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
 
     /** Checkpoint name. Used in filename and tags. Prompted if omitted. */
     @Parameter(property = "name")
-    private String name;
+    String name;
 
     /** Tag each component with {@code checkpoint/<name>/<component>}. */
     @Parameter(property = "tag", defaultValue = "false")
-    private boolean tag;
+    boolean tag;
 
     /** Push tags to origin. Only applies when tag=true. */
     @Parameter(property = "push", defaultValue = "false")
-    private boolean push;
+    boolean push;
 
     @Override
     public void execute() throws MojoExecutionException {

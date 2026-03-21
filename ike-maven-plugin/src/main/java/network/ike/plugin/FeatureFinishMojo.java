@@ -44,23 +44,23 @@ public class FeatureFinishMojo extends AbstractWorkspaceMojo {
 
     /** Feature name. Expects branch {@code feature/<name>}. Prompted if omitted. */
     @Parameter(property = "feature")
-    private String feature;
+    String feature;
 
     /** Restrict to a named group or component. Default: all cloned. */
     @Parameter(property = "group")
-    private String group;
+    String group;
 
     /** Target branch to merge into. Default: main. */
     @Parameter(property = "targetBranch", defaultValue = "main")
-    private String targetBranch;
+    String targetBranch;
 
     /** Push to origin after merge. Default: false (safety). */
     @Parameter(property = "push", defaultValue = "false")
-    private boolean push;
+    boolean push;
 
     /** Show plan without executing. */
     @Parameter(property = "dryRun", defaultValue = "false")
-    private boolean dryRun;
+    boolean dryRun;
 
     @Override
     public void execute() throws MojoExecutionException {
