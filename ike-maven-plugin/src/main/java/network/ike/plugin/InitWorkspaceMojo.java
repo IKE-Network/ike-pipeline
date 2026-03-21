@@ -39,7 +39,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
      * Restrict to a named group (or single component). Default: all.
      */
     @Parameter(property = "group")
-    private String group;
+    String group;
 
     @Override
     public void execute() throws MojoExecutionException {

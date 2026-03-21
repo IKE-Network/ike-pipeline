@@ -46,26 +46,30 @@ import java.util.List;
 public class ReleaseMojo extends AbstractMojo {
 
     @Parameter(property = "releaseVersion")
-    private String releaseVersion;
+    String releaseVersion;
 
     @Parameter(property = "nextVersion")
-    private String nextVersion;
+    String nextVersion;
 
     @Parameter(property = "dryRun", defaultValue = "false")
-    private boolean dryRun;
+    boolean dryRun;
 
     @Parameter(property = "skipVerify", defaultValue = "false")
-    private boolean skipVerify;
+    boolean skipVerify;
 
     @Parameter(property = "allowBranch")
-    private String allowBranch;
+    String allowBranch;
 
     @Parameter(property = "deploySite", defaultValue = "true")
-    private boolean deploySite;
+    boolean deploySite;
+
+    /** Override working directory for tests. If null, uses current directory. */
+    File baseDir;
 
     @Override
     public void execute() throws MojoExecutionException {
-        File gitRoot = ReleaseSupport.gitRoot(new File("."));
+        File startDir = baseDir != null ? baseDir : new File(".");
+        File gitRoot = ReleaseSupport.gitRoot(startDir);
         File mvnw = ReleaseSupport.resolveMavenWrapper(gitRoot, getLog());
         File rootPom = new File(gitRoot, "pom.xml");
 

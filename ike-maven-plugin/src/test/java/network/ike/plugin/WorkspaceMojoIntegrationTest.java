@@ -117,6 +117,104 @@ class WorkspaceMojoIntegrationTest {
         assertThatCode(mojo::execute).doesNotThrowAnyException();
     }
 
+    // ── DashboardWorkspaceMojo ─────────────────────────────────────
+
+    @Test
+    void dashboard_cleanWorkspace_succeeds() {
+        DashboardWorkspaceMojo mojo = new DashboardWorkspaceMojo();
+        mojo.manifest = helper.workspaceYaml().toFile();
+
+        assertThatCode(mojo::execute).doesNotThrowAnyException();
+    }
+
+    @Test
+    void dashboard_dirtyWorkspace_showsCascade() throws Exception {
+        // Dirty lib-a by adding an untracked file
+        Path untracked = tempDir.resolve("lib-a").resolve("dirty.txt");
+        Files.writeString(untracked, "uncommitted", StandardCharsets.UTF_8);
+
+        DashboardWorkspaceMojo mojo = new DashboardWorkspaceMojo();
+        mojo.manifest = helper.workspaceYaml().toFile();
+
+        assertThatCode(mojo::execute).doesNotThrowAnyException();
+    }
+
+    // ── InitWorkspaceMojo ────────────────────────────────────────────
+
+    @Test
+    void init_freshClone_clonesAllComponents() throws Exception {
+        Path initRoot = Files.createTempDirectory(tempDir, "init-");
+        TestWorkspaceHelper initHelper = new TestWorkspaceHelper(initRoot);
+        initHelper.buildWorkspaceWithUpstreams();
+
+        InitWorkspaceMojo mojo = new InitWorkspaceMojo();
+        mojo.manifest = initHelper.workspaceYaml().toFile();
+
+        mojo.execute();
+
+        // All 3 components should be cloned
+        for (String name : new String[]{"lib-a", "lib-b", "app-c"}) {
+            Path compDir = initRoot.resolve(name);
+            assertThat(compDir).isDirectory();
+            assertThat(compDir.resolve(".git")).isDirectory();
+            assertThat(compDir.resolve("pom.xml")).isRegularFile();
+        }
+    }
+
+    @Test
+    void init_alreadyCloned_skips() throws Exception {
+        Path initRoot = Files.createTempDirectory(tempDir, "init-");
+        TestWorkspaceHelper initHelper = new TestWorkspaceHelper(initRoot);
+        initHelper.buildWorkspaceWithUpstreams();
+
+        // Pre-create lib-a as a git repo with one commit
+        Path libA = initRoot.resolve("lib-a");
+        Files.createDirectories(libA);
+        Files.writeString(libA.resolve("pom.xml"), "<project/>",
+                StandardCharsets.UTF_8);
+        exec(libA, "git", "init", "-b", "main");
+        exec(libA, "git", "config", "user.email", "test@example.com");
+        exec(libA, "git", "config", "user.name", "Test");
+        exec(libA, "git", "add", ".");
+        exec(libA, "git", "commit", "-m", "pre-existing");
+
+        // Count commits before init
+        String countBefore = execCapture(libA, "git", "rev-list", "--count", "HEAD");
+
+        InitWorkspaceMojo mojo = new InitWorkspaceMojo();
+        mojo.manifest = initHelper.workspaceYaml().toFile();
+
+        mojo.execute();
+
+        // lib-a should not be re-cloned — commit count unchanged
+        String countAfter = execCapture(libA, "git", "rev-list", "--count", "HEAD");
+        assertThat(countAfter).isEqualTo(countBefore);
+
+        // lib-b and app-c should have been cloned
+        assertThat(initRoot.resolve("lib-b").resolve(".git")).isDirectory();
+        assertThat(initRoot.resolve("app-c").resolve(".git")).isDirectory();
+    }
+
+    @Test
+    void init_groupFilter_clonesOnlyGroup() throws Exception {
+        Path initRoot = Files.createTempDirectory(tempDir, "init-");
+        TestWorkspaceHelper initHelper = new TestWorkspaceHelper(initRoot);
+        initHelper.buildWorkspaceWithUpstreams();
+
+        InitWorkspaceMojo mojo = new InitWorkspaceMojo();
+        mojo.manifest = initHelper.workspaceYaml().toFile();
+        mojo.group = "libs";
+
+        mojo.execute();
+
+        // libs group: lib-a and lib-b should be cloned
+        assertThat(initRoot.resolve("lib-a").resolve(".git")).isDirectory();
+        assertThat(initRoot.resolve("lib-b").resolve(".git")).isDirectory();
+
+        // app-c should NOT be cloned
+        assertThat(initRoot.resolve("app-c")).doesNotExist();
+    }
+
     // ── StignoreWorkspaceMojo ───────────────────────────────────────
 
     @Test
@@ -143,5 +241,37 @@ class WorkspaceMojoIntegrationTest {
             assertThat(compContent).contains("**/target");
             assertThat(compContent).contains("**/.git");
         }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────
+
+    private void exec(Path workDir, String... command) throws Exception {
+        Process process = new ProcessBuilder(command)
+                .directory(workDir.toFile())
+                .redirectErrorStream(true)
+                .start();
+        process.getInputStream().readAllBytes();
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new RuntimeException(
+                    "Command failed (exit " + exitCode + "): "
+                            + String.join(" ", command));
+        }
+    }
+
+    private String execCapture(Path workDir, String... command) throws Exception {
+        Process process = new ProcessBuilder(command)
+                .directory(workDir.toFile())
+                .redirectErrorStream(true)
+                .start();
+        String output = new String(process.getInputStream().readAllBytes(),
+                StandardCharsets.UTF_8).trim();
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new RuntimeException(
+                    "Command failed (exit " + exitCode + "): "
+                            + String.join(" ", command));
+        }
+        return output;
     }
 }
