@@ -101,6 +101,10 @@
         <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
         <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
 
+        <!-- ── Code Coverage ─────────────────────────────────────────── -->
+        <jacoco-maven-plugin.version>0.8.14</jacoco-maven-plugin.version>
+        <ike.skip.jacoco>false</ike.skip.jacoco>
+
         <!-- ── Java Toolchain Dependencies ─────────────────────────── -->
         <asm.version>9.9</asm.version>
         <record-builder-core.version>34</record-builder-core.version>
@@ -449,6 +453,7 @@
                     <configuration>
                         <useModulePath>false</useModulePath>
                         <argLine>
+                            @{argLine}
                             --enable-preview
                             --add-opens java.base/java.lang=ALL-UNNAMED
                             --add-opens java.base/java.util=ALL-UNNAMED
@@ -486,6 +491,7 @@
                     <configuration>
                         <useModulePath>false</useModulePath>
                         <argLine>
+                            @{argLine}
                             --enable-preview
                             --add-opens java.base/java.lang=ALL-UNNAMED
                             --add-opens java.base/java.util=ALL-UNNAMED
@@ -697,6 +703,27 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         </attributes>
                     </configuration>
                 </plugin>
+
+                <!-- ── JaCoCo Code Coverage ─────────────────────────────── -->
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco-maven-plugin.version}</version>
+                    <configuration>
+                        <skip>${ike.skip.jacoco}</skip>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>jacoco-prepare-agent</id>
+                            <goals><goal>prepare-agent</goal></goals>
+                        </execution>
+                        <execution>
+                            <id>jacoco-report</id>
+                            <phase>verify</phase>
+                            <goals><goal>report</goal></goals>
+                        </execution>
+                    </executions>
+                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -732,6 +759,14 @@ IKE projects require Java 21+ (JRuby 10 baseline).
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+
+            <!-- JaCoCo — code coverage for all modules with tests.
+                 Inherits prepare-agent + report executions from pluginManagement.
+                 Skip with -Dike.skip.jacoco=true. Reports in target/site/jacoco/ -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
             </plugin>
 
         </plugins>

@@ -236,6 +236,14 @@
                 </executions>
             </plugin>
 
+            <!-- JaCoCo — code coverage for all inheriting projects.
+                 Configuration is inherited from root POM pluginManagement.
+                 Skip with -Dike.skip.jacoco=true. Reports in target/site/jacoco/ -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+
             <!-- IKE Maven Plugin — release and workspace goals.
                  No lifecycle bindings; purely for IDE discoverability
                  and command-line invocation (ike:help, etc.).
