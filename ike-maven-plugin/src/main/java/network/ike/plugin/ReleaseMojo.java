@@ -22,15 +22,17 @@ import java.util.List;
  *   <li>Validate prerequisites (branch, clean worktree)</li>
  *   <li>Create {@code release/<version>} branch</li>
  *   <li>Set POM version to release version</li>
- *   <li>Build, verify, commit, tag</li>
+ *   <li>Build and verify</li>
+ *   <li>Build site (pre-flight — catches javadoc errors early)</li>
+ *   <li>Commit, tag</li>
  *   <li>Restore {@code ${project.version}}, merge to main</li>
  *   <li>Bump to next SNAPSHOT version, verify, commit</li>
  * </ol>
  *
- * <p><strong>External phase (after all local work succeeds):</strong></p>
+ * <p><strong>External phase (most reversible first, irreversible last):</strong></p>
  * <ol>
- *   <li>Deploy to Nexus from tagged commit (with GPG signing)</li>
- *   <li>Deploy release site</li>
+ *   <li>Deploy site from tagged commit (overwritable — safe to retry)</li>
+ *   <li>Deploy to Nexus from tagged commit (irreversible — last)</li>
  *   <li>Push tag and main to origin</li>
  *   <li>Create GitHub Release</li>
  * </ol>
@@ -133,11 +135,12 @@ public class ReleaseMojo extends AbstractMojo {
             getLog().info("[DRY RUN] Would merge " + releaseBranch + " to main");
             getLog().info("[DRY RUN] Would bump to next version: " + nextVersion);
             getLog().info("[DRY RUN] --- all local work above, external below ---");
-            getLog().info("[DRY RUN] Would deploy to Nexus from tag v" + releaseVersion);
             if (deploySite) {
-                getLog().info("[DRY RUN] Would deploy release site to: " +
+                getLog().info("[DRY RUN] Would deploy site to: " +
                         "scpexe://proxy/srv/ike-site/" + projectId + "/release");
             }
+            getLog().info("[DRY RUN] Would deploy to Nexus from tag v" +
+                    releaseVersion + " (last — irreversible)");
             getLog().info("[DRY RUN] Would push tag and main to origin");
             getLog().info("[DRY RUN] Would create GitHub Release");
             return;
@@ -165,6 +168,13 @@ public class ReleaseMojo extends AbstractMojo {
                     mvnw.getAbsolutePath(), "clean", "verify", "-B");
         } else {
             getLog().info("Skipping verify (-DskipVerify=true)");
+        }
+
+        // Build site (catches javadoc errors before any commits/tags)
+        if (deploySite) {
+            getLog().info("Building site (pre-flight check)...");
+            ReleaseSupport.exec(gitRoot, getLog(),
+                    mvnw.getAbsolutePath(), "site", "site:stage", "-B");
         }
 
         // Commit
@@ -221,9 +231,13 @@ public class ReleaseMojo extends AbstractMojo {
         // ── External actions (all local work is done) ─────────────────
         // Everything above this point is local and idempotent. If any
         // external action below fails, all local git state is consistent
-        // and the deploy can be retried manually:
-        //   git checkout v<version> && mvnw deploy -B -DskipTests -P release,signArtifacts
-        //   git checkout main && git push origin main v<version>
+        // and the deploy can be retried manually.
+        //
+        // Order matters — most reversible actions first, irreversible last:
+        //   1. Site deploy (overwritable — safe to retry)
+        //   2. Nexus deploy (irreversible — release repos reject overwrites)
+        //   3. Push tag + main (additive — safe to retry)
+        //   4. GitHub Release (additive — safe to retry)
 
         getLog().info("");
         getLog().info("Local work complete. Starting external deploys...");
@@ -235,21 +249,21 @@ public class ReleaseMojo extends AbstractMojo {
         ReleaseSupport.exec(gitRoot, getLog(),
                 "git", "checkout", "v" + releaseVersion);
         try {
+            // Site deploy first (overwritable — can always re-deploy)
             if (deploySite) {
-                ReleaseSupport.execParallel(gitRoot, getLog(),
-                        new ReleaseSupport.LabeledTask("nexus",
-                                new String[]{mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests",
-                                        "-P", "release,signArtifacts"}),
-                        new ReleaseSupport.LabeledTask("site",
-                                new String[]{mvnw.getAbsolutePath(), "site", "site:stage",
-                                        "site:deploy", "-B",
-                                        "-Dsite.deploy.url=scpexe://proxy/srv/ike-site/" +
-                                                projectId + "/release"}));
-            } else {
+                getLog().info("Deploying site...");
                 ReleaseSupport.exec(gitRoot, getLog(),
-                        mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests",
-                        "-P", "release,signArtifacts");
+                        mvnw.getAbsolutePath(), "site:deploy", "-B",
+                        "-Dsite.deploy.url=scpexe://proxy/srv/ike-site/" +
+                                projectId + "/release");
             }
+
+            // Nexus deploy LAST — irreversible, only after everything
+            // else has succeeded
+            getLog().info("Deploying to Nexus...");
+            ReleaseSupport.exec(gitRoot, getLog(),
+                    mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests",
+                    "-P", "release,signArtifacts");
         } finally {
             // Always return to main, even if deploy fails
             ReleaseSupport.exec(gitRoot, getLog(), "git", "checkout", "main");
