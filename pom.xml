@@ -721,6 +721,15 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                     <version>${jacoco-maven-plugin.version}</version>
                     <configuration>
                         <skip>${ike.skip.jacoco}</skip>
+                        <formats>
+                            <format>HTML</format>
+                            <format>XML</format>
+                            <format>CSV</format>
+                        </formats>
+                        <!-- JaCoCo's built-in breadcrumb starts at the module level.
+                             The site's "Project Reports > JaCoCo" link provides the
+                             path back to the module site. No footer customization
+                             needed — JaCoCo escapes HTML in the footer parameter. -->
                     </configuration>
                     <executions>
                         <execution>
@@ -777,6 +786,29 @@ IKE projects require Java 21+ (JRuby 10 baseline).
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- Inject "← Project Site" breadcrumb into JaCoCo reports.
+                 Uses inline shell — no dependency on build-tools scripts.
+                 No-op if JaCoCo report directory does not exist. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>jacoco-breadcrumb</id>
+                        <phase>verify</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <executable>sh</executable>
+                            <workingDirectory>${project.build.directory}</workingDirectory>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument>test -d site/jacoco &amp;&amp; find site/jacoco -name '*.html' -print0 | xargs -0 sed -i '' 's|&lt;div class="breadcrumb" id="breadcrumb"&gt;|&lt;div class="breadcrumb" id="breadcrumb"&gt;&lt;a href="../index.html" style="font-weight:bold;margin-right:8px"&gt;\&amp;larr; Project Site&lt;/a&gt; \&amp;#124; |g' || true</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
         </plugins>
