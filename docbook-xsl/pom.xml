@@ -215,14 +215,19 @@
                             </arguments>
                         </configuration>
                     </execution>
+                    <!-- Patch DocBook XSL to suppress Saxon warnings.
+                         Inline shell because ike-maven-plugin is a reactor
+                         sibling and cannot be a build plugin here.
+                         Downstream projects: use ike:patch-docbook instead. -->
                     <execution>
                         <id>patch-docbook-xsl</id>
                         <phase>generate-resources</phase>
                         <goals><goal>exec</goal></goals>
                         <configuration>
-                            <executable>${build.tools.directory}/scripts/patch-docbook-xsl.sh</executable>
+                            <executable>sh</executable>
                             <arguments>
-                                <argument>${staging.directory}</argument>
+                                <argument>-c</argument>
+                                <argument>perl -pi -e 's/&lt;xsl:include href="\.\.\/common\/utility\.xsl"\/&gt;//' "${staging.directory}/fo/docbook.xsl" &amp;&amp; perl -0777 -pi -e 's/&lt;xsl:variable name="output\.delims"&gt;.*?&lt;\/xsl:variable&gt;//s' "${staging.directory}/fo/math.xsl"</argument>
                             </arguments>
                         </configuration>
                     </execution>
