@@ -1,0 +1,25 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="test: plugin only" type="MavenRunConfiguration" factoryName="Maven">
+    <MavenSettings>
+      <option name="myGeneralSettings" />
+      <option name="myRunnerSettings" />
+      <option name="myRunnerParameters">
+        <MavenRunnerParameters>
+          <option name="workingDirPath" value="$PROJECT_DIR$" />
+          <option name="goals">
+            <list>
+              <option value="clean" />
+              <option value="verify" />
+              <option value="-pl" />
+              <option value="ike-maven-plugin" />
+              <option value="-am" />
+            </list>
+          </option>
+          <option name="profilesMap">
+            <map />
+          </option>
+        </MavenRunnerParameters>
+      </option>
+    </MavenSettings>
+  </configuration>
+</component>
