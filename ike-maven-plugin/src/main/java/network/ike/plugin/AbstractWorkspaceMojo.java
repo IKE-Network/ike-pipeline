@@ -108,4 +108,39 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
             return "???????";
         }
     }
+
+    /**
+     * Prompt the user interactively for a required parameter when it
+     * was not supplied on the command line.
+     *
+     * <p>Uses {@link System#console()} so that IntelliJ run configs
+     * and terminal sessions can provide values without requiring
+     * placeholder {@code -D} properties. Falls back to a clear error
+     * message when running non-interactively (e.g., piped input).
+     *
+     * @param currentValue the value from the {@code @Parameter} field (may be null)
+     * @param propertyName the {@code -D} property name (for the error message)
+     * @param promptLabel  human-readable label shown in the prompt
+     * @return the resolved value — either the original or user-supplied
+     * @throws MojoExecutionException if no value can be obtained
+     */
+    protected String requireParam(String currentValue, String propertyName,
+                                  String promptLabel)
+            throws MojoExecutionException {
+        if (currentValue != null && !currentValue.isBlank()) {
+            return currentValue.trim();
+        }
+
+        java.io.Console console = System.console();
+        if (console != null) {
+            String input = console.readLine("%s: ", promptLabel);
+            if (input != null && !input.isBlank()) {
+                return input.trim();
+            }
+        }
+
+        throw new MojoExecutionException(
+                propertyName + " is required. Specify -D" + propertyName
+                        + "=<value> or run interactively.");
+    }
 }

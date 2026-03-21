@@ -8,7 +8,7 @@
           <option name="workingDirPath" value="$PROJECT_DIR$" />
           <option name="goals">
             <list>
-              <option value="network.ike:ike-maven-plugin:help" />
+              <option value="ike:help" />
             </list>
           </option>
         </MavenRunnerParameters>

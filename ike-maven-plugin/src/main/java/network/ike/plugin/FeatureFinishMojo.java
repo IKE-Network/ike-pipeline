@@ -42,8 +42,8 @@ import java.util.Set;
 @Mojo(name = "feature-finish", requiresProject = false, threadSafe = true)
 public class FeatureFinishMojo extends AbstractWorkspaceMojo {
 
-    /** Feature name (required). Expects branch {@code feature/<name>}. */
-    @Parameter(property = "feature", required = true)
+    /** Feature name. Expects branch {@code feature/<name>}. Prompted if omitted. */
+    @Parameter(property = "feature")
     private String feature;
 
     /** Restrict to a named group or component. Default: all cloned. */
@@ -64,6 +64,8 @@ public class FeatureFinishMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
+        feature = requireParam(feature, "feature", "Feature name (expects branch feature/<name>)");
+
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 

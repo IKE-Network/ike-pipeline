@@ -8,7 +8,7 @@
           <option name="workingDirPath" value="$PROJECT_DIR$" />
           <option name="goals">
             <list>
-              <option value="network.ike:ike-maven-plugin:release" />
+              <option value="ike:release" />
               <option value="-DdryRun=true" />
             </list>
           </option>

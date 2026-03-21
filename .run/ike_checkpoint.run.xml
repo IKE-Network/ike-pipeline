@@ -8,7 +8,7 @@
           <option name="workingDirPath" value="$PROJECT_DIR$" />
           <option name="goals">
             <list>
-              <option value="network.ike:ike-maven-plugin:checkpoint" />
+              <option value="ike:checkpoint" />
             </list>
           </option>
           <option name="profilesMap">

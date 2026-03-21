@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="ike:checkpoint (dry run)" type="MavenRunConfiguration" factoryName="Maven">
+  <configuration default="false" name="ike:verify" type="MavenRunConfiguration" factoryName="Maven">
     <MavenSettings>
       <option name="myGeneralSettings" />
       <option name="myRunnerSettings" />
@@ -8,8 +8,7 @@
           <option name="workingDirPath" value="$PROJECT_DIR$" />
           <option name="goals">
             <list>
-              <option value="ike:checkpoint" />
-              <option value="-DdryRun=true" />
+              <option value="ike:verify" />
             </list>
           </option>
           <option name="profilesMap">

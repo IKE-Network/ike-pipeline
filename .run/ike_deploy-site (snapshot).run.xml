@@ -8,7 +8,7 @@
           <option name="workingDirPath" value="$PROJECT_DIR$" />
           <option name="goals">
             <list>
-              <option value="network.ike:ike-maven-plugin:deploy-site" />
+              <option value="ike:deploy-site" />
               <option value="-DsiteType=snapshot" />
             </list>
           </option>

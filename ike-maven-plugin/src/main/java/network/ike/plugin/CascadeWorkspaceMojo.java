@@ -22,13 +22,15 @@ import java.util.List;
 public class CascadeWorkspaceMojo extends AbstractWorkspaceMojo {
 
     /**
-     * The component that changed. Required.
+     * The component that changed. Prompted if omitted.
      */
-    @Parameter(property = "component", required = true)
+    @Parameter(property = "component")
     private String component;
 
     @Override
     public void execute() throws MojoExecutionException {
+        component = requireParam(component, "component", "Component that changed");
+
         WorkspaceGraph graph = loadGraph();
 
         getLog().info("");

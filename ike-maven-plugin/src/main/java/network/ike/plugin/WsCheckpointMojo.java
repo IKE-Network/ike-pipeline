@@ -39,8 +39,8 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
                     .withZone(ZoneOffset.UTC);
 
-    /** Checkpoint name (required). Used in filename and tags. */
-    @Parameter(property = "name", required = true)
+    /** Checkpoint name. Used in filename and tags. Prompted if omitted. */
+    @Parameter(property = "name")
     private String name;
 
     /** Tag each component with {@code checkpoint/<name>/<component>}. */
@@ -53,6 +53,8 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
+        name = requireParam(name, "name", "Checkpoint name");
+
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
