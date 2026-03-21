@@ -80,7 +80,7 @@
             <plugin>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-maven-plugin</artifactId>
-                <version>${project.version}</version>
+                <version>28</version>
                 <executions>
                     <execution>
                         <id>generate-bom</id>
