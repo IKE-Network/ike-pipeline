@@ -252,13 +252,24 @@ public class ReleaseMojo extends AbstractMojo {
             // Site deploy first (overwritable — can always re-deploy).
             // Must rebuild site here because the tag checkout wiped target/.
             // The local-phase site:stage was a pre-flight check only.
+            //
+            // Stage-and-swap: deploy to .staging dir, then atomic rename.
+            // This avoids a window where the live site is missing and
+            // eliminates stale files from previous releases.
             if (deploySite) {
-                getLog().info("Deploying site...");
+                String releaseDisk = ReleaseSupport.siteDiskPath(
+                        projectId, "release", null);
+                String stagingDisk = ReleaseSupport.siteStagingPath(releaseDisk);
+                String releaseUrl = "scpexe://proxy" + releaseDisk;
+                String stagingUrl = ReleaseSupport.siteStagingUrl(releaseUrl);
+
+                getLog().info("Deploying site to staging...");
+                ReleaseSupport.cleanRemoteSiteDir(gitRoot, getLog(), stagingDisk);
                 ReleaseSupport.exec(gitRoot, getLog(),
                         mvnw.getAbsolutePath(), "site", "site:stage",
                         "site:deploy", "-B",
-                        "-Dsite.deploy.url=scpexe://proxy/srv/ike-site/" +
-                                projectId + "/release");
+                        "-Dsite.deploy.url=" + stagingUrl);
+                ReleaseSupport.swapRemoteSiteDir(gitRoot, getLog(), releaseDisk);
             }
 
             // Nexus deploy LAST — irreversible, only after everything
@@ -297,6 +308,20 @@ public class ReleaseMojo extends AbstractMojo {
             }
         } else {
             getLog().info("No 'origin' remote — skipping GitHub Release");
+        }
+
+        // Clean up the main-branch snapshot site — the release site
+        // replaces it. Non-fatal if it fails (may not exist).
+        if (deploySite) {
+            String snapshotDisk = ReleaseSupport.siteDiskPath(
+                    projectId, "snapshot", "main");
+            try {
+                getLog().info("Cleaning snapshot/main site...");
+                ReleaseSupport.cleanRemoteSiteDir(gitRoot, getLog(), snapshotDisk);
+            } catch (MojoExecutionException e) {
+                getLog().warn("Could not clean snapshot site (may not exist): "
+                        + e.getMessage());
+            }
         }
 
         getLog().info("");

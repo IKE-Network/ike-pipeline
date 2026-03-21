@@ -453,6 +453,134 @@ class ReleaseSupport {
         }
     }
 
+    /** Base path on the site server. */
+    static final String SITE_DISK_BASE = "/srv/ike-site/";
+
+    /** SSH host alias used by wagon-ssh-external. */
+    static final String SITE_SSH_HOST = "proxy";
+
+    /**
+     * Remove a directory tree on the site server via SSH.
+     *
+     * <p>Used to clean up snapshot sites after release or feature-finish.
+     *
+     * <p>Safety: validates the path starts with {@link #SITE_DISK_BASE}
+     * and contains at least two path components after the base to
+     * prevent accidental deletion of the entire site root.
+     *
+     * @param workDir    local directory for process execution
+     * @param log        Maven log
+     * @param remotePath absolute path on the server (e.g.,
+     *                   {@code /srv/ike-site/ike-pipeline/snapshot/main})
+     * @throws MojoExecutionException if the path is unsafe or SSH fails
+     */
+    static void cleanRemoteSiteDir(File workDir, Log log, String remotePath)
+            throws MojoExecutionException {
+        validateRemotePath(remotePath);
+        log.info("Cleaning remote site: " + remotePath);
+        exec(workDir, log,
+                "ssh", SITE_SSH_HOST, "rm", "-rf", remotePath);
+    }
+
+    /**
+     * Atomically swap a newly deployed site into place on the server.
+     *
+     * <p>The deployment flow is:
+     * <ol>
+     *   <li>SCP deploys to a staging path ({@code <target>.staging})</li>
+     *   <li>This method renames the old directory to {@code <target>.old}</li>
+     *   <li>Renames the staging directory to the final target</li>
+     *   <li>Removes the old directory</li>
+     * </ol>
+     *
+     * <p>This avoids a window where the site is missing (rm + deploy)
+     * and ensures the site always serves either the old or new version.
+     *
+     * @param workDir    local directory for process execution
+     * @param log        Maven log
+     * @param remotePath final target path on the server
+     * @throws MojoExecutionException if SSH commands fail
+     */
+    static void swapRemoteSiteDir(File workDir, Log log, String remotePath)
+            throws MojoExecutionException {
+        validateRemotePath(remotePath);
+        String staging = remotePath + ".staging";
+        String old = remotePath + ".old";
+
+        log.info("Swapping site: " + staging + " → " + remotePath);
+        // Single SSH command: atomic as possible
+        // - Remove any leftover .old from a previous failed swap
+        // - Move current live → .old (may not exist on first deploy)
+        // - Move staging → live
+        // - Remove .old
+        exec(workDir, log,
+                "ssh", SITE_SSH_HOST,
+                "rm -rf " + old
+                        + " && (mv " + remotePath + " " + old + " 2>/dev/null || true)"
+                        + " && mv " + staging + " " + remotePath
+                        + " && rm -rf " + old);
+    }
+
+    /**
+     * Return the staging path for a site deploy (final path + ".staging").
+     */
+    static String siteStagingPath(String diskPath) {
+        return diskPath + ".staging";
+    }
+
+    /**
+     * Return the scpexe URL for the staging directory.
+     */
+    static String siteStagingUrl(String targetUrl) {
+        return targetUrl + ".staging";
+    }
+
+    private static void validateRemotePath(String remotePath)
+            throws MojoExecutionException {
+        if (!remotePath.startsWith(SITE_DISK_BASE)) {
+            throw new MojoExecutionException(
+                    "Refusing to delete — path does not start with "
+                            + SITE_DISK_BASE + ": " + remotePath);
+        }
+        String relative = remotePath.substring(SITE_DISK_BASE.length());
+        long depth = relative.chars().filter(c -> c == '/').count();
+        if (relative.isBlank() || depth < 1) {
+            throw new MojoExecutionException(
+                    "Refusing to delete — path too shallow (need project/type): "
+                            + remotePath);
+        }
+    }
+
+    /**
+     * Resolve the on-disk site path for a given project, type, and
+     * optional subdirectory.
+     *
+     * @param projectId  Maven artifact ID (e.g., "ike-pipeline")
+     * @param siteType   "release", "snapshot", or "checkpoint"
+     * @param subPath    optional subdirectory (branch name, version);
+     *                   null or blank to omit
+     * @return absolute path on the server
+     */
+    static String siteDiskPath(String projectId, String siteType,
+                               String subPath) {
+        String path = SITE_DISK_BASE + projectId + "/" + siteType;
+        if (subPath != null && !subPath.isBlank()) {
+            path += "/" + subPath;
+        }
+        return path;
+    }
+
+    /**
+     * Convert a git branch name to a safe site path segment.
+     * Replaces {@code /} with {@code /} (keeps hierarchy for
+     * {@code feature/name} structure).
+     */
+    static String branchToSitePath(String branch) {
+        // Keep forward slashes for directory structure (feature/name → feature/name)
+        // but sanitize anything dangerous
+        return branch.replaceAll("[^a-zA-Z0-9/_.-]", "-");
+    }
+
     private static final Pattern ARTIFACT_ID_PATTERN =
             Pattern.compile("<artifactId>([^<]+)</artifactId>");
 

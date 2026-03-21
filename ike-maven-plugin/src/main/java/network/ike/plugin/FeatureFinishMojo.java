@@ -207,6 +207,24 @@ public class FeatureFinishMojo extends AbstractWorkspaceMojo {
         if (!push) {
             getLog().info("  ⚠ Changes are local only. Run with -Dpush=true to push.");
         }
+
+        // Clean up feature branch snapshot sites for each merged component.
+        // Non-fatal — the site may never have been deployed for this feature.
+        if (merged > 0) {
+            String featurePath = ReleaseSupport.branchToSitePath(branchName);
+            for (String name : eligible) {
+                String siteDisk = ReleaseSupport.siteDiskPath(
+                        name, "snapshot", featurePath);
+                try {
+                    ReleaseSupport.cleanRemoteSiteDir(
+                            new File(root, name), getLog(), siteDisk);
+                } catch (MojoExecutionException e) {
+                    getLog().debug("No snapshot site to clean for " + name
+                            + ": " + e.getMessage());
+                }
+            }
+        }
+
         getLog().info("");
     }
 

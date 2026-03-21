@@ -38,6 +38,7 @@ public class IkeHelpMojo extends AbstractMojo {
         getLog().info("  ike:release                                     Full release + bump to next SNAPSHOT");
         getLog().info("  ike:checkpoint                                  Create single-repo immutable checkpoint");
         getLog().info("  ike:deploy-site                                 Deploy site to versioned URL");
+        getLog().info("  ike:clean-site                                  Remove a deployed site from the server");
         getLog().info("");
         getLog().info("Options for workspace goals:");
         getLog().info("  -Dworkspace.manifest=<path>  Path to workspace.yaml (auto-detected)");
@@ -74,9 +75,17 @@ public class IkeHelpMojo extends AbstractMojo {
         getLog().info("");
         getLog().info("Options for ike:deploy-site:");
         getLog().info("  -DsiteType=<type>      One of: release, snapshot, checkpoint");
+        getLog().info("  -Dbranch=<name>        Branch for snapshot path (auto-detected)");
         getLog().info("  -DsiteVersion=<v>      Version for checkpoint URL path");
         getLog().info("  -DdryRun=true          Show plan without executing");
         getLog().info("  -DskipBuild=true       Skip 'mvnw clean verify'");
+        getLog().info("  -DskipSwap=true        Deploy directly (no atomic swap)");
+        getLog().info("");
+        getLog().info("Options for ike:clean-site:");
+        getLog().info("  -DsiteType=<type>      One of: release, snapshot, checkpoint");
+        getLog().info("  -Dbranch=<name>        Branch for snapshot (auto-detected)");
+        getLog().info("  -DsiteVersion=<v>      Version for checkpoint cleanup");
+        getLog().info("  -DdryRun=true          Show plan without executing");
         getLog().info("");
     }
 }
