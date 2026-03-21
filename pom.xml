@@ -1794,6 +1794,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
         <subproject>docbook-xsl</subproject>
         <subproject>ike-doc-resources</subproject>
         <subproject>koncept-asciidoc-extension</subproject>
+        <subproject>ike-workspace-model</subproject>
         <subproject>ike-maven-plugin</subproject>
         <subproject>semantic-linebreak</subproject>
         <subproject>doc-example</subproject>
