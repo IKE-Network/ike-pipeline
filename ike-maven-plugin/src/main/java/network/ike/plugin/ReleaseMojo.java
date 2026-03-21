@@ -12,17 +12,27 @@ import java.util.List;
 /**
  * Full release: build, deploy, tag, merge, and bump to next SNAPSHOT.
  *
- * <p>This goal automates the complete release workflow in one command:
+ * <p>This goal automates the complete release workflow in one command.
+ * All local git work completes before any external action, so a
+ * deploy failure leaves the local repository in a consistent state
+ * and the deploy can be retried manually.
+ *
+ * <p><strong>Local phase (idempotent):</strong></p>
  * <ol>
  *   <li>Validate prerequisites (branch, clean worktree)</li>
  *   <li>Create {@code release/<version>} branch</li>
  *   <li>Set POM version to release version</li>
  *   <li>Build, verify, commit, tag</li>
- *   <li>Deploy to Nexus (with GPG signing)</li>
- *   <li>Deploy release site</li>
- *   <li>Push tag, create GitHub Release</li>
  *   <li>Restore {@code ${project.version}}, merge to main</li>
- *   <li>Bump to next SNAPSHOT version</li>
+ *   <li>Bump to next SNAPSHOT version, verify, commit</li>
+ * </ol>
+ *
+ * <p><strong>External phase (after all local work succeeds):</strong></p>
+ * <ol>
+ *   <li>Deploy to Nexus from tagged commit (with GPG signing)</li>
+ *   <li>Deploy release site</li>
+ *   <li>Push tag and main to origin</li>
+ *   <li>Create GitHub Release</li>
  * </ol>
  *
  * <p>Usage: {@code mvn ike:release} (auto-derives version from POM),
@@ -119,15 +129,17 @@ public class ReleaseMojo extends AbstractMojo {
                     releaseVersion + " in all POMs");
             getLog().info("[DRY RUN] Would run: mvnw clean verify -B");
             getLog().info("[DRY RUN] Would commit, tag v" + releaseVersion);
-            getLog().info("[DRY RUN] Would deploy to Nexus: mvnw deploy -B -DskipTests");
+            getLog().info("[DRY RUN] Would restore ${project.version} references");
+            getLog().info("[DRY RUN] Would merge " + releaseBranch + " to main");
+            getLog().info("[DRY RUN] Would bump to next version: " + nextVersion);
+            getLog().info("[DRY RUN] --- all local work above, external below ---");
+            getLog().info("[DRY RUN] Would deploy to Nexus from tag v" + releaseVersion);
             if (deploySite) {
                 getLog().info("[DRY RUN] Would deploy release site to: " +
                         "scpexe://proxy/srv/ike-site/" + projectId + "/release");
             }
-            getLog().info("[DRY RUN] Would push tag and create GitHub Release");
-            getLog().info("[DRY RUN] Would restore ${project.version} references");
-            getLog().info("[DRY RUN] Would merge " + releaseBranch + " to main and push");
-            getLog().info("[DRY RUN] Would bump to next version: " + nextVersion);
+            getLog().info("[DRY RUN] Would push tag and main to origin");
+            getLog().info("[DRY RUN] Would create GitHub Release");
             return;
         }
 
@@ -167,23 +179,6 @@ public class ReleaseMojo extends AbstractMojo {
                 "git", "tag", "-a", "v" + releaseVersion,
                 "-m", "Release " + releaseVersion);
 
-        // Deploy to Nexus (and site in parallel if enabled)
-        if (deploySite) {
-            ReleaseSupport.execParallel(gitRoot, getLog(),
-                    new ReleaseSupport.LabeledTask("nexus",
-                            new String[]{mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests",
-                                    "-P", "release,signArtifacts"}),
-                    new ReleaseSupport.LabeledTask("site",
-                            new String[]{mvnw.getAbsolutePath(), "site", "site:stage",
-                                    "site:deploy", "-B",
-                                    "-Dsite.deploy.url=scpexe://proxy/srv/ike-site/" +
-                                            projectId + "/release"}));
-        } else {
-            ReleaseSupport.exec(gitRoot, getLog(),
-                    mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests",
-                    "-P", "release,signArtifacts");
-        }
-
         // Restore ${project.version} references
         getLog().info("Restoring ${project.version} references:");
         List<File> restoredPoms = ReleaseSupport.restoreBackups(gitRoot, getLog());
@@ -194,14 +189,80 @@ public class ReleaseMojo extends AbstractMojo {
                     "release: restore ${project.version} references");
         }
 
+        // Merge back to main
+        ReleaseSupport.exec(gitRoot, getLog(), "git", "checkout", "main");
+        ReleaseSupport.exec(gitRoot, getLog(),
+                "git", "merge", "--no-ff", releaseBranch,
+                "-m", "merge: release " + releaseVersion);
+
+        // ── Post-release bump ─────────────────────────────────────────
+
+        getLog().info("");
+        getLog().info("Bumping to next version: " + nextVersion);
+
+        // Re-read version after merge (it's the release version on main now)
+        String currentVersion = ReleaseSupport.readPomVersion(rootPom);
+        ReleaseSupport.setPomVersion(rootPom, currentVersion, nextVersion);
+
+        // Verify build with new SNAPSHOT version
+        ReleaseSupport.exec(gitRoot, getLog(),
+                mvnw.getAbsolutePath(), "clean", "verify", "-B");
+
+        // Commit
+        ReleaseSupport.exec(gitRoot, getLog(), "git", "add", "pom.xml");
+        ReleaseSupport.exec(gitRoot, getLog(),
+                "git", "commit", "-m",
+                "post-release: bump to " + nextVersion);
+
+        // Clean up release branch
+        ReleaseSupport.exec(gitRoot, getLog(),
+                "git", "branch", "-d", releaseBranch);
+
+        // ── External actions (all local work is done) ─────────────────
+        // Everything above this point is local and idempotent. If any
+        // external action below fails, all local git state is consistent
+        // and the deploy can be retried manually:
+        //   git checkout v<version> && mvnw deploy -B -DskipTests -P release,signArtifacts
+        //   git checkout main && git push origin main v<version>
+
+        getLog().info("");
+        getLog().info("Local work complete. Starting external deploys...");
+        getLog().info("");
+
         boolean hasOrigin = ReleaseSupport.hasRemote(gitRoot, "origin");
 
-        // Push tag
+        // Deploy from the tagged release commit
+        ReleaseSupport.exec(gitRoot, getLog(),
+                "git", "checkout", "v" + releaseVersion);
+        try {
+            if (deploySite) {
+                ReleaseSupport.execParallel(gitRoot, getLog(),
+                        new ReleaseSupport.LabeledTask("nexus",
+                                new String[]{mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests",
+                                        "-P", "release,signArtifacts"}),
+                        new ReleaseSupport.LabeledTask("site",
+                                new String[]{mvnw.getAbsolutePath(), "site", "site:stage",
+                                        "site:deploy", "-B",
+                                        "-Dsite.deploy.url=scpexe://proxy/srv/ike-site/" +
+                                                projectId + "/release"}));
+            } else {
+                ReleaseSupport.exec(gitRoot, getLog(),
+                        mvnw.getAbsolutePath(), "deploy", "-B", "-DskipTests",
+                        "-P", "release,signArtifacts");
+            }
+        } finally {
+            // Always return to main, even if deploy fails
+            ReleaseSupport.exec(gitRoot, getLog(), "git", "checkout", "main");
+        }
+
+        // Push tag and main
         if (hasOrigin) {
             ReleaseSupport.exec(gitRoot, getLog(),
                     "git", "push", "origin", "v" + releaseVersion);
+            ReleaseSupport.exec(gitRoot, getLog(),
+                    "git", "push", "origin", "main");
         } else {
-            getLog().info("No 'origin' remote — skipping tag push");
+            getLog().info("No 'origin' remote — skipping push");
         }
 
         // Create GitHub Release
@@ -219,47 +280,6 @@ public class ReleaseMojo extends AbstractMojo {
             }
         } else {
             getLog().info("No 'origin' remote — skipping GitHub Release");
-        }
-
-        // Merge back to main
-        ReleaseSupport.exec(gitRoot, getLog(), "git", "checkout", "main");
-        ReleaseSupport.exec(gitRoot, getLog(),
-                "git", "merge", "--no-ff", releaseBranch,
-                "-m", "merge: release " + releaseVersion);
-        if (hasOrigin) {
-            ReleaseSupport.exec(gitRoot, getLog(),
-                    "git", "push", "origin", "main");
-        } else {
-            getLog().info("No 'origin' remote — skipping push to main");
-        }
-
-        // Clean up release branch
-        ReleaseSupport.exec(gitRoot, getLog(),
-                "git", "branch", "-d", releaseBranch);
-
-        // ── Post-release bump ─────────────────────────────────────────
-
-        getLog().info("");
-        getLog().info("Bumping to next version: " + nextVersion);
-
-        // Re-read version after merge (it's the release version on main now)
-        String currentVersion = ReleaseSupport.readPomVersion(rootPom);
-        ReleaseSupport.setPomVersion(rootPom, currentVersion, nextVersion);
-
-        // Verify build with new SNAPSHOT version
-        ReleaseSupport.exec(gitRoot, getLog(),
-                mvnw.getAbsolutePath(), "clean", "verify", "-B");
-
-        // Commit and push
-        ReleaseSupport.exec(gitRoot, getLog(), "git", "add", "pom.xml");
-        ReleaseSupport.exec(gitRoot, getLog(),
-                "git", "commit", "-m",
-                "post-release: bump to " + nextVersion);
-        if (hasOrigin) {
-            ReleaseSupport.exec(gitRoot, getLog(),
-                    "git", "push", "origin", "main");
-        } else {
-            getLog().info("No 'origin' remote — skipping push to main");
         }
 
         getLog().info("");
