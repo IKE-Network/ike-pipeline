@@ -33,10 +33,53 @@
         (topological sort, cascade analysis, cycle detection) and version
         manipulation utilities. Foundation for ike-maven-plugin workspace goals.
     </description>
+    <url>https://github.com/IKE-Network/ike-pipeline</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <organization>
+        <name>IKE Community</name>
+        <url>https://ike.network</url>
+    </organization>
+
+    <distributionManagement>
+        <repository>
+            <id>ike-releases</id>
+            <url>${deploy.release.url}</url>
+        </repository>
+        <snapshotRepository>
+            <id>ike-snapshots</id>
+            <url>${deploy.snapshot.url}</url>
+        </snapshotRepository>
+        <site>
+            <id>ike-site</id>
+            <url>scpexe://proxy/srv/ike-site/ike-pipeline/${project.artifactId}</url>
+        </site>
+    </distributionManagement>
 
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <snakeyaml.version>2.2</snakeyaml.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>network.ike</groupId>
+                <artifactId>ike-bom</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -45,17 +88,15 @@
             <version>${snakeyaml.version}</version>
         </dependency>
 
-        <!-- Test -->
+        <!-- Test (versions managed by ike-bom) -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>${junit-jupiter.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
-            <version>${assertj.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
