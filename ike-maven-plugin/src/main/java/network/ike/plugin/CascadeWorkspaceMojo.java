@@ -25,7 +25,7 @@ public class CascadeWorkspaceMojo extends AbstractWorkspaceMojo {
      * The component that changed. Prompted if omitted.
      */
     @Parameter(property = "component")
-    private String component;
+    String component;
 
     @Override
     public void execute() throws MojoExecutionException {

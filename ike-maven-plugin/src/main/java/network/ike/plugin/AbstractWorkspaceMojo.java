@@ -22,10 +22,10 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
 
     /**
      * Path to workspace.yaml. If not set, searches upward from the
-     * current directory.
+     * current directory. Package-private for test access.
      */
     @Parameter(property = "workspace.manifest")
-    private File manifest;
+    File manifest;
 
     /**
      * Load the manifest and build the workspace graph.

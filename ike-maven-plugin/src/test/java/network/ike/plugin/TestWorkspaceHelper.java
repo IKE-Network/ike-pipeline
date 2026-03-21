@@ -1,0 +1,160 @@
+package network.ike.plugin;
+
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+/**
+ * Creates a realistic temp workspace for Mojo integration tests.
+ *
+ * <p>Builds a {@code workspace.yaml}, component directories with
+ * initialised git repos and Maven POMs. The workspace has three
+ * components forming a linear dependency chain:
+ *
+ * <pre>
+ *   lib-a  (leaf)
+ *     ↑
+ *   lib-b  (depends on lib-a)
+ *     ↑
+ *   app-c  (depends on lib-b)
+ * </pre>
+ *
+ * <p>Two groups are defined: {@code all} (all three) and
+ * {@code libs} (lib-a, lib-b).
+ */
+class TestWorkspaceHelper {
+
+    private final Path root;
+
+    TestWorkspaceHelper(Path tempDir) {
+        this.root = tempDir;
+    }
+
+    /** Build a complete workspace with 3 components. */
+    void buildWorkspace() throws Exception {
+        writeWorkspaceYaml();
+        createComponent("lib-a", "1.0.0-SNAPSHOT", null);
+        createComponent("lib-b", "2.0.0-SNAPSHOT", "lib-a");
+        createComponent("app-c", "3.0.0-SNAPSHOT", "lib-b");
+    }
+
+    Path workspaceYaml() {
+        return root.resolve("workspace.yaml");
+    }
+
+    File workspaceRoot() {
+        return root.toFile();
+    }
+
+    // ── Internal ────────────────────────────────────────────────────
+
+    private void writeWorkspaceYaml() throws Exception {
+        String yaml = """
+                schema-version: "1.0"
+                generated: "2026-01-01"
+
+                defaults:
+                  branch: main
+
+                component-types:
+                  maven:
+                    description: Maven project
+                    build-command: "mvn clean install"
+                    checkpoint-mechanism: git-tag
+
+                components:
+                  lib-a:
+                    type: maven
+                    description: Shared library A
+                    repo: https://example.com/lib-a.git
+                    branch: main
+                    version: "1.0.0-SNAPSHOT"
+                  lib-b:
+                    type: maven
+                    description: Library B (depends on A)
+                    repo: https://example.com/lib-b.git
+                    branch: main
+                    version: "2.0.0-SNAPSHOT"
+                    depends-on:
+                      - component: lib-a
+                        relationship: build
+                  app-c:
+                    type: maven
+                    description: Application C (depends on B)
+                    repo: https://example.com/app-c.git
+                    branch: main
+                    version: "3.0.0-SNAPSHOT"
+                    depends-on:
+                      - component: lib-b
+                        relationship: build
+
+                groups:
+                  all:
+                    - lib-a
+                    - lib-b
+                    - app-c
+                  libs:
+                    - lib-a
+                    - lib-b
+                """;
+        Files.writeString(workspaceYaml(), yaml, StandardCharsets.UTF_8);
+    }
+
+    private void createComponent(String name, String version,
+                                  String dependencyArtifact) throws Exception {
+        Path dir = root.resolve(name);
+        Files.createDirectories(dir);
+
+        // Write pom.xml
+        StringBuilder pom = new StringBuilder();
+        pom.append("""
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0"
+                         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.test</groupId>
+                """);
+        pom.append("    <artifactId>").append(name).append("</artifactId>\n");
+        pom.append("    <version>").append(version).append("</version>\n");
+
+        if (dependencyArtifact != null) {
+            pom.append("    <dependencies>\n");
+            pom.append("        <dependency>\n");
+            pom.append("            <groupId>com.test</groupId>\n");
+            pom.append("            <artifactId>").append(dependencyArtifact)
+               .append("</artifactId>\n");
+            pom.append("            <version>1.0.0-SNAPSHOT</version>\n");
+            pom.append("        </dependency>\n");
+            pom.append("    </dependencies>\n");
+        }
+
+        pom.append("</project>\n");
+        Files.writeString(dir.resolve("pom.xml"), pom.toString(),
+                StandardCharsets.UTF_8);
+
+        // Initialise git repo with an initial commit on main
+        exec(dir, "git", "init", "-b", "main");
+        exec(dir, "git", "config", "user.email", "test@example.com");
+        exec(dir, "git", "config", "user.name", "Test");
+        exec(dir, "git", "add", ".");
+        exec(dir, "git", "commit", "-m", "Initial commit");
+    }
+
+    private void exec(Path workDir, String... command) throws Exception {
+        Process process = new ProcessBuilder(command)
+                .directory(workDir.toFile())
+                .redirectErrorStream(true)
+                .start();
+        // Consume output to prevent blocking
+        process.getInputStream().readAllBytes();
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new RuntimeException(
+                    "Command failed (exit " + exitCode + "): "
+                            + String.join(" ", command));
+        }
+    }
+}

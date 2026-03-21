@@ -29,7 +29,7 @@ public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
      * Output format: "text" (default) or "dot" (Graphviz DOT).
      */
     @Parameter(property = "format", defaultValue = "text")
-    private String format;
+    String format;
 
     @Override
     public void execute() throws MojoExecutionException {
