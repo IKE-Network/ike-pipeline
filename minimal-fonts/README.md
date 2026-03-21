@@ -37,7 +37,7 @@ Maven artifact. No transitive dependencies.
 - NotoSansSymbols-Regular.ttf (v2.003) — circled/boxed letters, alchemical, astronomical, technical symbols
 - NotoSansSymbols2-Regular.ttf (v2.008) — arrows, dingbats, geometric shapes, Braille, chess, transport
 
-> **Note:** `build-all.sh` downloads all fonts automatically from GitHub on first run.
+> **Note:** Maven downloads all fonts automatically from GitHub on first run.
 > Subsequent runs skip the download if `src/main/resources/*.ttf` already exist.
 
 ## Installation

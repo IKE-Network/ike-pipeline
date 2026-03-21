@@ -106,7 +106,7 @@ Two SVGO configs handle different SVG compatibility issues:
 
 ==== `svgo.config.mjs` (Prawn CSS Inlining)
 
-Used by `build-all.sh` for the Prawn three-step build.
+Used by the Prawn three-step build.
 Inlines CSS class rules from `<style>` blocks into
 element-level `style` attributes,
 then removes the empty `<style>` elements.

@@ -75,7 +75,7 @@ activated by a file-based profile:
 
 ```bash
 # Full reactor build (HTML + Prawn PDF):
-./build-all.sh --pdf=prawn
+mvn clean verify -Dike.pdf.prawn
 
 # Single module, specific renderer:
 mvn clean verify -pl example-project -Dike.pdf.xep

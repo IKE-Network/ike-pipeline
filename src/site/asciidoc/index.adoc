@@ -194,7 +194,7 @@ rectangle "ike-build-standards" <<artifact>> as BS {
 rectangle "ike-build-tools" <<artifact>> as BT {
     file "fix-inline-svg.sh" as S1
     file "scan-renderer-logs.sh" as S2
-    file "release-from-feature.sh" as S3
+    file "copy-docs-to-site.sh" as S3
 }
 
 rectangle "ike-doc-resources" <<artifact>> as DR {
@@ -238,7 +238,7 @@ Build with Prawn PDF:
 
 [source,bash]
 ----
-./build-all.sh --pdf=prawn
+mvn clean verify -Dike.pdf.prawn
 ----
 
 Build a single module with a specific renderer:

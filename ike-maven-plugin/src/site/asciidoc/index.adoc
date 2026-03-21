@@ -1,52 +1,58 @@
 = IKE Maven Plugin
 
-IDE-discoverable Maven goals wrapping the bash scripts in
-`ike-build-tools`.
-Each Maven goal maps to one bash script --
-the plugin is a discoverability shim,
-not an engine.
+IDE-discoverable Maven goals for workspace management,
+release automation, and build verification.
+Goals appear in IntelliJ's Maven tool window as clickable,
+runnable targets with parameter prompts.
 
 == Purpose
 
-Bash scripts have a discoverability problem:
-a developer must know that scripts exist,
-where they are,
-and what arguments they take.
-Maven plugin goals solve this --
-they appear in the IDE's Maven tool window as clickable,
-runnable targets with parameter prompts.
+Maven plugin goals are discoverable in the IDE.
+A developer browsing the Maven tool window sees `ike:init`,
+`ike:status`, `ike:feature-finish`, `ike:release` --
+clickable targets that integrate workspace and release
+operations into the standard Maven workflow.
 
 == Architecture
 
-Each Mojo is a minimal `ProcessBuilder` invocation calling bash
-with the script path and arguments derived from Maven configuration.
-No business logic lives in Java.
-The bash script is the source of truth;
-the Maven plugin is the discoverability layer.
+Release and workspace logic lives in `ReleaseSupport.java`,
+a single utility class with clear method boundaries.
+Each Mojo delegates to `ReleaseSupport` for version manipulation,
+Git operations, and Maven invocations.
 
 == Goals
 
 [cols="2,3",options="header"]
 |===
-| Goal | Script
+| Goal | Purpose
 
-| `ike:workspace`
-| `ike-workspace.sh` -- create, list, resume, or remove IKE Workspaces
+| `ike:init`
+| Create a new IKE Workspace (clone, branch, set version)
+
+| `ike:status`
+| Show workspace status (branch, version, uncommitted changes)
+
+| `ike:dashboard`
+| Show dashboard of all workspaces
+
+| `ike:feature-finish`
+| Strip branch qualifier, merge feature to main, tag
+
+| `ike:ws-checkpoint`
+| Create immutable checkpoint from current branch
+
+| `ike:release`
+| Transition from SNAPSHOT to release version, build, tag, deploy, bump to next SNAPSHOT
+
+| `ike:verify`
+| PR validation
 
 | `ike:help`
 | Displays available goals and usage
 |===
 
-Additional goals will wrap release automation scripts as they stabilize:
-`ike:checkpoint`,
-`ike:merge-to-main`,
-`ike:prepare-release`,
-and `ike:post-release`.
-
 == Design Philosophy
 
-Bash holds the logic (transparent,
-iterable, composable).
-Maven provides the discoverability (IDE integration,
-goal listing).
-Neither depends on the internals of the other.
+All workspace and release logic lives in the Maven plugin,
+providing IDE discoverability, cross-platform compatibility,
+and direct integration with the Maven lifecycle.

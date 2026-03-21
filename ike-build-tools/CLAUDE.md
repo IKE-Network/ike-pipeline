@@ -29,14 +29,17 @@ and configuration files. Consumer modules unpack this artifact at
 
 ## Contents
 
-- `scripts/common-functions.sh` — shared shell utilities (log, git helpers)
-- `scripts/ike-workspace.sh` — IKE Workspace management
-- `scripts/release-from-feature.sh` — create release branches
-- `scripts/merge-to-main.sh` — merge feature to main (placeholder)
-- `scripts/create-checkpoint.sh` — create checkpoint (placeholder)
-- `scripts/prepare-release.sh` — prepare release (placeholder)
-- `scripts/post-release.sh` — post-release version bump (placeholder)
-- `scripts/validate-pr.sh` — PR validation (stub)
+- `scripts/fix-inline-svg.sh` — SVG post-processing for PDF renderers
+- `scripts/patch-docbook-xsl.sh` — DocBook XSL patching
+- `scripts/scan-renderer-logs.sh` — renderer log analysis
+- `scripts/copy-docs-to-site.sh` — copy generated docs to site directory
+
+NOTE: Workspace and release scripts (`ike-workspace.sh`, `merge-to-main.sh`,
+`create-checkpoint.sh`, `prepare-release.sh`, `post-release.sh`,
+`release-from-feature.sh`, `validate-pr.sh`, `common-functions.sh`)
+have been replaced by `ike-maven-plugin` goals (`ike:init`, `ike:status`,
+`ike:dashboard`, `ike:feature-finish`, `ike:ws-checkpoint`, `ike:release`,
+`ike:verify`).
 - `config/.stignore.template` — Syncthing ignore patterns
 - `config/checkstyle.xml` — checkstyle rules (stub)
 - `config/.editorconfig` — editor settings (stub)

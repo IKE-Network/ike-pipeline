@@ -38,7 +38,7 @@ but the doc pipeline does not activate (they lack `src/docs/asciidoc/`):
 | `koncept-asciidoc-extension` | AsciidoctorJ inline macro + glossary | JAR |
 | `ike-maven-plugin` | Maven plugin wrapping build-tools scripts | maven-plugin |
 
-These are built and installed first in the reactor. The `build-all.sh` script handles this ordering.
+These are built and installed first in the reactor. The Maven reactor handles build ordering automatically.
 
 ## pluginManagement Pattern
 
@@ -125,7 +125,7 @@ The `main` branch retains the unqualified version:
 
     1.2.0-SNAPSHOT
 
-The `ike-workspace` script sets this automatically at workspace creation.
+The `ike:init` goal sets this automatically at workspace creation.
 See the IKE Workspace Conventions document for the full rationale.
 
 ### Standards Artifact Versioning
@@ -136,7 +136,7 @@ monotonic integer scheme (1, 2, 3...) is deprecated.
 
 ### Release Process
 
-Releases are performed by composable bash scripts in `ike-build-tools`,
+Releases are performed by `ike-maven-plugin` goals,
 not by `maven-release-plugin` or `maven-gitflow-plugin`. A valid release:
 
 1. Sets version to release version (strip `-SNAPSHOT`)

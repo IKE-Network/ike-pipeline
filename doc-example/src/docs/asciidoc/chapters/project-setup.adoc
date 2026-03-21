@@ -120,8 +120,8 @@ mvn clean verify -pl my-project -Dike.pdf.prince
 # Prawn PDF (preview quality, no glossary)
 mvn clean verify -pl my-project -Dike.pdf.prawn
 
-# All renderers via build-all.sh
-./build-all.sh --pdf=fop
+# Full reactor build with FOP PDF
+mvn clean verify -Dike.pdf.fop
 ----
 
 === Step 5: Find the Output

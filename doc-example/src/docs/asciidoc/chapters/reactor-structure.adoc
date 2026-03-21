@@ -88,6 +88,6 @@ The explicit order in the aggregator POM mirrors this:
 . `java-parent` -- parent is `ike-parent`
 . `example-project` -- parent is `java-parent`, depends on `minimal-fonts`
 
-The `build-all.sh` script exploits this by first installing
-infrastructure modules (`mvn install -pl '!example-project'`),
-then building the example project with the selected PDF renderer.
+The Maven reactor handles this ordering automatically.
+Infrastructure modules are built and installed first,
+then the example project builds with the selected PDF renderer.

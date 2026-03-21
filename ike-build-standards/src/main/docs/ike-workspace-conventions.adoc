@@ -7,7 +7,7 @@
 :topic-status: draft
 :topic-keywords: workspace, versioning, Maven 4, defense-in-depth, Swiss cheese, SyncthingOk,
 :topic-scope-note: Rationale and conventions for multi-machine IKE development. \
-  For script usage, see the ike-workspace.sh reference in ike-build-tools.
+  For workspace management, see the ike-maven-plugin goals (ike:init, ike:status, ike:dashboard).
 
 [[ike-workspace-conventions]]
 = IKE Workspace Conventions
@@ -147,8 +147,8 @@ an artifact's version string tells you which branch produced it.
 
 *Where the holes are:*
 Someone could forget to set the branch-qualified version.
-The `ike-workspace` script automates this,
-but a manual `git clone` bypasses the script.
+The `ike:init` goal automates this,
+but a manual `git clone` bypasses the goal.
 
 === Layer 4: Syncthing with Git Isolation
 
@@ -189,7 +189,7 @@ The developer must `git fetch` to synchronize history.
 
 |Branch-qualified versions
 |Deploy/publish collision, provenance loss
-|Manual clone bypassing the script
+|Manual clone bypassing the goal
 
 |Syncthing + Git isolation
 |Stale files between machines
@@ -399,30 +399,30 @@ The `main` branch workspace, if present, is named `main/`.
 
 === Creation
 
-The `ike-workspace` script creates workspaces:
+The `ike:init` goal creates workspaces:
 
 [source,bash]
 ----
 # Create a workspace branching from origin/main
-ike-workspace shield/terminology-refresh
+mvn ike:init -Dbranch=shield/terminology-refresh
 
 # Create a workspace branching from the current workspace's branch
-ike-workspace shield/terminology-mappings --from-here
+mvn ike:init -Dbranch=shield/terminology-mappings -DfromHere
 
-# List all workspaces
-ike-workspace --list
+# Show workspace status
+mvn ike:status
 
-# Remove a workspace (with uncommitted-changes safety check)
-ike-workspace --remove shield/terminology-refresh
+# Show workspace dashboard
+mvn ike:dashboard
 ----
 
-When `--from-here` is used,
-the script pushes the current branch to the remote
+When `-DfromHere` is used,
+the goal pushes the current branch to the remote
 before creating the new workspace.
 This ensures that the branch point is recorded in Git history.
 
 After cloning and checking out the branch,
-the script sets the branch-qualified version
+the goal sets the branch-qualified version
 by editing the version in `ike-parent/pom.xml`
 and committing the change.
 
@@ -511,76 +511,29 @@ When their assumptions don't match your workflow,
 you fight the plugin rather than the problem.
 
 The IKE Community does not use these plugins.
-Release operations are implemented as composable bash scripts
-in `ike-build-tools`.
+Release operations are implemented as Maven plugin goals
+in `ike-maven-plugin`.
 This is a deliberate architectural choice, not a gap.
 
-=== Bash as the Implementation Language
+=== Maven Plugin as the Implementation
 
-Release automation scripts are implemented in bash.
-This separates the concern of _what operations to perform_
-(version manipulation, Git branch operations, Maven invocations)
-from the concern of _how to integrate with the build system_
-(Maven plugin API, IDE integration).
+Release automation is implemented as Maven plugin goals
+in the `ike-maven-plugin` module.
+Each goal is an IDE-discoverable, clickable target
+in IntelliJ's Maven tool window with parameter prompts.
 
-Bash provides:
+The plugin provides:
 
-* *Transparency.* Each script does one thing.
-  You can read it, understand it, debug it with `set -x`.
-  No plugin black box.
-* *Iterability.* When a new edge case is discovered —
-  and the PR + checkpoint interaction alone has several —
-  you edit a script, not fork a plugin.
-* *Composability.* Scripts call other scripts.
+* *Discoverability.* Goals appear in the IDE.
+  A developer browsing the Maven tool window sees `ike:init`,
+  `ike:status`, `ike:feature-finish`, `ike:release` —
+  clickable, runnable targets.
+* *Transparency.* Release logic lives in `ReleaseSupport.java`,
+  a single utility class with clear method boundaries.
+* *Composability.* Goals invoke other goals.
   Complex workflows are assembled from simple operations.
-* *Universality.* Bash runs natively on macOS and Linux.
-  Windows compatibility is provided through
-  Windows Subsystem for Linux (WSL) and Git Bash,
-  both of which are standard in modern Windows development environments.
-  This is a solved problem, not a risk.
-
-The choice of bash also separates a concern:
-the _logic_ of release operations
-is independent of the _build system integration_.
-Scripts can be invoked from the command line,
-from CI pipelines,
-or from a Maven plugin wrapper —
-the logic is the same in all contexts.
-
-=== Discoverability: The Maven Plugin Wrapper
-
-Bash scripts have a discoverability problem.
-A developer must know that the scripts exist,
-where they are,
-and what arguments they take.
-There is no self-advertising mechanism.
-
-By contrast, Maven plugin goals show up in the IDE.
-IntelliJ's Maven tool window displays available goals.
-A developer browsing the tool window sees `ike:workspace`,
-`ike:checkpoint`, `ike:merge-to-main` —
-clickable, runnable targets with parameter prompts.
-
-The IKE Community addresses this with a lightweight Maven plugin
-in the `ike-build-tools` module.
-The plugin is a _shim_, not an engine.
-Each Maven goal maps to one bash script.
-The plugin discovers the script
-(unpacked from `ike-build-tools` resources),
-passes Maven properties as script arguments,
-and surfaces the script's exit code as a Maven build result.
-
-The implementation of each Mojo is deliberately minimal:
-a `ProcessBuilder` invocation calling bash with the script path
-and arguments derived from Maven configuration.
-No business logic lives in Java.
-The bash script is the source of truth;
-the Maven plugin is the discoverability layer.
-
-This preserves the separation of concerns:
-bash holds the logic (transparent, iterable, composable),
-Maven provides the discoverability (IDE integration, goal listing),
-and neither depends on the internals of the other.
+* *Universality.* Maven runs on macOS, Linux, and Windows
+  without platform-specific shell dependencies.
 
 === Version Transitions
 
@@ -597,62 +550,54 @@ that must be managed through the development lifecycle:
 Key transitions:
 
 * *Workspace creation:* `1.2.0-SNAPSHOT` → `1.2.0-shield-terminology-SNAPSHOT`.
-  Automated by `ike-workspace.sh`.
+  Automated by `mvn ike:init`.
 * *Checkpoint creation:* `1.2.0-shield-terminology-SNAPSHOT`
   → `1.2.0-shield-terminology-checkpoint.20250222.1`.
-  Automated by `create-checkpoint.sh`.
+  Automated by `mvn ike:ws-checkpoint`.
   The SNAPSHOT version is not changed; the checkpoint is a tagged,
   immutable build at a point in time.
 * *Merge to main:* `1.2.0-shield-terminology-SNAPSHOT` → `1.2.0-SNAPSHOT`.
   The branch qualifier is stripped.
-  Automated by `merge-to-main.sh`.
+  Automated by `mvn ike:feature-finish`.
   PR reviewers should expect this version change in the diff —
   it is structural, not a conflict.
 * *Release:* `1.2.0-SNAPSHOT` → `1.2.0`.
-  Automated by `prepare-release.sh`.
+  Automated by `mvn ike:release`.
 * *Post-release:* `1.2.0` → `1.3.0-SNAPSHOT`.
-  Automated by `post-release.sh`.
+  Automated by `mvn ike:release` (integrated into single goal).
 
-=== Script Inventory
+=== Goal Inventory
 
-The `ike-build-tools` scripts directory contains:
+The `ike-maven-plugin` provides:
 
 [cols="2,3"]
 |===
-|Script |Purpose
+|Goal |Purpose
 
-|`ike-workspace.sh`
-|Create, list, resume, or remove IKE Workspaces
+|`ike:init`
+|Create a new IKE Workspace (clone, branch, set version)
 
-|`release-from-feature.sh`
-|Create a release branch from a feature branch (exists, needs alignment)
+|`ike:status`
+|Show workspace status (branch, version, uncommitted changes)
 
-|`merge-to-main.sh`
-|Strip branch qualifier, merge feature to main, tag (placeholder)
+|`ike:dashboard`
+|Show dashboard of all workspaces
 
-|`create-checkpoint.sh`
-|Create immutable checkpoint from current branch (placeholder)
+|`ike:feature-finish`
+|Strip branch qualifier, merge feature to main, tag
 
-|`prepare-release.sh`
-|Transition from SNAPSHOT to release version on main (placeholder)
+|`ike:ws-checkpoint`
+|Create immutable checkpoint from current branch
 
-|`post-release.sh`
-|Bump to next SNAPSHOT after release (placeholder)
+|`ike:release`
+|Transition from SNAPSHOT to release version, build, tag, deploy, bump to next SNAPSHOT
 
-|`common-functions.sh`
-|Shared utility functions for all scripts
+|`ike:verify`
+|PR validation
 |===
 
-Placeholder scripts contain banner comments,
-usage documentation,
-and argument parsing scaffolding —
-enough to establish the interface
-while the implementation matures through iterative use.
-
-The corresponding Maven plugin goals
-will wrap each script as it stabilizes:
-`mvn ike:workspace`, `mvn ike:checkpoint`,
-`mvn ike:merge-to-main`, and so on.
+Shared utility logic lives in `ReleaseSupport.java`
+in the `ike-maven-plugin` module.
 
 == Summary
 

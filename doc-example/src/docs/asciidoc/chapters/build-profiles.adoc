@@ -175,29 +175,27 @@ mvn verify -Dkroki.server.url=http://localhost:8000 \
            -Dprince.executable=/opt/prince/bin/prince
 ----
 
-=== `build-all.sh` Behavior
+=== Maven Build Commands
 
-The `build-all.sh` script wraps the reactor build with PDF
-renderer selection and SVG post-processing:
+The reactor build is invoked directly with Maven,
+using `-D` properties to select PDF renderers:
 
 [source,bash]
 ----
-./build-all.sh                   # HTML + PDF (Prawn default)
-./build-all.sh --pdf=prawn       # Prawn with svgo SVG fixing
-./build-all.sh --pdf=fop         # DocBook -> XSL-FO -> FOP (free)
-./build-all.sh --pdf=xep         # DocBook -> XSL-FO -> XEP
-./build-all.sh --pdf=prince      # HTML -> Prince XML -> PDF
-./build-all.sh --pdf=ah          # HTML -> AH Formatter -> PDF
-./build-all.sh --pdf=weasyprint  # HTML -> WeasyPrint -> PDF
-./build-all.sh --pdf=none        # HTML only
-./build-all.sh --quiet           # Suppress Maven output
+mvn clean verify                       # HTML only (default)
+mvn clean verify -Dike.pdf.prawn       # Prawn PDF
+mvn clean verify -Dike.pdf.fop         # DocBook -> XSL-FO -> FOP (free)
+mvn clean verify -Dike.pdf.xep         # DocBook -> XSL-FO -> XEP
+mvn clean verify -Dike.pdf.prince      # HTML -> Prince XML -> PDF
+mvn clean verify -Dike.pdf.ah          # HTML -> AH Formatter -> PDF
+mvn clean verify -Dike.pdf.weasyprint  # HTML -> WeasyPrint -> PDF
 ----
 
-The script:
+The Maven reactor:
 
-. Checks prerequisites (Maven, Java, renderer binaries, Node.js for svgo)
-. Installs infrastructure modules: `mvn install -pl '!example-project'`
-. Builds the example project with the selected renderer
+. Validates prerequisites (Maven, Java, renderer binaries)
+. Builds infrastructure modules first (sorted by dependency graph)
+. Builds doc projects with the selected renderer
 . For Prawn: runs svgo to inline CSS in SVGs, then rebuilds
 
 === Build Lifecycle
