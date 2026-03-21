@@ -117,7 +117,18 @@
                 <plugin><artifactId>maven-compiler-plugin</artifactId><version>3.14.0</version></plugin>
                 <plugin><artifactId>maven-resources-plugin</artifactId><version>3.3.1</version></plugin>
                 <plugin><artifactId>maven-jar-plugin</artifactId><version>3.4.2</version></plugin>
-                <plugin><artifactId>maven-surefire-plugin</artifactId><version>3.5.2</version></plugin>
+                <plugin>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                    <configuration>
+                        <!-- Integration tests spawn git/mvn subprocesses that write
+                             to stdout. inheritIO() in ReleaseSupport.exec() sends
+                             subprocess output to the JVM's stdout, which corrupts
+                             surefire's fork communication protocol. Redirect all
+                             test output to files to keep the channel clean. -->
+                        <redirectTestOutputToFile>true</redirectTestOutputToFile>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
 

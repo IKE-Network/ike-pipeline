@@ -42,11 +42,20 @@ class ReleaseSupport {
             throws MojoExecutionException {
         log.info("» " + String.join(" ", command));
         try {
-            int exit = new ProcessBuilder(command)
+            Process proc = new ProcessBuilder(command)
                     .directory(workDir)
-                    .inheritIO()
-                    .start()
-                    .waitFor();
+                    .redirectErrorStream(true)
+                    .start();
+            // Route subprocess output through Maven's logger instead of
+            // inheritIO(), which corrupts surefire's fork protocol.
+            try (var reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(proc.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log.info("[stdout] " + line);
+                }
+            }
+            int exit = proc.waitFor();
             if (exit != 0) {
                 throw new MojoExecutionException(
                         "Command failed (exit " + exit + "): " +
