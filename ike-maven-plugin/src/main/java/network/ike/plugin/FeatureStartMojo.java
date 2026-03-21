@@ -20,7 +20,7 @@ import java.util.Set;
  * specified components (or group), optionally setting branch-qualified
  * SNAPSHOT versions in each POM.
  *
- * <h3>What it does, per component:</h3>
+ * <p><strong>What it does, per component:</strong></p>
  * <ol>
  *   <li>Validates the working tree is clean</li>
  *   <li>Creates branch {@code feature/<name>} from the current HEAD</li>
