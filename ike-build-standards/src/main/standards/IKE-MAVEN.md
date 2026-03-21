@@ -211,3 +211,99 @@ universally supported by tools. **Never use abbreviated element names.**
 ## Reactor Build
 
 The root POM (`ike-parent`) is both the reactor aggregator and the single parent POM. It lists all 11 subproject modules via `<subprojects>`. Module ordering aids readability but Maven sorts automatically by dependency graph.
+
+## Testing Philosophy
+
+### No mocks by default
+
+Do not use mock frameworks (Mockito, PowerMock, EasyMock) unless the
+dependency being isolated meets **all three** criteria:
+
+1. External I/O you cannot control (network, hardware, FDA endpoints)
+2. Non-deterministic or slow (>1s per invocation)
+3. Unavailable in CI (licensed software, physical devices)
+
+If the dependency can be made fast and deterministic, use it directly.
+Mocks test that code calls the mock the way you programmed it — that is
+circular validation, not functional verification.
+
+### Why mock frameworks are a liability
+
+Mock frameworks depend on runtime bytecode manipulation (cglib,
+ByteBuddy, Java agents). This creates ongoing maintenance costs:
+
+- **JVM major version boundaries** break bytecode assumptions. Each
+  upgrade requires mock framework version negotiation.
+- **JPMS module enforcement** restricts reflective access. The
+  `--add-opens` flags in surefire config are scar tissue from this
+  fight. Strong encapsulation is the direction of travel — Oracle is
+  not reversing it.
+- **Preview features** alter class file semantics between releases. A
+  mock framework tested against a stable release may silently
+  misbehave with preview-enabled builds.
+- **GraalVM native image** makes runtime bytecode generation
+  impossible. Mock-dependent tests cannot run in native mode.
+
+The maintenance cost of keeping mock infrastructure compatible with JVM
+evolution is ongoing and escalating.
+
+### What to do instead
+
+**Extract pure functions from orchestration code.**  Mojos, controllers,
+and service classes that orchestrate I/O should delegate logic to
+static utility methods or records that take plain inputs and return
+plain outputs.  Test the extracted functions directly.
+
+Pattern:
+```java
+// Orchestration (not unit-tested — calls git, filesystem, network)
+public void execute() {
+    List<ComponentSnapshot> snapshots = gatherFromGit();
+    String yaml = buildCheckpointYaml("name", timestamp, snapshots);
+    Files.writeString(path, yaml);
+}
+
+// Pure function (unit-tested with real inputs)
+public static String buildCheckpointYaml(String name,
+        String timestamp, List<ComponentSnapshot> snapshots) { ... }
+```
+
+**Use LLM-generated test data** for domain-rich scenarios (concept
+graphs, axiom sets, coordinate sequences). LLMs produce semantically
+coherent test corpora that exercise the real pipeline — integration
+coverage with scenario richness previously only achievable with mocks.
+
+**Build fast, resettable test fixtures.** An in-memory or ephemeral
+store (e.g., RocksDB with temp directory) provides real dependency
+behavior at test speed.
+
+### Where mocks are genuinely necessary
+
+- Network calls to external services (FDA submission endpoints,
+  Nexus, GitHub API) that cannot be stubbed with a local server
+- JavaFX platform thread constraints (though TestFX handles most
+  cases without mocking)
+- Clock/timing control for deterministic testing of time-dependent
+  behavior (prefer `Clock` injection over mocking `Instant.now()`)
+
+### Plugin testing in ike-maven-plugin
+
+The plugin follows the extract-and-test pattern:
+
+| Utility | What it tests |
+|---------|---------------|
+| `GenerateBomMojo.buildBomXml()` | BOM XML generation from `BomEntry` records |
+| `GenerateBomMojo.escapeXml()` | XML entity escaping |
+| `WsCheckpointMojo.buildCheckpointYaml()` | Checkpoint YAML from `ComponentSnapshot` records |
+| `GraphWorkspaceMojo.buildDotGraph()` | Graphviz DOT format generation |
+| `GraphWorkspaceMojo.componentColor()` | Component type → DOT color mapping |
+| `ReleaseSupport.validateRemotePath()` | Remote path safety validation |
+| `ReleaseSupport.siteDiskPath()` | Site URL path generation |
+| `ReleaseSupport.branchToSitePath()` | Branch name to URL-safe path |
+
+Mojos that are pure I/O orchestration (status, pull, init, cascade)
+delegate to `git` via `ReleaseSupport.exec()` or to `WorkspaceGraph`
+(tested in ike-workspace-model with 51 tests). These are not
+unit-tested because testing them would require mocking
+`ProcessBuilder` — exactly the circular validation this standard
+prohibits.

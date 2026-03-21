@@ -535,7 +535,16 @@ class ReleaseSupport {
         return targetUrl + ".staging";
     }
 
-    private static void validateRemotePath(String remotePath)
+    /**
+     * Validate that a remote path is safe for deletion operations.
+     *
+     * <p>Ensures the path starts with {@link #SITE_DISK_BASE} and has
+     * sufficient depth to prevent accidental deletion of the site root.
+     *
+     * @param remotePath absolute path on the server
+     * @throws MojoExecutionException if the path is unsafe
+     */
+    static void validateRemotePath(String remotePath)
             throws MojoExecutionException {
         if (!remotePath.startsWith(SITE_DISK_BASE)) {
             throw new MojoExecutionException(

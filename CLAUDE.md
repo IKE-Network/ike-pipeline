@@ -109,6 +109,68 @@ mvn clean verify -pl example-project -Dike.skip.html=false
   The release process replaces `${project.version}` with literals before
   deploying, then restores the originals for the main branch merge.
 
+## Workspace Tooling (`ike-maven-plugin`)
+
+The `ike-maven-plugin` module provides Maven goals (prefix `ike:`) for
+multi-repository workspace management, gitflow branching, and release
+orchestration. All former bash scripts for workspace and release
+operations have been retired — use `ike:*` goals exclusively.
+
+### Workspace Layout
+
+The workspace manifest (`workspace.yaml`) lives in the `ike-workspace`
+repository, which is the parent directory of all component repos.
+The workspace POM (`pom.xml`) in the same directory declares
+`ike-maven-plugin` and file-activated profiles for partial checkout.
+
+### Key Workspace Commands
+
+```bash
+# Initialize workspace (clone all components)
+mvn ike:init
+
+# Initialize a subset
+mvn ike:init -Dgroup=core
+
+# Sync all repos
+mvn ike:pull
+
+# Git status across all repos
+mvn ike:status
+
+# Full dashboard (verify + status + cascade)
+mvn ike:dashboard
+```
+
+### Key Gitflow Commands
+
+```bash
+# Start a feature branch across components
+mvn ike:feature-start -Dfeature=my-feature
+
+# Finish (merge to main, strip qualifier, tag, push)
+mvn ike:feature-finish -Dfeature=my-feature -Dpush=true
+
+# Save a multi-repo checkpoint
+mvn ike:ws-checkpoint -Dname=progress
+```
+
+### Key Release Commands
+
+```bash
+# Preview what would be released
+mvn ike:ws-release -DdryRun=true
+
+# Release all dirty components in dependency order
+mvn ike:ws-release -Dpush=true
+```
+
+### Workspace Standards
+
+The build-standards file `IKE-WORKSPACE.md` documents the full manifest
+schema, goal reference, version conventions, and gitflow workflows.
+It is unpacked into `.claude/standards/` by `mvn validate`.
+
 ## Project-Specific Overrides
 
 None. This project follows all shared standards.

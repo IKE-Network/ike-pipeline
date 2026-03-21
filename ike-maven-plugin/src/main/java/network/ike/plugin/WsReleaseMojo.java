@@ -6,6 +6,8 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
+import network.ike.workspace.VersionSupport;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -314,20 +316,7 @@ public class WsReleaseMojo extends AbstractWorkspaceMojo {
     // ── Helper: version bump ─────────────────────────────────────────
 
     private String bumpToNextSnapshot(String releaseVersion) {
-        // "28" → "29-SNAPSHOT", "1.2.0" → "1.2.1-SNAPSHOT"
-        try {
-            if (releaseVersion.contains(".")) {
-                String[] parts = releaseVersion.split("\\.");
-                int last = Integer.parseInt(parts[parts.length - 1]);
-                parts[parts.length - 1] = String.valueOf(last + 1);
-                return String.join(".", parts) + "-SNAPSHOT";
-            } else {
-                int v = Integer.parseInt(releaseVersion);
-                return (v + 1) + "-SNAPSHOT";
-            }
-        } catch (NumberFormatException e) {
-            return releaseVersion + "-SNAPSHOT";
-        }
+        return VersionSupport.deriveNextSnapshot(releaseVersion);
     }
 
     // ── Helper: write checkpoint YAML ────────────────────────────────

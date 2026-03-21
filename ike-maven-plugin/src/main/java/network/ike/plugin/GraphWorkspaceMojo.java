@@ -7,7 +7,9 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Print the workspace dependency graph.
@@ -69,44 +71,93 @@ public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
     }
 
     private void printDot(WorkspaceGraph graph) {
-        // Output DOT to info log — can be piped to dot or Kroki
-        getLog().info("digraph workspace {");
-        getLog().info("    rankdir=BT;");
-        getLog().info("    node [shape=box, style=rounded, fontname=\"Helvetica\"];");
-        getLog().info("");
+        // Build data structures for the pure function
+        Map<String, String> componentTypes = new LinkedHashMap<>();
+        for (Component comp : graph.manifest().components().values()) {
+            componentTypes.put(comp.name(), comp.type());
+        }
 
-        // Style by type
-        for (var entry : graph.manifest().componentTypes().entrySet()) {
-            String typeName = entry.getKey();
-            String color = switch (typeName) {
-                case "infrastructure" -> "#e8d5b7";
-                case "software"       -> "#b7d5e8";
-                case "document"       -> "#b7e8c4";
-                case "knowledge-source" -> "#e8b7d5";
-                case "template"       -> "#d5d5d5";
-                default               -> "#ffffff";
-            };
-            for (Component comp : graph.manifest().components().values()) {
-                if (comp.type().equals(typeName)) {
-                    getLog().info("    \"" + comp.name()
-                            + "\" [fillcolor=\"" + color
-                            + "\", style=\"rounded,filled\"];");
-                }
+        Map<String, List<String[]>> edges = new LinkedHashMap<>();
+        for (Component comp : graph.manifest().components().values()) {
+            List<String[]> compEdges = comp.dependsOn().stream()
+                    .map(dep -> new String[]{dep.component(), dep.relationship()})
+                    .toList();
+            if (!compEdges.isEmpty()) {
+                edges.put(comp.name(), compEdges);
             }
         }
 
-        getLog().info("");
+        String dot = buildDotGraph("workspace", componentTypes, edges);
+        for (String line : dot.split("\n")) {
+            getLog().info(line);
+        }
+    }
+
+    // ── DOT generation (pure, static, testable) ─────────────────────
+
+    /**
+     * Return the fill color for a component type name.
+     *
+     * @param typeName component type (e.g., "infrastructure", "software")
+     * @return hex color string
+     */
+    public static String componentColor(String typeName) {
+        return switch (typeName) {
+            case "infrastructure"   -> "#e8d5b7";
+            case "software"         -> "#b7d5e8";
+            case "document"         -> "#b7e8c4";
+            case "knowledge-source" -> "#e8b7d5";
+            case "template"         -> "#d5d5d5";
+            default                 -> "#ffffff";
+        };
+    }
+
+    /**
+     * Build a Graphviz DOT graph from component types and edges.
+     *
+     * <p>This is a pure function with no workspace-model dependencies,
+     * suitable for direct unit testing.
+     *
+     * @param title          graph name used in {@code digraph <title>}
+     * @param componentTypes map of component name to type name
+     * @param edges          map of source component to list of
+     *                       {@code [target, relationship]} pairs
+     * @return complete DOT source
+     */
+    public static String buildDotGraph(String title,
+                                        Map<String, String> componentTypes,
+                                        Map<String, List<String[]>> edges) {
+        StringBuilder dot = new StringBuilder(1024);
+        dot.append("digraph ").append(title).append(" {\n");
+        dot.append("    rankdir=BT;\n");
+        dot.append("    node [shape=box, style=rounded, fontname=\"Helvetica\"];\n");
+        dot.append("\n");
+
+        // Node declarations with colors
+        for (var entry : componentTypes.entrySet()) {
+            String compName = entry.getKey();
+            String color = componentColor(entry.getValue());
+            dot.append("    \"").append(compName)
+               .append("\" [fillcolor=\"").append(color)
+               .append("\", style=\"rounded,filled\"];\n");
+        }
+
+        dot.append("\n");
 
         // Edges
-        for (Component comp : graph.manifest().components().values()) {
-            for (Dependency dep : comp.dependsOn()) {
-                String style = "content".equals(dep.relationship())
+        for (var entry : edges.entrySet()) {
+            String source = entry.getKey();
+            for (String[] edge : entry.getValue()) {
+                String target = edge[0];
+                String relationship = edge[1];
+                String style = "content".equals(relationship)
                         ? " [style=dashed]" : "";
-                getLog().info("    \"" + comp.name() + "\" -> \""
-                        + dep.component() + "\"" + style + ";");
+                dot.append("    \"").append(source).append("\" -> \"")
+                   .append(target).append("\"").append(style).append(";\n");
             }
         }
 
-        getLog().info("}");
+        dot.append("}\n");
+        return dot.toString();
     }
 }

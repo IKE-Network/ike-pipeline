@@ -432,6 +432,153 @@ mvn clean install
 mvn clean install -pl ike-bom -am
 ```
 
+## Gitflow Workflow — End to End
+
+### Single-Component Feature
+
+A feature that touches only one component (e.g., `tinkar-core`):
+
+```bash
+# Start the feature — creates feature/add-nid-index branch, sets
+# version to 1.80.0-add-nid-index-SNAPSHOT
+mvn ike:feature-start -Dfeature=add-nid-index -Dcomponent=tinkar-core
+
+# Work in tinkar-core/, commit normally
+cd tinkar-core
+# ... edit, build, test ...
+git add -A && git commit -m "feat: add NID index for faster lookups"
+
+# Preview the merge
+mvn ike:feature-finish -Dfeature=add-nid-index -DdryRun=true
+# Output:
+#   tinkar-core: merge feature/add-nid-index → main
+#   Version: 1.80.0-add-nid-index-SNAPSHOT → 1.80.0-SNAPSHOT
+#   Tag: tinkar-core-1.80.0-add-nid-index-merge
+
+# Merge and push
+mvn ike:feature-finish -Dfeature=add-nid-index -Dpush=true
+```
+
+### Multi-Component Feature
+
+A feature spanning `ike-pipeline` and `tinkar-core`:
+
+```bash
+# Start across the core group
+mvn ike:feature-start -Dfeature=new-renderer -Dgroup=core
+# Creates feature/new-renderer in both repos
+# ike-pipeline: 24-new-renderer-SNAPSHOT
+# tinkar-core:  1.80.0-new-renderer-SNAPSHOT
+
+# Work across both repos, commit in each
+cd ike-pipeline
+# ... edit pipeline code ...
+git add -A && git commit -m "feat: add weasyprint2 renderer support"
+
+cd ../tinkar-core
+# ... update build config ...
+git add -A && git commit -m "feat: enable weasyprint2 for tinkar docs"
+
+# Save a checkpoint for team visibility
+mvn ike:ws-checkpoint -Dname=new-renderer-wip
+
+# Preview the coordinated merge
+mvn ike:feature-finish -Dfeature=new-renderer -Dgroup=core -DdryRun=true
+# Output:
+#   ike-pipeline: merge feature/new-renderer → main
+#     Version: 24-new-renderer-SNAPSHOT → 24-SNAPSHOT
+#   tinkar-core: merge feature/new-renderer → main
+#     Version: 1.80.0-new-renderer-SNAPSHOT → 1.80.0-SNAPSHOT
+
+# Merge and push all
+mvn ike:feature-finish -Dfeature=new-renderer -Dgroup=core -Dpush=true
+```
+
+### Release After Feature
+
+After merging a feature, release the affected components:
+
+```bash
+# See what needs releasing
+mvn ike:ws-release -DdryRun=true
+# Output:
+#   Dirty components (topo order):
+#     1. ike-pipeline       24-SNAPSHOT → 24 → 25-SNAPSHOT
+#     2. tinkar-core         1.80.0-SNAPSHOT → 1.80.0 → 1.81.0-SNAPSHOT
+#   Cross-reference updates:
+#     tinkar-core: ike-pipeline parent 24-SNAPSHOT → 24
+
+# Execute the release
+mvn ike:ws-release -Dpush=true
+# Releases ike-pipeline first (upstream), then tinkar-core
+# Tags: ike-pipeline-24, tinkar-core-1.80.0
+# Post-release versions: 25-SNAPSHOT, 1.81.0-SNAPSHOT
+```
+
+## Troubleshooting
+
+### Recovery from Failed `ws-release`
+
+If `ws-release` fails mid-cascade (e.g., build failure in the second
+component), the pre-release checkpoint file records the state of every
+component before the release started. Re-running `mvn ike:ws-release`
+skips components that were already tagged and released — it resumes
+from the point of failure.
+
+```bash
+# Check the checkpoint to see what was released
+cat checkpoints/checkpoint-pre-release-*.yaml
+
+# Re-run — already-released components are skipped
+mvn ike:ws-release -Dpush=true
+```
+
+### Merge Conflicts in `feature-finish`
+
+When `feature-finish` encounters a merge conflict, it stops in the
+conflicting repository. Resolve manually:
+
+```bash
+cd <conflicting-component>
+# Resolve conflicts in the affected files
+git add <resolved-files>
+git commit
+
+# Re-run feature-finish — already-merged components are skipped
+mvn ike:feature-finish -Dfeature=my-feature -Dpush=true
+```
+
+### Plugin Prefix Not Resolving
+
+If `mvn ike:status` fails with "No plugin found for prefix 'ike'":
+
+1. Verify `~/.m2/settings.xml` contains `network.ike` in `<pluginGroups>`:
+
+```xml
+<pluginGroups>
+  <pluginGroup>network.ike</pluginGroup>
+</pluginGroups>
+```
+
+2. Verify the workspace `pom.xml` declares `ike-maven-plugin` in `<build><plugins>`.
+
+3. Verify `ike-maven-plugin` is installed in the local repository:
+
+```bash
+mvn install -pl ike-maven-plugin -f <path-to-ike-pipeline>/pom.xml
+```
+
+### Component Not Found in Manifest
+
+If a goal reports "component not found" for a name you expect to exist:
+
+- Check spelling: component names in `workspace.yaml` are case-sensitive
+  and must match directory names exactly.
+- Check groups: if using `-Dgroup=core`, the component must be listed
+  in the `groups.core` array in `workspace.yaml`.
+- Check checkout: some goals only operate on checked-out components.
+  Run `mvn ike:status` to see which components are present.
+
 ## Key Rules
 
 - Never use `${revision}` for version indirection. Versions are literal in POMs.
