@@ -44,6 +44,12 @@ Git operations, and Maven invocations.
 | `ike:release`
 | Transition from SNAPSHOT to release version, build, tag, deploy, bump to next SNAPSHOT
 
+| `ike:ws-release`
+| Workspace-level release orchestration — scan dirty components, topo-sort by dependency order, release cascade with automatic cross-reference updates
+
+| `ike:generate-bom`
+| Auto-generate a standalone BOM POM from `ike-parent` dependency management (bound to `generate-resources` in `ike-bom`)
+
 | `ike:verify`
 | PR validation
 

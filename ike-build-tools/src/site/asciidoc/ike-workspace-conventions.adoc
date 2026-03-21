@@ -581,12 +581,146 @@ The `ike-maven-plugin` provides:
 |`ike:release`
 |Transition from SNAPSHOT to release version, build, tag, deploy, bump to next SNAPSHOT
 
+|`ike:ws-release`
+|Workspace-level release orchestration — scan, filter dirty, topo-sort, release in dependency order
+
+|`ike:generate-bom`
+|Auto-generate a standalone BOM POM from `ike-parent` dependency management
+
 |`ike:verify`
 |PR validation
 |===
 
 Shared utility logic lives in `ReleaseSupport.java`
 in the `ike-maven-plugin` module.
+
+== Workspace Release Orchestration
+
+The `ike:ws-release` goal automates multi-component releases
+across a workspace.
+It replaces manual per-component release sequences
+with a single orchestrated workflow
+that respects inter-repository dependency order.
+
+=== The Self-Limiting Cascade
+
+The release is _self-limiting_:
+only checked-out repositories with commits since their last release tag
+are candidates.
+Components that are not checked out or have no changes
+are silently skipped.
+
+The release scope is the intersection of two sets:
+
+. Components physically present in the workspace (checked out)
+. Components with commits since their last release tag (dirty)
+
+A workspace with three of ten components checked out
+will release at most three components --
+and only those with actual changes.
+
+=== Release Workflow
+
+The goal executes five phases:
+
+. *Scan* -- Walk the workspace manifest, identify checked-out repos.
+. *Filter dirty* -- For each checked-out repo,
+  compare HEAD against the last release tag.
+  Only repos with new commits are candidates.
+. *Topological sort* -- Order candidates by dependency graph
+  so that upstream components release before their dependents.
+. *Release in order* -- For each candidate (in topo order):
+  strip `-SNAPSHOT`, build, verify, tag,
+  optionally push (`-Dpush=true`),
+  bump to next SNAPSHOT.
+. *Update cross-references* -- After each release,
+  update parent version references in downstream POMs
+  that depend on the just-released component.
+
+The cross-reference update is the key to cascade consistency.
+When `ike-pipeline` releases version 24,
+downstream components that reference `ike-pipeline` as a parent
+are updated to `<version>24</version>` before they build.
+This ensures each component builds against the release version
+of its upstream dependency,
+not the previous SNAPSHOT.
+
+=== Pre-Release Checkpoint
+
+By default, `ike:ws-release` creates a checkpoint
+before the first release to enable recovery.
+Use `-DskipCheckpoint=true` to bypass this.
+
+=== Examples
+
+[source,bash]
+----
+# Dry run — see what would be released and in what order
+mvn ike:ws-release -DdryRun=true
+
+# Release all dirty components, push results
+mvn ike:ws-release -Dpush=true
+
+# Release only ike-pipeline and its dirty dependents
+mvn ike:ws-release -Dcomponent=ike-pipeline -Dpush=true
+
+# Release the "core" group without creating a checkpoint
+mvn ike:ws-release -Dgroup=core -DskipCheckpoint=true -Dpush=true
+----
+
+=== Dry Run Output
+
+A dry run prints the release plan without executing:
+
+----
+[INFO] === Workspace Release Plan (DRY RUN) ===
+[INFO] Dirty components (topo order):
+[INFO]   1. ike-pipeline       24-SNAPSHOT → 24 → 25-SNAPSHOT
+[INFO]   2. tinkar-core         1.80.0-SNAPSHOT → 1.80.0 → 1.81.0-SNAPSHOT
+[INFO] Cross-reference updates:
+[INFO]   tinkar-core: ike-pipeline parent 24-SNAPSHOT → 24
+[INFO] Pre-release checkpoint: checkpoint/pre-release-20260320
+[INFO] === No changes made (dry run) ===
+----
+
+== Auto-Generated BOM
+
+The `ike:generate-bom` goal produces a standalone Bill of Materials (BOM) POM
+from `ike-parent` dependency management.
+The generated BOM resolves all property references to literal values,
+producing a self-contained POM that external consumers can import
+without inheriting `ike-parent`.
+
+The goal is bound to the `generate-resources` phase in the `ike-bom` stub module.
+During a normal reactor build:
+
+. `ike-parent` builds first (it is earlier in the reactor order).
+. `ike-bom` reaches `generate-resources`.
+. `ike:generate-bom` reads `ike-parent` resolved model from the reactor.
+. All managed dependencies are extracted with property references resolved.
+. A standalone POM is written that replaces the stub for `install`/`deploy`.
+
+The BOM is entirely derived from `ike-parent`.
+Adding a new managed dependency to `ike-parent`
+automatically includes it in the next BOM build.
+Zero manual maintenance, zero risk of drift.
+
+External consumers import the BOM for version alignment:
+
+[source,xml]
+----
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>network.ike</groupId>
+            <artifactId>ike-bom</artifactId>
+            <version>24</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+----
 
 == Summary
 

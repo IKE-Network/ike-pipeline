@@ -45,7 +45,8 @@ versionless (parent is the aggregator).
 | `minimal-fonts` | Noto font subset for PDF rendering | JAR |
 | `docbook-xsl` | DocBook XSL 1.79.2 + IKE FO customization | JAR |
 | `koncept-asciidoc-extension` | AsciidoctorJ `k:Name[]` inline macro + glossary | JAR |
-| `ike-maven-plugin` | Maven plugin wrapping build-tools bash scripts | maven-plugin |
+| `ike-maven-plugin` | Maven plugin: workspace management, release orchestration, BOM generation | maven-plugin |
+| `ike-bom` | Auto-generated BOM (from ike-parent, zero maintenance) | POM |
 | `semantic-linebreak` | CLI tool — AsciiDoc semantic linefeed reformatter | JAR |
 | `doc-example` | Doc-only project exercising all pipeline features | JAR (empty) |
 | `example-project` | Java+docs demo project | JAR + docs |

@@ -1,0 +1,389 @@
+package network.ike.plugin;
+
+import network.ike.workspace.Component;
+import network.ike.workspace.WorkspaceGraph;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Workspace-level release — release all dirty checked-out components
+ * in topological order.
+ *
+ * <p>Scans checked-out components for commits since their last release
+ * tag. Dirty components are topologically sorted and released in
+ * dependency order. After each release, downstream parent version
+ * references are updated automatically.</p>
+ *
+ * <p><strong>What it does, per component:</strong></p>
+ * <ol>
+ *   <li>Detect latest release tag ({@code v*})</li>
+ *   <li>Check for commits since that tag</li>
+ *   <li>If dirty: run {@code mvn ike:release} in that component's directory</li>
+ *   <li>After release: update parent version in downstream components</li>
+ * </ol>
+ *
+ * <p>The cascade is self-limiting: only checked-out components with
+ * changes since their last release are candidates. Components not
+ * present in the aggregator are not considered.</p>
+ *
+ * <pre>{@code
+ * mvn ike:ws-release                         # release all dirty components
+ * mvn ike:ws-release -DdryRun=true           # show what would be released
+ * mvn ike:ws-release -Dgroup=core            # only components in the core group
+ * mvn ike:ws-release -Dcomponent=ike-pipeline  # release one specific component
+ * }</pre>
+ */
+@Mojo(name = "ws-release", requiresProject = false, threadSafe = true)
+public class WsReleaseMojo extends AbstractWorkspaceMojo {
+
+    private static final DateTimeFormatter ISO_UTC =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                    .withZone(ZoneOffset.UTC);
+
+    /** Release only components in this group. */
+    @Parameter(property = "group")
+    private String group;
+
+    /** Release only this specific component. */
+    @Parameter(property = "component")
+    private String component;
+
+    /** Preview what would be released without executing. */
+    @Parameter(property = "dryRun", defaultValue = "false")
+    private boolean dryRun;
+
+    /** Skip the pre-release checkpoint. */
+    @Parameter(property = "skipCheckpoint", defaultValue = "false")
+    private boolean skipCheckpoint;
+
+    /** Push releases to remote. Passed through to ike:release. */
+    @Parameter(property = "push", defaultValue = "true")
+    private boolean push;
+
+    @Override
+    public void execute() throws MojoExecutionException {
+        WorkspaceGraph graph = loadGraph();
+        File root = workspaceRoot();
+
+        // ── 1. Determine candidate components ─────────────────────────
+        List<String> candidates;
+        if (component != null) {
+            candidates = List.of(component);
+        } else if (group != null) {
+            candidates = new ArrayList<>(graph.expandGroup(group));
+        } else {
+            candidates = graph.topologicalSort();
+        }
+
+        // ── 2. Filter to checked-out and dirty ────────────────────────
+        Map<String, ReleaseCandidate> dirty = new LinkedHashMap<>();
+        for (String name : graph.topologicalSort()) {
+            if (!candidates.contains(name)) continue;
+
+            Component comp = graph.manifest().components().get(name);
+            if (comp == null) continue;
+
+            File compDir = new File(root, name);
+            if (!compDir.isDirectory() || !new File(compDir, "pom.xml").exists()) {
+                getLog().debug("Skipping " + name + " — not checked out");
+                continue;
+            }
+
+            String latestTag = latestReleaseTag(compDir);
+            if (latestTag == null) {
+                // No release tag exists — component has never been released
+                dirty.put(name, new ReleaseCandidate(name, comp, compDir,
+                        null, "never released"));
+                continue;
+            }
+
+            int commitsSinceTag = commitsSinceTag(compDir, latestTag);
+            if (commitsSinceTag > 0) {
+                dirty.put(name, new ReleaseCandidate(name, comp, compDir,
+                        latestTag, commitsSinceTag + " commits since " + latestTag));
+                continue;
+            }
+
+            getLog().debug("Skipping " + name + " — clean (at " + latestTag + ")");
+        }
+
+        if (dirty.isEmpty()) {
+            getLog().info("No components need releasing. All are clean.");
+            return;
+        }
+
+        // ── 3. Topological sort of dirty components ───────────────────
+        List<String> releaseOrder = graph.topologicalSort().stream()
+                .filter(dirty::containsKey)
+                .toList();
+
+        // ── 4. Report plan ────────────────────────────────────────────
+        getLog().info("════════════════════════════════════════════════════");
+        getLog().info(dryRun ? "  WORKSPACE RELEASE — DRY RUN" : "  WORKSPACE RELEASE");
+        getLog().info("════════════════════════════════════════════════════");
+        getLog().info("");
+        getLog().info("Components to release (" + releaseOrder.size() + "):");
+        for (int i = 0; i < releaseOrder.size(); i++) {
+            ReleaseCandidate rc = dirty.get(releaseOrder.get(i));
+            String version = currentVersion(rc.dir);
+            getLog().info("  " + (i + 1) + ". " + rc.name
+                    + " (" + version + ") — " + rc.reason);
+        }
+        getLog().info("");
+
+        if (dryRun) {
+            getLog().info("[DRY RUN] No releases executed.");
+            return;
+        }
+
+        // ── 5. Pre-release checkpoint ─────────────────────────────────
+        if (!skipCheckpoint) {
+            String checkpointName = "pre-release-"
+                    + Instant.now().atZone(ZoneOffset.UTC)
+                            .format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+            getLog().info("Creating pre-release checkpoint: " + checkpointName);
+            writeCheckpoint(root, graph, checkpointName);
+        }
+
+        // ── 6. Release each component in order ────────────────────────
+        List<String> released = new ArrayList<>();
+        Map<String, String> releasedVersions = new LinkedHashMap<>();
+
+        for (String name : releaseOrder) {
+            ReleaseCandidate rc = dirty.get(name);
+            getLog().info("");
+            getLog().info("────────────────────────────────────────────────");
+            getLog().info("  Releasing: " + rc.name);
+            getLog().info("────────────────────────────────────────────────");
+
+            // Update parent version if an upstream component was just released
+            updateParentVersions(rc, releasedVersions);
+
+            // Derive release version from current SNAPSHOT
+            String currentVersion = currentVersion(rc.dir);
+            String releaseVersion = currentVersion.replace("-SNAPSHOT", "");
+
+            try {
+                // Find mvnw or mvn
+                String mvn = findMvn(rc.dir);
+
+                ReleaseSupport.exec(rc.dir, getLog(),
+                        mvn, "ike:release",
+                        "-DpushRelease=" + push,
+                        "-B");
+
+                released.add(rc.name);
+                releasedVersions.put(rc.name, releaseVersion);
+                getLog().info("  ✓ Released " + rc.name + " " + releaseVersion);
+            } catch (Exception e) {
+                getLog().error("  ✗ Failed to release " + rc.name + ": " + e.getMessage());
+                getLog().error("");
+                getLog().error("Released so far: " + released);
+                getLog().error("Failed at: " + rc.name);
+                getLog().error("Remaining: " + releaseOrder.subList(
+                        releaseOrder.indexOf(name) + 1, releaseOrder.size()));
+                throw new MojoExecutionException(
+                        "Workspace release failed at " + rc.name, e);
+            }
+        }
+
+        // ── 7. Summary ───────────────────────────────────────────────
+        getLog().info("");
+        getLog().info("════════════════════════════════════════════════════");
+        getLog().info("  WORKSPACE RELEASE COMPLETE");
+        getLog().info("════════════════════════════════════════════════════");
+        for (var entry : releasedVersions.entrySet()) {
+            getLog().info("  " + entry.getKey() + " → " + entry.getValue());
+        }
+        getLog().info("");
+    }
+
+    // ── Helper: find latest release tag ──────────────────────────────
+
+    private String latestReleaseTag(File compDir) {
+        try {
+            String tags = ReleaseSupport.execCapture(compDir,
+                    "git", "tag", "-l", "v*", "--sort=-version:refname");
+            if (tags == null || tags.isBlank()) return null;
+            return tags.lines().findFirst().orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // ── Helper: count commits since tag ──────────────────────────────
+
+    private int commitsSinceTag(File compDir, String tag) {
+        try {
+            String count = ReleaseSupport.execCapture(compDir,
+                    "git", "rev-list", tag + "..HEAD", "--count");
+            return Integer.parseInt(count.strip());
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    // ── Helper: read current POM version ─────────────────────────────
+
+    private String currentVersion(File compDir) {
+        try {
+            Path pom = compDir.toPath().resolve("pom.xml");
+            String content = Files.readString(pom, StandardCharsets.UTF_8);
+            // Simple regex — find first <version> after <project> or <parent>
+            // This is good enough for our POMs.
+            var matcher = java.util.regex.Pattern.compile(
+                    "<version>([^<]+)</version>").matcher(content);
+            if (matcher.find()) return matcher.group(1);
+            return "unknown";
+        } catch (Exception e) {
+            return "unknown";
+        }
+    }
+
+    // ── Helper: update parent version in downstream POM ──────────────
+
+    private void updateParentVersions(ReleaseCandidate rc,
+                                       Map<String, String> releasedVersions) {
+        if (releasedVersions.isEmpty()) return;
+
+        try {
+            Path pom = rc.dir.toPath().resolve("pom.xml");
+            String content = Files.readString(pom, StandardCharsets.UTF_8);
+            String original = content;
+
+            for (var entry : releasedVersions.entrySet()) {
+                String releasedName = entry.getKey();
+                String releasedVersion = entry.getValue();
+                String nextSnapshot = bumpToNextSnapshot(releasedVersion);
+
+                // Update parent version if it references the released component
+                // Pattern: <parent>...<artifactId>released-name</artifactId>
+                //          ...<version>old</version>...</parent>
+                var parentPattern = java.util.regex.Pattern.compile(
+                        "(<parent>\\s*" +
+                        "<groupId>[^<]+</groupId>\\s*" +
+                        "<artifactId>" + java.util.regex.Pattern.quote(releasedName)
+                                + "</artifactId>\\s*" +
+                        "<version>)[^<]+(</version>)",
+                        java.util.regex.Pattern.DOTALL);
+                content = parentPattern.matcher(content)
+                        .replaceFirst("$1" + nextSnapshot + "$2");
+
+                // Also update version properties like <ike-pipeline.version>
+                // or <ike.pipeline.version>
+                String propName1 = releasedName + ".version";
+                String propName2 = releasedName.replace("-", ".") + ".version";
+                for (String prop : List.of(propName1, propName2)) {
+                    String propPattern = "<" + java.util.regex.Pattern.quote(prop)
+                            + ">[^<]+</" + java.util.regex.Pattern.quote(prop) + ">";
+                    content = content.replaceAll(propPattern,
+                            "<" + prop + ">" + nextSnapshot + "</" + prop + ">");
+                }
+            }
+
+            if (!content.equals(original)) {
+                Files.writeString(pom, content, StandardCharsets.UTF_8);
+                getLog().info("  Updated version references in " + rc.name + "/pom.xml");
+
+                // Stage and commit the version update
+                ReleaseSupport.exec(rc.dir, getLog(),
+                        "git", "add", "pom.xml");
+                ReleaseSupport.exec(rc.dir, getLog(),
+                        "git", "commit", "-m",
+                        "chore: bump dependency versions after upstream release");
+            }
+        } catch (IOException | MojoExecutionException e) {
+            getLog().warn("Could not update parent versions in " + rc.name + ": " + e);
+        }
+    }
+
+    // ── Helper: version bump ─────────────────────────────────────────
+
+    private String bumpToNextSnapshot(String releaseVersion) {
+        // "28" → "29-SNAPSHOT", "1.2.0" → "1.2.1-SNAPSHOT"
+        try {
+            if (releaseVersion.contains(".")) {
+                String[] parts = releaseVersion.split("\\.");
+                int last = Integer.parseInt(parts[parts.length - 1]);
+                parts[parts.length - 1] = String.valueOf(last + 1);
+                return String.join(".", parts) + "-SNAPSHOT";
+            } else {
+                int v = Integer.parseInt(releaseVersion);
+                return (v + 1) + "-SNAPSHOT";
+            }
+        } catch (NumberFormatException e) {
+            return releaseVersion + "-SNAPSHOT";
+        }
+    }
+
+    // ── Helper: write checkpoint YAML ────────────────────────────────
+
+    private void writeCheckpoint(File root, WorkspaceGraph graph, String name)
+            throws MojoExecutionException {
+        Path checkpointsDir = root.toPath().resolve("checkpoints");
+        try {
+            Files.createDirectories(checkpointsDir);
+            Path file = checkpointsDir.resolve("checkpoint-" + name + ".yaml");
+
+            StringBuilder yaml = new StringBuilder();
+            yaml.append("# Workspace checkpoint: ").append(name).append("\n");
+            yaml.append("# Generated: ").append(ISO_UTC.format(Instant.now())).append("\n");
+            yaml.append("checkpoint: ").append(name).append("\n");
+            yaml.append("timestamp: ").append(ISO_UTC.format(Instant.now())).append("\n");
+            yaml.append("components:\n");
+
+            for (String compName : graph.topologicalSort()) {
+                File compDir = new File(root, compName);
+                if (!compDir.isDirectory()) continue;
+
+                yaml.append("  ").append(compName).append(":\n");
+                yaml.append("    branch: ").append(gitBranch(compDir)).append("\n");
+                yaml.append("    sha: ").append(gitShortSha(compDir)).append("\n");
+                yaml.append("    version: ").append(currentVersion(compDir)).append("\n");
+                yaml.append("    dirty: ").append(!gitStatus(compDir).isEmpty()).append("\n");
+            }
+
+            Files.writeString(file, yaml.toString(), StandardCharsets.UTF_8);
+            getLog().info("Checkpoint written: " + file);
+        } catch (IOException e) {
+            getLog().warn("Could not write checkpoint: " + e.getMessage());
+        }
+    }
+
+    // ── Helper: find mvn or mvnw ─────────────────────────────────────
+
+    private String findMvn(File compDir) {
+        File mvnw = new File(compDir, "mvnw");
+        if (mvnw.exists() && mvnw.canExecute()) {
+            return mvnw.getAbsolutePath();
+        }
+        File mvnwCmd = new File(compDir, "mvnw.cmd");
+        if (mvnwCmd.exists()) {
+            return mvnwCmd.getAbsolutePath();
+        }
+        return "mvn";
+    }
+
+    // ── Record for candidate tracking ────────────────────────────────
+
+    private record ReleaseCandidate(
+            String name,
+            Component component,
+            File dir,
+            String lastTag,
+            String reason) {}
+}

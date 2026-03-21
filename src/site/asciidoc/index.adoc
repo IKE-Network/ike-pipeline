@@ -294,6 +294,14 @@ mvn clean verify -pl example-project -Dike.pdf.prince
 | Documentation-only project exercising all pipeline features
 | JAR (empty)
 
+| `ike-maven-plugin`
+| Maven plugin: workspace management, release orchestration (`ike:ws-release`), BOM generation (`ike:generate-bom`)
+| maven-plugin
+
+| `ike-bom`
+| Auto-generated BOM — centralized dependency versions from `ike-parent` (zero maintenance)
+| POM
+
 | `example-project`
 | Java + docs integration demo
 | JAR + docs

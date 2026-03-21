@@ -174,6 +174,13 @@ rebuild; `content` dependencies may require only review.
 | `ike:feature-finish` | Merge feature branch to main with `--no-ff`, strip qualifier, tag |
 | `ike:ws-checkpoint` | Record multi-repo checkpoint YAML (SHAs, versions, dirty flags) |
 
+### Release Goals
+
+| Goal | Description |
+|------|-------------|
+| `ike:ws-release` | Workspace-level release orchestration — scan, filter, topo-sort, release in dependency order |
+| `ike:generate-bom` | Auto-generate a standalone BOM POM from `ike-parent`'s `dependencyManagement` |
+
 ### Common Options
 
 | Option | Applicable Goals | Description |
@@ -185,10 +192,12 @@ rebuild; `content` dependencies may require only review.
 | `-Dfeature=<name>` | feature-start, feature-finish | Feature name (branch: `feature/<name>`) |
 | `-DskipVersion=true` | feature-start | Skip POM version qualification |
 | `-DtargetBranch=<name>` | feature-finish | Merge target (default: `main`) |
-| `-Dpush=true` | feature-finish, ws-checkpoint | Push to origin |
+| `-Dpush=true` | feature-finish, ws-checkpoint, ws-release | Push to origin |
 | `-Dtag=true` | ws-checkpoint | Tag each component |
-| `-DdryRun=true` | feature-start, feature-finish | Show plan without executing |
+| `-DdryRun=true` | feature-start, feature-finish, ws-release | Show plan without executing |
 | `-Dname=<name>` | ws-checkpoint | Checkpoint name (required) |
+| `-DskipCheckpoint=true` | ws-release | Skip pre-release checkpoint creation |
+| `-Dbom.source=<artifactId>` | generate-bom | Source POM for dependency extraction (default: `ike-parent`) |
 
 ## Version Convention
 
@@ -272,6 +281,156 @@ checkpoint:
 Checkpoint files are committed to the workspace repository.
 Optional tagging (`-Dtag=true`) creates `checkpoint/<name>/<component>`
 tags in each component's repo.
+
+## Workspace Release Orchestration (`ike:ws-release`)
+
+`ike:ws-release` automates multi-component release across a workspace.
+It replaces manual per-component release sequences with a single
+orchestrated workflow that respects inter-repository dependency order.
+
+### The Self-Limiting Cascade
+
+The release is *self-limiting*: only checked-out repositories with
+commits since their last release tag are candidates. Components that
+are not checked out or have no changes are silently skipped. This
+means the release scope is determined by the intersection of two sets:
+
+1. Components physically present in the workspace (checked out)
+2. Components with commits since their last release tag (dirty)
+
+A workspace with three of ten components checked out will release
+at most three components — and only those with actual changes.
+
+### Workflow
+
+The goal executes five phases:
+
+1. **Scan** — Walk the workspace manifest, identify checked-out repos.
+2. **Filter dirty** — For each checked-out repo, compare HEAD against
+   the last release tag. Only repos with new commits are candidates.
+3. **Topological sort** — Order candidates by dependency graph so that
+   upstream components release before their dependents.
+4. **Release in order** — For each candidate (in topo order):
+   - Strip `-SNAPSHOT` from the version
+   - Build and verify
+   - Tag the release commit
+   - Optionally push (`-Dpush=true`)
+   - Bump to the next SNAPSHOT version
+5. **Update cross-references** — After each release, update parent
+   version references in downstream POMs that depend on the just-released
+   component. This keeps the cascade self-consistent: when `ike-pipeline`
+   releases version 24, downstream components that reference
+   `ike-pipeline` as a parent are updated to `<version>24</version>`
+   before they build.
+
+### Pre-Release Checkpoint
+
+By default, `ike:ws-release` creates a checkpoint before the first
+release to enable recovery. Use `-DskipCheckpoint=true` to bypass this.
+
+### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-Dcomponent=<name>` | (all dirty) | Release only the named component (and its dirty dependents) |
+| `-Dgroup=<name>` | (all) | Restrict to components in the named group |
+| `-DdryRun=true` | `false` | Show the release plan without executing |
+| `-Dpush=true` | `false` | Push tags and commits to origin after each release |
+| `-DskipCheckpoint=true` | `false` | Skip the pre-release checkpoint |
+
+### Examples
+
+```bash
+# Dry run — see what would be released and in what order
+mvn ike:ws-release -DdryRun=true
+
+# Release all dirty components, push results
+mvn ike:ws-release -Dpush=true
+
+# Release only ike-pipeline and its dirty dependents
+mvn ike:ws-release -Dcomponent=ike-pipeline -Dpush=true
+
+# Release the "core" group without creating a checkpoint
+mvn ike:ws-release -Dgroup=core -DskipCheckpoint=true -Dpush=true
+```
+
+### Dry Run Output
+
+A dry run prints the release plan without executing:
+
+```
+[INFO] === Workspace Release Plan (DRY RUN) ===
+[INFO] Dirty components (topo order):
+[INFO]   1. ike-pipeline       24-SNAPSHOT → 24 → 25-SNAPSHOT
+[INFO]   2. tinkar-core         1.80.0-SNAPSHOT → 1.80.0 → 1.81.0-SNAPSHOT
+[INFO] Cross-reference updates:
+[INFO]   tinkar-core: ike-pipeline parent 24-SNAPSHOT → 24
+[INFO] Pre-release checkpoint: checkpoint/pre-release-20260320
+[INFO] === No changes made (dry run) ===
+```
+
+## Auto-Generated BOM (`ike:generate-bom`)
+
+`ike:generate-bom` produces a standalone Bill of Materials (BOM) POM
+from `ike-parent`'s `<dependencyManagement>` section. The generated
+BOM resolves all property references (`${project.version}`,
+`${tinkar.version}`, etc.) to literal values, producing a self-contained
+POM that external consumers can import without inheriting `ike-parent`.
+
+### How It Works
+
+The goal is bound to the `generate-resources` phase in the `ike-bom`
+stub module. During a normal reactor build:
+
+1. `ike-parent` builds first (it is earlier in the reactor order).
+2. `ike-bom` reaches `generate-resources`.
+3. `ike:generate-bom` reads `ike-parent`'s resolved model from the reactor.
+4. All managed dependencies are extracted with property references
+   resolved to their literal values.
+5. A standalone `pom.xml` is written that replaces the stub for
+   `install`/`deploy`.
+
+### Zero Maintenance
+
+The BOM is entirely derived from `ike-parent`. Adding a new managed
+dependency to `ike-parent`'s `<dependencyManagement>` automatically
+includes it in the next BOM build. There is no separate file to
+maintain, no manual synchronization, and no risk of drift.
+
+### Consumer Usage
+
+External projects that do not inherit from `ike-parent` can import
+the BOM for version alignment:
+
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>network.ike</groupId>
+            <artifactId>ike-bom</artifactId>
+            <version>24</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
+
+### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-Dbom.source=<artifactId>` | `ike-parent` | Artifact ID of the POM whose `dependencyManagement` is extracted |
+
+### Example
+
+```bash
+# Normal reactor build generates the BOM automatically
+mvn clean install
+
+# Build only the BOM (requires ike-parent in reactor)
+mvn clean install -pl ike-bom -am
+```
 
 ## Key Rules
 
