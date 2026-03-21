@@ -249,11 +249,14 @@ public class ReleaseMojo extends AbstractMojo {
         ReleaseSupport.exec(gitRoot, getLog(),
                 "git", "checkout", "v" + releaseVersion);
         try {
-            // Site deploy first (overwritable — can always re-deploy)
+            // Site deploy first (overwritable — can always re-deploy).
+            // Must rebuild site here because the tag checkout wiped target/.
+            // The local-phase site:stage was a pre-flight check only.
             if (deploySite) {
                 getLog().info("Deploying site...");
                 ReleaseSupport.exec(gitRoot, getLog(),
-                        mvnw.getAbsolutePath(), "site:deploy", "-B",
+                        mvnw.getAbsolutePath(), "site", "site:stage",
+                        "site:deploy", "-B",
                         "-Dsite.deploy.url=scpexe://proxy/srv/ike-site/" +
                                 projectId + "/release");
             }
