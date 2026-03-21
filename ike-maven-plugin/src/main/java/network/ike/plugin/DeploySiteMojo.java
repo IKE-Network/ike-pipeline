@@ -174,9 +174,23 @@ public class DeploySiteMojo extends AbstractMojo {
             ReleaseSupport.swapRemoteSiteDir(gitRoot, getLog(), diskPath);
         }
 
-        String publicUrl = targetUrl
-                .replace("scpexe://proxy/srv/ike-site", "http://ike.komet.sh");
+        String publicUrl = toPublicSiteUrl(targetUrl);
         getLog().info("");
         getLog().info("Site deployed to: " + publicUrl);
+    }
+
+    // ── URL conversion (pure, static, testable) ─────────────────────
+
+    /**
+     * Convert an internal SCP-style site URL to its public HTTP equivalent.
+     *
+     * <p>Replaces the {@code scpexe://proxy/srv/ike-site} prefix with
+     * {@code http://ike.komet.sh}.
+     *
+     * @param scpUrl the internal deployment URL
+     * @return the public-facing URL
+     */
+    public static String toPublicSiteUrl(String scpUrl) {
+        return scpUrl.replace("scpexe://proxy/srv/ike-site", "http://ike.komet.sh");
     }
 }

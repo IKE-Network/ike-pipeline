@@ -7,7 +7,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests for the pure function {@link WsCheckpointMojo#buildCheckpointYaml}.
+ * Tests for pure functions in {@link WsCheckpointMojo}: YAML generation,
+ * tag name derivation, file naming, and status formatting.
  */
 class CheckpointSupportTest {
 
@@ -131,5 +132,76 @@ class CheckpointSupportTest {
         assertThat(yaml)
                 .contains("    alpha:")
                 .contains("    beta:");
+    }
+
+    // ── checkpointTagName ───────────────────────────────────────────
+
+    @Test
+    void checkpointTagName_standardFormat() {
+        assertThat(WsCheckpointMojo.checkpointTagName("sprint-42", "ike-pipeline"))
+                .isEqualTo("checkpoint/sprint-42/ike-pipeline");
+    }
+
+    @Test
+    void checkpointTagName_preReleaseFormat() {
+        assertThat(WsCheckpointMojo.checkpointTagName("pre-release-20260320", "ike-docs"))
+                .isEqualTo("checkpoint/pre-release-20260320/ike-docs");
+    }
+
+    // ── checkpointFileName ──────────────────────────────────────────
+
+    @Test
+    void checkpointFileName_standardFormat() {
+        assertThat(WsCheckpointMojo.checkpointFileName("sprint-42"))
+                .isEqualTo("checkpoint-sprint-42.yaml");
+    }
+
+    @Test
+    void checkpointFileName_withTimestamp() {
+        assertThat(WsCheckpointMojo.checkpointFileName("pre-release-20260320-100000"))
+                .isEqualTo("checkpoint-pre-release-20260320-100000.yaml");
+    }
+
+    // ── formatComponentStatus ────────────────────────────────────────
+
+    @Test
+    void formatComponentStatus_cleanWithTag() {
+        String status = WsCheckpointMojo.formatComponentStatus(
+                "ike-pipeline", "abc123d", "main", false,
+                "checkpoint/sprint-42/ike-pipeline");
+
+        assertThat(status)
+                .isEqualTo("ike-pipeline [abc123d] main → tagged checkpoint/sprint-42/ike-pipeline");
+    }
+
+    @Test
+    void formatComponentStatus_cleanNoTag() {
+        String status = WsCheckpointMojo.formatComponentStatus(
+                "ike-pipeline", "abc123d", "main", false, null);
+
+        assertThat(status)
+                .isEqualTo("ike-pipeline [abc123d] main")
+                .doesNotContain("[DIRTY]")
+                .doesNotContain("tagged");
+    }
+
+    @Test
+    void formatComponentStatus_dirty() {
+        String status = WsCheckpointMojo.formatComponentStatus(
+                "ike-docs", "def456", "feature/docs", true, null);
+
+        assertThat(status)
+                .isEqualTo("ike-docs [def456] feature/docs [DIRTY]");
+    }
+
+    @Test
+    void formatComponentStatus_dirtyIgnoresTag() {
+        // Dirty components should not be tagged, but if tag is passed,
+        // it formats as tagged (caller decides whether to tag)
+        String status = WsCheckpointMojo.formatComponentStatus(
+                "ike-docs", "def456", "main", true,
+                "checkpoint/test/ike-docs");
+
+        assertThat(status).contains("tagged");
     }
 }

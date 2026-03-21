@@ -102,7 +102,7 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
 
             // Tag if requested
             if (tag && !dirty) {
-                String tagName = "checkpoint/" + name + "/" + compName;
+                String tagName = checkpointTagName(name, compName);
                 try {
                     ReleaseSupport.exec(dir, getLog(),
                             "git", "tag", tagName);
@@ -143,7 +143,7 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
         }
 
         Path checkpointFile = checkpointsDir.resolve(
-                "checkpoint-" + name + ".yaml");
+                checkpointFileName(name));
         try {
             Files.writeString(checkpointFile, yamlContent,
                     StandardCharsets.UTF_8);
@@ -218,6 +218,49 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
         }
 
         return String.join("\n", yaml) + "\n";
+    }
+
+    /**
+     * Derive the git tag name for a checkpoint component.
+     *
+     * @param checkpointName the checkpoint name
+     * @param componentName  the component name
+     * @return tag name in the form {@code checkpoint/<name>/<component>}
+     */
+    public static String checkpointTagName(String checkpointName,
+                                            String componentName) {
+        return "checkpoint/" + checkpointName + "/" + componentName;
+    }
+
+    /**
+     * Derive the checkpoint YAML file name.
+     *
+     * @param checkpointName the checkpoint name
+     * @return file name in the form {@code checkpoint-<name>.yaml}
+     */
+    public static String checkpointFileName(String checkpointName) {
+        return "checkpoint-" + checkpointName + ".yaml";
+    }
+
+    /**
+     * Format a component status line for log output.
+     *
+     * @param compName the component name
+     * @param shortSha the short git SHA
+     * @param branch   the branch name
+     * @param dirty    whether the working tree has uncommitted changes
+     * @param tagName  the tag name (null if not tagging)
+     * @return formatted status line
+     */
+    public static String formatComponentStatus(String compName, String shortSha,
+                                                String branch, boolean dirty,
+                                                String tagName) {
+        if (tagName != null) {
+            return compName + " [" + shortSha + "] " + branch
+                    + " → tagged " + tagName;
+        }
+        String dirtyMark = dirty ? " [DIRTY]" : "";
+        return compName + " [" + shortSha + "] " + branch + dirtyMark;
     }
 
     private String resolveAuthor(File root) {

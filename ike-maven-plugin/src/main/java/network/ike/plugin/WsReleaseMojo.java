@@ -245,15 +245,28 @@ public class WsReleaseMojo extends AbstractWorkspaceMojo {
         try {
             Path pom = compDir.toPath().resolve("pom.xml");
             String content = Files.readString(pom, StandardCharsets.UTF_8);
-            // Simple regex — find first <version> after <project> or <parent>
-            // This is good enough for our POMs.
-            var matcher = java.util.regex.Pattern.compile(
-                    "<version>([^<]+)</version>").matcher(content);
-            if (matcher.find()) return matcher.group(1);
-            return "unknown";
+            return extractVersionFromPom(content);
         } catch (Exception e) {
             return "unknown";
         }
+    }
+
+    /**
+     * Extract the first {@code <version>} value from POM XML content.
+     *
+     * <p>This is a simple regex extraction — finds the first
+     * {@code <version>...</version>} in the content. Good enough for
+     * workspace POMs where the project version appears early.
+     *
+     * @param pomContent raw POM XML as a string
+     * @return the version string, or {@code "unknown"} if not found
+     */
+    public static String extractVersionFromPom(String pomContent) {
+        if (pomContent == null || pomContent.isBlank()) return "unknown";
+        var matcher = java.util.regex.Pattern.compile(
+                "<version>([^<]+)</version>").matcher(pomContent);
+        if (matcher.find()) return matcher.group(1);
+        return "unknown";
     }
 
     // ── Helper: update parent version in downstream POM ──────────────
@@ -272,28 +285,14 @@ public class WsReleaseMojo extends AbstractWorkspaceMojo {
                 String releasedVersion = entry.getValue();
                 String nextSnapshot = bumpToNextSnapshot(releasedVersion);
 
-                // Update parent version if it references the released component
-                // Pattern: <parent>...<artifactId>released-name</artifactId>
-                //          ...<version>old</version>...</parent>
-                var parentPattern = java.util.regex.Pattern.compile(
-                        "(<parent>\\s*" +
-                        "<groupId>[^<]+</groupId>\\s*" +
-                        "<artifactId>" + java.util.regex.Pattern.quote(releasedName)
-                                + "</artifactId>\\s*" +
-                        "<version>)[^<]+(</version>)",
-                        java.util.regex.Pattern.DOTALL);
-                content = parentPattern.matcher(content)
-                        .replaceFirst("$1" + nextSnapshot + "$2");
+                content = updateParentVersion(content, releasedName, nextSnapshot);
 
                 // Also update version properties like <ike-pipeline.version>
                 // or <ike.pipeline.version>
                 String propName1 = releasedName + ".version";
                 String propName2 = releasedName.replace("-", ".") + ".version";
                 for (String prop : List.of(propName1, propName2)) {
-                    String propPattern = "<" + java.util.regex.Pattern.quote(prop)
-                            + ">[^<]+</" + java.util.regex.Pattern.quote(prop) + ">";
-                    content = content.replaceAll(propPattern,
-                            "<" + prop + ">" + nextSnapshot + "</" + prop + ">");
+                    content = updateVersionProperty(content, prop, nextSnapshot);
                 }
             }
 
@@ -313,6 +312,54 @@ public class WsReleaseMojo extends AbstractWorkspaceMojo {
         }
     }
 
+    /**
+     * Update the parent version in POM content when the parent's
+     * artifactId matches {@code parentArtifactId}.
+     *
+     * <p>Matches the pattern:
+     * {@code <parent>...<artifactId>name</artifactId>...<version>old</version>...</parent>}
+     * and replaces the version with {@code newVersion}.
+     *
+     * @param pomContent       raw POM XML as a string
+     * @param parentArtifactId the parent artifact ID to match
+     * @param newVersion       the new version to set
+     * @return the updated POM content (unchanged if no match)
+     */
+    public static String updateParentVersion(String pomContent,
+                                              String parentArtifactId,
+                                              String newVersion) {
+        var parentPattern = java.util.regex.Pattern.compile(
+                "(<parent>\\s*" +
+                "<groupId>[^<]+</groupId>\\s*" +
+                "<artifactId>" + java.util.regex.Pattern.quote(parentArtifactId)
+                        + "</artifactId>\\s*" +
+                "<version>)[^<]+(</version>)",
+                java.util.regex.Pattern.DOTALL);
+        return parentPattern.matcher(pomContent)
+                .replaceFirst("$1" + newVersion + "$2");
+    }
+
+    /**
+     * Update a version property element in POM content.
+     *
+     * <p>Replaces {@code <propertyName>old</propertyName>} with
+     * {@code <propertyName>newVersion</propertyName>} for all
+     * occurrences.
+     *
+     * @param pomContent   raw POM XML as a string
+     * @param propertyName the property element name (e.g., "ike-pipeline.version")
+     * @param newVersion   the new version value
+     * @return the updated POM content (unchanged if no match)
+     */
+    public static String updateVersionProperty(String pomContent,
+                                                String propertyName,
+                                                String newVersion) {
+        String propPattern = "<" + java.util.regex.Pattern.quote(propertyName)
+                + ">[^<]+</" + java.util.regex.Pattern.quote(propertyName) + ">";
+        return pomContent.replaceAll(propPattern,
+                "<" + propertyName + ">" + newVersion + "</" + propertyName + ">");
+    }
+
     // ── Helper: version bump ─────────────────────────────────────────
 
     private String bumpToNextSnapshot(String releaseVersion) {
@@ -328,34 +375,77 @@ public class WsReleaseMojo extends AbstractWorkspaceMojo {
             Files.createDirectories(checkpointsDir);
             Path file = checkpointsDir.resolve("checkpoint-" + name + ".yaml");
 
-            StringBuilder yaml = new StringBuilder();
-            yaml.append("# Workspace checkpoint: ").append(name).append("\n");
-            yaml.append("# Generated: ").append(ISO_UTC.format(Instant.now())).append("\n");
-            yaml.append("checkpoint: ").append(name).append("\n");
-            yaml.append("timestamp: ").append(ISO_UTC.format(Instant.now())).append("\n");
-            yaml.append("components:\n");
-
+            // Gather component data for the pure function
+            String timestamp = ISO_UTC.format(Instant.now());
+            List<String[]> componentData = new ArrayList<>();
             for (String compName : graph.topologicalSort()) {
                 File compDir = new File(root, compName);
                 if (!compDir.isDirectory()) continue;
-
-                yaml.append("  ").append(compName).append(":\n");
-                yaml.append("    branch: ").append(gitBranch(compDir)).append("\n");
-                yaml.append("    sha: ").append(gitShortSha(compDir)).append("\n");
-                yaml.append("    version: ").append(currentVersion(compDir)).append("\n");
-                yaml.append("    dirty: ").append(!gitStatus(compDir).isEmpty()).append("\n");
+                componentData.add(new String[]{
+                        compName, gitBranch(compDir), gitShortSha(compDir),
+                        currentVersion(compDir),
+                        String.valueOf(!gitStatus(compDir).isEmpty())
+                });
             }
 
-            Files.writeString(file, yaml.toString(), StandardCharsets.UTF_8);
+            String yaml = buildPreReleaseCheckpointYaml(name, timestamp, componentData);
+            Files.writeString(file, yaml, StandardCharsets.UTF_8);
             getLog().info("Checkpoint written: " + file);
         } catch (IOException e) {
             getLog().warn("Could not write checkpoint: " + e.getMessage());
         }
     }
 
+    /**
+     * Build pre-release checkpoint YAML content from pre-gathered
+     * component data.
+     *
+     * <p>This is a pure function with no git or I/O dependencies,
+     * suitable for direct unit testing.
+     *
+     * @param name          checkpoint name
+     * @param timestamp     ISO-8601 UTC timestamp
+     * @param componentData list of {@code [name, branch, sha, version, dirty]}
+     *                      arrays for each present component
+     * @return YAML checkpoint content
+     */
+    public static String buildPreReleaseCheckpointYaml(
+            String name, String timestamp, List<String[]> componentData) {
+        StringBuilder yaml = new StringBuilder();
+        yaml.append("# Workspace checkpoint: ").append(name).append("\n");
+        yaml.append("# Generated: ").append(timestamp).append("\n");
+        yaml.append("checkpoint: ").append(name).append("\n");
+        yaml.append("timestamp: ").append(timestamp).append("\n");
+        yaml.append("components:\n");
+
+        for (String[] comp : componentData) {
+            yaml.append("  ").append(comp[0]).append(":\n");
+            yaml.append("    branch: ").append(comp[1]).append("\n");
+            yaml.append("    sha: ").append(comp[2]).append("\n");
+            yaml.append("    version: ").append(comp[3]).append("\n");
+            yaml.append("    dirty: ").append(comp[4]).append("\n");
+        }
+
+        return yaml.toString();
+    }
+
     // ── Helper: find mvn or mvnw ─────────────────────────────────────
 
     private String findMvn(File compDir) {
+        return resolveMvnCommand(compDir);
+    }
+
+    /**
+     * Resolve the Maven executable for a component directory.
+     *
+     * <p>Checks for {@code mvnw} (executable) and {@code mvnw.cmd} in
+     * the given directory. Falls back to {@code "mvn"} from the system
+     * PATH if no wrapper is found.
+     *
+     * @param compDir the component directory to check
+     * @return absolute path to mvnw/mvnw.cmd, or {@code "mvn"}
+     */
+    public static String resolveMvnCommand(File compDir) {
         File mvnw = new File(compDir, "mvnw");
         if (mvnw.exists() && mvnw.canExecute()) {
             return mvnw.getAbsolutePath();
