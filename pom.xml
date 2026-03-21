@@ -22,7 +22,7 @@
 
     <groupId>network.ike</groupId>
     <artifactId>ike-pipeline</artifactId>
-    <version>28-SNAPSHOT</version>
+    <version>28</version>
     <packaging>pom</packaging>
 
     <name>IKE Pipeline</name>
