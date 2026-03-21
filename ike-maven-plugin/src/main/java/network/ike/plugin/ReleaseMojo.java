@@ -274,8 +274,11 @@ public class ReleaseMojo extends AbstractMojo {
 
                 getLog().info("Deploying site to staging...");
                 ReleaseSupport.cleanRemoteSiteDir(gitRoot, getLog(), stagingDisk);
+                // Run verify before site so JaCoCo coverage data is generated.
+                // The tag checkout wiped target/, so jacoco.exec must be
+                // recreated for the coverage report to appear in the site.
                 ReleaseSupport.exec(gitRoot, getLog(),
-                        mvnw.getAbsolutePath(), "site", "site:stage",
+                        mvnw.getAbsolutePath(), "verify", "site", "site:stage",
                         "site:deploy", "-B",
                         "-Dsite.deploy.url=" + stagingUrl);
                 ReleaseSupport.swapRemoteSiteDir(gitRoot, getLog(), releaseDisk);
