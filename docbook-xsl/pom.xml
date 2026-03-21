@@ -110,22 +110,11 @@
         <build.tools.directory>${project.build.directory}/build-tools</build.tools.directory>
     </properties>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>network.ike</groupId>
-                <artifactId>ike-bom</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>ike-build-standards</artifactId>
+            <version>${project.version}</version>
             <classifier>claude</classifier>
             <type>zip</type>
             <scope>provided</scope>
@@ -133,6 +122,7 @@
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>ike-build-tools</artifactId>
+            <version>${project.version}</version>
             <classifier>tools</classifier>
             <type>zip</type>
             <scope>provided</scope>

@@ -47,18 +47,6 @@
         <log4j.version>3.0.0-beta2</log4j.version>
     </properties>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>network.ike</groupId>
-                <artifactId>ike-bom</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
         <!-- AsciidoctorJ — provided at runtime by asciidoctor-maven-plugin -->
         <dependency>

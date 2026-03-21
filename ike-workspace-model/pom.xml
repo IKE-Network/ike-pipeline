@@ -69,18 +69,6 @@
         <snakeyaml.version>2.2</snakeyaml.version>
     </properties>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>network.ike</groupId>
-                <artifactId>ike-bom</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
         <dependency>
             <groupId>org.yaml</groupId>
@@ -88,15 +76,17 @@
             <version>${snakeyaml.version}</version>
         </dependency>
 
-        <!-- Test (versions managed by ike-bom) -->
+        <!-- Test (versions from root POM properties) -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <version>${junit-jupiter.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
+            <version>${assertj.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -88,24 +88,13 @@
         <noto.symbols.base>https://github.com/notofonts/symbols/releases/download</noto.symbols.base>
     </properties>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>network.ike</groupId>
-                <artifactId>ike-bom</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
         <!-- Standards unpacked by inherited unpack-claude-standards
              (unpack-dependencies, reactor-aware) -->
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>ike-build-standards</artifactId>
+            <version>${project.version}</version>
             <classifier>claude</classifier>
             <type>zip</type>
             <scope>provided</scope>

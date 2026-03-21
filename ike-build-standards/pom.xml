@@ -70,18 +70,6 @@
         <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
     </properties>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>network.ike</groupId>
-                <artifactId>ike-bom</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <build>
         <pluginManagement>
             <plugins>

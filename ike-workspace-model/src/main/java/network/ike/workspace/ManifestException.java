@@ -5,6 +5,8 @@ package network.ike.workspace;
  */
 public class ManifestException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     public ManifestException(String message) {
         super(message);
     }

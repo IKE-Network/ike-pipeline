@@ -56,25 +56,14 @@
         </site>
     </distributionManagement>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>network.ike</groupId>
-                <artifactId>ike-bom</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
         <!-- IKE Build Standards — Claude instruction files.
-             Version resolved from ike-bom.
+             Version resolved from reactor.
              scope=provided: not needed at runtime, only unpacked at validate. -->
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>ike-build-standards</artifactId>
+            <version>${project.version}</version>
             <classifier>claude</classifier>
             <type>zip</type>
             <scope>provided</scope>
@@ -85,6 +74,7 @@
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>ike-build-tools</artifactId>
+            <version>${project.version}</version>
             <classifier>tools</classifier>
             <type>zip</type>
             <scope>provided</scope>
@@ -95,6 +85,7 @@
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>ike-doc-resources</artifactId>
+            <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -103,6 +94,7 @@
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>docbook-xsl</artifactId>
+            <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -110,11 +102,21 @@
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>minimal-fonts</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <!-- No Java sources — suppress "JAR will be empty" warning -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <skipIfEmpty>true</skipIfEmpty>
+                </configuration>
+            </plugin>
+
             <!-- Unpack documentation dependencies (if any) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
