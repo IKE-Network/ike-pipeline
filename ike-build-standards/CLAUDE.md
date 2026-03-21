@@ -27,7 +27,7 @@ Consumer modules unpack the `claude` artifact at `validate` phase into
 
 - Uses the unified pipeline version (e.g., `1.1.0-SNAPSHOT`)
 - Assembly descriptors: `src/assembly/claude-standards.xml`, `src/assembly/docs.xml`
-- Version is managed in `ike-bom`, not in parent POMs
+- Version is managed in `ike-parent`, which provides inline dependency management
 
 ## Build
 

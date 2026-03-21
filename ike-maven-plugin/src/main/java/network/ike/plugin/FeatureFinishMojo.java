@@ -31,7 +31,7 @@ import java.util.Set;
  *
  * <p>Components are processed in <b>reverse</b> topological order so
  * that leaf components (komet-desktop) merge first, and foundation
- * components (ike-bom) merge last.
+ * components (ike-parent) merge last.
  *
  * <pre>{@code
  * mvn ike:feature-finish -Dfeature=shield-terminology -Dgroup=core

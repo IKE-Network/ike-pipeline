@@ -215,7 +215,6 @@ For a doc project in its own repository (outside the IKE reactor):
    - `network.ike:ike-build-standards`
    - `network.ike:minimal-fonts`
    - `network.ike:koncept-asciidoc-extension`
-   - `network.ike:ike-bom`
 
 2. Use the POM template from `doc-example/README.md`
 

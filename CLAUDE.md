@@ -41,7 +41,6 @@ versionless (parent is the aggregator).
 |---|---|---|
 | `ike-build-tools` | Shared build scripts + release automation | POM + ZIP |
 | `ike-build-standards` | Versioned Claude instruction files | POM + ZIP |
-| `ike-bom` | Bill of Materials for centralized dependency versions | POM |
 | `ike-doc-resources` | Shared doc build resources (themes, configs, assembly descriptors) | JAR |
 | `minimal-fonts` | Noto font subset for PDF rendering | JAR |
 | `docbook-xsl` | DocBook XSL 1.79.2 + IKE FO customization | JAR |

@@ -1,26 +1,22 @@
-= IKE Bill of Materials
+= IKE Parent POM
 
-Centralized dependency version management for IKE Community projects.
-Import this BOM to align artifact versions across modules
+Centralized dependency version management and AsciiDoc toolchain
+configuration for IKE Community projects.
+Inherit from `ike-parent` to get aligned artifact versions
+and the full multi-renderer documentation pipeline
 without declaring explicit versions on each dependency.
 
 == Usage
 
-Add the BOM to your project's `<dependencyManagement>` section:
+Set `ike-parent` as your project's parent:
 
 [source,xml]
 ----
-<dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>network.ike</groupId>
-            <artifactId>ike-bom</artifactId>
-            <version>${ike.pipeline.version}</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
-</dependencyManagement>
+<parent>
+    <groupId>network.ike</groupId>
+    <artifactId>ike-parent</artifactId>
+    <version>${ike.pipeline.version}</version>
+</parent>
 ----
 
 Then declare dependencies without version:
@@ -35,7 +31,8 @@ Then declare dependencies without version:
 
 == Managed Artifacts
 
-The BOM manages versions for all IKE pipeline artifacts:
+`ike-parent` manages versions for all IKE pipeline artifacts inline
+via its `<dependencyManagement>` section:
 `ike-doc-resources`,
 `minimal-fonts`,
 `docbook-xsl`,

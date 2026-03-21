@@ -31,7 +31,7 @@
         Provides the AsciiDoc documentation pipeline (6 PDF renderers),
         Java 25 compiler/test configuration, GPG signing, and shared
         plugin management. External projects inherit ike-parent (build
-        conventions + BOM) or import ike-bom (dependency versions only).
+        conventions and centralized dependency versions).
     </description>
     <url>https://github.com/IKE-Network/ike-pipeline</url>
     <inceptionYear>2025</inceptionYear>
@@ -182,9 +182,9 @@
     </properties>
 
     <!-- ════════════════════════════════════════════════════════════════ -->
-    <!-- Dependency version management lives in ike-bom (a reactor        -->
-    <!-- subproject). Reactor modules import the BOM; external consumers  -->
-    <!-- inherit ike-parent (which also imports the BOM).                 -->
+    <!-- Dependency version management is declared inline in ike-parent.  -->
+    <!-- Version properties defined here are the single source of truth;  -->
+    <!-- ike-parent references them via inheritance.                       -->
     <!-- ════════════════════════════════════════════════════════════════ -->
 
     <!-- ════════════════════════════════════════════════════════════════ -->
@@ -1786,7 +1786,6 @@ IKE projects require Java 21+ (JRuby 10 baseline).
     </profiles>
 
     <subprojects>
-        <subproject>ike-bom</subproject>
         <subproject>ike-build-standards</subproject>
         <subproject>ike-build-tools</subproject>
         <subproject>ike-parent</subproject>

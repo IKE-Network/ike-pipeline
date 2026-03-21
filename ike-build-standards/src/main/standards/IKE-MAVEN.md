@@ -95,7 +95,7 @@ resolves `${project.version}` to literals in `<dependencies>`, but does
 NOT resolve it in `<build><plugins>`, `<pluginManagement>`, or
 `<dependencyManagement>`. This means external projects inheriting
 `ike-parent` would get unresolved `${project.version}` references for
-the `ike-maven-plugin` declaration and the `ike-bom` import.
+the `ike-maven-plugin` declaration and managed dependency versions.
 
 The `ike:prepare-release` goal works around this by replacing all
 `${project.version}` occurrences with the literal release version in
@@ -114,8 +114,6 @@ property is needed regardless — use `${project.version}` in source POMs.
 - No semantic versioning contract is implied. Each release supersedes
   the previous one.
 - All modules in the reactor share the unified version.
-- The BOM exports all module versions at the unified pipeline version.
-
 ### Branch-Qualified Versions
 
 Feature branches use a branch-qualified SNAPSHOT version:
@@ -155,36 +153,25 @@ scripts may transition a version to a non-SNAPSHOT release.
 
 ### Standards Version Coordination
 
-The `ike-build-standards` version is managed in `ike-bom`, not in the
-parent POM. This keeps the parent POM stable.
+The `ike-build-standards` version is managed inline in `ike-parent`'s
+`<dependencyManagement>` section, along with all other infrastructure
+module versions.
 
-- The BOM declares `ike-build-standards` in `<dependencyManagement>` with
-  the current version, classifier=claude, type=zip.
+- `ike-parent` declares `ike-build-standards` in `<dependencyManagement>`
+  with the current version, classifier=claude, type=zip.
 - The parent POM's `<pluginManagement>` defines the `unpack-dependencies`
-  execution filtered by artifactId and classifier. No version appears in
-  the parent POM.
-- Non-BOM projects (standalone modules not inheriting from the parent
-  chain) declare an explicit version in their own dependency.
+  execution filtered by artifactId and classifier.
+- Projects that inherit `ike-parent` get managed versions automatically.
+- Standalone modules (not inheriting from the parent chain) declare an
+  explicit version in their own dependency.
 
-### IKE BOM
+### Dependency Version Management
 
-The `ike-bom` artifact (`network.ike:ike-bom`) provides centralized version management. Import it in `<dependencyManagement>`:
-
-```xml
-<dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>network.ike</groupId>
-            <artifactId>ike-bom</artifactId>
-            <version>${ike-bom.version}</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
-</dependencyManagement>
-```
-
-Child modules then declare dependencies without `<version>` — versions are resolved from the BOM.
+All dependency versions are declared inline in `ike-parent`'s
+`<dependencyManagement>` section. Projects that inherit `ike-parent`
+get managed versions automatically — no separate BOM import is needed.
+Child modules declare dependencies without `<version>` to inherit
+managed versions from the parent.
 
 ## Project-Local Repository (Maven 4)
 

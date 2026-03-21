@@ -1,4 +1,4 @@
-# IKE BOM — Claude Standards
+# IKE Parent — Claude Standards
 
 ## Initial Setup — ALWAYS DO THIS FIRST
 
@@ -19,19 +19,19 @@ After validate completes, read and follow these files in `.claude/standards/`:
 
 ## Module Overview
 
-Bill of Materials (BOM) POM providing centralized version management
-for all IKE artifacts. Other projects import this BOM in their
-`<dependencyManagement>` to align dependency versions.
+Root POM serving as both the reactor aggregator and the single parent
+for all IKE modules. Provides centralized dependency version management
+inline in `<dependencyManagement>`, build plugin configuration, and the
+AsciiDoc documentation pipeline.
 
-- **Artifact**: `network.ike:ike-bom`
+- **Artifact**: `network.ike:ike-pipeline` (ike-parent)
 - **Packaging**: POM
 
 ## Key Conventions
 
-- This BOM manages infrastructure module versions (unified pipeline version)
-- Bumping versions = property changes here
-- Do not add plugin configuration to this POM — it is purely for
-  dependency version alignment
+- Dependency versions are managed inline in `<dependencyManagement>`
+- All modules in the reactor share the unified pipeline version
+- Projects inheriting ike-parent get managed versions automatically
 
 ## Build
 

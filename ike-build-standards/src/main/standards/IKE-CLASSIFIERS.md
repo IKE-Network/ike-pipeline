@@ -50,7 +50,7 @@ Renderer assembly descriptors live in `ike-doc-resources` at
   `scope=provided` in consumer dependencies — they are build-time-only.
 - Renderer classifiers are gated by `ike.skip.*` properties defaulting
   to `true`. Profiles flip the flag to `false`.
-- Version management for infrastructure classifiers goes in `ike-bom`.
+- Version management for infrastructure classifiers is declared inline in `ike-parent`.
 
 ## Adding a New Classifier
 
@@ -59,7 +59,7 @@ Renderer assembly descriptors live in `ike-doc-resources` at
    (renderer). Set `<id>` to the classifier name.
 2. Add `maven-assembly-plugin` execution in the producer POM, phase
    `package`, referencing the descriptor.
-3. Add managed dependency entry in `ike-bom/pom.xml` with
-   `<classifier>`, `<type>zip</type>`.
+3. Add managed dependency entry in `ike-parent`'s `<dependencyManagement>`
+   with `<classifier>`, `<type>zip</type>`.
 4. Consumer modules declare the dependency with `scope=provided`
    and add an unpack execution in the appropriate lifecycle phase.
