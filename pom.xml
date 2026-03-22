@@ -72,6 +72,9 @@
              versioned deployments (release, snapshot, checkpoint). -->
         <site.deploy.url>scpexe://proxy/srv/ike-site/${project.artifactId}</site.deploy.url>
 
+        <!-- IKE Maven Plugin (extracted to own repo) -->
+        <ike-maven-plugin.version>1-SNAPSHOT</ike-maven-plugin.version>
+
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -197,13 +200,11 @@
     <build>
         <pluginManagement>
             <plugins>
-                <!-- IKE Maven Plugin — pin to reactor version so that
-                     `mvn ike:deploy-site` etc. resolve to the current
-                     SNAPSHOT, not the latest released version. -->
+                <!-- IKE Maven Plugin — external dependency (extracted to own repo) -->
                 <plugin>
                     <groupId>network.ike</groupId>
                     <artifactId>ike-maven-plugin</artifactId>
-                    <version>${project.version}</version>
+                    <version>${ike-maven-plugin.version}</version>
                 </plugin>
 
                 <!-- Maven Clean Plugin -->
@@ -788,27 +789,15 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                 <artifactId>jacoco-maven-plugin</artifactId>
             </plugin>
 
-            <!-- Inject "← Project Site" breadcrumb into JaCoCo reports.
-                 No-op if JaCoCo report directory does not exist.
-                 NOTE: Inline shell used here because ike-maven-plugin is a reactor
-                 subproject and cannot be a build plugin in the same reactor.
-                 Downstream projects should use ike:inject-breadcrumb instead. -->
+            <!-- Inject "← Project Site" breadcrumb into JaCoCo reports -->
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
+                <groupId>network.ike</groupId>
+                <artifactId>ike-maven-plugin</artifactId>
                 <executions>
                     <execution>
                         <id>jacoco-breadcrumb</id>
                         <phase>verify</phase>
-                        <goals><goal>exec</goal></goals>
-                        <configuration>
-                            <executable>sh</executable>
-                            <workingDirectory>${project.build.directory}</workingDirectory>
-                            <arguments>
-                                <argument>-c</argument>
-                                <argument>test -d site/jacoco &amp;&amp; find site/jacoco -name '*.html' -print0 | xargs -0 sed -i '' 's|&lt;div class="breadcrumb" id="breadcrumb"&gt;|&lt;div class="breadcrumb" id="breadcrumb"&gt;&lt;a href="../index.html" style="font-weight:bold;margin-right:8px"&gt;\&amp;larr; Project Site&lt;/a&gt; \&amp;#124; |g' || true</argument>
-                            </arguments>
-                        </configuration>
+                        <goals><goal>inject-breadcrumb</goal></goals>
                     </execution>
                 </executions>
             </plugin>
@@ -1459,73 +1448,57 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                     </arguments>
                                 </configuration>
                             </execution>
-                            <!-- ── fix-svg / scan-logs / copy-docs (inline shell) ─── -->
-                            <!-- NOTE: Inline shell used here because ike-maven-plugin
-                                 is a reactor subproject and cannot be a build plugin
-                                 in the same reactor. Downstream projects should use
-                                 ike:fix-svg, ike:scan-logs, and ike:copy-docs instead. -->
+                        </executions>
+                    </plugin>
+
+                    <!-- ── IKE build-time goals (fix-svg, scan-logs, copy-docs) ─── -->
+                    <plugin>
+                        <groupId>network.ike</groupId>
+                        <artifactId>ike-maven-plugin</artifactId>
+                        <executions>
                             <execution>
                                 <id>fix-svg-prince</id>
                                 <phase>prepare-package</phase>
-                                <goals><goal>exec</goal></goals>
+                                <goals><goal>fix-svg</goal></goals>
                                 <configuration>
                                     <skip>${ike.skip.prince}</skip>
-                                    <executable>sh</executable>
-                                    <arguments>
-                                        <argument>-c</argument>
-                                        <argument>FILE="${asciidoc.output.directory}/pdf-html-prince/${pdf.source.document}.html"; test -f "$$FILE" &amp;&amp; perl -pi -e 's/&lt;rect\/&gt;//g' "$$FILE" || true</argument>
-                                    </arguments>
+                                    <htmlFile>${asciidoc.output.directory}/pdf-html-prince/${pdf.source.document}.html</htmlFile>
                                 </configuration>
                             </execution>
                             <execution>
                                 <id>fix-svg-ah</id>
                                 <phase>prepare-package</phase>
-                                <goals><goal>exec</goal></goals>
+                                <goals><goal>fix-svg</goal></goals>
                                 <configuration>
                                     <skip>${ike.skip.ah}</skip>
-                                    <executable>sh</executable>
-                                    <arguments>
-                                        <argument>-c</argument>
-                                        <argument>FILE="${asciidoc.output.directory}/pdf-html-ah/${pdf.source.document}.html"; test -f "$$FILE" &amp;&amp; perl -pi -e 's/&lt;rect\/&gt;//g' "$$FILE" || true</argument>
-                                    </arguments>
+                                    <htmlFile>${asciidoc.output.directory}/pdf-html-ah/${pdf.source.document}.html</htmlFile>
                                 </configuration>
                             </execution>
                             <execution>
                                 <id>fix-svg-weasyprint</id>
                                 <phase>prepare-package</phase>
-                                <goals><goal>exec</goal></goals>
+                                <goals><goal>fix-svg</goal></goals>
                                 <configuration>
                                     <skip>${ike.skip.weasyprint}</skip>
-                                    <executable>sh</executable>
-                                    <arguments>
-                                        <argument>-c</argument>
-                                        <argument>FILE="${asciidoc.output.directory}/pdf-html-weasyprint/${pdf.source.document}.html"; test -f "$$FILE" &amp;&amp; perl -pi -e 's/&lt;rect\/&gt;//g' "$$FILE" || true</argument>
-                                    </arguments>
+                                    <htmlFile>${asciidoc.output.directory}/pdf-html-weasyprint/${pdf.source.document}.html</htmlFile>
                                 </configuration>
                             </execution>
                             <execution>
                                 <id>scan-renderer-logs</id>
                                 <phase>verify</phase>
-                                <goals><goal>exec</goal></goals>
+                                <goals><goal>scan-logs</goal></goals>
                                 <configuration>
-                                    <executable>sh</executable>
-                                    <arguments>
-                                        <argument>-c</argument>
-                                        <argument>LOGS="${project.build.directory}/logs"; test -d "$$LOGS" &amp;&amp; grep -rl 'ERROR\|SEVERE\|FATAL' "$$LOGS" &amp;&amp; echo "[WARNING] Renderer log errors found — check files above" || true</argument>
-                                    </arguments>
+                                    <logsDir>${project.build.directory}/logs</logsDir>
                                 </configuration>
                             </execution>
                             <execution>
                                 <id>copy-docs-to-site</id>
                                 <phase>post-site</phase>
-                                <goals><goal>exec</goal></goals>
+                                <goals><goal>copy-docs</goal></goals>
                                 <configuration>
                                     <skip>${ike.skip.html}</skip>
-                                    <executable>sh</executable>
-                                    <arguments>
-                                        <argument>-c</argument>
-                                        <argument>SRC="${asciidoc.output.directory}/html"; DEST="${project.reporting.outputDirectory}"; test -d "$$SRC" &amp;&amp; mkdir -p "$$DEST" &amp;&amp; cp -R "$$SRC"/. "$$DEST"/ || true</argument>
-                                    </arguments>
+                                    <sourceDirectory>${asciidoc.output.directory}/html</sourceDirectory>
+                                    <siteDirectory>${project.reporting.outputDirectory}</siteDirectory>
                                 </configuration>
                             </execution>
                         </executions>
@@ -1887,8 +1860,6 @@ IKE projects require Java 21+ (JRuby 10 baseline).
         <subproject>docbook-xsl</subproject>
         <subproject>ike-doc-resources</subproject>
         <subproject>koncept-asciidoc-extension</subproject>
-        <subproject>ike-workspace-model</subproject>
-        <subproject>ike-maven-plugin</subproject>
         <subproject>ike-bom</subproject>
         <subproject>semantic-linebreak</subproject>
         <subproject>doc-example</subproject>
