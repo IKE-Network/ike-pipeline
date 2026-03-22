@@ -4,6 +4,55 @@
 
 All IKE artifacts use `network.ike` as the group ID.
 
+## Artifact Naming Convention
+
+### Core rule
+
+**Submodule directory name = submodule artifactId. Always.**
+No abbreviations, no different naming. The directory `ike-workspace-model/`
+contains the POM with `<artifactId>ike-workspace-model</artifactId>`.
+
+### Naming patterns
+
+| Concept | Pattern | Example |
+|---------|---------|---------|
+| Aggregator workspace | `{name}-workspace` | `ike-workspace` |
+| Multi-module reactor | Descriptive, no `-reactor` suffix | `ike-pipeline`, `ike-tooling` |
+| Maven plugin | `{prefix}-maven-plugin` (required) | `ike-maven-plugin` |
+| Library | `{project}-{purpose}` | `ike-workspace-model` |
+| Parent POM | `{project}-parent` | `ike-parent` |
+| BOM | `{project}-bom` | `ike-bom` |
+| Build standards | `{project}-build-standards` | `ike-build-standards` |
+
+### Rules
+
+1. **Submodule directory = artifactId** — no exceptions.
+2. **Reactor artifactId must not collide with any submodule artifactId.**
+   If the reactor contains a plugin module named `ike-maven-plugin`, the
+   reactor POM cannot also be `ike-maven-plugin`.
+3. **Maven plugins must follow `{prefix}-maven-plugin`** — required for
+   Maven prefix resolution (`mvn ike:release` resolves to `ike-maven-plugin`).
+4. **No `-reactor` suffix** — use a meaningful name that describes the
+   project's purpose (`ike-tooling`, `ike-pipeline`).
+5. **Git repo name should match the most recognizable artifact** — for a
+   single-module project, repo = artifactId. For multi-module, the repo
+   name may match the primary artifact rather than the reactor artifactId.
+   Example: repo `ike-maven-plugin` with reactor artifactId `ike-tooling`.
+
+### Aggregator workspaces vs. multi-module reactors
+
+An **aggregator workspace** (`ike-workspace`) is a developer-local project
+that ties multiple independent Git repositories together via `workspace.yaml`
+and file-activated `<subprojects>` profiles. It is not deployed to Nexus.
+
+A **multi-module reactor** (`ike-pipeline`, `ike-tooling`) is a single Git
+repository with tightly coupled modules that share a version and release
+together. It IS deployed to Nexus.
+
+The two serve different purposes: workspaces coordinate across repos,
+reactors coordinate within a repo. A workspace may contain multiple
+reactors as checked-out components.
+
 ## Parent POM Inheritance
 
 All IKE projects inherit from a single parent:
@@ -36,7 +85,12 @@ but the doc pipeline does not activate (they lack `src/docs/asciidoc/`):
 | `minimal-fonts` | Noto font subset for PDF | JAR |
 | `docbook-xsl` | DocBook XSL stylesheets + IKE FO layer | JAR |
 | `koncept-asciidoc-extension` | AsciidoctorJ inline macro + glossary | JAR |
-| `ike-maven-plugin` | Maven plugin wrapping build-tools scripts | maven-plugin |
+| `ike-bom` | Auto-generated BOM (via ike:generate-bom) | POM |
+
+The `ike-maven-plugin` and `ike-workspace-model` are in a separate
+reactor (`ike-tooling`) at `github.com/kec/ike-maven-plugin`.
+ike-pipeline consumes the plugin as an external build dependency at
+`${ike-maven-plugin.version}`.
 
 These are built and installed first in the reactor. The Maven reactor handles build ordering automatically.
 
