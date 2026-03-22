@@ -248,10 +248,13 @@
                  No lifecycle bindings; purely for IDE discoverability
                  and command-line invocation (ike:help, etc.).
                  Inherited by external projects via ike-parent. -->
+            <!-- ike-maven-plugin is in a separate repo (ike-tooling) with
+                 its own version. Use the property from the root POM,
+                 NOT ${project.version} which is the pipeline version. -->
             <plugin>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-maven-plugin</artifactId>
-                <version>${project.version}</version>
+                <version>${ike-maven-plugin.version}</version>
             </plugin>
         </plugins>
     </build>
