@@ -1497,8 +1497,8 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <goals><goal>copy-docs</goal></goals>
                                 <configuration>
                                     <skip>${ike.skip.html}</skip>
-                                    <sourceDirectory>${asciidoc.output.directory}/html</sourceDirectory>
-                                    <siteDirectory>${project.reporting.outputDirectory}</siteDirectory>
+                                    <generatedDocsDir>${asciidoc.output.directory}/html</generatedDocsDir>
+                                    <siteDir>${project.reporting.outputDirectory}</siteDir>
                                 </configuration>
                             </execution>
                         </executions>
