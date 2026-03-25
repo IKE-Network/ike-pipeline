@@ -93,8 +93,8 @@
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
         <maven-clean-plugin.version>3.4.0</maven-clean-plugin.version>
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
-        <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
-        <maven-failsafe-plugin.version>3.5.3</maven-failsafe-plugin.version>
+        <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
+        <maven-failsafe-plugin.version>3.5.5</maven-failsafe-plugin.version>
         <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
         <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
         <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
@@ -441,11 +441,6 @@
                     <version>${maven-surefire-plugin.version}</version>
                     <dependencies>
                         <dependency>
-                            <groupId>org.junit.platform</groupId>
-                            <artifactId>junit-platform-launcher</artifactId>
-                            <version>${junit-jupiter.version}</version>
-                        </dependency>
-                        <dependency>
                             <groupId>org.ow2.asm</groupId>
                             <artifactId>asm</artifactId>
                             <version>${asm.version}</version>
@@ -475,11 +470,6 @@
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>${maven-failsafe-plugin.version}</version>
                     <dependencies>
-                        <dependency>
-                            <groupId>org.junit.platform</groupId>
-                            <artifactId>junit-platform-launcher</artifactId>
-                            <version>${junit-jupiter.version}</version>
-                        </dependency>
                         <dependency>
                             <groupId>org.ow2.asm</groupId>
                             <artifactId>asm</artifactId>
