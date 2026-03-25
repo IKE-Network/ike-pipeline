@@ -244,9 +244,8 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
             </plugin>
 
-            <!-- IKE Maven Plugin — release and workspace goals.
-                 No lifecycle bindings; purely for IDE discoverability
-                 and command-line invocation (ike:help, etc.).
+            <!-- IKE Maven Plugin — release, workspace, and doc packaging.
+                 extensions=true enables ike-doc custom packaging type.
                  Inherited by external projects via ike-parent. -->
             <!-- ike-maven-plugin is in a separate repo (ike-tooling) with
                  its own version. Use the property from the root POM,
@@ -255,6 +254,7 @@
                 <groupId>network.ike</groupId>
                 <artifactId>ike-maven-plugin</artifactId>
                 <version>${ike-maven-plugin.version}</version>
+                <extensions>true</extensions>
             </plugin>
         </plugins>
     </build>

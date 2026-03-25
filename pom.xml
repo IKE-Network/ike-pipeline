@@ -73,7 +73,7 @@
         <site.deploy.url>scpexe://proxy/srv/ike-site/${project.artifactId}</site.deploy.url>
 
         <!-- IKE Maven Plugin (extracted to own repo) -->
-        <ike-maven-plugin.version>25</ike-maven-plugin.version>
+        <ike-maven-plugin.version>33</ike-maven-plugin.version>
 
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -1243,159 +1243,14 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         </executions>
                     </plugin>
 
-                    <!-- ── exec-maven-plugin ───────────────────────────── -->
+                    <!-- ── exec-maven-plugin (rename/copy utilities only) ──── -->
+                    <!-- Renderer invocations moved to ike:render-pdf below.   -->
+                    <!-- These remaining exec calls handle file naming that     -->
+                    <!-- predates multi-document support.                       -->
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
                         <executions>
-                            <execution>
-                                <id>mkdir-pdf-prince</id>
-                                <phase>prepare-package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.skip.prince}</skip>
-                                    <executable>mkdir</executable>
-                                    <arguments><argument>-p</argument><argument>${asciidoc.output.directory}/pdf-prince</argument></arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>mkdir-pdf-ah</id>
-                                <phase>prepare-package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.skip.ah}</skip>
-                                    <executable>mkdir</executable>
-                                    <arguments><argument>-p</argument><argument>${asciidoc.output.directory}/pdf-ah</argument></arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>mkdir-pdf-weasyprint</id>
-                                <phase>prepare-package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.skip.weasyprint}</skip>
-                                    <executable>mkdir</executable>
-                                    <arguments><argument>-p</argument><argument>${asciidoc.output.directory}/pdf-weasyprint</argument></arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>mkdir-pdf-xep</id>
-                                <phase>prepare-package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.skip.xep}</skip>
-                                    <executable>mkdir</executable>
-                                    <arguments><argument>-p</argument><argument>${asciidoc.output.directory}/pdf-xep</argument></arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>mkdir-pdf-fop</id>
-                                <phase>prepare-package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.skip.fop}</skip>
-                                    <executable>mkdir</executable>
-                                    <arguments><argument>-p</argument><argument>${asciidoc.output.directory}/pdf-fop</argument></arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>prince-html-to-pdf</id>
-                                <phase>package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.skip.prince}</skip>
-                                    <outputFile>${project.build.directory}/logs/renderer-prince.log</outputFile>
-                                    <executable>${prince.executable}</executable>
-                                    <arguments>
-                                        <argument>--silent</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-html-prince/${pdf.source.document}.html</argument>
-                                        <argument>--style</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-html-prince/ike-print.css</argument>
-                                        <argument>--output</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-prince/${ike.document.name}.pdf</argument>
-                                        <argument>--pdf-profile=PDF/UA-1</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>ah-html-to-pdf</id>
-                                <phase>package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.skip.ah}</skip>
-                                    <outputFile>${project.build.directory}/logs/renderer-ah.log</outputFile>
-                                    <executable>${antennahouse.executable}</executable>
-                                    <arguments>
-                                        <argument>-cssmode</argument>
-                                        <argument>-css</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-html-ah/ike-print.css</argument>
-                                        <argument>-d</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-html-ah/${pdf.source.document}.html</argument>
-                                        <argument>-o</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-ah/${ike.document.name}.pdf</argument>
-                                        <argument>-p</argument>
-                                        <argument>@PDF/UA-1</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>weasyprint-html-to-pdf</id>
-                                <phase>package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.skip.weasyprint}</skip>
-                                    <outputFile>${project.build.directory}/logs/renderer-weasyprint.log</outputFile>
-                                    <executable>${weasyprint.executable}</executable>
-                                    <arguments>
-                                        <argument>${asciidoc.output.directory}/pdf-html-weasyprint/${pdf.source.document}.html</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-weasyprint/${ike.document.name}.pdf</argument>
-                                        <argument>--stylesheet</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-html-weasyprint/ike-print.css</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>xep-fo-to-pdf</id>
-                                <phase>package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.skip.xep}</skip>
-                                    <outputFile>${project.build.directory}/logs/renderer-xep.log</outputFile>
-                                    <executable>java</executable>
-                                    <arguments>
-                                        <argument>-classpath</argument>
-                                        <argument>${xep.home}/lib/xep.jar:${xep.home}/lib/saxon.jar:${xep.home}/lib/saxon-xml-apis.jar</argument>
-                                        <argument>-Dcom.renderx.xep.CONFIG=${project.build.directory}/xep-config/xep-ike.xml</argument>
-                                        <argument>com.renderx.xep.XSLDriver</argument>
-                                        <argument>-fo</argument>
-                                        <argument>${asciidoc.output.directory}/fo-xep/${pdf.source.document}.fo</argument>
-                                        <argument>-pdf</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-xep/${ike.document.name}.pdf</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>fop-fo-to-pdf</id>
-                                <phase>package</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.skip.fop}</skip>
-                                    <outputFile>${project.build.directory}/logs/renderer-fop.log</outputFile>
-                                    <executable>java</executable>
-                                    <arguments>
-                                        <argument>-classpath</argument>
-                                        <classpath/>
-                                        <argument>org.apache.fop.cli.Main</argument>
-                                        <argument>-r</argument>
-                                        <argument>-c</argument>
-                                        <argument>${project.build.directory}/fop-config/fop-ike.xconf</argument>
-                                        <argument>-fo</argument>
-                                        <argument>${asciidoc.output.directory}/fo-fop/${pdf.source.document}.fo</argument>
-                                        <argument>-pdf</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-fop/${ike.document.name}.pdf</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
                             <execution>
                                 <id>rename-html-single</id>
                                 <phase>verify</phase>
@@ -1441,21 +1296,22 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <goals><goal>exec</goal></goals>
                                 <configuration>
                                     <skip>${ike.skip.pdf-default}</skip>
-                                    <executable>cp</executable>
+                                    <executable>bash</executable>
                                     <arguments>
-                                        <argument>${asciidoc.output.directory}/pdf-${ike.pdf.default}/${ike.document.name}.pdf</argument>
-                                        <argument>${asciidoc.output.directory}/pdf/</argument>
+                                        <argument>-c</argument>
+                                        <argument>cp ${asciidoc.output.directory}/pdf-${ike.pdf.default}/*.pdf ${asciidoc.output.directory}/pdf/ 2>/dev/null || true</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
                         </executions>
                     </plugin>
 
-                    <!-- ── IKE build-time goals (fix-svg, scan-logs, copy-docs) ─── -->
+                    <!-- ── IKE build-time goals ──────────────────────────────── -->
                     <plugin>
                         <groupId>network.ike</groupId>
                         <artifactId>ike-maven-plugin</artifactId>
                         <executions>
+                            <!-- ── fix-svg (prepare-package) ─────────────────── -->
                             <execution>
                                 <id>fix-svg-prince</id>
                                 <phase>prepare-package</phase>
@@ -1483,6 +1339,84 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                     <htmlFile>${asciidoc.output.directory}/pdf-html-weasyprint/${pdf.source.document}.html</htmlFile>
                                 </configuration>
                             </execution>
+
+                            <!-- ── render-pdf (package) ──────────────────────── -->
+                            <!-- Replaces exec-maven-plugin calls to prince,     -->
+                            <!-- ah, weasyprint, xep, fop. Each execution is     -->
+                            <!-- silent when skipped (no log noise). Output dirs  -->
+                            <!-- are created automatically.                       -->
+                            <execution>
+                                <id>prince-html-to-pdf</id>
+                                <phase>package</phase>
+                                <goals><goal>render-pdf</goal></goals>
+                                <configuration>
+                                    <skip>${ike.skip.prince}</skip>
+                                    <renderer>prince</renderer>
+                                    <executable>${prince.executable}</executable>
+                                    <inputDir>${asciidoc.output.directory}/pdf-html-prince</inputDir>
+                                    <outputDir>${asciidoc.output.directory}/pdf-prince</outputDir>
+                                    <stylesheet>${asciidoc.output.directory}/pdf-html-prince/ike-print.css</stylesheet>
+                                    <logFile>${project.build.directory}/logs/renderer-prince.log</logFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>ah-html-to-pdf</id>
+                                <phase>package</phase>
+                                <goals><goal>render-pdf</goal></goals>
+                                <configuration>
+                                    <skip>${ike.skip.ah}</skip>
+                                    <renderer>ah</renderer>
+                                    <executable>${antennahouse.executable}</executable>
+                                    <inputDir>${asciidoc.output.directory}/pdf-html-ah</inputDir>
+                                    <outputDir>${asciidoc.output.directory}/pdf-ah</outputDir>
+                                    <stylesheet>${asciidoc.output.directory}/pdf-html-ah/ike-print.css</stylesheet>
+                                    <logFile>${project.build.directory}/logs/renderer-ah.log</logFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>weasyprint-html-to-pdf</id>
+                                <phase>package</phase>
+                                <goals><goal>render-pdf</goal></goals>
+                                <configuration>
+                                    <skip>${ike.skip.weasyprint}</skip>
+                                    <renderer>weasyprint</renderer>
+                                    <executable>${weasyprint.executable}</executable>
+                                    <inputDir>${asciidoc.output.directory}/pdf-html-weasyprint</inputDir>
+                                    <outputDir>${asciidoc.output.directory}/pdf-weasyprint</outputDir>
+                                    <stylesheet>${asciidoc.output.directory}/pdf-html-weasyprint/ike-print.css</stylesheet>
+                                    <logFile>${project.build.directory}/logs/renderer-weasyprint.log</logFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>xep-fo-to-pdf</id>
+                                <phase>package</phase>
+                                <goals><goal>render-pdf</goal></goals>
+                                <configuration>
+                                    <skip>${ike.skip.xep}</skip>
+                                    <renderer>xep</renderer>
+                                    <inputDir>${asciidoc.output.directory}/fo-xep</inputDir>
+                                    <outputDir>${asciidoc.output.directory}/pdf-xep</outputDir>
+                                    <configFile>${project.build.directory}/xep-config/xep-ike.xml</configFile>
+                                    <classpath>${xep.home}/lib/xep.jar:${xep.home}/lib/saxon.jar:${xep.home}/lib/saxon-xml-apis.jar</classpath>
+                                    <logFile>${project.build.directory}/logs/renderer-xep.log</logFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>fop-fo-to-pdf</id>
+                                <phase>package</phase>
+                                <goals><goal>render-pdf</goal></goals>
+                                <configuration>
+                                    <skip>${ike.skip.fop}</skip>
+                                    <renderer>fop</renderer>
+                                    <inputDir>${asciidoc.output.directory}/fo-fop</inputDir>
+                                    <outputDir>${asciidoc.output.directory}/pdf-fop</outputDir>
+                                    <configFile>${project.build.directory}/fop-config/fop-ike.xconf</configFile>
+                                    <classpath>${java.class.path}</classpath>
+                                    <logFile>${project.build.directory}/logs/renderer-fop.log</logFile>
+                                </configuration>
+                            </execution>
+
+                            <!-- ── scan-logs, copy-docs (verify, post-site) ──── -->
                             <execution>
                                 <id>scan-renderer-logs</id>
                                 <phase>verify</phase>
