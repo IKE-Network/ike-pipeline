@@ -28,7 +28,7 @@
 
     <name>IKE Build Tools</name>
     <description>
-        Shared build scripts, release automation, and configuration
+        Shared configuration files (checkstyle, editorconfig, stignore)
         for IKE projects. Distributed as a classified Maven artifact.
     </description>
     <url>https://github.com/IKE-Network/ike-pipeline</url>
