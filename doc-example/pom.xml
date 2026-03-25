@@ -64,7 +64,7 @@
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>ike-build-standards</artifactId>
-            <version>${project.version}</version>
+            <version>34</version>
             <classifier>claude</classifier>
             <type>zip</type>
             <scope>provided</scope>
@@ -75,7 +75,7 @@
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>ike-build-tools</artifactId>
-            <version>${project.version}</version>
+            <version>34</version>
             <classifier>tools</classifier>
             <type>zip</type>
             <scope>provided</scope>
@@ -86,7 +86,7 @@
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>ike-doc-resources</artifactId>
-            <version>${project.version}</version>
+            <version>34</version>
             <scope>provided</scope>
         </dependency>
 
@@ -95,7 +95,7 @@
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>docbook-xsl</artifactId>
-            <version>${project.version}</version>
+            <version>34</version>
             <scope>provided</scope>
         </dependency>
 
@@ -103,7 +103,7 @@
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>minimal-fonts</artifactId>
-            <version>${project.version}</version>
+            <version>34</version>
         </dependency>
     </dependencies>
 
