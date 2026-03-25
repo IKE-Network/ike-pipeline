@@ -20,22 +20,29 @@ After validate completes, read and follow these files in `.claude/standards/`:
 ## Module Overview
 
 This module produces a classified ZIP artifact (`classifier=tools`,
-`format=zip`) containing shared configuration files. Consumer modules
-unpack this artifact at `initialize` phase into `target/build-tools/`.
+`format=zip`) containing shared build scripts, release automation,
+and configuration files. Consumer modules unpack this artifact at
+`initialize` phase into `target/build-tools/`.
 
-- **Artifact**: `network.ike:ike-build-tools:zip:tools`
+- **Artifact**: `network.ike:ike-build-tools:1.1.0-SNAPSHOT:zip:tools`
 - **Packaging**: POM (no compiled code)
 
 ## Contents
 
-- `config/.stignore.template` — Syncthing ignore patterns
-- `config/checkstyle.xml` — checkstyle rules
-- `config/.editorconfig` — editor settings
+- `scripts/fix-inline-svg.sh` — SVG post-processing for PDF renderers
+- `scripts/patch-docbook-xsl.sh` — DocBook XSL patching
+- `scripts/scan-renderer-logs.sh` — renderer log analysis
+- `scripts/copy-docs-to-site.sh` — copy generated docs to site directory
 
-All build scripts have been replaced by cross-platform `ike-maven-plugin`
-goals (`ike:release`, `ike:checkpoint`, `ike:ws-release`, `ike:feature-start`,
-`ike:feature-finish`, `ike:copy-docs`, `ike:fix-svg`, `ike:patch-docbook`,
-`ike:scan-logs`, etc.).
+NOTE: Workspace and release scripts (`ike-workspace.sh`, `merge-to-main.sh`,
+`create-checkpoint.sh`, `prepare-release.sh`, `post-release.sh`,
+`release-from-feature.sh`, `validate-pr.sh`, `common-functions.sh`)
+have been replaced by `ike-maven-plugin` goals (`ike:init`, `ike:status`,
+`ike:dashboard`, `ike:feature-finish`, `ike:ws-checkpoint`, `ike:release`,
+`ike:verify`).
+- `config/.stignore.template` — Syncthing ignore patterns
+- `config/checkstyle.xml` — checkstyle rules (stub)
+- `config/.editorconfig` — editor settings (stub)
 
 ## Build
 
