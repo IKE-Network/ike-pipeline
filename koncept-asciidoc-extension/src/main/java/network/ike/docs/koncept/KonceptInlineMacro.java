@@ -1,7 +1,7 @@
 package network.ike.docs.koncept;
 
-import org.asciidoctor.ast.ContentNode;
 import org.asciidoctor.ast.Document;
+import org.asciidoctor.ast.PhraseNode;
 import org.asciidoctor.ast.StructuralNode;
 import org.asciidoctor.extension.InlineMacroProcessor;
 import org.asciidoctor.extension.Name;
@@ -44,8 +44,8 @@ public class KonceptInlineMacro extends InlineMacroProcessor {
             new WeakHashMap<>();
 
     @Override
-    public Object process(ContentNode parent, String target, Map<String, Object> attributes) {
-        Document doc = ((StructuralNode) parent).getDocument();
+    public PhraseNode process(StructuralNode parent, String target, Map<String, Object> attributes) {
+        Document doc = parent.getDocument();
         Map<String, KonceptEntry> registry = getOrCreateRegistry(doc);
 
         // Register this reference (idempotent on first occurrence)
