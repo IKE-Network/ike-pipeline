@@ -73,7 +73,7 @@
         <site.deploy.url>scpexe://proxy/srv/ike-site/${project.artifactId}</site.deploy.url>
 
         <!-- IKE Maven Plugin (extracted to own repo) -->
-        <ike-maven-plugin.version>34</ike-maven-plugin.version>
+        <ike-maven-plugin.version>36</ike-maven-plugin.version>
 
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -205,6 +205,23 @@
                     <groupId>network.ike</groupId>
                     <artifactId>ike-maven-plugin</artifactId>
                     <version>${ike-maven-plugin.version}</version>
+                    <executions>
+                        <!-- Render site AsciiDoc at pre-site so Doxia picks up
+                             the HTML body fragments from generated-site/.
+                             Replaces asciidoctor-converter-doxia-module. -->
+                        <execution>
+                            <id>render-site-content</id>
+                            <phase>pre-site</phase>
+                            <goals><goal>asciidoc</goal></goals>
+                            <configuration>
+                                <sourceDirectory>${project.basedir}/src/site/asciidoc</sourceDirectory>
+                                <outputDirectory>${project.build.directory}/generated-site</outputDirectory>
+                                <skipPrawn>true</skipPrawn>
+                                <skipDocbook>true</skipDocbook>
+                                <skipHtmlSingle>true</skipHtmlSingle>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
 
                 <!-- Maven Clean Plugin -->
@@ -319,21 +336,16 @@
                 </plugin>
 
                 <!-- ── Maven Site Plugin ──────────────────────────────────── -->
+                <!-- AsciiDoc rendering is handled by ike:asciidoc at pre-site,
+                     not by asciidoctor-converter-doxia-module.  This keeps a
+                     single JRuby instance, ensures Koncept macros and Kroki
+                     diagrams are available, and decouples AsciidoctorJ version
+                     from the Doxia module's transitive constraints. -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-site-plugin</artifactId>
                     <version>3.21.0</version>
                     <dependencies>
-                        <dependency>
-                            <groupId>org.asciidoctor</groupId>
-                            <artifactId>asciidoctor-converter-doxia-module</artifactId>
-                            <version>3.2.0</version>
-                        </dependency>
-                        <dependency>
-                            <groupId>org.asciidoctor</groupId>
-                            <artifactId>asciidoctorj-diagram</artifactId>
-                            <version>2.3.1</version>
-                        </dependency>
                         <dependency>
                             <groupId>org.sentrysoftware.maven</groupId>
                             <artifactId>maven-skin-tools</artifactId>
@@ -358,23 +370,7 @@
                         </dependency>
                     </dependencies>
                     <configuration>
-                        <asciidoc>
-                            <requires>
-                                <require>asciidoctor-diagram</require>
-                            </requires>
-                            <attributes>
-                                <source-highlighter>coderay</source-highlighter>
-                                <icons>font</icons>
-                                <diagram-server-url>${kroki.server.url}</diagram-server-url>
-                                <diagram-server-type>kroki_io</diagram-server-type>
-                                <diagram-format>svg</diagram-format>
-                                <diagram-svg-type>inline</diagram-svg-type>
-                                <allow-uri-read>true</allow-uri-read>
-                            </attributes>
-                        </asciidoc>
-                        <moduleExcludes>
-                            <asciidoc>**/_*.adoc,**/_*/</asciidoc>
-                        </moduleExcludes>
+                        <generatedSiteDirectory>${project.build.directory}/generated-site</generatedSiteDirectory>
                     </configuration>
                 </plugin>
 
