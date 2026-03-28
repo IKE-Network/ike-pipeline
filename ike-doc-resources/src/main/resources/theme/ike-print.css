@@ -459,33 +459,41 @@ table.colophon-credits td {
 #header {
     page: title-page;
     break-before: right;             /* always start on recto */
-    text-align: center;
+    text-align: center !important;
     padding-top: 30%;
     page-break-after: always;
-    border-bottom: none !important;  /* remove default AsciiDoc rule line */
+    border: none !important;
 }
 
-#header h1 {
+#header > h1:first-child {
     font-size: 36pt;
     color: #2c3e50;
     font-family: 'Noto Sans', sans-serif;
     line-height: 1.2;
-    border-bottom: none !important;  /* no rule under title */
-    margin-bottom: 0;
-    padding-bottom: 0;
+    border: none !important;
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
 }
 
 #header .details {
-    margin-top: 4em;                 /* breathing room below title */
+    display: block !important;       /* override AsciiDoc flexbox */
+    margin-top: 4em !important;      /* breathing room below title */
+    padding: 0 !important;
     font-size: 13pt;
     color: #555555;
-    text-align: center !important;   /* override AsciiDoc default left-align */
-    border: none !important;         /* no borders on details block */
+    text-align: center !important;
+    border: none !important;
+    border-bottom: none !important;
 }
 
 #header .details .author {
     font-size: 14pt;
     font-style: italic;
+}
+
+#header .details br {
+    display: none !important;        /* suppress line breaks between author spans */
 }
 
 #header .details #revnumber,
