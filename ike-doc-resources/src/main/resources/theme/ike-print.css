@@ -242,7 +242,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 { font-size: 24pt; }
-h2 { font-size: 18pt; page-break-before: always; }  /* new page per chapter */
+h2 { font-size: 18pt; }
+.book h2 { page-break-before: always; }  /* new page per chapter — books only */
 h3 { font-size: 14pt; }
 h4 { font-size: 12pt; }
 h5 { font-size: 11pt; }

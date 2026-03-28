@@ -21,7 +21,9 @@ font:
     # Monospace for code
     NotoSansMono:
       normal: NotoSansMono-Regular.ttf
+      italic: NotoSansMono-Regular.ttf
       bold: NotoSansMono-Bold.ttf
+      bold_italic: NotoSansMono-Bold.ttf
     
     # Mathematical operators: ⊑ ⊓ ∃ ∀ ≡ (U+2200–U+22FF and beyond)
     NotoSansMath:
