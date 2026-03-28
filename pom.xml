@@ -22,7 +22,7 @@
 
     <groupId>network.ike</groupId>
     <artifactId>ike-pipeline</artifactId>
-    <version>37-SNAPSHOT</version>
+    <version>37</version>
     <packaging>pom</packaging>
 
     <name>IKE Pipeline</name>
@@ -680,7 +680,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         <dependency>
                             <groupId>network.ike</groupId>
                             <artifactId>koncept-asciidoc-extension</artifactId>
-                            <version>${project.version}</version>
+                            <version>37</version>
                         </dependency>
                     </dependencies>
                     <configuration>
@@ -690,7 +690,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <require>asciidoctor-diagram</require>
                         </requires>
                         <attributes>
-                            <project-version>${project.version}</project-version>
+                            <project-version>37</project-version>
                             <project-name>${project.name}</project-name>
                             <generated>${asciidoc.generated.directory}</generated>
                             <resources>${project.basedir}/src/docs/resources</resources>
