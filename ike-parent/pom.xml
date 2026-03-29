@@ -157,6 +157,22 @@
                 <version>${asciidoctorj-diagram.version}</version>
             </dependency>
 
+            <!-- ── Compile-time Annotation Dependencies ────────────────── -->
+            <!-- Suppress "Cannot find annotation method" warnings from     -->
+            <!-- dependencies compiled with bnd or JetBrains annotations.   -->
+            <dependency>
+                <groupId>biz.aQute.bnd</groupId>
+                <artifactId>biz.aQute.bnd.annotation</artifactId>
+                <version>7.1.0</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.jetbrains</groupId>
+                <artifactId>annotations</artifactId>
+                <version>26.0.2</version>
+                <scope>provided</scope>
+            </dependency>
+
             <!-- ── Test Dependencies ──────────────────────────────────── -->
 
             <dependency>
@@ -204,6 +220,17 @@
             <artifactId>ike-build-tools</artifactId>
             <classifier>tools</classifier>
             <type>zip</type>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Annotation jars — resolve warnings from deps compiled with bnd/JetBrains -->
+        <dependency>
+            <groupId>biz.aQute.bnd</groupId>
+            <artifactId>biz.aQute.bnd.annotation</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
             <scope>provided</scope>
         </dependency>
     </dependencies>
