@@ -94,7 +94,7 @@
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>ike-build-standards</artifactId>
-            <version>40</version>
+            <version>${project.version}</version>
             <classifier>claude</classifier>
             <type>zip</type>
             <scope>provided</scope>
