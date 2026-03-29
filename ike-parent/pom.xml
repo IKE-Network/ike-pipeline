@@ -159,13 +159,9 @@
 
             <!-- ── Compile-time Annotation Dependencies ────────────────── -->
             <!-- Suppress "Cannot find annotation method" warnings from     -->
-            <!-- dependencies compiled with bnd or JetBrains annotations.   -->
-            <dependency>
-                <groupId>biz.aQute.bnd</groupId>
-                <artifactId>biz.aQute.bnd.annotation</artifactId>
-                <version>7.1.0</version>
-                <scope>provided</scope>
-            </dependency>
+            <!-- dependencies compiled with JetBrains annotations.          -->
+            <!-- Note: bnd annotations intentionally omitted — bnd.annotation -->
+            <!-- pulls in OSGi jars that cause split-package conflicts.      -->
             <dependency>
                 <groupId>org.jetbrains</groupId>
                 <artifactId>annotations</artifactId>
@@ -222,12 +218,7 @@
             <type>zip</type>
             <scope>provided</scope>
         </dependency>
-        <!-- Annotation jars — resolve warnings from deps compiled with bnd/JetBrains -->
-        <dependency>
-            <groupId>biz.aQute.bnd</groupId>
-            <artifactId>biz.aQute.bnd.annotation</artifactId>
-            <scope>provided</scope>
-        </dependency>
+        <!-- JetBrains annotations — resolve warnings from deps compiled with @Contract -->
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
