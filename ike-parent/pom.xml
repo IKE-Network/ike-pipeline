@@ -157,18 +157,6 @@
                 <version>${asciidoctorj-diagram.version}</version>
             </dependency>
 
-            <!-- ── Compile-time Annotation Dependencies ────────────────── -->
-            <!-- Suppress "Cannot find annotation method" warnings from     -->
-            <!-- dependencies compiled with JetBrains annotations.          -->
-            <!-- Note: bnd annotations intentionally omitted — bnd.annotation -->
-            <!-- pulls in OSGi jars that cause split-package conflicts.      -->
-            <dependency>
-                <groupId>org.jetbrains</groupId>
-                <artifactId>annotations</artifactId>
-                <version>26.0.2</version>
-                <scope>provided</scope>
-            </dependency>
-
             <!-- ── Test Dependencies ──────────────────────────────────── -->
 
             <dependency>
@@ -216,12 +204,6 @@
             <artifactId>ike-build-tools</artifactId>
             <classifier>tools</classifier>
             <type>zip</type>
-            <scope>provided</scope>
-        </dependency>
-        <!-- JetBrains annotations — resolve warnings from deps compiled with @Contract -->
-        <dependency>
-            <groupId>org.jetbrains</groupId>
-            <artifactId>annotations</artifactId>
             <scope>provided</scope>
         </dependency>
     </dependencies>
