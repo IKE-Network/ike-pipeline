@@ -72,8 +72,13 @@
              versioned deployments (release, snapshot, checkpoint). -->
         <site.deploy.url>scpexe://proxy/srv/ike-site/${project.artifactId}</site.deploy.url>
 
+        <!-- Nexus deploy URLs. Override via settings.xml profiles.
+             deploy.staging.url — developer releases go here; TeamCity promotes to releases.
+             deploy.release.url — kept for ike-pipeline itself (released by trusted committers). -->
+        <deploy.staging.url>https://nexus.tinkar.org/repository/ike-staging/</deploy.staging.url>
+
         <!-- IKE Maven Plugin (extracted to own repo) -->
-        <ike-maven-plugin.version>38</ike-maven-plugin.version>
+        <ike-maven-plugin.version>39</ike-maven-plugin.version>
 
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

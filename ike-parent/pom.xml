@@ -68,8 +68,10 @@
 
     <distributionManagement>
         <repository>
-            <id>ike-releases</id>
-            <url>${deploy.release.url}</url>
+            <!-- Developers deploy releases to ike-staging. -->
+            <!-- TeamCity verifies reproducibility then promotes to ike-releases. -->
+            <id>ike-staging</id>
+            <url>${deploy.staging.url}</url>
         </repository>
         <snapshotRepository>
             <id>ike-snapshots</id>
