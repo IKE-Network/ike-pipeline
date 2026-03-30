@@ -95,7 +95,7 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-build-standards</artifactId>
-                <version>${project.version}</version>
+                <version>41</version>
                 <classifier>claude</classifier>
                 <type>zip</type>
             </dependency>
@@ -104,7 +104,7 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-build-standards</artifactId>
-                <version>${project.version}</version>
+                <version>41</version>
                 <classifier>docs</classifier>
                 <type>zip</type>
             </dependency>
@@ -113,7 +113,7 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-build-tools</artifactId>
-                <version>${project.version}</version>
+                <version>41</version>
                 <classifier>tools</classifier>
                 <type>zip</type>
             </dependency>
@@ -122,21 +122,21 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-doc-resources</artifactId>
-                <version>${project.version}</version>
+                <version>41</version>
             </dependency>
 
             <!-- Noto fonts for PDF generation (minimal subset) -->
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>minimal-fonts</artifactId>
-                <version>${project.version}</version>
+                <version>41</version>
             </dependency>
 
             <!-- DocBook XSL 1.79.2 + IKE FO customization layer -->
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>docbook-xsl</artifactId>
-                <version>${project.version}</version>
+                <version>41</version>
             </dependency>
 
             <!-- ── AsciiDoc Toolchain ─────────────────────────────────── -->
@@ -249,7 +249,7 @@
                  Inherited by external projects via ike-parent. -->
             <!-- ike-maven-plugin is in a separate repo (ike-tooling) with
                  its own version. Use the property from the root POM,
-                 NOT ${project.version} which is the pipeline version. -->
+                 NOT 41 which is the pipeline version. -->
             <plugin>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-maven-plugin</artifactId>
