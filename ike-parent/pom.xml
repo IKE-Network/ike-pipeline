@@ -315,5 +315,18 @@
                 </plugins>
             </build>
         </profile>
+        <!-- ── skip-javadoc-for-pom ─────────────────────────────────── -->
+        <!-- POM-packaging modules have no Java source. Skip javadoc     -->
+        <!-- and source jar to avoid "fake javadoc directory" warnings.   -->
+        <profile>
+            <id>skip-javadoc-for-pom</id>
+            <activation>
+                <packaging>pom</packaging>
+            </activation>
+            <properties>
+                <maven.javadoc.skip>true</maven.javadoc.skip>
+                <maven.source.skip>true</maven.source.skip>
+            </properties>
+        </profile>
     </profiles>
 </project>

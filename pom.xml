@@ -73,7 +73,7 @@
         <site.deploy.url>scpexe://proxy/srv/ike-site/${project.artifactId}</site.deploy.url>
 
         <!-- IKE Maven Plugin (extracted to own repo) -->
-        <ike-maven-plugin.version>37</ike-maven-plugin.version>
+        <ike-maven-plugin.version>38</ike-maven-plugin.version>
 
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
