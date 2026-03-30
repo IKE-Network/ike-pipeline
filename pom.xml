@@ -687,7 +687,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         <dependency>
                             <groupId>network.ike</groupId>
                             <artifactId>koncept-asciidoc-extension</artifactId>
-                            <version>44</version>
+                            <version>${project.version}</version>
                         </dependency>
                     </dependencies>
                     <configuration>
@@ -697,7 +697,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <require>asciidoctor-diagram</require>
                         </requires>
                         <attributes>
-                            <project-version>44</project-version>
+                            <project-version>${project.version}</project-version>
                             <project-name>${project.name}</project-name>
                             <generated>${asciidoc.generated.directory}</generated>
                             <resources>${project.basedir}/src/docs/resources</resources>
