@@ -248,6 +248,26 @@ The `.mvn/local-repo/` directory is excluded from:
 - Git (via `.gitignore`)
 - Syncthing (via `.stignore`)
 
+## JVM Configuration (`.mvn/jvm.config`)
+
+Every IKE project should include `.mvn/jvm.config` with standard JVM
+flags. This file is read by Maven before the POM is parsed — it cannot
+be inherited from a parent POM or unpacked at build time.
+
+`ike:init` generates this file automatically when initializing workspace
+components. Standard contents:
+
+```
+-Dpolyglotimpl.AttachLibraryFailureAction=ignore
+```
+
+| Flag | Purpose |
+|------|---------|
+| `polyglotimpl.AttachLibraryFailureAction=ignore` | Suppresses GraalVM TruffleAttach warning on standard JDKs |
+
+Add additional JVM flags as needed (e.g., `--add-opens` for
+reflection access, memory settings for large builds).
+
 ## POM Element Names
 
 Always use full element names in POM files. Maven 4.1.0 supports
