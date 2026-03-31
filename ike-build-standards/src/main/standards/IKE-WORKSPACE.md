@@ -31,17 +31,25 @@ The workspace root must contain a `pom.xml` that declares `ike-maven-plugin`:
 ```xml
 <project xmlns="http://maven.apache.org/POM/4.1.0" ...>
     <modelVersion>4.1.0</modelVersion>
+
+    <!-- Inherit ike-parent to get managed plugin versions
+         (including ike-maven-plugin.version). Use the latest
+         released ike-parent version from Nexus. -->
+    <parent>
+        <groupId>network.ike</groupId>
+        <artifactId>ike-parent</artifactId>
+        <version>LATEST-RELEASE</version>
+        <relativePath/>
+    </parent>
+
     <groupId>network.ike</groupId>
     <artifactId>ike-workspace</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
 
-    <properties>
-        <ike-maven-plugin.version>24-SNAPSHOT</ike-maven-plugin.version>
-    </properties>
-
     <build>
         <plugins>
+            <!-- Version managed by ike-parent via ${ike-maven-plugin.version} -->
             <plugin>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-maven-plugin</artifactId>
