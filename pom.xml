@@ -78,7 +78,7 @@
         <deploy.staging.url>https://nexus.tinkar.org/repository/ike-staging/</deploy.staging.url>
 
         <!-- IKE Maven Plugin (extracted to own repo) -->
-        <ike-maven-plugin.version>39</ike-maven-plugin.version>
+        <ike-maven-plugin.version>41</ike-maven-plugin.version>
 
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
