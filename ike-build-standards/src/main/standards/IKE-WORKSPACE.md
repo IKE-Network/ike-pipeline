@@ -37,7 +37,7 @@ The workspace root must contain a `pom.xml` that declares `ike-maven-plugin`:
     <packaging>pom</packaging>
 
     <properties>
-        <ike-maven-plugin.version>24-SNAPSHOT</ike-maven-plugin.version>
+        <ike-maven-plugin.version>41</ike-maven-plugin.version>
     </properties>
 
     <build>
