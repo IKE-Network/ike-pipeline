@@ -22,7 +22,7 @@
 
     <groupId>network.ike</groupId>
     <artifactId>ike-pipeline</artifactId>
-    <version>46-SNAPSHOT</version>
+    <version>46</version>
     <packaging>pom</packaging>
 
     <name>IKE Pipeline</name>
@@ -84,7 +84,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- Reproducible builds — maven-release-plugin updates automatically -->
-        <project.build.outputTimestamp>2026-03-30T19:02:10Z</project.build.outputTimestamp>
+        <project.build.outputTimestamp>2026-03-31T04:28:35Z</project.build.outputTimestamp>
 
         <!-- ── Java Configuration (from java-parent) ─────────────────── -->
         <java.version>25</java.version>
@@ -687,7 +687,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         <dependency>
                             <groupId>network.ike</groupId>
                             <artifactId>koncept-asciidoc-extension</artifactId>
-                            <version>${project.version}</version>
+                            <version>46</version>
                         </dependency>
                     </dependencies>
                     <configuration>
@@ -697,7 +697,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <require>asciidoctor-diagram</require>
                         </requires>
                         <attributes>
-                            <project-version>${project.version}</project-version>
+                            <project-version>46</project-version>
                             <project-name>${project.name}</project-name>
                             <generated>${asciidoc.generated.directory}</generated>
                             <resources>${project.basedir}/src/docs/resources</resources>
