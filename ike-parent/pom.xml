@@ -111,6 +111,15 @@
                 <type>zip</type>
             </dependency>
 
+            <!-- .asciidoctorconfig for IDE preview (classified ZIP) -->
+            <dependency>
+                <groupId>network.ike</groupId>
+                <artifactId>ike-build-standards</artifactId>
+                <version>${project.version}</version>
+                <classifier>asciidoctorconfig</classifier>
+                <type>zip</type>
+            </dependency>
+
             <!-- Shared build scripts and release automation (classified ZIP) -->
             <dependency>
                 <groupId>network.ike</groupId>
@@ -280,6 +289,13 @@
             <dependencies>
                 <dependency>
                     <groupId>network.ike</groupId>
+                    <artifactId>ike-build-standards</artifactId>
+                    <classifier>asciidoctorconfig</classifier>
+                    <type>zip</type>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>network.ike</groupId>
                     <artifactId>ike-doc-resources</artifactId>
                     <scope>provided</scope>
                 </dependency>
@@ -300,6 +316,10 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-dependency-plugin</artifactId>
                         <executions>
+                            <execution>
+                                <id>unpack-asciidoctorconfig</id>
+                                <!-- inherits config from pluginManagement -->
+                            </execution>
                             <execution>
                                 <id>unpack-doc-resources</id>
                                 <!-- inherits config from pluginManagement -->

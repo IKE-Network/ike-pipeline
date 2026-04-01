@@ -31,6 +31,9 @@ Thumbs.db
 # AsciiDoctor diagram cache
 .asciidoctor/
 
+# Extracted by ike-build-standards (asciidoctorconfig classifier)
+.asciidoctorconfig
+
 # Node (svgo)
 node_modules/
 

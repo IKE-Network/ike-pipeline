@@ -90,6 +90,10 @@
                         <phase>none</phase>
                     </execution>
                     <execution>
+                        <id>unpack-asciidoctorconfig</id>
+                        <phase>none</phase>
+                    </execution>
+                    <execution>
                         <id>unpack-build-tools</id>
                         <phase>none</phase>
                     </execution>
@@ -118,6 +122,16 @@
                         <configuration>
                             <descriptors>
                                 <descriptor>src/assembly/docs.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>package-asciidoctorconfig</id>
+                        <phase>package</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/asciidoctorconfig.xml</descriptor>
                             </descriptors>
                         </configuration>
                     </execution>
