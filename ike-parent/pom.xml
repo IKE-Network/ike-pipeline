@@ -259,12 +259,12 @@
                  extensions=true enables ike-doc custom packaging type.
                  Inherited by external projects via ike-parent. -->
             <!-- ike-maven-plugin is in a separate repo (ike-tooling) with
-                 its own version. Use ike-maven-plugin.version from the root POM,
+                 its own version. Use ike-tooling.version from the root POM,
                  not project.version (which is the pipeline release version). -->
             <plugin>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-maven-plugin</artifactId>
-                <version>${ike-maven-plugin.version}</version>
+                <version>${ike-tooling.version}</version>
                 <extensions>true</extensions>
             </plugin>
         </plugins>

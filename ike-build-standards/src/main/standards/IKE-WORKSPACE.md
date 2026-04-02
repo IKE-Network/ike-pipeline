@@ -33,7 +33,7 @@ The workspace root must contain a `pom.xml` that declares `ike-maven-plugin`:
     <modelVersion>4.1.0</modelVersion>
 
     <!-- Inherit ike-parent to get managed plugin versions
-         (including ike-maven-plugin.version). Use the latest
+         (including ike-tooling.version). Use the latest
          released ike-parent version from Nexus. -->
     <parent>
         <groupId>network.ike</groupId>
@@ -49,11 +49,11 @@ The workspace root must contain a `pom.xml` that declares `ike-maven-plugin`:
 
     <build>
         <plugins>
-            <!-- Version managed by ike-parent via ${ike-maven-plugin.version} -->
+            <!-- Version managed by ike-parent via ${ike-tooling.version} -->
             <plugin>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-maven-plugin</artifactId>
-                <version>${ike-maven-plugin.version}</version>
+                <version>${ike-tooling.version}</version>
             </plugin>
         </plugins>
     </build>

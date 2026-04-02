@@ -140,7 +140,9 @@ architecture
   knowledge graph
   layered architecture
   module namespace
+  nesting depth
   service architecture
+  structural regime
 
 clinical naming
   complex concept
