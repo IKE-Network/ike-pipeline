@@ -64,19 +64,19 @@
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>ike-build-standards</artifactId>
-            <version>${project.version}</version>
+            <version>${ike-tooling.version}</version>
             <classifier>claude</classifier>
             <type>zip</type>
             <scope>provided</scope>
         </dependency>
 
-        <!-- IKE Build Tools — shared scripts (fix-inline-svg.sh, scan-renderer-logs.sh, etc.).
-             Unpacked to target/build-tools/ by inherited unpack-build-tools execution. -->
+        <!-- IKE Build Standards — shared build config (checkstyle, PMD, etc.).
+             Unpacked to target/build-standards/ by inherited unpack-build-standards execution. -->
         <dependency>
             <groupId>network.ike</groupId>
-            <artifactId>ike-build-tools</artifactId>
-            <version>${project.version}</version>
-            <classifier>tools</classifier>
+            <artifactId>ike-build-standards</artifactId>
+            <version>${ike-tooling.version}</version>
+            <classifier>config</classifier>
             <type>zip</type>
             <scope>provided</scope>
         </dependency>

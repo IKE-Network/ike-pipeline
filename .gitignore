@@ -37,6 +37,9 @@ Thumbs.db
 # Node (svgo)
 node_modules/
 
+# Unpacked from ike-build-standards docs classifier (single-sourced)
+ike-build-tools/src/site/asciidoc/ike-workspace-conventions.adoc
+
 # Claude Code
 .claude/settings.local.json
 .claude/summary.md

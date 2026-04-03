@@ -109,12 +109,15 @@ mvn clean verify -pl example-project -Dike.skip.html=false
   The release process replaces `${project.version}` with literals before
   deploying, then restores the originals for the main branch merge.
 
-## Workspace Tooling (`ike-maven-plugin`)
+## Workspace Tooling (`ike-maven-plugin` + `ike-workspace-maven-plugin`)
 
-The `ike-maven-plugin` module provides Maven goals (prefix `ike:`) for
-multi-repository workspace management, gitflow branching, and release
-orchestration. All former bash scripts for workspace and release
-operations have been retired — use `ike:*` goals exclusively.
+The `ike-maven-plugin` provides build goals (prefix `ike:`) for release
+orchestration, BOM generation, site deployment, and AsciiDoc utilities.
+The `ike-workspace-maven-plugin` provides workspace goals (prefix `ws:`)
+for multi-repository workspace management and gitflow branching.
+All former bash scripts for workspace and release operations have been
+retired — use `ws:*` goals for workspace operations and `ike:*` goals
+for build/release operations.
 
 ### Workspace Layout
 
@@ -127,42 +130,42 @@ The workspace POM (`pom.xml`) in the same directory declares
 
 ```bash
 # Initialize workspace (clone all components)
-mvn ike:init
+mvn ws:init
 
 # Initialize a subset
-mvn ike:init -Dgroup=core
+mvn ws:init -Dgroup=core
 
 # Sync all repos
-mvn ike:pull
+mvn ws:pull
 
 # Git status across all repos
-mvn ike:status
+mvn ws:status
 
 # Full dashboard (verify + status + cascade)
-mvn ike:dashboard
+mvn ws:dashboard
 ```
 
 ### Key Gitflow Commands
 
 ```bash
 # Start a feature branch across components
-mvn ike:feature-start -Dfeature=my-feature
+mvn ws:feature-start -Dfeature=my-feature
 
 # Finish (merge to main, strip qualifier, tag, push)
-mvn ike:feature-finish -Dfeature=my-feature -Dpush=true
+mvn ws:feature-finish -Dfeature=my-feature -Dpush=true
 
 # Save a multi-repo checkpoint
-mvn ike:ws-checkpoint -Dname=progress
+mvn ws:checkpoint -Dname=progress
 ```
 
 ### Key Release Commands
 
 ```bash
 # Preview what would be released
-mvn ike:ws-release -DdryRun=true
+mvn ws:release -DdryRun=true
 
 # Release all dirty components in dependency order
-mvn ike:ws-release -Dpush=true
+mvn ws:release -Dpush=true
 ```
 
 ### Workspace Standards

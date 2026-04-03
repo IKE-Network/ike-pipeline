@@ -77,8 +77,8 @@
              deploy.release.url — kept for ike-pipeline itself (released by trusted committers). -->
         <deploy.staging.url>https://nexus.tinkar.org/repository/ike-staging/</deploy.staging.url>
 
-        <!-- IKE Maven Plugin (extracted to own repo) -->
-        <ike-tooling.version>47</ike-tooling.version>
+        <!-- IKE Tooling (ike-maven-plugin, ike-workspace-maven-plugin, ike-build-standards) -->
+        <ike-tooling.version>56</ike-tooling.version>
 
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -205,7 +205,7 @@
     <build>
         <pluginManagement>
             <plugins>
-                <!-- IKE Maven Plugin — external dependency (extracted to own repo) -->
+                <!-- IKE Tooling — external dependency (extracted to own repo) -->
                 <plugin>
                     <groupId>network.ike</groupId>
                     <artifactId>ike-maven-plugin</artifactId>
@@ -227,6 +227,12 @@
                             </configuration>
                         </execution>
                     </executions>
+                </plugin>
+                <!-- IKE Workspace Maven Plugin — ws: prefix goals -->
+                <plugin>
+                    <groupId>network.ike</groupId>
+                    <artifactId>ike-workspace-maven-plugin</artifactId>
+                    <version>${ike-tooling.version}</version>
                 </plugin>
 
                 <!-- Maven Clean Plugin -->
@@ -283,8 +289,8 @@
                             <phase>initialize</phase>
                             <goals><goal>unpack-dependencies</goal></goals>
                             <configuration>
-                                <includeArtifactIds>ike-build-tools</includeArtifactIds>
-                                <includeClassifiers>tools</includeClassifiers>
+                                <includeArtifactIds>ike-build-standards</includeArtifactIds>
+                                <includeClassifiers>config</includeClassifiers>
                                 <includeTypes>zip</includeTypes>
                                 <outputDirectory>${project.build.directory}/build-tools</outputDirectory>
                                 <overWriteReleases>true</overWriteReleases>
@@ -889,7 +895,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                 <dependency>
                     <groupId>network.ike</groupId>
                     <artifactId>ike-build-standards</artifactId>
-                    <version>${project.version}</version>
+                    <version>${ike-tooling.version}</version>
                     <classifier>asciidoctorconfig</classifier>
                     <type>zip</type>
                     <scope>provided</scope>
@@ -1826,8 +1832,6 @@ IKE projects require Java 21+ (JRuby 10 baseline).
     </profiles>
 
     <subprojects>
-        <subproject>ike-build-standards</subproject>
-        <subproject>ike-build-tools</subproject>
         <subproject>ike-parent</subproject>
         <subproject>minimal-fonts</subproject>
         <subproject>docbook-xsl</subproject>

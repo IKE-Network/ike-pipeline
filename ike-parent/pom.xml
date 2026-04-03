@@ -97,7 +97,7 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-build-standards</artifactId>
-                <version>${project.version}</version>
+                <version>${ike-tooling.version}</version>
                 <classifier>claude</classifier>
                 <type>zip</type>
             </dependency>
@@ -106,7 +106,7 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-build-standards</artifactId>
-                <version>${project.version}</version>
+                <version>${ike-tooling.version}</version>
                 <classifier>docs</classifier>
                 <type>zip</type>
             </dependency>
@@ -115,17 +115,17 @@
             <dependency>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-build-standards</artifactId>
-                <version>${project.version}</version>
+                <version>${ike-tooling.version}</version>
                 <classifier>asciidoctorconfig</classifier>
                 <type>zip</type>
             </dependency>
 
-            <!-- Shared build scripts and release automation (classified ZIP) -->
+            <!-- Shared build config files (editorconfig, checkstyle, stignore) -->
             <dependency>
                 <groupId>network.ike</groupId>
-                <artifactId>ike-build-tools</artifactId>
-                <version>${project.version}</version>
-                <classifier>tools</classifier>
+                <artifactId>ike-build-standards</artifactId>
+                <version>${ike-tooling.version}</version>
+                <classifier>config</classifier>
                 <type>zip</type>
             </dependency>
 
@@ -199,8 +199,8 @@
 
     <!-- ════════════════════════════════════════════════════════════════ -->
     <!-- Dependencies — inherited by external projects.                   -->
-    <!-- ike-build-standards is unpacked at validate phase by the          -->
-    <!-- inherited unpack-claude-standards execution (unpack-dependencies).-->
+    <!-- ike-build-standards (from ike-tooling) is unpacked at validate     -->
+    <!-- phase by the inherited unpack-claude-standards execution.          -->
     <!-- ════════════════════════════════════════════════════════════════ -->
     <dependencies>
         <dependency>
@@ -212,8 +212,8 @@
         </dependency>
         <dependency>
             <groupId>network.ike</groupId>
-            <artifactId>ike-build-tools</artifactId>
-            <classifier>tools</classifier>
+            <artifactId>ike-build-standards</artifactId>
+            <classifier>config</classifier>
             <type>zip</type>
             <scope>provided</scope>
         </dependency>

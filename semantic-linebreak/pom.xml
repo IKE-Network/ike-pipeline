@@ -75,12 +75,12 @@
         </dependency>
 
         <!-- IKE Build Standards — Claude instruction files.
-             Version resolved from reactor (ike-build-standards is a reactor module).
+             Version from ike-tooling (ike-build-standards moved to ike-tooling repo).
              scope=provided: not needed at runtime, only unpacked at validate. -->
         <dependency>
             <groupId>network.ike</groupId>
             <artifactId>ike-build-standards</artifactId>
-            <version>${project.version}</version>
+            <version>${ike-tooling.version}</version>
             <classifier>claude</classifier>
             <type>zip</type>
             <scope>provided</scope>

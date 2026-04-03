@@ -295,7 +295,7 @@ mvn clean verify -pl example-project -Dike.pdf.prince
 | JAR (empty)
 
 | `ike-maven-plugin`
-| Maven plugin: workspace management, release orchestration (`ike:ws-release`), BOM generation (`ike:generate-bom`)
+| Maven plugin: release orchestration (`ike:release`), BOM generation (`ike:generate-bom`), site deployment, AsciiDoc utilities
 | maven-plugin
 
 | `ike-bom`

@@ -1,0 +1,21 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="ws:status" type="MavenRunConfiguration" factoryName="Maven">
+    <MavenSettings>
+      <option name="myGeneralSettings" />
+      <option name="myRunnerSettings" />
+      <option name="myRunnerParameters">
+        <MavenRunnerParameters>
+          <option name="workingDirPath" value="$PROJECT_DIR$" />
+          <option name="goals">
+            <list>
+              <option value="ws:status" />
+            </list>
+          </option>
+          <option name="profilesMap">
+            <map />
+          </option>
+        </MavenRunnerParameters>
+      </option>
+    </MavenSettings>
+  </configuration>
+</component>
