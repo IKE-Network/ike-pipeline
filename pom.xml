@@ -78,7 +78,7 @@
         <deploy.staging.url>https://nexus.tinkar.org/repository/ike-staging/</deploy.staging.url>
 
         <!-- IKE Tooling (ike-maven-plugin, ike-workspace-maven-plugin, ike-build-standards) -->
-        <ike-tooling.version>56</ike-tooling.version>
+        <ike-tooling.version>66</ike-tooling.version>
 
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -1833,6 +1833,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
 
     <subprojects>
         <subproject>ike-parent</subproject>
+        <subproject>ike-workspace-maven-plugin</subproject>
         <subproject>minimal-fonts</subproject>
         <subproject>docbook-xsl</subproject>
         <subproject>ike-doc-resources</subproject>

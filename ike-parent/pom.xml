@@ -255,17 +255,25 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
             </plugin>
 
-            <!-- IKE Maven Plugin — release, workspace, and doc packaging.
+            <!-- IKE Maven Plugin — release and doc packaging.
                  extensions=true enables ike-doc custom packaging type.
                  Inherited by external projects via ike-parent. -->
-            <!-- ike-maven-plugin is in a separate repo (ike-tooling) with
-                 its own version. Use ike-tooling.version from the root POM,
-                 not project.version (which is the pipeline release version). -->
+            <!-- ike-maven-plugin is in ike-tooling (separate repo/version).
+                 ike-tooling.version from the root POM is the tested pair. -->
             <plugin>
                 <groupId>network.ike</groupId>
                 <artifactId>ike-maven-plugin</artifactId>
                 <version>${ike-tooling.version}</version>
                 <extensions>true</extensions>
+            </plugin>
+
+            <!-- IKE Workspace Maven Plugin — workspace management goals.
+                 Co-released with ike-parent in this reactor.
+                 Inheriting projects get ws: goals at the matching version. -->
+            <plugin>
+                <groupId>network.ike</groupId>
+                <artifactId>ike-workspace-maven-plugin</artifactId>
+                <version>${project.version}</version>
             </plugin>
         </plugins>
     </build>
