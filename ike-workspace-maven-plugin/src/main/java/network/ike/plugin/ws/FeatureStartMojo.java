@@ -84,6 +84,7 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
+        ReportLog report = startReport();
         feature = requireParam(feature, "feature", "Feature name (branch will be feature/<name>)");
         String branchName = "feature/" + feature;
 
@@ -237,6 +238,7 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
                 + " | Already on branch: " + skippedAlreadyOnBranch.size()
                 + " | Not cloned: " + skippedNotCloned.size());
         getLog().info("");
+        finishReport("ws:feature-start", report);
     }
 
     /**

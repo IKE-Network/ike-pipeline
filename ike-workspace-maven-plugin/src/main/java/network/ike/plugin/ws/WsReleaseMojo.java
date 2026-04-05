@@ -83,6 +83,7 @@ public class WsReleaseMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
+        ReportLog report = startReport();
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -217,6 +218,7 @@ public class WsReleaseMojo extends AbstractWorkspaceMojo {
             getLog().info("  " + entry.getKey() + " → " + entry.getValue());
         }
         getLog().info("");
+        finishReport("ws:release", report);
     }
 
     // ── Helper: find latest release tag ──────────────────────────────

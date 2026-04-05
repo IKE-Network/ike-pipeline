@@ -217,4 +217,50 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
     protected String header(String goalName) {
         return workspaceName() + " — " + goalName;
     }
+
+    /**
+     * Append a section to the cumulative workspace report.
+     *
+     * <p>Thread-safe — uses file-level locking. The report accumulates
+     * in {@code target/ws-report.md} and is removed by {@code mvn clean}.
+     *
+     * @param goalName the goal that produced this output (e.g., "ws:add")
+     * @param content  markdown content to append
+     */
+    protected void appendReport(String goalName, String content) {
+        try {
+            WorkspaceReport.append(
+                    workspaceRoot().toPath(), goalName, content, getLog());
+        } catch (MojoExecutionException e) {
+            getLog().debug("Could not resolve workspace root for report: "
+                    + e.getMessage());
+        }
+    }
+
+    /**
+     * Start capturing info-level log output for the workspace report.
+     * Replaces the Mojo's logger with a tee that captures info output.
+     * Call {@link #finishReport(String, ReportLog)} at the end of
+     * {@code execute()} to write the captured output to the report file.
+     *
+     * @return a ReportLog that wraps the original logger and captures info output
+     */
+    protected ReportLog startReport() {
+        ReportLog report = new ReportLog(getLog());
+        setLog(report);
+        return report;
+    }
+
+    /**
+     * Write captured log output to the workspace report file.
+     *
+     * @param goalName  the goal name for the report section header
+     * @param reportLog the ReportLog from {@link #startReport()}
+     */
+    protected void finishReport(String goalName, ReportLog reportLog) {
+        String content = reportLog.captured();
+        if (!content.isBlank()) {
+            appendReport(goalName, content);
+        }
+    }
 }

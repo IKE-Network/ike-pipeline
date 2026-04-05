@@ -53,6 +53,7 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
+        ReportLog report = startReport();
         getLog().info("");
         getLog().info("IKE Workspace Align — synchronize inter-component dependency versions");
         getLog().info("══════════════════════════════════════════════════════════════");
@@ -130,6 +131,7 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
                     + changedComponents.size() + " component(s)");
         }
         getLog().info("");
+        finishReport("ws:align", report);
     }
 
     // ── GroupId index ───────────────────────────────────────────────

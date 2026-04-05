@@ -113,6 +113,7 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
+        ReportLog report = startReport();
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -256,6 +257,7 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
         getLog().info("  Components: " + snapshots.size()
                 + " | Absent: " + absentComponents.size());
         getLog().info("");
+        finishReport("ws:checkpoint", report);
     }
 
     // ── Per-component checkpoint (overridable for tests) ──────────────

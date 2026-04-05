@@ -54,6 +54,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
+        ReportLog report = startReport();
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
         Defaults defaults = graph.manifest().defaults();
@@ -143,6 +144,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 + " Syncthing-initialized, " + skipped + " already present"
                 + (wrappers > 0 ? ", " + wrappers + " Maven wrappers installed/updated" : ""));
         getLog().info("");
+        finishReport("ws:init", report);
     }
 
     /**

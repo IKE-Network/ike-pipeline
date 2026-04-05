@@ -44,6 +44,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
+        ReportLog report = startReport();
         getLog().info("");
         getLog().info(header("Verification"));
         getLog().info("══════════════════════════════════════════════════════════════");
@@ -58,6 +59,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
         verifyEnvironment();
         getLog().info("");
+        finishReport("ws:verify", report);
     }
 
     // ── Workspace manifest verification (existing logic) ──────────

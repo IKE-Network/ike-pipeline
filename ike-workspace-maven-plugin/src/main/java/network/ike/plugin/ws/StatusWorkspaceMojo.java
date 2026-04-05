@@ -35,6 +35,7 @@ public class StatusWorkspaceMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
+        ReportLog report = startReport();
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -99,5 +100,6 @@ public class StatusWorkspaceMojo extends AbstractWorkspaceMojo {
         getLog().info("  " + cloned + "/" + targets.size() + " cloned, "
                 + dirty + " dirty");
         getLog().info("");
+        finishReport("ws:status", report);
     }
 }

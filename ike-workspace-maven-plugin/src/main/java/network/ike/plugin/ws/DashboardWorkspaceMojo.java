@@ -29,6 +29,7 @@ public class DashboardWorkspaceMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
+        ReportLog report = startReport();
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -136,5 +137,6 @@ public class DashboardWorkspaceMojo extends AbstractWorkspaceMojo {
         }
 
         getLog().info("");
+        finishReport("ws:dashboard", report);
     }
 }
