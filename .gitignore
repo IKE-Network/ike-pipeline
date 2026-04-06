@@ -43,3 +43,4 @@ ike-build-tools/src/site/asciidoc/ike-workspace-conventions.adoc
 # Claude Code (regenerated from ike-build-standards artifact)
 .claude/
 **/.claude/
+mvnw
