@@ -51,8 +51,11 @@
 
     <distributionManagement>
         <repository>
-            <id>ike-releases</id>
-            <url>${deploy.release.url}</url>
+            <!-- Developer releases go to ike-staging.
+                 TeamCity promotes to ike-releases after verification.
+                 ike-public group aggregates both for resolution. -->
+            <id>ike-staging</id>
+            <url>${deploy.staging.url}</url>
         </repository>
         <snapshotRepository>
             <id>ike-snapshots</id>
@@ -72,9 +75,9 @@
              versioned deployments (release, snapshot, checkpoint). -->
         <site.deploy.url>scpexe://proxy/srv/ike-site/${project.artifactId}</site.deploy.url>
 
-        <!-- Nexus deploy URLs. Override via settings.xml profiles.
-             deploy.staging.url — developer releases go here; TeamCity promotes to releases.
-             deploy.release.url — kept for ike-pipeline itself (released by trusted committers). -->
+        <!-- Nexus deploy URLs. Developer releases deploy to ike-staging.
+             TeamCity promotes to ike-releases after verification.
+             ike-public group aggregates both for resolution. -->
         <deploy.staging.url>https://nexus.tinkar.org/repository/ike-staging/</deploy.staging.url>
 
         <!-- IKE Tooling (ike-maven-plugin, ike-workspace-maven-plugin, ike-build-standards) -->
