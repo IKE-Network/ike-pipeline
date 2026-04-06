@@ -274,6 +274,7 @@ public class WsCreateMojo extends AbstractMojo {
         gi.append("!pom.xml\n");
         gi.append("!workspace.yaml\n");
         gi.append("!README.adoc\n");
+        gi.append("!GOALS.md\n");
         gi.append("!mvnw\n");
         gi.append("!mvnw.cmd\n\n");
         gi.append("# ── Whitelist workspace-owned directories ────────────────────────\n");

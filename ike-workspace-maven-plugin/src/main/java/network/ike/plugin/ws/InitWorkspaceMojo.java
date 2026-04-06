@@ -144,6 +144,10 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 + " Syncthing-initialized, " + skipped + " already present"
                 + (wrappers > 0 ? ", " + wrappers + " Maven wrappers installed/updated" : ""));
         getLog().info("");
+
+        // Generate goal cheatsheet at workspace root
+        writeGoalCheatsheet(root.toPath());
+
         finishReport("ws:init", report);
     }
 
@@ -438,6 +442,112 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
         } catch (IOException e) {
             getLog().warn("    Could not create jvm.config: " + e.getMessage());
         }
+    }
+
+    /**
+     * Write a GOALS.md cheatsheet to the workspace root. Overwrites
+     * on each init so it stays current with the installed plugin version.
+     */
+    private void writeGoalCheatsheet(Path wsRoot) {
+        Path goalsFile = wsRoot.resolve("GOALS.md");
+        try {
+            Files.writeString(goalsFile, generateGoalCheatsheet(),
+                    StandardCharsets.UTF_8);
+            getLog().info("  Updated GOALS.md");
+        } catch (IOException e) {
+            getLog().debug("Could not write GOALS.md: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Generate the goal cheatsheet content. Static so it can be tested.
+     */
+    static String generateGoalCheatsheet() {
+        return """
+                # Workspace Goals
+
+                All goals are available in IntelliJ's Maven tool window
+                under **Plugins > ws** and **Plugins > ike**.
+
+                ## Workspace Management
+
+                | Goal | Description |
+                |------|-------------|
+                | `ws:create` | Create a new workspace (scaffold + git init) |
+                | `ws:add` | Add a component repo (prompts for URL) |
+                | `ws:init` | Clone/initialize all components |
+                | `ws:fix` | Sync workspace.yaml versions from actual POMs |
+                | `ws:graph` | Print dependency graph (text or DOT format) |
+                | `ws:stignore` | Generate Syncthing ignore rules |
+                | `ws:upgrade` | Preview workspace convention upgrades |
+                | `ws:upgrade-apply` | Apply convention upgrades |
+                | `ws:remove` | Remove a component (prompts for name) |
+                | `ws:help` | List all ws: goals with descriptions |
+
+                ## Verification
+
+                | Goal | Description |
+                |------|-------------|
+                | `ws:verify` | Check manifest, parents, BOM cascade, VCS state |
+                | `ws:verify-convergence` | Full verify + transitive dependency convergence (slow) |
+                | `ws:status` | Git status across all components |
+                | `ws:dashboard` | Combined verify + status + cascade overview |
+                | `ws:cascade` | Show downstream impact of a component change |
+
+                ## Version Alignment
+
+                | Goal | Description |
+                |------|-------------|
+                | `ws:align` | Preview inter-component version changes |
+                | `ws:align-apply` | Apply version alignment to POMs |
+                | `ws:pull` | Git pull --rebase across all components |
+                | `ws:sync` | Reconcile git state after machine switch |
+
+                ## Feature Branching
+
+                | Goal | Description |
+                |------|-------------|
+                | `ws:feature-start` | Preview creating a feature branch |
+                | `ws:feature-start-apply` | Create feature branch across components |
+                | `ws:feature-finish-merge` | No-ff merge (preserves history) |
+                | `ws:feature-finish-squash` | Squash merge (single commit) |
+                | `ws:feature-finish-rebase` | Rebase + fast-forward (linear history) |
+                | `ws:feature-abandon` | Preview abandoning a feature branch |
+                | `ws:feature-abandon-apply` | Delete feature branch across components |
+
+                ## Release & Checkpoint
+
+                | Goal | Description |
+                |------|-------------|
+                | `ws:release` | Preview what would be released |
+                | `ws:release-apply` | Execute workspace release |
+                | `ws:checkpoint` | Preview checkpoint (tag all components) |
+                | `ws:checkpoint-apply` | Execute checkpoint |
+                | `ws:post-release` | Bump to next development version |
+                | `ws:release-notes` | Generate release notes from GitHub milestone |
+
+                ## VCS Bridge (Syncthing multi-machine)
+
+                | Goal | Description |
+                |------|-------------|
+                | `ws:vcs-sync` | Reconcile state after machine switch |
+                | `ws:commit` | Commit with VCS bridge context |
+                | `ws:push` | Push with VCS bridge context |
+
+                ## Build Goals (ike:)
+
+                | Goal | Description |
+                |------|-------------|
+                | `ike:release` | Preview single-repo release |
+                | `ike:release-apply` | Execute single-repo release |
+                | `ike:generate-bom` | Generate BOM with resolved versions |
+                | `ike:deploy-site` | Deploy project site |
+                | `ike:publish-site` | Publish site to GitHub Pages |
+                | `ike:help` | List all ike: goals with descriptions |
+
+                ---
+                *Generated by `ws:init`. See `ws:help` and `ike:help` for full details.*
+                """;
     }
 
     /**
