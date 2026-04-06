@@ -543,9 +543,12 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 |------|-------------|
                 | `ws:feature-start` | Preview creating a feature branch |
                 | `ws:feature-start-apply` | Create feature branch across components |
-                | `ws:feature-finish-merge` | No-ff merge (preserves history) |
-                | `ws:feature-finish-squash` | Squash merge (single commit) |
-                | `ws:feature-finish-rebase` | Rebase + fast-forward (linear history) |
+                | `ws:feature-finish-merge` | Preview no-ff merge |
+                | `ws:feature-finish-merge-apply` | No-ff merge (preserves history) |
+                | `ws:feature-finish-squash` | Preview squash merge |
+                | `ws:feature-finish-squash-apply` | Squash merge (single commit) |
+                | `ws:feature-finish-rebase` | Preview rebase |
+                | `ws:feature-finish-rebase-apply` | Rebase + fast-forward (linear history) |
                 | `ws:feature-abandon` | Preview abandoning a feature branch |
                 | `ws:feature-abandon-apply` | Delete feature branch across components |
 
@@ -575,8 +578,10 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 | `ike:release` | Preview single-repo release |
                 | `ike:release-apply` | Execute single-repo release |
                 | `ike:generate-bom` | Generate BOM with resolved versions |
-                | `ike:deploy-site` | Deploy project site |
-                | `ike:publish-site` | Publish site to GitHub Pages |
+                | `ike:deploy-site` | Preview site deployment |
+                | `ike:deploy-site-apply` | Deploy project site |
+                | `ike:publish-site` | Preview GitHub Pages publish |
+                | `ike:publish-site-apply` | Publish site to GitHub Pages |
                 | `ike:help` | List all ike: goals with descriptions |
 
                 ---
