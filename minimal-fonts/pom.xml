@@ -27,7 +27,7 @@
     <modelVersion>4.1.0</modelVersion>
 
     <parent>
-        <groupId>network.ike</groupId>
+        <groupId>network.ike.pipeline</groupId>
         <artifactId>ike-pipeline</artifactId>
     </parent>
 
@@ -92,7 +92,7 @@
         <!-- Standards unpacked by inherited unpack-claude-standards
              (unpack-dependencies, reactor-aware) -->
         <dependency>
-            <groupId>network.ike</groupId>
+            <groupId>network.ike.tooling</groupId>
             <artifactId>ike-build-standards</artifactId>
             <version>${ike-tooling.version}</version>
             <classifier>claude</classifier>

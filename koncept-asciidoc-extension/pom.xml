@@ -6,7 +6,7 @@
     <modelVersion>4.1.0</modelVersion>
 
     <parent>
-        <groupId>network.ike</groupId>
+        <groupId>network.ike.pipeline</groupId>
         <artifactId>ike-pipeline</artifactId>
     </parent>
 

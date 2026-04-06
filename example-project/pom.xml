@@ -21,7 +21,7 @@
     <modelVersion>4.1.0</modelVersion>
 
     <parent>
-        <groupId>network.ike</groupId>
+        <groupId>network.ike.pipeline</groupId>
         <artifactId>ike-pipeline</artifactId>
     </parent>
 
@@ -57,7 +57,7 @@
              Version managed by ike-parent.
              scope=provided: not needed at runtime, only unpacked at validate. -->
         <dependency>
-            <groupId>network.ike</groupId>
+            <groupId>network.ike.tooling</groupId>
             <artifactId>ike-build-standards</artifactId>
             <version>${ike-tooling.version}</version>
             <classifier>claude</classifier>
@@ -68,7 +68,7 @@
         <!-- IKE Build Standards — shared build config (checkstyle, PMD, etc.).
              Unpacked to target/build-standards/ by inherited unpack-build-standards execution. -->
         <dependency>
-            <groupId>network.ike</groupId>
+            <groupId>network.ike.tooling</groupId>
             <artifactId>ike-build-standards</artifactId>
             <version>${ike-tooling.version}</version>
             <classifier>config</classifier>
@@ -79,7 +79,7 @@
         <!-- IKE Documentation Resources — themes, assembly descriptors, configs.
              Unpacked to target/ike-doc-resources/ by inherited unpack-doc-resources execution. -->
         <dependency>
-            <groupId>network.ike</groupId>
+            <groupId>network.ike.pipeline</groupId>
             <artifactId>ike-doc-resources</artifactId>
             <scope>provided</scope>
         </dependency>
@@ -87,14 +87,14 @@
         <!-- DocBook XSL — stylesheets for XEP/FOP DocBook→XSL-FO→PDF pipeline.
              Unpacked when docbook renderers are active. -->
         <dependency>
-            <groupId>network.ike</groupId>
+            <groupId>network.ike.pipeline</groupId>
             <artifactId>docbook-xsl</artifactId>
             <scope>provided</scope>
         </dependency>
 
         <!-- Fonts for PDF generation (minimal subset - 10 files, ~2MB) -->
         <dependency>
-            <groupId>network.ike</groupId>
+            <groupId>network.ike.pipeline</groupId>
             <artifactId>minimal-fonts</artifactId>
         </dependency>
         
@@ -118,7 +118,7 @@
         -->
         <!--
         <dependency>
-            <groupId>network.ike</groupId>
+            <groupId>network.ike.pipeline</groupId>
             <artifactId>ike-core-docs</artifactId>
             <version>1.0.0-SNAPSHOT</version>
             <classifier>asciidoc</classifier>

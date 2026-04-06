@@ -21,7 +21,7 @@
     <modelVersion>4.1.0</modelVersion>
 
     <parent>
-        <groupId>network.ike</groupId>
+        <groupId>network.ike.pipeline</groupId>
         <artifactId>ike-pipeline</artifactId>
     </parent>
 
@@ -78,7 +78,7 @@
              Version from ike-tooling (ike-build-standards moved to ike-tooling repo).
              scope=provided: not needed at runtime, only unpacked at validate. -->
         <dependency>
-            <groupId>network.ike</groupId>
+            <groupId>network.ike.tooling</groupId>
             <artifactId>ike-build-standards</artifactId>
             <version>${ike-tooling.version}</version>
             <classifier>claude</classifier>

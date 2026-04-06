@@ -322,7 +322,9 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
         try {
             pom = PomModel.parse(pomFile.toPath());
         } catch (IOException e) {
-            throw new MojoExecutionException("Failed to parse " + pomFile, e);
+            getLog().warn("  " + ownerName + ": could not parse "
+                    + pomFile.getName() + " — " + e.getMessage());
+            return 0;
         }
 
         String updated = pom.content();

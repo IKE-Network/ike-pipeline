@@ -28,7 +28,7 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>network.ike</groupId>
+                <groupId>network.ike.pipeline</groupId>
                 <artifactId>ike-bom</artifactId>
                 <version>28</version>
                 <type>pom</type>
@@ -44,7 +44,7 @@
     <modelVersion>4.1.0</modelVersion>
 
     <parent>
-        <groupId>network.ike</groupId>
+        <groupId>network.ike.pipeline</groupId>
         <artifactId>ike-pipeline</artifactId>
     </parent>
 
@@ -90,7 +90,7 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>network.ike</groupId>
+                <groupId>network.ike.tooling</groupId>
                 <artifactId>ike-maven-plugin</artifactId>
                 <version>${ike-tooling.version}</version>
                 <executions>

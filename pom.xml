@@ -20,7 +20,7 @@
          http://maven.apache.org/xsd/maven-4.1.0.xsd">
     <modelVersion>4.1.0</modelVersion>
 
-    <groupId>network.ike</groupId>
+    <groupId>network.ike.pipeline</groupId>
     <artifactId>ike-pipeline</artifactId>
     <version>56-SNAPSHOT</version>
     <packaging>pom</packaging>
@@ -81,7 +81,7 @@
         <deploy.staging.url>https://nexus.tinkar.org/repository/ike-staging/</deploy.staging.url>
 
         <!-- IKE Tooling (ike-maven-plugin, ike-workspace-maven-plugin, ike-build-standards) -->
-        <ike-tooling.version>69</ike-tooling.version>
+        <ike-tooling.version>70</ike-tooling.version>
 
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -210,7 +210,7 @@
             <plugins>
                 <!-- IKE Tooling — external dependency (extracted to own repo) -->
                 <plugin>
-                    <groupId>network.ike</groupId>
+                    <groupId>network.ike.tooling</groupId>
                     <artifactId>ike-maven-plugin</artifactId>
                     <version>${ike-tooling.version}</version>
                     <executions>
@@ -233,7 +233,7 @@
                 </plugin>
                 <!-- IKE Workspace Maven Plugin — ws: prefix goals -->
                 <plugin>
-                    <groupId>network.ike</groupId>
+                    <groupId>network.ike.pipeline</groupId>
                     <artifactId>ike-workspace-maven-plugin</artifactId>
                     <version>${ike-tooling.version}</version>
                 </plugin>
@@ -707,7 +707,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         </dependency>
                         <!-- Koncept Java extension — auto-registered via SPI -->
                         <dependency>
-                            <groupId>network.ike</groupId>
+                            <groupId>network.ike.pipeline</groupId>
                             <artifactId>koncept-asciidoc-extension</artifactId>
                             <version>${project.version}</version>
                         </dependency>
@@ -816,7 +816,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
 
             <!-- Inject "← Project Site" breadcrumb into JaCoCo reports -->
             <plugin>
-                <groupId>network.ike</groupId>
+                <groupId>network.ike.tooling</groupId>
                 <artifactId>ike-maven-plugin</artifactId>
                 <executions>
                     <execution>
@@ -896,7 +896,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
 
             <dependencies>
                 <dependency>
-                    <groupId>network.ike</groupId>
+                    <groupId>network.ike.tooling</groupId>
                     <artifactId>ike-build-standards</artifactId>
                     <version>${ike-tooling.version}</version>
                     <classifier>asciidoctorconfig</classifier>
@@ -1356,7 +1356,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
 
                     <!-- ── IKE build-time goals ──────────────────────────────── -->
                     <plugin>
-                        <groupId>network.ike</groupId>
+                        <groupId>network.ike.tooling</groupId>
                         <artifactId>ike-maven-plugin</artifactId>
                         <executions>
                             <!-- ── fix-svg (prepare-package) ─────────────────── -->

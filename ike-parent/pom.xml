@@ -20,7 +20,7 @@
   Usage (inheritance — recommended):
 
     <parent>
-        <groupId>network.ike</groupId>
+        <groupId>network.ike.pipeline</groupId>
         <artifactId>ike-parent</artifactId>
         <version>1.1.0</version>
     </parent>
@@ -36,7 +36,7 @@
     <modelVersion>4.1.0</modelVersion>
 
     <parent>
-        <groupId>network.ike</groupId>
+        <groupId>network.ike.pipeline</groupId>
         <artifactId>ike-pipeline</artifactId>
     </parent>
 
@@ -95,7 +95,7 @@
 
             <!-- Claude instruction files (classified ZIP) -->
             <dependency>
-                <groupId>network.ike</groupId>
+                <groupId>network.ike.tooling</groupId>
                 <artifactId>ike-build-standards</artifactId>
                 <version>${ike-tooling.version}</version>
                 <classifier>claude</classifier>
@@ -104,7 +104,7 @@
 
             <!-- Human-readable convention documents (classified ZIP) -->
             <dependency>
-                <groupId>network.ike</groupId>
+                <groupId>network.ike.tooling</groupId>
                 <artifactId>ike-build-standards</artifactId>
                 <version>${ike-tooling.version}</version>
                 <classifier>docs</classifier>
@@ -113,7 +113,7 @@
 
             <!-- .asciidoctorconfig for IDE preview (classified ZIP) -->
             <dependency>
-                <groupId>network.ike</groupId>
+                <groupId>network.ike.tooling</groupId>
                 <artifactId>ike-build-standards</artifactId>
                 <version>${ike-tooling.version}</version>
                 <classifier>asciidoctorconfig</classifier>
@@ -122,7 +122,7 @@
 
             <!-- Shared build config files (editorconfig, checkstyle, stignore) -->
             <dependency>
-                <groupId>network.ike</groupId>
+                <groupId>network.ike.tooling</groupId>
                 <artifactId>ike-build-standards</artifactId>
                 <version>${ike-tooling.version}</version>
                 <classifier>config</classifier>
@@ -131,21 +131,21 @@
 
             <!-- Documentation resources: themes, assembly descriptors, configs -->
             <dependency>
-                <groupId>network.ike</groupId>
+                <groupId>network.ike.pipeline</groupId>
                 <artifactId>ike-doc-resources</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <!-- Noto fonts for PDF generation (minimal subset) -->
             <dependency>
-                <groupId>network.ike</groupId>
+                <groupId>network.ike.pipeline</groupId>
                 <artifactId>minimal-fonts</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <!-- DocBook XSL 1.79.2 + IKE FO customization layer -->
             <dependency>
-                <groupId>network.ike</groupId>
+                <groupId>network.ike.pipeline</groupId>
                 <artifactId>docbook-xsl</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -204,14 +204,14 @@
     <!-- ════════════════════════════════════════════════════════════════ -->
     <dependencies>
         <dependency>
-            <groupId>network.ike</groupId>
+            <groupId>network.ike.tooling</groupId>
             <artifactId>ike-build-standards</artifactId>
             <classifier>claude</classifier>
             <type>zip</type>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>network.ike</groupId>
+            <groupId>network.ike.tooling</groupId>
             <artifactId>ike-build-standards</artifactId>
             <classifier>config</classifier>
             <type>zip</type>
@@ -261,7 +261,7 @@
             <!-- ike-maven-plugin is in ike-tooling (separate repo/version).
                  ike-tooling.version from the root POM is the tested pair. -->
             <plugin>
-                <groupId>network.ike</groupId>
+                <groupId>network.ike.tooling</groupId>
                 <artifactId>ike-maven-plugin</artifactId>
                 <version>${ike-tooling.version}</version>
                 <extensions>true</extensions>
@@ -271,7 +271,7 @@
                  Co-released with ike-parent in this reactor.
                  Inheriting projects get ws: goals at the matching version. -->
             <plugin>
-                <groupId>network.ike</groupId>
+                <groupId>network.ike.pipeline</groupId>
                 <artifactId>ike-workspace-maven-plugin</artifactId>
                 <version>${project.version}</version>
             </plugin>
@@ -296,23 +296,23 @@
 
             <dependencies>
                 <dependency>
-                    <groupId>network.ike</groupId>
+                    <groupId>network.ike.tooling</groupId>
                     <artifactId>ike-build-standards</artifactId>
                     <classifier>asciidoctorconfig</classifier>
                     <type>zip</type>
                     <scope>provided</scope>
                 </dependency>
                 <dependency>
-                    <groupId>network.ike</groupId>
+                    <groupId>network.ike.pipeline</groupId>
                     <artifactId>ike-doc-resources</artifactId>
                     <scope>provided</scope>
                 </dependency>
                 <dependency>
-                    <groupId>network.ike</groupId>
+                    <groupId>network.ike.pipeline</groupId>
                     <artifactId>minimal-fonts</artifactId>
                 </dependency>
                 <dependency>
-                    <groupId>network.ike</groupId>
+                    <groupId>network.ike.pipeline</groupId>
                     <artifactId>docbook-xsl</artifactId>
                     <scope>provided</scope>
                 </dependency>
