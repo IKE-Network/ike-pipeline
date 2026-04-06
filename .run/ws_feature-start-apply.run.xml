@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="ws:release (dry run)" type="MavenRunConfiguration" factoryName="Maven">
+  <configuration default="false" name="ws:feature-start-apply" type="MavenRunConfiguration" factoryName="Maven">
     <MavenSettings>
       <option name="myGeneralSettings" />
       <option name="myRunnerSettings" />
@@ -8,7 +8,7 @@
           <option name="workingDirPath" value="$PROJECT_DIR$" />
           <option name="goals">
             <list>
-              <option value="ws:release" />
+              <option value="ws:feature-start-apply" />
             </list>
           </option>
           <option name="profilesMap">
@@ -16,10 +16,6 @@
           </option>
         </MavenRunnerParameters>
       </option>
-      <option name="myGeneralSettings">
-        <MavenGeneralSettings />
-      </option>
     </MavenSettings>
-    <property name="MAVEN_OPTS" value="-DdryRun=true" />
   </configuration>
 </component>
