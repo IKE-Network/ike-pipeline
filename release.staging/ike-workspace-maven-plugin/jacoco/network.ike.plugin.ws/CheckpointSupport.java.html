@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CheckpointSupport.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">CheckpointSupport.java</span></div><h1>CheckpointSupport.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.plugin.ReleaseSupport;
+
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.logging.Log;
+
+import java.io.File;
+import java.time.Instant;
+import java.util.List;
+
+/**
+ * Per-component checkpoint engine — build, tag, and deploy a single repo.
+ *
+ * &lt;p&gt;This is the internal engine invoked by {@link WsCheckpointMojo}
+ * for each workspace component in topological order. It is not exposed
+ * as a standalone Maven goal.
+ *
+ * &lt;p&gt;The workflow for a single component:
+ * &lt;ol&gt;
+ *   &lt;li&gt;Validate clean working tree&lt;/li&gt;
+ *   &lt;li&gt;Set POM versions, resolve {@code ${project.version}}&lt;/li&gt;
+ *   &lt;li&gt;Commit, tag with {@code checkpoint/&lt;version&gt;}&lt;/li&gt;
+ *   &lt;li&gt;Run {@code mvnw clean deploy} — build and publish to Nexus&lt;/li&gt;
+ *   &lt;li&gt;Optionally deploy site to immutable checkpoint URL&lt;/li&gt;
+ *   &lt;li&gt;Restore SNAPSHOT version and commit&lt;/li&gt;
+ *   &lt;li&gt;Push tag to origin&lt;/li&gt;
+ * &lt;/ol&gt;
+ */
+class CheckpointSupport {
+
+    private static final String SITE_BASE = &quot;scpexe://proxy/srv/ike-site/&quot;;
+
+    private CheckpointSupport() {}
+
+    /**
+     * Execute a full checkpoint for a single component directory.
+     *
+     * @param dir               component git root directory
+     * @param checkpointVersion the version to stamp (e.g., {@code 1.0.0-checkpoint.20260330.abc1234})
+     * @param deploySite        whether to deploy site documentation
+     * @param skipVerify        whether to skip tests during the build
+     * @param log               Maven logger
+     * @throws MojoExecutionException if any step fails
+     */
+    static void checkpoint(File dir, String checkpointVersion,
+                           boolean deploySite, boolean skipVerify, Log log)
+            throws MojoExecutionException {
+<span class="fc" id="L49">        File gitRoot = ReleaseSupport.gitRoot(dir);</span>
+<span class="fc" id="L50">        File rootPom = new File(gitRoot, &quot;pom.xml&quot;);</span>
+
+<span class="fc" id="L52">        String oldVersion = ReleaseSupport.readPomVersion(rootPom);</span>
+<span class="fc" id="L53">        String tagName = &quot;checkpoint/&quot; + checkpointVersion;</span>
+<span class="fc" id="L54">        String projectId = ReleaseSupport.readPomArtifactId(rootPom);</span>
+
+<span class="fc" id="L56">        logAudit(gitRoot, oldVersion, checkpointVersion, tagName,</span>
+                projectId, deploySite, skipVerify, log);
+
+        // Validate clean worktree before resolving the wrapper —
+        // this check is cheap and should fail fast before any
+        // file-system probing for mvnw.
+<span class="fc" id="L62">        ReleaseSupport.requireCleanWorktree(gitRoot);</span>
+
+        // Resolve Maven wrapper after validation passes
+<span class="fc" id="L65">        File mvnw = ReleaseSupport.resolveMavenWrapper(gitRoot, log);</span>
+
+        // Set POM version to checkpoint version
+<span class="fc" id="L68">        log.info(&quot;Setting version: &quot; + oldVersion + &quot; -&gt; &quot; + checkpointVersion);</span>
+<span class="fc" id="L69">        ReleaseSupport.setPomVersion(rootPom, oldVersion, checkpointVersion);</span>
+
+        // Resolve ${project.version} references
+<span class="fc" id="L72">        log.info(&quot;Resolving ${project.version} references:&quot;);</span>
+<span class="fc" id="L73">        List&lt;File&gt; resolvedPoms =</span>
+<span class="fc" id="L74">                ReleaseSupport.replaceProjectVersionRefs(gitRoot, checkpointVersion, log);</span>
+
+        // Commit — stage root POM + all POMs that had ${project.version} resolved
+<span class="fc" id="L77">        ReleaseSupport.exec(gitRoot, log, &quot;git&quot;, &quot;add&quot;, &quot;pom.xml&quot;);</span>
+<span class="fc" id="L78">        ReleaseSupport.gitAddFiles(gitRoot, log, resolvedPoms);</span>
+<span class="fc" id="L79">        ReleaseSupport.exec(gitRoot, log,</span>
+                &quot;git&quot;, &quot;commit&quot;, &quot;-m&quot;,
+                &quot;checkpoint: &quot; + checkpointVersion);
+
+        // Tag
+<span class="fc" id="L84">        ReleaseSupport.exec(gitRoot, log,</span>
+                &quot;git&quot;, &quot;tag&quot;, &quot;-a&quot;, tagName,
+                &quot;-m&quot;, &quot;Checkpoint &quot; + checkpointVersion);
+
+        // Build, verify, and deploy to Nexus (and site in parallel if enabled)
+<span class="fc" id="L89">        String siteUrl = null;</span>
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">        String[] deployCommand = skipVerify</span>
+<span class="nc" id="L91">                ? new String[]{mvnw.getAbsolutePath(), &quot;clean&quot;, &quot;deploy&quot;, &quot;-B&quot;, &quot;-DskipTests&quot;}</span>
+<span class="fc" id="L92">                : new String[]{mvnw.getAbsolutePath(), &quot;clean&quot;, &quot;deploy&quot;, &quot;-B&quot;};</span>
+<span class="pc bpc" id="L93" title="1 of 2 branches missed.">        if (skipVerify) {</span>
+<span class="nc" id="L94">            log.info(&quot;Skipping verify (-DskipVerify=true)&quot;);</span>
+        }
+
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        if (deploySite) {</span>
+<span class="nc" id="L98">            siteUrl = SITE_BASE + projectId + &quot;/checkpoint/&quot; + checkpointVersion;</span>
+<span class="nc" id="L99">            ReleaseSupport.execParallel(gitRoot, log,</span>
+                    new ReleaseSupport.LabeledTask(&quot;nexus&quot;, deployCommand),
+                    new ReleaseSupport.LabeledTask(&quot;site&quot;,
+<span class="nc" id="L102">                            new String[]{mvnw.getAbsolutePath(), &quot;site&quot;, &quot;site:stage&quot;,</span>
+                                    &quot;site:deploy&quot;, &quot;-B&quot;, &quot;-T&quot;, &quot;1&quot;,
+                                    &quot;-Dsite.deploy.url=&quot; + siteUrl}));
+        } else {
+<span class="nc" id="L106">            ReleaseSupport.exec(gitRoot, log, deployCommand);</span>
+        }
+
+        // Restore ${project.version} references from backups
+<span class="nc" id="L110">        log.info(&quot;Restoring ${project.version} references:&quot;);</span>
+<span class="nc" id="L111">        List&lt;File&gt; restoredPoms = ReleaseSupport.restoreBackups(gitRoot, log);</span>
+
+        // Restore original SNAPSHOT version
+<span class="nc" id="L114">        log.info(&quot;Restoring version: &quot; + checkpointVersion + &quot; -&gt; &quot; + oldVersion);</span>
+<span class="nc" id="L115">        ReleaseSupport.setPomVersion(rootPom, checkpointVersion, oldVersion);</span>
+
+        // Commit restored state
+<span class="nc" id="L118">        ReleaseSupport.exec(gitRoot, log, &quot;git&quot;, &quot;add&quot;, &quot;pom.xml&quot;);</span>
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        if (!restoredPoms.isEmpty()) {</span>
+<span class="nc" id="L120">            ReleaseSupport.gitAddFiles(gitRoot, log, restoredPoms);</span>
+        }
+<span class="nc" id="L122">        ReleaseSupport.exec(gitRoot, log,</span>
+                &quot;git&quot;, &quot;commit&quot;, &quot;-m&quot;,
+                &quot;checkpoint: restore SNAPSHOT version&quot;);
+
+        // Push tag (if origin exists)
+<span class="nc" id="L127">        boolean hasOrigin = ReleaseSupport.hasRemote(gitRoot, &quot;origin&quot;);</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">        if (hasOrigin) {</span>
+<span class="nc" id="L129">            ReleaseSupport.exec(gitRoot, log,</span>
+                    &quot;git&quot;, &quot;push&quot;, &quot;origin&quot;, tagName);
+        } else {
+<span class="nc" id="L132">            log.info(&quot;No 'origin' remote — skipping tag push&quot;);</span>
+        }
+
+<span class="nc" id="L135">        log.info(&quot;&quot;);</span>
+<span class="nc" id="L136">        log.info(&quot;Checkpoint &quot; + checkpointVersion + &quot; complete.&quot;);</span>
+<span class="nc" id="L137">        log.info(&quot;  Tagged: &quot; + tagName);</span>
+<span class="nc" id="L138">        log.info(&quot;  Deployed to Nexus&quot;);</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">        if (siteUrl != null) {</span>
+<span class="nc" id="L140">            log.info(&quot;  Site: &quot; + siteUrl.replace(</span>
+                    &quot;scpexe://proxy/srv/ike-site&quot;,
+                    &quot;http://ike.komet.sh&quot;));
+        }
+<span class="nc" id="L144">        log.info(&quot;&quot;);</span>
+<span class="nc" id="L145">    }</span>
+
+    /**
+     * Log a dry-run summary for a single component.
+     *
+     * @param dir               component git root directory
+     * @param checkpointVersion the version that would be stamped
+     * @param deploySite        whether site would be deployed
+     * @param skipVerify        whether tests would be skipped
+     * @param log               Maven logger
+     */
+    static void dryRun(File dir, String checkpointVersion,
+                       boolean deploySite, boolean skipVerify, Log log)
+            throws MojoExecutionException {
+<span class="fc" id="L159">        File gitRoot = ReleaseSupport.gitRoot(dir);</span>
+<span class="fc" id="L160">        File rootPom = new File(gitRoot, &quot;pom.xml&quot;);</span>
+
+<span class="fc" id="L162">        String oldVersion = ReleaseSupport.readPomVersion(rootPom);</span>
+<span class="fc" id="L163">        String tagName = &quot;checkpoint/&quot; + checkpointVersion;</span>
+<span class="fc" id="L164">        String projectId = ReleaseSupport.readPomArtifactId(rootPom);</span>
+
+<span class="fc" id="L166">        log.info(&quot;[DRY RUN] Would set version: &quot; + oldVersion +</span>
+                &quot; -&gt; &quot; + checkpointVersion);
+<span class="fc" id="L168">        log.info(&quot;[DRY RUN] Would resolve ${project.version} -&gt; &quot; +</span>
+                checkpointVersion + &quot; in all POMs&quot;);
+<span class="fc" id="L170">        log.info(&quot;[DRY RUN] Would commit: checkpoint: &quot; + checkpointVersion);</span>
+<span class="fc" id="L171">        log.info(&quot;[DRY RUN] Would tag: &quot; + tagName);</span>
+<span class="fc bfc" id="L172" title="All 2 branches covered.">        if (!skipVerify) {</span>
+<span class="fc" id="L173">            log.info(&quot;[DRY RUN] Would run: mvnw clean deploy -B&quot;);</span>
+        } else {
+<span class="fc" id="L175">            log.info(&quot;[DRY RUN] Would run: mvnw clean deploy -B -DskipTests&quot;);</span>
+        }
+<span class="fc bfc" id="L177" title="All 2 branches covered.">        if (deploySite) {</span>
+<span class="fc" id="L178">            log.info(&quot;[DRY RUN] Would deploy site to: &quot; +</span>
+                    SITE_BASE + projectId + &quot;/checkpoint/&quot; + checkpointVersion);
+        }
+<span class="fc" id="L181">        log.info(&quot;[DRY RUN] Would restore ${project.version} references&quot;);</span>
+<span class="fc" id="L182">        log.info(&quot;[DRY RUN] Would restore version: &quot; + checkpointVersion +</span>
+                &quot; -&gt; &quot; + oldVersion);
+<span class="fc" id="L184">        log.info(&quot;[DRY RUN] Would commit: checkpoint: restore SNAPSHOT version&quot;);</span>
+<span class="fc" id="L185">    }</span>
+
+    private static void logAudit(File gitRoot, String oldVersion,
+                                  String checkpointVersion, String tagName,
+                                  String projectId, boolean deploySite,
+                                  boolean skipVerify, Log log)
+            throws MojoExecutionException {
+<span class="fc" id="L192">        String gitCommit = ReleaseSupport.execCapture(gitRoot,</span>
+                &quot;git&quot;, &quot;rev-parse&quot;, &quot;--short&quot;, &quot;HEAD&quot;);
+<span class="fc" id="L194">        String currentBranch = ReleaseSupport.currentBranch(gitRoot);</span>
+<span class="fc" id="L195">        String javaVersion = System.getProperty(&quot;java.version&quot;, &quot;unknown&quot;);</span>
+
+<span class="fc" id="L197">        log.info(&quot;&quot;);</span>
+<span class="fc" id="L198">        log.info(&quot;CHECKPOINT PARAMETERS&quot;);</span>
+<span class="fc" id="L199">        log.info(&quot;  Version:      &quot; + oldVersion + &quot; -&gt; &quot; + checkpointVersion);</span>
+<span class="fc" id="L200">        log.info(&quot;  Tag:          &quot; + tagName);</span>
+<span class="fc" id="L201">        log.info(&quot;  Project:      &quot; + projectId);</span>
+<span class="fc" id="L202">        log.info(&quot;  Branch:       &quot; + currentBranch);</span>
+<span class="fc" id="L203">        log.info(&quot;  Deploy site:  &quot; + deploySite);</span>
+<span class="fc" id="L204">        log.info(&quot;  Skip verify:  &quot; + skipVerify);</span>
+<span class="fc" id="L205">        log.info(&quot;&quot;);</span>
+<span class="fc" id="L206">        log.info(&quot;BUILD ENVIRONMENT&quot;);</span>
+<span class="fc" id="L207">        log.info(&quot;  Date:         &quot; + Instant.now());</span>
+<span class="fc" id="L208">        log.info(&quot;  User:         &quot; + System.getProperty(&quot;user.name&quot;, &quot;unknown&quot;));</span>
+<span class="fc" id="L209">        log.info(&quot;  Git commit:   &quot; + gitCommit);</span>
+<span class="fc" id="L210">        log.info(&quot;  Git root:     &quot; + gitRoot.getAbsolutePath());</span>
+<span class="fc" id="L211">        log.info(&quot;  Java version: &quot; + javaVersion);</span>
+<span class="fc" id="L212">        log.info(&quot;  OS:           &quot; + System.getProperty(&quot;os.name&quot;) + &quot; &quot; +</span>
+<span class="fc" id="L213">                System.getProperty(&quot;os.arch&quot;));</span>
+<span class="fc" id="L214">        log.info(&quot;&quot;);</span>
+<span class="fc" id="L215">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

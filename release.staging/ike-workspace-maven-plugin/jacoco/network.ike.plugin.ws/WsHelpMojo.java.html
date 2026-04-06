@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WsHelpMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">WsHelpMojo.java</span></div><h1>WsHelpMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import org.apache.maven.plugin.AbstractMojo;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+
+/**
+ * Displays available ws: workspace goals.
+ *
+ * @see &lt;a href=&quot;https://github.com/IKE-Network/ike-pipeline&quot;&gt;IKE Pipeline&lt;/a&gt;
+ */
+@Mojo(name = &quot;help&quot;, requiresProject = false, threadSafe = true)
+public class WsHelpMojo extends AbstractMojo {
+
+    /** Creates this goal instance. */
+<span class="nc" id="L16">    public WsHelpMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="nc" id="L20">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L21">        getLog().info(&quot;IKE Workspace Tools — Available Goals&quot;);</span>
+<span class="nc" id="L22">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+<span class="nc" id="L23">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L24">        getLog().info(&quot;  ── Workspace Management ─────────────────────────────────&quot;);</span>
+<span class="nc" id="L25">        getLog().info(&quot;  ws:create                                       Create a new workspace (workspace.yaml + reactor POM)&quot;);</span>
+<span class="nc" id="L26">        getLog().info(&quot;  ws:add                                          Add a component to the workspace manifest&quot;);</span>
+<span class="nc" id="L27">        getLog().info(&quot;  ws:init                                         Clone/initialize repos from workspace.yaml&quot;);</span>
+<span class="nc" id="L28">        getLog().info(&quot;  ws:verify                                       Check manifest + VCS bridge state&quot;);</span>
+<span class="nc" id="L29">        getLog().info(&quot;  ws:fix                                          Auto-fix issues found by verify&quot;);</span>
+<span class="nc" id="L30">        getLog().info(&quot;  ws:status                                       Git status across all repos&quot;);</span>
+<span class="nc" id="L31">        getLog().info(&quot;  ws:dashboard                                    Composite overview (verify + status + cascade)&quot;);</span>
+<span class="nc" id="L32">        getLog().info(&quot;  ws:graph                                        Print dependency graph&quot;);</span>
+<span class="nc" id="L33">        getLog().info(&quot;  ws:stignore                                     Generate .stignore for Syncthing&quot;);</span>
+<span class="nc" id="L34">        getLog().info(&quot;  ws:sync                                         Sync workspace.yaml &lt;-&gt; actual branches&quot;);</span>
+<span class="nc" id="L35">        getLog().info(&quot;  ws:upgrade                                      Upgrade workspace plugin/reactor versions&quot;);</span>
+<span class="nc" id="L36">        getLog().info(&quot;  ws:pull                                         Git pull --rebase across repos&quot;);</span>
+<span class="nc" id="L37">        getLog().info(&quot;  ws:remove                                       Remove a component from the workspace&quot;);</span>
+<span class="nc" id="L38">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L39">        getLog().info(&quot;  ── Feature Branching ────────────────────────────────────&quot;);</span>
+<span class="nc" id="L40">        getLog().info(&quot;  ws:feature-start                                Create feature branch across repos&quot;);</span>
+<span class="nc" id="L41">        getLog().info(&quot;  ws:feature-start-dry-run                        Preview feature branch creation&quot;);</span>
+<span class="nc" id="L42">        getLog().info(&quot;  ws:feature-abandon                              Abandon feature branch across repos&quot;);</span>
+<span class="nc" id="L43">        getLog().info(&quot;  ws:feature-finish-merge                         No-ff merge, keeps branch alive&quot;);</span>
+<span class="nc" id="L44">        getLog().info(&quot;  ws:feature-finish-rebase                        Rebase onto target, linear history&quot;);</span>
+<span class="nc" id="L45">        getLog().info(&quot;  ws:feature-finish-squash                        Squash-merge (default, deletes branch)&quot;);</span>
+<span class="nc" id="L46">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L47">        getLog().info(&quot;  ── Release &amp; Checkpoint ─────────────────────────────────&quot;);</span>
+<span class="nc" id="L48">        getLog().info(&quot;  ws:release                                      Release all dirty components in topo order&quot;);</span>
+<span class="nc" id="L49">        getLog().info(&quot;  ws:checkpoint                                   Record multi-repo checkpoint (SHAs + versions)&quot;);</span>
+<span class="nc" id="L50">        getLog().info(&quot;  ws:checkpoint-dry-run                           Preview checkpoint without writing files or tags&quot;);</span>
+<span class="nc" id="L51">        getLog().info(&quot;  ws:post-release                                 Post-release cleanup (bump to next SNAPSHOT)&quot;);</span>
+<span class="nc" id="L52">        getLog().info(&quot;  ws:align                                        Align dependency versions across workspace&quot;);</span>
+<span class="nc" id="L53">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L54">        getLog().info(&quot;  ── VCS Bridge ───────────────────────────────────────────&quot;);</span>
+<span class="nc" id="L55">        getLog().info(&quot;  ws:vcs-sync                                     Reconcile git state after machine switch&quot;);</span>
+<span class="nc" id="L56">        getLog().info(&quot;  ws:commit                                       Catch-up + commit&quot;);</span>
+<span class="nc" id="L57">        getLog().info(&quot;  ws:push                                         Catch-up + push&quot;);</span>
+<span class="nc" id="L58">        getLog().info(&quot;  ws:check-branch                                 Warn on direct branching (git hook)&quot;);</span>
+<span class="nc" id="L59">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L60">        getLog().info(&quot;  ── Cascade ──────────────────────────────────────────────&quot;);</span>
+<span class="nc" id="L61">        getLog().info(&quot;  ws:cascade                                      Show downstream impact of a change&quot;);</span>
+<span class="nc" id="L62">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L63">        getLog().info(&quot;  ws:help                                         This help message&quot;);</span>
+<span class="nc" id="L64">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L65">        getLog().info(&quot;Options for workspace management:&quot;);</span>
+<span class="nc" id="L66">        getLog().info(&quot;  -Dworkspace.manifest=&lt;path&gt;  Path to workspace.yaml (auto-detected)&quot;);</span>
+<span class="nc" id="L67">        getLog().info(&quot;  -Dgroup=&lt;name&gt;               Restrict to group (status, init, pull)&quot;);</span>
+<span class="nc" id="L68">        getLog().info(&quot;  -Dcomponent=&lt;name&gt;           Component for ws:cascade (required)&quot;);</span>
+<span class="nc" id="L69">        getLog().info(&quot;  -Dformat=dot                 Graphviz DOT output for ws:graph&quot;);</span>
+<span class="nc" id="L70">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L71">        getLog().info(&quot;Options for feature branching:&quot;);</span>
+<span class="nc" id="L72">        getLog().info(&quot;  -Dfeature=&lt;name&gt;             Feature name (branch: feature/&lt;name&gt;)&quot;);</span>
+<span class="nc" id="L73">        getLog().info(&quot;  -Dgroup=&lt;name&gt;               Restrict to group&quot;);</span>
+<span class="nc" id="L74">        getLog().info(&quot;  -DskipVersion=true           Skip POM version qualification (feature-start)&quot;);</span>
+<span class="nc" id="L75">        getLog().info(&quot;  -DtargetBranch=&lt;name&gt;        Merge target (default: main)&quot;);</span>
+<span class="nc" id="L76">        getLog().info(&quot;  -DkeepBranch=true            Keep branch after merge (feature-finish)&quot;);</span>
+<span class="nc" id="L77">        getLog().info(&quot;  -Dmessage=&lt;msg&gt;              Squash commit message (feature-finish-squash)&quot;);</span>
+<span class="nc" id="L78">        getLog().info(&quot;  -DdryRun=true                Show plan without executing&quot;);</span>
+<span class="nc" id="L79">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L80">        getLog().info(&quot;Options for release &amp; checkpoint:&quot;);</span>
+<span class="nc" id="L81">        getLog().info(&quot;  -Dname=&lt;name&gt;                Checkpoint name (required for checkpoint)&quot;);</span>
+<span class="nc" id="L82">        getLog().info(&quot;  -Dcomponent=&lt;name&gt;           Release one specific component&quot;);</span>
+<span class="nc" id="L83">        getLog().info(&quot;  -Dgroup=&lt;name&gt;               Restrict to components in group&quot;);</span>
+<span class="nc" id="L84">        getLog().info(&quot;  -DdeploySite=true            Deploy site for each component&quot;);</span>
+<span class="nc" id="L85">        getLog().info(&quot;  -DskipVerify=true            Skip tests during build&quot;);</span>
+<span class="nc" id="L86">        getLog().info(&quot;  -DdryRun=true                Show what would be released&quot;);</span>
+<span class="nc" id="L87">        getLog().info(&quot;  -Dpush=true                  Push releases to origin (default: true)&quot;);</span>
+<span class="nc" id="L88">        getLog().info(&quot;  -DskipCheckpoint=true        Skip pre-release checkpoint&quot;);</span>
+<span class="nc" id="L89">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L90">        getLog().info(&quot;Options for VCS bridge:&quot;);</span>
+<span class="nc" id="L91">        getLog().info(&quot;  -Dmessage=&lt;msg&gt;              Commit message (ws:commit)&quot;);</span>
+<span class="nc" id="L92">        getLog().info(&quot;  -DaddAll=true                Stage all changes before commit&quot;);</span>
+<span class="nc" id="L93">        getLog().info(&quot;  -Dpush=true                  Push after commit&quot;);</span>
+<span class="nc" id="L94">        getLog().info(&quot;  -Dremote=&lt;name&gt;              Remote name (default: origin)&quot;);</span>
+<span class="nc" id="L95">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L96">        getLog().info(&quot;Options for ws:sync:&quot;);</span>
+<span class="nc" id="L97">        getLog().info(&quot;  -Dfrom=repos                 Update workspace.yaml from repos (default)&quot;);</span>
+<span class="nc" id="L98">        getLog().info(&quot;  -Dfrom=manifest              Switch repos to match workspace.yaml&quot;);</span>
+<span class="nc" id="L99">        getLog().info(&quot;  -DdryRun=true                Show plan without executing&quot;);</span>
+<span class="nc" id="L100">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L101">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

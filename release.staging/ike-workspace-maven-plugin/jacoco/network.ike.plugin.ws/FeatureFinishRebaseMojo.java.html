@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FeatureFinishRebaseMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">FeatureFinishRebaseMojo.java</span></div><h1>FeatureFinishRebaseMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.workspace.Component;
+import network.ike.workspace.WorkspaceGraph;
+import network.ike.plugin.ws.vcs.VcsOperations;
+import network.ike.plugin.ws.vcs.VcsState;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+
+/**
+ * Rebase feature branch onto target, then fast-forward merge.
+ *
+ * &lt;p&gt;Replays each feature commit individually onto the target branch,
+ * producing &lt;b&gt;linear history&lt;/b&gt; without a merge commit. The feature
+ * branch is kept by default but can be deleted.
+ *
+ * &lt;p&gt;&lt;b&gt;Caution:&lt;/b&gt; rebasing rewrites the feature branch history.
+ * Other machines must run {@code ike:sync} after the rebase to pick up
+ * the rewritten history.
+ *
+ * &lt;p&gt;When to use: small features where each commit is meaningful and
+ * you want them replayed individually on the target branch without
+ * a merge commit.
+ *
+ * &lt;pre&gt;{@code
+ * mvn ike:feature-finish-rebase -Dfeature=small-fix
+ * mvn ike:feature-finish-rebase -Dfeature=cleanup -DkeepBranch=false
+ * }&lt;/pre&gt;
+ *
+ * @see FeatureFinishSquashMojo for clean single-commit merges (default)
+ * @see FeatureFinishMergeMojo for preserving full history
+ */
+@Mojo(name = &quot;feature-finish-rebase&quot;, requiresProject = false, threadSafe = true)
+public class FeatureFinishRebaseMojo extends AbstractWorkspaceMojo {
+
+    /** Creates this goal instance. */
+<span class="fc" id="L45">    public FeatureFinishRebaseMojo() {}</span>
+
+    @Parameter(property = &quot;feature&quot;)
+    String feature;
+
+    @Parameter(property = &quot;group&quot;)
+    String group;
+
+    @Parameter(property = &quot;targetBranch&quot;, defaultValue = &quot;main&quot;)
+    String targetBranch;
+
+    /**
+     * Keep the feature branch after rebase. Default is true.
+     * Note: the branch has been rebased — its history is rewritten.
+     */
+<span class="fc" id="L60">    @Parameter(property = &quot;keepBranch&quot;, defaultValue = &quot;true&quot;)</span>
+    boolean keepBranch = true;
+
+    @Parameter(property = &quot;dryRun&quot;, defaultValue = &quot;false&quot;)
+    boolean dryRun;
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="fc" id="L68">        feature = requireParam(feature, &quot;feature&quot;,</span>
+                &quot;Feature name (expects branch feature/&lt;name&gt;)&quot;);
+<span class="fc" id="L70">        String branchName = &quot;feature/&quot; + feature;</span>
+
+<span class="pc bpc" id="L72" title="1 of 2 branches missed.">        if (!isWorkspaceMode()) {</span>
+<span class="fc" id="L73">            executeBareMode(branchName);</span>
+<span class="fc" id="L74">            return;</span>
+        }
+
+<span class="nc" id="L77">        executeWorkspaceMode(branchName);</span>
+<span class="nc" id="L78">    }</span>
+
+    private void executeWorkspaceMode(String branchName) throws MojoExecutionException {
+<span class="nc" id="L81">        WorkspaceGraph graph = loadGraph();</span>
+<span class="nc" id="L82">        File root = workspaceRoot();</span>
+<span class="nc" id="L83">        Path manifestPath = resolveManifest();</span>
+
+<span class="nc bnc" id="L85" title="All 4 branches missed.">        var targets = group != null &amp;&amp; !group.isEmpty()</span>
+<span class="nc" id="L86">                ? graph.expandGroup(group)</span>
+<span class="nc" id="L87">                : graph.manifest().components().keySet();</span>
+<span class="nc" id="L88">        List&lt;String&gt; sorted = graph.topologicalSort(new LinkedHashSet&lt;&gt;(targets));</span>
+<span class="nc" id="L89">        List&lt;String&gt; reversed = new ArrayList&lt;&gt;(sorted);</span>
+<span class="nc" id="L90">        Collections.reverse(reversed);</span>
+
+<span class="nc" id="L92">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L93">        getLog().info(header(&quot;Feature Finish (rebase)&quot;));</span>
+<span class="nc" id="L94">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+<span class="nc" id="L95">        getLog().info(&quot;  Feature:  &quot; + feature);</span>
+<span class="nc" id="L96">        getLog().info(&quot;  Branch:   &quot; + branchName + &quot; → &quot; + targetBranch);</span>
+<span class="nc" id="L97">        getLog().info(&quot;  Strategy: rebase + fast-forward&quot;);</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">        if (dryRun) getLog().info(&quot;  Mode:     DRY RUN&quot;);</span>
+<span class="nc" id="L99">        getLog().info(&quot;&quot;);</span>
+
+<span class="nc" id="L101">        VcsOperations.catchUp(root, getLog());</span>
+
+<span class="nc" id="L103">        List&lt;String&gt; eligible = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">        for (String name : reversed) {</span>
+<span class="nc" id="L105">            String reason = FeatureFinishSupport.validateComponent(</span>
+                    root, name, branchName, this);
+<span class="nc bnc" id="L107" title="All 2 branches missed.">            if (reason == null) {</span>
+<span class="nc" id="L108">                eligible.add(name);</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">            } else if (&quot;DIRTY&quot;.equals(reason)) {</span>
+<span class="nc" id="L110">                throw new MojoExecutionException(</span>
+                        name + &quot; has uncommitted changes. Commit or stash first.&quot;);
+            } else {
+<span class="nc" id="L113">                getLog().info(&quot;  · &quot; + name + &quot; — &quot; + reason + &quot;, skipping&quot;);</span>
+            }
+<span class="nc" id="L115">        }</span>
+
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        if (eligible.isEmpty()) {</span>
+<span class="nc" id="L118">            getLog().info(&quot;  No components on &quot; + branchName + &quot; — nothing to do.&quot;);</span>
+<span class="nc" id="L119">            return;</span>
+        }
+
+<span class="nc" id="L122">        int rebased = 0;</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">        for (String name : eligible) {</span>
+<span class="nc" id="L124">            File dir = new File(root, name);</span>
+
+<span class="nc bnc" id="L126" title="All 2 branches missed.">            if (dryRun) {</span>
+<span class="nc" id="L127">                getLog().info(&quot;  [dry-run] &quot; + name + &quot; — would rebase → &quot; + targetBranch);</span>
+<span class="nc" id="L128">                rebased++;</span>
+<span class="nc" id="L129">                continue;</span>
+            }
+
+<span class="nc" id="L132">            getLog().info(&quot;  → &quot; + name);</span>
+<span class="nc" id="L133">            VcsOperations.catchUp(dir, getLog());</span>
+
+            // Rebase feature onto target, then ff-merge
+<span class="nc" id="L136">            VcsOperations.rebase(dir, getLog(), targetBranch);</span>
+<span class="nc" id="L137">            VcsOperations.checkout(dir, getLog(), targetBranch);</span>
+<span class="nc" id="L138">            VcsOperations.mergeFfOnly(dir, getLog(), branchName);</span>
+<span class="nc" id="L139">            VcsOperations.pushIfRemoteExists(dir, getLog(), &quot;origin&quot;, targetBranch);</span>
+
+<span class="nc bnc" id="L141" title="All 2 branches missed.">            if (!keepBranch) {</span>
+<span class="nc" id="L142">                FeatureFinishSupport.deleteBranch(dir, getLog(), branchName);</span>
+            }
+
+<span class="nc" id="L145">            VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_FINISH);</span>
+<span class="nc" id="L146">            rebased++;</span>
+<span class="nc" id="L147">        }</span>
+
+<span class="nc bnc" id="L149" title="All 4 branches missed.">        if (rebased &gt; 0 &amp;&amp; !dryRun) {</span>
+<span class="nc" id="L150">            FeatureFinishSupport.updateWorkspaceYaml(</span>
+<span class="nc" id="L151">                    manifestPath, eligible, targetBranch, feature, getLog());</span>
+<span class="nc" id="L152">            FeatureFinishSupport.mergeWorkspaceRepo(</span>
+<span class="nc" id="L153">                    manifestPath, branchName, targetBranch, keepBranch, getLog());</span>
+        }
+
+<span class="nc" id="L156">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L157">        getLog().info(&quot;  Rebased: &quot; + rebased + &quot; components&quot;);</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">        getLog().info(&quot;  Branch &quot; + (keepBranch ? &quot;kept&quot; : &quot;deleted&quot;) + &quot;: &quot; + branchName);</span>
+<span class="nc" id="L159">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L160">    }</span>
+
+    private void executeBareMode(String branchName) throws MojoExecutionException {
+<span class="fc" id="L163">        File dir = new File(System.getProperty(&quot;user.dir&quot;));</span>
+
+<span class="fc" id="L165">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L166">        getLog().info(&quot;IKE Feature Finish — Rebase (bare repo)&quot;);</span>
+<span class="fc" id="L167">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+
+<span class="fc" id="L169">        VcsOperations.catchUp(dir, getLog());</span>
+
+<span class="fc" id="L171">        String currentBranch = gitBranch(dir);</span>
+<span class="pc bpc" id="L172" title="1 of 2 branches missed.">        if (!currentBranch.equals(branchName)) {</span>
+<span class="nc" id="L173">            throw new MojoExecutionException(</span>
+                    &quot;Not on &quot; + branchName + &quot; (currently on &quot; + currentBranch + &quot;)&quot;);
+        }
+<span class="pc bpc" id="L176" title="1 of 2 branches missed.">        if (!gitStatus(dir).isEmpty()) {</span>
+<span class="nc" id="L177">            throw new MojoExecutionException(&quot;Uncommitted changes. Commit or stash first.&quot;);</span>
+        }
+
+<span class="pc bpc" id="L180" title="1 of 2 branches missed.">        if (dryRun) {</span>
+<span class="nc" id="L181">            getLog().info(&quot;  [dry-run] Would rebase → &quot; + targetBranch);</span>
+<span class="nc" id="L182">            return;</span>
+        }
+
+<span class="fc" id="L185">        VcsOperations.rebase(dir, getLog(), targetBranch);</span>
+<span class="fc" id="L186">        VcsOperations.checkout(dir, getLog(), targetBranch);</span>
+<span class="fc" id="L187">        VcsOperations.mergeFfOnly(dir, getLog(), branchName);</span>
+<span class="fc" id="L188">        VcsOperations.pushIfRemoteExists(dir, getLog(), &quot;origin&quot;, targetBranch);</span>
+
+<span class="pc bpc" id="L190" title="1 of 2 branches missed.">        if (!keepBranch) {</span>
+<span class="nc" id="L191">            FeatureFinishSupport.deleteBranch(dir, getLog(), branchName);</span>
+        }
+
+<span class="fc" id="L194">        VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_FINISH);</span>
+
+<span class="fc" id="L196">        getLog().info(&quot;  Done.&quot;);</span>
+<span class="fc" id="L197">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L198">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

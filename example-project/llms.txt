@@ -1,0 +1,12 @@
+# Example Project
+
+> Example Java project demonstrating IKE documentation pipeline integration with Java source, tests, and Koncept macros
+
+## Reports
+
+- [About](https://github.com/IKE-Network/example-project/index.html.md)
+- [Project Summary](https://github.com/IKE-Network/example-project/summary.html.md)
+- [Project Licenses](https://github.com/IKE-Network/example-project/licenses.html.md)
+- [Maven Coordinates](https://github.com/IKE-Network/example-project/dependency-info.html.md)
+- [Project Information](https://github.com/IKE-Network/example-project/project-info.html.md)
+- [Generated Reports](https://github.com/IKE-Network/example-project/project-reports.html.md)

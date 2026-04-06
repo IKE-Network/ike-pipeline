@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CascadeWorkspaceMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">CascadeWorkspaceMojo.java</span></div><h1>CascadeWorkspaceMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.workspace.Component;
+import network.ike.workspace.WorkspaceGraph;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.util.List;
+
+/**
+ * Compute the cascade (propagation set) from a changed component.
+ *
+ * &lt;p&gt;Shows all components that transitively depend on the given
+ * component and would need rebuilding after a change.
+ *
+ * &lt;pre&gt;{@code
+ * mvn ike:cascade -Dcomponent=tinkar-core
+ * }&lt;/pre&gt;
+ */
+@Mojo(name = &quot;cascade&quot;, requiresProject = false, threadSafe = true)
+public class CascadeWorkspaceMojo extends AbstractWorkspaceMojo {
+
+    /**
+     * The component that changed. Prompted if omitted.
+     */
+    @Parameter(property = &quot;component&quot;)
+    String component;
+
+    /** Creates this goal instance. */
+<span class="fc" id="L31">    public CascadeWorkspaceMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="fc" id="L35">        component = requireParam(component, &quot;component&quot;, &quot;Component that changed&quot;);</span>
+
+<span class="fc" id="L37">        WorkspaceGraph graph = loadGraph();</span>
+
+<span class="fc" id="L39">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L40">        getLog().info(header(&quot;Cascade from: &quot; + component));</span>
+<span class="fc" id="L41">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+
+<span class="fc" id="L43">        List&lt;String&gt; affected = graph.cascade(component);</span>
+
+<span class="fc bfc" id="L45" title="All 2 branches covered.">        if (affected.isEmpty()) {</span>
+<span class="fc" id="L46">            getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L47">            getLog().info(&quot;  &quot; + component + &quot; is a leaf — no downstream dependents.&quot;);</span>
+        } else {
+<span class="fc" id="L49">            getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L50">            getLog().info(&quot;  Affected components (&quot; + affected.size() + &quot;):&quot;);</span>
+<span class="fc" id="L51">            getLog().info(&quot;&quot;);</span>
+
+            // Show in cascade order with type and relationship
+<span class="fc bfc" id="L54" title="All 2 branches covered.">            for (int i = 0; i &lt; affected.size(); i++) {</span>
+<span class="fc" id="L55">                String name = affected.get(i);</span>
+<span class="fc" id="L56">                Component comp = graph.manifest().components().get(name);</span>
+<span class="pc bpc" id="L57" title="1 of 2 branches missed.">                String type = comp != null ? comp.type() : &quot;?&quot;;</span>
+<span class="fc" id="L58">                getLog().info(String.format(&quot;    %2d. %-28s [%s]&quot;,</span>
+<span class="fc" id="L59">                        i + 1, name, type));</span>
+            }
+
+            // Show build order
+<span class="fc" id="L63">            getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L64">            getLog().info(&quot;  Rebuild order (topological):&quot;);</span>
+<span class="fc" id="L65">            getLog().info(&quot;&quot;);</span>
+
+<span class="fc" id="L67">            List&lt;String&gt; buildOrder = graph.topologicalSort(</span>
+                    new java.util.LinkedHashSet&lt;&gt;(affected));
+<span class="fc bfc" id="L69" title="All 2 branches covered.">            for (int i = 0; i &lt; buildOrder.size(); i++) {</span>
+<span class="fc" id="L70">                String name = buildOrder.get(i);</span>
+<span class="fc" id="L71">                Component comp = graph.manifest().components().get(name);</span>
+<span class="fc" id="L72">                String cmd = &quot;&quot;;</span>
+<span class="pc bpc" id="L73" title="1 of 2 branches missed.">                if (comp != null) {</span>
+<span class="fc" id="L74">                    var ct = graph.manifest().componentTypes().get(comp.type());</span>
+<span class="pc bpc" id="L75" title="1 of 2 branches missed.">                    cmd = ct != null ? ct.buildCommand() : &quot;&quot;;</span>
+                }
+<span class="fc" id="L77">                getLog().info(String.format(&quot;    %2d. %-28s %s&quot;,</span>
+<span class="fc" id="L78">                        i + 1, name, cmd));</span>
+            }
+        }
+
+<span class="fc" id="L82">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L83">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

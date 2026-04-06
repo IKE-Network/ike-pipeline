@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GraphWorkspaceMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">GraphWorkspaceMojo.java</span></div><h1>GraphWorkspaceMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.workspace.Component;
+import network.ike.workspace.Dependency;
+import network.ike.workspace.WorkspaceGraph;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Print the workspace dependency graph.
+ *
+ * &lt;p&gt;Displays all components in topological order with their
+ * dependencies. Optionally outputs DOT format for Graphviz rendering.
+ *
+ * &lt;pre&gt;{@code
+ * mvn ike:graph
+ * mvn ike:graph -Dformat=dot
+ * }&lt;/pre&gt;
+ */
+@Mojo(name = &quot;graph&quot;, requiresProject = false, threadSafe = true)
+public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
+
+    /**
+     * Output format: &quot;text&quot; (default) or &quot;dot&quot; (Graphviz DOT).
+     */
+    @Parameter(property = &quot;format&quot;, defaultValue = &quot;text&quot;)
+    String format;
+
+    /** Creates this goal instance. */
+<span class="fc" id="L35">    public GraphWorkspaceMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="fc" id="L39">        WorkspaceGraph graph = loadGraph();</span>
+
+<span class="fc bfc" id="L41" title="All 2 branches covered.">        if (&quot;dot&quot;.equalsIgnoreCase(format)) {</span>
+<span class="fc" id="L42">            printDot(graph);</span>
+        } else {
+<span class="fc" id="L44">            printText(graph);</span>
+        }
+<span class="fc" id="L46">    }</span>
+
+    private void printText(WorkspaceGraph graph) {
+<span class="fc" id="L49">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L50">        getLog().info(header(&quot;Dependency Graph&quot;));</span>
+<span class="fc" id="L51">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+<span class="fc" id="L52">        getLog().info(&quot;&quot;);</span>
+
+<span class="fc" id="L54">        List&lt;String&gt; sorted = graph.topologicalSort();</span>
+
+<span class="fc bfc" id="L56" title="All 2 branches covered.">        for (int i = 0; i &lt; sorted.size(); i++) {</span>
+<span class="fc" id="L57">            String name = sorted.get(i);</span>
+<span class="fc" id="L58">            Component comp = graph.manifest().components().get(name);</span>
+
+<span class="fc" id="L60">            getLog().info(String.format(&quot;  %2d. %-28s [%s]&quot;,</span>
+<span class="fc" id="L61">                    i + 1, name, comp.type()));</span>
+
+<span class="fc bfc" id="L63" title="All 2 branches covered.">            if (!comp.dependsOn().isEmpty()) {</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">                for (int j = 0; j &lt; comp.dependsOn().size(); j++) {</span>
+<span class="fc" id="L65">                    Dependency dep = comp.dependsOn().get(j);</span>
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">                    boolean last = (j == comp.dependsOn().size() - 1);</span>
+<span class="pc bpc" id="L67" title="1 of 2 branches missed.">                    String connector = last ? &quot;└─&quot; : &quot;├─&quot;;</span>
+<span class="fc" id="L68">                    getLog().info(String.format(&quot;        %s %s (%s)&quot;,</span>
+<span class="fc" id="L69">                            connector, dep.component(), dep.relationship()));</span>
+                    // Show transitive dependencies
+<span class="fc" id="L71">                    Component depComp = graph.manifest().components()</span>
+<span class="fc" id="L72">                            .get(dep.component());</span>
+<span class="pc bpc" id="L73" title="1 of 4 branches missed.">                    if (depComp != null &amp;&amp; !depComp.dependsOn().isEmpty()) {</span>
+<span class="pc bpc" id="L74" title="1 of 2 branches missed.">                        String prefix = last ? &quot;           &quot; : &quot;        │  &quot;;</span>
+<span class="fc" id="L75">                        printTransitiveDeps(graph, depComp, prefix, name);</span>
+                    }
+                }
+            }
+        }
+
+<span class="fc" id="L81">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L82">        getLog().info(&quot;  &quot; + sorted.size() + &quot; components in dependency order.&quot;);</span>
+<span class="fc" id="L83">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L84">    }</span>
+
+    /**
+     * Recursively print transitive dependencies with tree indentation.
+     *
+     * @param graph   the workspace graph
+     * @param comp    the component whose dependencies to print
+     * @param prefix  indentation prefix for this level
+     * @param root    the root component name (to prevent cycles)
+     */
+    private void printTransitiveDeps(WorkspaceGraph graph, Component comp,
+                                      String prefix, String root) {
+<span class="fc bfc" id="L96" title="All 2 branches covered.">        for (int i = 0; i &lt; comp.dependsOn().size(); i++) {</span>
+<span class="fc" id="L97">            Dependency dep = comp.dependsOn().get(i);</span>
+            // Prevent infinite recursion if there's a cycle
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">            if (dep.component().equals(root)) continue;</span>
+
+<span class="pc bpc" id="L101" title="1 of 2 branches missed.">            boolean last = (i == comp.dependsOn().size() - 1);</span>
+<span class="pc bpc" id="L102" title="1 of 2 branches missed.">            String connector = last ? &quot;└─&quot; : &quot;├─&quot;;</span>
+<span class="fc" id="L103">            getLog().info(String.format(&quot;%s%s %s (%s)&quot;,</span>
+<span class="fc" id="L104">                    prefix, connector, dep.component(), dep.relationship()));</span>
+
+<span class="fc" id="L106">            Component depComp = graph.manifest().components()</span>
+<span class="fc" id="L107">                    .get(dep.component());</span>
+<span class="pc bpc" id="L108" title="2 of 4 branches missed.">            if (depComp != null &amp;&amp; !depComp.dependsOn().isEmpty()) {</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">                String childPrefix = prefix + (last ? &quot;   &quot; : &quot;│  &quot;);</span>
+<span class="nc" id="L110">                printTransitiveDeps(graph, depComp, childPrefix, root);</span>
+            }
+        }
+<span class="fc" id="L113">    }</span>
+
+    private void printDot(WorkspaceGraph graph) {
+        // Build data structures for the pure function
+<span class="fc" id="L117">        Map&lt;String, String&gt; componentTypes = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L118" title="All 2 branches covered.">        for (Component comp : graph.manifest().components().values()) {</span>
+<span class="fc" id="L119">            componentTypes.put(comp.name(), comp.type());</span>
+<span class="fc" id="L120">        }</span>
+
+<span class="fc" id="L122">        Map&lt;String, List&lt;String[]&gt;&gt; edges = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L123" title="All 2 branches covered.">        for (Component comp : graph.manifest().components().values()) {</span>
+<span class="fc" id="L124">            List&lt;String[]&gt; compEdges = comp.dependsOn().stream()</span>
+<span class="fc" id="L125">                    .map(dep -&gt; new String[]{dep.component(), dep.relationship()})</span>
+<span class="fc" id="L126">                    .toList();</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">            if (!compEdges.isEmpty()) {</span>
+<span class="fc" id="L128">                edges.put(comp.name(), compEdges);</span>
+            }
+<span class="fc" id="L130">        }</span>
+
+<span class="fc" id="L132">        String dot = buildDotGraph(&quot;workspace&quot;, componentTypes, edges);</span>
+<span class="fc bfc" id="L133" title="All 2 branches covered.">        for (String line : dot.split(&quot;\n&quot;)) {</span>
+<span class="fc" id="L134">            getLog().info(line);</span>
+        }
+<span class="fc" id="L136">    }</span>
+
+    // ── DOT generation (pure, static, testable) ─────────────────────
+
+    /**
+     * Return the fill color for a component type name.
+     *
+     * @param typeName component type (e.g., &quot;infrastructure&quot;, &quot;software&quot;)
+     * @return hex color string
+     */
+    public static String componentColor(String typeName) {
+<span class="fc bfc" id="L147" title="All 6 branches covered.">        return switch (typeName) {</span>
+<span class="fc" id="L148">            case &quot;infrastructure&quot;   -&gt; &quot;#e8d5b7&quot;;</span>
+<span class="fc" id="L149">            case &quot;software&quot;         -&gt; &quot;#b7d5e8&quot;;</span>
+<span class="fc" id="L150">            case &quot;document&quot;         -&gt; &quot;#b7e8c4&quot;;</span>
+<span class="fc" id="L151">            case &quot;knowledge-source&quot; -&gt; &quot;#e8b7d5&quot;;</span>
+<span class="fc" id="L152">            case &quot;template&quot;         -&gt; &quot;#d5d5d5&quot;;</span>
+<span class="fc" id="L153">            default                 -&gt; &quot;#ffffff&quot;;</span>
+        };
+    }
+
+    /**
+     * Build a Graphviz DOT graph from component types and edges.
+     *
+     * &lt;p&gt;This is a pure function with no workspace-model dependencies,
+     * suitable for direct unit testing.
+     *
+     * @param title          graph name used in {@code digraph &lt;title&gt;}
+     * @param componentTypes map of component name to type name
+     * @param edges          map of source component to list of
+     *                       {@code [target, relationship]} pairs
+     * @return complete DOT source
+     */
+    public static String buildDotGraph(String title,
+                                        Map&lt;String, String&gt; componentTypes,
+                                        Map&lt;String, List&lt;String[]&gt;&gt; edges) {
+<span class="fc" id="L172">        StringBuilder dot = new StringBuilder(1024);</span>
+<span class="fc" id="L173">        dot.append(&quot;digraph &quot;).append(title).append(&quot; {\n&quot;);</span>
+<span class="fc" id="L174">        dot.append(&quot;    rankdir=BT;\n&quot;);</span>
+<span class="fc" id="L175">        dot.append(&quot;    node [shape=box, style=rounded, fontname=\&quot;Helvetica\&quot;];\n&quot;);</span>
+<span class="fc" id="L176">        dot.append(&quot;\n&quot;);</span>
+
+        // Node declarations with colors
+<span class="fc bfc" id="L179" title="All 2 branches covered.">        for (var entry : componentTypes.entrySet()) {</span>
+<span class="fc" id="L180">            String compName = entry.getKey();</span>
+<span class="fc" id="L181">            String color = componentColor(entry.getValue());</span>
+<span class="fc" id="L182">            dot.append(&quot;    \&quot;&quot;).append(compName)</span>
+<span class="fc" id="L183">               .append(&quot;\&quot; [fillcolor=\&quot;&quot;).append(color)</span>
+<span class="fc" id="L184">               .append(&quot;\&quot;, style=\&quot;rounded,filled\&quot;];\n&quot;);</span>
+<span class="fc" id="L185">        }</span>
+
+<span class="fc" id="L187">        dot.append(&quot;\n&quot;);</span>
+
+        // Edges
+<span class="fc bfc" id="L190" title="All 2 branches covered.">        for (var entry : edges.entrySet()) {</span>
+<span class="fc" id="L191">            String source = entry.getKey();</span>
+<span class="fc bfc" id="L192" title="All 2 branches covered.">            for (String[] edge : entry.getValue()) {</span>
+<span class="fc" id="L193">                String target = edge[0];</span>
+<span class="fc" id="L194">                String relationship = edge[1];</span>
+<span class="fc bfc" id="L195" title="All 2 branches covered.">                String style = &quot;content&quot;.equals(relationship)</span>
+<span class="fc" id="L196">                        ? &quot; [style=dashed]&quot; : &quot;&quot;;</span>
+<span class="fc" id="L197">                dot.append(&quot;    \&quot;&quot;).append(source).append(&quot;\&quot; -&gt; \&quot;&quot;)</span>
+<span class="fc" id="L198">                   .append(target).append(&quot;\&quot;&quot;).append(style).append(&quot;;\n&quot;);</span>
+<span class="fc" id="L199">            }</span>
+<span class="fc" id="L200">        }</span>
+
+<span class="fc" id="L202">        dot.append(&quot;}\n&quot;);</span>
+<span class="fc" id="L203">        return dot.toString();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PomModel.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">PomModel.java</span></div><h1>PomModel.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.plugin.ReleaseSupport;
+import org.apache.maven.api.model.Dependency;
+import org.apache.maven.api.model.DependencyManagement;
+import org.apache.maven.api.model.Model;
+import org.apache.maven.api.model.Parent;
+import org.apache.maven.model.v4.MavenStaxReader;
+
+import javax.xml.stream.XMLStreamException;
+import java.io.IOException;
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * Read-only POM model backed by Maven 4's {@code maven-api-model}.
+ *
+ * &lt;p&gt;Parses a POM file using {@link MavenStaxReader} with location
+ * tracking enabled. Provides typed access to dependencies, properties,
+ * and parent — replacing regex-based extraction throughout the
+ * workspace plugin.
+ *
+ * &lt;p&gt;For writes, static utility methods perform targeted text
+ * replacement on the raw POM content, preserving formatting.
+ */
+final class PomModel {
+
+    private final Model model;
+    private final String content;
+
+<span class="nc" id="L39">    private PomModel(Model model, String content) {</span>
+<span class="nc" id="L40">        this.model = model;</span>
+<span class="nc" id="L41">        this.content = content;</span>
+<span class="nc" id="L42">    }</span>
+
+    /**
+     * Parse a POM file into a model with location tracking.
+     *
+     * @param pomFile path to pom.xml
+     * @return parsed model
+     * @throws IOException if the file cannot be read or parsed
+     */
+    static PomModel parse(Path pomFile) throws IOException {
+<span class="nc" id="L52">        String content = Files.readString(pomFile, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L53">        MavenStaxReader reader = new MavenStaxReader();</span>
+<span class="nc" id="L54">        reader.setAddLocationInformation(true);</span>
+        try {
+<span class="nc" id="L56">            Model model = reader.read(new StringReader(content), true, null);</span>
+<span class="nc" id="L57">            return new PomModel(model, content);</span>
+<span class="nc" id="L58">        } catch (XMLStreamException e) {</span>
+<span class="nc" id="L59">            throw new IOException(&quot;Cannot parse &quot; + pomFile + &quot;: &quot;</span>
+<span class="nc" id="L60">                    + e.getMessage(), e);</span>
+        }
+    }
+
+    /** The underlying Maven 4 model. */
+<span class="nc" id="L65">    Model model() { return model; }</span>
+
+    /** Raw POM text for targeted editing. */
+<span class="nc" id="L68">    String content() { return content; }</span>
+
+    // ── Reading ────────────────────────────────────────────────────
+
+    /**
+     * All dependencies from both {@code &lt;dependencies&gt;} and
+     * {@code &lt;dependencyManagement&gt;} sections.
+     */
+    List&lt;Dependency&gt; allDependencies() {
+<span class="nc" id="L77">        List&lt;Dependency&gt; result = new ArrayList&lt;&gt;(model.getDependencies());</span>
+<span class="nc" id="L78">        DependencyManagement mgmt = model.getDependencyManagement();</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        if (mgmt != null) {</span>
+<span class="nc" id="L80">            result.addAll(mgmt.getDependencies());</span>
+        }
+<span class="nc" id="L82">        return Collections.unmodifiableList(result);</span>
+    }
+
+    /** Properties from {@code &lt;properties&gt;}. */
+    Map&lt;String, String&gt; properties() {
+<span class="nc" id="L87">        return model.getProperties();</span>
+    }
+
+    /** Parent info, or null if no parent block. */
+    Parent parent() {
+<span class="nc" id="L92">        return model.getParent();</span>
+    }
+
+    /** The project's own groupId (may be null if inherited). */
+    String groupId() {
+<span class="nc" id="L97">        String gid = model.getGroupId();</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">        if (gid != null) return gid;</span>
+<span class="nc" id="L99">        Parent p = model.getParent();</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">        return p != null ? p.getGroupId() : null;</span>
+    }
+
+    /** The project's own artifactId. */
+    String artifactId() {
+<span class="nc" id="L105">        return model.getArtifactId();</span>
+    }
+
+    /** The project's own version (may be null if inherited). */
+    String version() {
+<span class="nc" id="L110">        String v = model.getVersion();</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        if (v != null) return v;</span>
+<span class="nc" id="L112">        Parent p = model.getParent();</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        return p != null ? p.getVersion() : null;</span>
+    }
+
+    /** Subprojects (Maven 4.1.0) or modules (Maven 4.0.0). */
+    List&lt;String&gt; subprojects() {
+<span class="nc" id="L118">        List&lt;String&gt; subs = model.getSubprojects();</span>
+<span class="nc bnc" id="L119" title="All 4 branches missed.">        if (subs != null &amp;&amp; !subs.isEmpty()) return subs;</span>
+<span class="nc" id="L120">        return model.getModules();</span>
+    }
+
+    // ── Writing (targeted text replacement) ────────────────────────
+
+    /**
+     * Element-order-tolerant pattern for a dependency block.
+     * Matches a {@code &lt;dependency&gt;} containing the given
+     * groupId and artifactId in any order, capturing the
+     * version element's value for replacement.
+     */
+    private static final String DEP_ELEMENT =
+            &quot;(?:(?!&lt;/dependency&gt;).)*?&quot;;
+
+    /**
+     * Update the version of a specific dependency identified by
+     * {@code groupId:artifactId}. Handles any element ordering
+     * within the dependency block.
+     *
+     * @param pomContent the raw POM text
+     * @param groupId    dependency groupId to match
+     * @param artifactId dependency artifactId to match
+     * @param newVersion the version to set
+     * @return updated POM text, or unchanged if no match
+     */
+    static String updateDependencyVersion(String pomContent,
+                                           String groupId,
+                                           String artifactId,
+                                           String newVersion) {
+        // Match a &lt;dependency&gt; block containing both groupId and artifactId,
+        // with a &lt;version&gt; element anywhere inside. Element order is not
+        // assumed — groupId, artifactId, type, scope, version can be in
+        // any position.
+<span class="nc" id="L153">        Pattern p = Pattern.compile(</span>
+                &quot;(?s)(&lt;dependency&gt;&quot; + DEP_ELEMENT +
+<span class="nc" id="L155">                &quot;&lt;groupId&gt;\\s*&quot; + Pattern.quote(groupId) + &quot;\\s*&lt;/groupId&gt;&quot; +</span>
+                DEP_ELEMENT +
+<span class="nc" id="L157">                &quot;&lt;artifactId&gt;\\s*&quot; + Pattern.quote(artifactId) +</span>
+                &quot;\\s*&lt;/artifactId&gt;&quot; +
+                DEP_ELEMENT +
+                &quot;&lt;version&gt;)([^&lt;]*)(&lt;/version&gt;)&quot;);
+<span class="nc" id="L161">        Matcher m = p.matcher(pomContent);</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">        if (m.find()) {</span>
+<span class="nc" id="L163">            return m.replaceFirst(</span>
+<span class="nc" id="L164">                    Matcher.quoteReplacement(m.group(1))</span>
+<span class="nc" id="L165">                    + Matcher.quoteReplacement(newVersion)</span>
+<span class="nc" id="L166">                    + Matcher.quoteReplacement(m.group(3)));</span>
+        }
+
+        // Try reversed order: artifactId before groupId
+<span class="nc" id="L170">        Pattern p2 = Pattern.compile(</span>
+                &quot;(?s)(&lt;dependency&gt;&quot; + DEP_ELEMENT +
+<span class="nc" id="L172">                &quot;&lt;artifactId&gt;\\s*&quot; + Pattern.quote(artifactId) +</span>
+                &quot;\\s*&lt;/artifactId&gt;&quot; + DEP_ELEMENT +
+<span class="nc" id="L174">                &quot;&lt;groupId&gt;\\s*&quot; + Pattern.quote(groupId) + &quot;\\s*&lt;/groupId&gt;&quot; +</span>
+                DEP_ELEMENT +
+                &quot;&lt;version&gt;)([^&lt;]*)(&lt;/version&gt;)&quot;);
+<span class="nc" id="L177">        Matcher m2 = p2.matcher(pomContent);</span>
+<span class="nc bnc" id="L178" title="All 2 branches missed.">        if (m2.find()) {</span>
+<span class="nc" id="L179">            return m2.replaceFirst(</span>
+<span class="nc" id="L180">                    Matcher.quoteReplacement(m2.group(1))</span>
+<span class="nc" id="L181">                    + Matcher.quoteReplacement(newVersion)</span>
+<span class="nc" id="L182">                    + Matcher.quoteReplacement(m2.group(3)));</span>
+        }
+
+<span class="nc" id="L185">        return pomContent;</span>
+    }
+
+    /**
+     * Update a version property value in the POM content.
+     * Delegates to {@link ReleaseSupport#updateVersionProperty}.
+     *
+     * @param pomContent   the raw POM text
+     * @param propertyName the property name (e.g., &quot;tinkar-core.version&quot;)
+     * @param newValue     the new property value
+     * @return updated POM text
+     */
+    static String updateProperty(String pomContent,
+                                  String propertyName,
+                                  String newValue) {
+<span class="nc" id="L200">        return ReleaseSupport.updateVersionProperty(</span>
+                pomContent, propertyName, newValue);
+    }
+
+    /**
+     * Update the parent version in a POM's {@code &lt;parent&gt;} block.
+     *
+     * @param pomContent      the raw POM text
+     * @param parentArtifactId the parent artifactId to match
+     * @param newVersion      the new version to set
+     * @return updated POM text, or unchanged if no match
+     */
+    static String updateParentVersion(String pomContent,
+                                       String parentArtifactId,
+                                       String newVersion) {
+        // Element-order-tolerant: match parent block with the given
+        // artifactId anywhere inside, then replace the version value.
+<span class="nc" id="L217">        Pattern p = Pattern.compile(</span>
+                &quot;(?s)(&lt;parent&gt;\\s*&quot; +
+                &quot;(?:(?!&lt;/parent&gt;).)*?&quot; +
+<span class="nc" id="L220">                &quot;&lt;artifactId&gt;\\s*&quot; + Pattern.quote(parentArtifactId) +</span>
+                &quot;\\s*&lt;/artifactId&gt;&quot; +
+                &quot;(?:(?!&lt;/parent&gt;).)*?&quot; +
+                &quot;&lt;version&gt;)([^&lt;]*)(&lt;/version&gt;)&quot;);
+<span class="nc" id="L224">        Matcher m = p.matcher(pomContent);</span>
+<span class="nc bnc" id="L225" title="All 2 branches missed.">        if (m.find()) {</span>
+<span class="nc" id="L226">            return m.replaceFirst(</span>
+<span class="nc" id="L227">                    Matcher.quoteReplacement(m.group(1))</span>
+<span class="nc" id="L228">                    + Matcher.quoteReplacement(newVersion)</span>
+<span class="nc" id="L229">                    + Matcher.quoteReplacement(m.group(3)));</span>
+        }
+<span class="nc" id="L231">        return pomContent;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

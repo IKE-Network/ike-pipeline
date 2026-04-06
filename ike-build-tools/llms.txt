@@ -1,0 +1,12 @@
+# IKE Build Tools
+
+> Shared build scripts, release automation, and configuration
+> for IKE projects. Distributed as a classified Maven artifact.
+
+## Reports
+
+- [About](https://github.com/IKE-Network/ike-pipeline/index.html.md)
+- [Project Summary](https://github.com/IKE-Network/ike-pipeline/summary.html.md)
+- [Project Licenses](https://github.com/IKE-Network/ike-pipeline/licenses.html.md)
+- [Maven Coordinates](https://github.com/IKE-Network/ike-pipeline/dependency-info.html.md)
+- [Project Information](https://github.com/IKE-Network/ike-pipeline/project-info.html.md)

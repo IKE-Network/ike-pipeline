@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WsCheckpointMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">WsCheckpointMojo.java</span></div><h1>WsCheckpointMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.plugin.ReleaseNotesSupport;
+import network.ike.plugin.ReleaseSupport;
+
+import network.ike.workspace.Component;
+import network.ike.workspace.WorkspaceGraph;
+import network.ike.plugin.ws.vcs.VcsOperations;
+import network.ike.plugin.ws.vcs.VcsState;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.LinkedHashSet;
+
+/**
+ * Create a workspace checkpoint — build, tag, and deploy every component,
+ * then record the resulting checkpoint coordinates in a YAML file.
+ *
+ * &lt;p&gt;Each component is processed in topological order (dependencies before
+ * dependents). For each component the checkpoint engine:
+ * &lt;ol&gt;
+ *   &lt;li&gt;Derives an immutable checkpoint version from the current SNAPSHOT&lt;/li&gt;
+ *   &lt;li&gt;Stamps the version, commits, and tags {@code checkpoint/&lt;version&gt;}&lt;/li&gt;
+ *   &lt;li&gt;Runs {@code mvnw clean deploy} to build and publish to Nexus&lt;/li&gt;
+ *   &lt;li&gt;Restores the SNAPSHOT version and commits&lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * &lt;p&gt;After all components are checkpointed, a YAML file recording the
+ * checkpoint versions and tagged SHAs is written to
+ * {@code checkpoints/checkpoint-&lt;name&gt;.yaml} in the workspace root.
+ *
+ * &lt;p&gt;The checkpoint name is derived automatically from the current
+ * workspace branch and a compact UTC timestamp
+ * ({@code &lt;branch&gt;-&lt;yyyyMMdd&gt;-&lt;HHmmss&gt;}), making each checkpoint
+ * unique and intuitively linked to the branch it was created from.
+ * Override with {@code -Dname=&lt;label&gt;} when a custom label is needed.
+ *
+ * &lt;p&gt;All components must have a clean working tree before this goal runs.
+ *
+ * &lt;pre&gt;{@code
+ * mvn ike:ws-checkpoint                     # auto-derived name
+ * mvn ike:ws-checkpoint -Dname=sprint-42    # explicit name
+ * mvn ike:ws-checkpoint-dry-run             # preview
+ * }&lt;/pre&gt;
+ *
+ * @see CheckpointSupport the per-component engine used by this goal
+ */
+@Mojo(name = &quot;checkpoint&quot;, requiresProject = false, threadSafe = true)
+public class WsCheckpointMojo extends AbstractWorkspaceMojo {
+
+<span class="fc" id="L62">    private static final DateTimeFormatter ISO_UTC =</span>
+<span class="fc" id="L63">            DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd'T'HH:mm:ss'Z'&quot;)</span>
+<span class="fc" id="L64">                    .withZone(ZoneOffset.UTC);</span>
+
+    /**
+     * Checkpoint name. Used in the YAML filename and component tag paths.
+     * If omitted, auto-derived from the workspace branch and a compact
+     * UTC timestamp ({@code &lt;branch&gt;-&lt;yyyyMMdd&gt;-&lt;HHmmss&gt;}).
+     */
+    @Parameter(property = &quot;name&quot;)
+    String name;
+
+    /** Deploy site to the remote server for each component. Opt-in — requires SSH proxy. */
+    @Parameter(property = &quot;deploySite&quot;, defaultValue = &quot;false&quot;)
+    boolean deploySite;
+
+    /** Skip tests during the build ({@code -DskipTests}). */
+    @Parameter(property = &quot;skipVerify&quot;, defaultValue = &quot;false&quot;)
+    boolean skipVerify;
+
+    /**
+     * Show what the checkpoint would do without running builds, writing
+     * files, or creating tags. Set automatically by
+     * {@code ike:ws-checkpoint-dry-run}.
+     */
+    @Parameter(property = &quot;dryRun&quot;, defaultValue = &quot;false&quot;)
+    boolean dryRun;
+
+    /**
+     * GitHub repository for issue tracking, used to snapshot active
+     * issues into the checkpoint's testing context.
+     */
+    @Parameter(property = &quot;issueRepo&quot;, defaultValue = &quot;IKE-Network/ike-issues&quot;)
+    String issueRepo;
+
+    /**
+     * Milestone name to snapshot for testing context. If omitted,
+     * looks for an open milestone matching the workspace's primary
+     * component (first component in manifest) in the form
+     * {@code &lt;artifactId&gt; v&lt;version&gt;} where version is the current
+     * SNAPSHOT stripped of the suffix.
+     */
+    @Parameter(property = &quot;milestone&quot;)
+    String milestone;
+
+    /** Creates this goal instance. */
+<span class="fc" id="L108">    public WsCheckpointMojo() {}</span>
+
+<span class="fc" id="L110">    private static final DateTimeFormatter COMPACT_UTC =</span>
+<span class="fc" id="L111">            DateTimeFormatter.ofPattern(&quot;yyyyMMdd-HHmmss&quot;)</span>
+<span class="fc" id="L112">                    .withZone(ZoneOffset.UTC);</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="fc" id="L116">        ReportLog report = startReport();</span>
+<span class="fc" id="L117">        WorkspaceGraph graph = loadGraph();</span>
+<span class="fc" id="L118">        File root = workspaceRoot();</span>
+
+<span class="pc bpc" id="L120" title="2 of 4 branches missed.">        if (name == null || name.isBlank()) {</span>
+<span class="nc" id="L121">            name = deriveCheckpointName(root);</span>
+        }
+
+        // VCS bridge: catch-up before checkpoint
+<span class="fc" id="L125">        VcsOperations.catchUp(root, getLog());</span>
+
+<span class="fc" id="L127">        String timestamp = ISO_UTC.format(Instant.now());</span>
+<span class="fc" id="L128">        String author = resolveAuthor(root);</span>
+
+<span class="fc" id="L130">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L131">        getLog().info(header(&quot;Checkpoint&quot;));</span>
+<span class="fc" id="L132">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+<span class="fc" id="L133">        getLog().info(&quot;  Name:   &quot; + name);</span>
+<span class="fc" id="L134">        getLog().info(&quot;  Time:   &quot; + timestamp);</span>
+<span class="fc" id="L135">        getLog().info(&quot;  Author: &quot; + author);</span>
+<span class="pc bpc" id="L136" title="1 of 2 branches missed.">        if (dryRun) {</span>
+<span class="nc" id="L137">            getLog().info(&quot;  Mode:   DRY RUN — no builds, no tags, no files written&quot;);</span>
+        }
+<span class="fc" id="L139">        getLog().info(&quot;&quot;);</span>
+
+        // ── Validate all components are clean before starting ─────────
+<span class="pc bpc" id="L142" title="1 of 2 branches missed.">        if (!dryRun) {</span>
+<span class="fc" id="L143">            validateCleanWorktrees(graph, root);</span>
+        }
+
+        // ── Checkpoint each component in dependency order ──────────────
+<span class="fc" id="L147">        List&lt;ComponentSnapshot&gt; snapshots = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L148">        List&lt;String&gt; absentComponents = new ArrayList&lt;&gt;();</span>
+
+<span class="fc" id="L150">        List&lt;String&gt; ordered = graph.topologicalSort(</span>
+<span class="fc" id="L151">                new LinkedHashSet&lt;&gt;(graph.manifest().components().keySet()));</span>
+
+<span class="fc bfc" id="L153" title="All 2 branches covered.">        for (String compName : ordered) {</span>
+<span class="fc" id="L154">            Component component = graph.manifest().components().get(compName);</span>
+<span class="fc" id="L155">            File dir = new File(root, compName);</span>
+<span class="fc" id="L156">            File gitDir = new File(dir, &quot;.git&quot;);</span>
+
+<span class="pc bpc" id="L158" title="1 of 2 branches missed.">            if (!gitDir.exists()) {</span>
+<span class="nc" id="L159">                absentComponents.add(compName);</span>
+<span class="nc" id="L160">                getLog().info(&quot;  - &quot; + compName + &quot; [absent — skipped]&quot;);</span>
+<span class="nc" id="L161">                continue;</span>
+            }
+
+<span class="fc" id="L164">            String branch   = gitBranch(dir);</span>
+<span class="fc" id="L165">            String snapshot = readVersion(dir);</span>
+<span class="fc" id="L166">            String checkpointVersion =</span>
+<span class="fc" id="L167">                    ReleaseSupport.deriveCheckpointVersion(snapshot, dir);</span>
+<span class="fc" id="L168">            String tagName = &quot;checkpoint/&quot; + checkpointVersion;</span>
+
+<span class="fc" id="L170">            var ct = graph.manifest().componentTypes().get(component.type());</span>
+<span class="pc bpc" id="L171" title="1 of 2 branches missed.">            boolean composite = ct != null</span>
+<span class="pc bpc" id="L172" title="1 of 2 branches missed.">                    &amp;&amp; &quot;composite&quot;.equals(ct.checkpointMechanism());</span>
+
+<span class="pc bpc" id="L174" title="1 of 2 branches missed.">            if (dryRun) {</span>
+<span class="nc" id="L175">                String shortSha = gitShortSha(dir);</span>
+<span class="nc" id="L176">                String sha      = gitFullSha(dir);</span>
+<span class="nc" id="L177">                getLog().info(&quot;  ✓ &quot; + compName + &quot; [&quot; + shortSha + &quot;] &quot; + branch);</span>
+<span class="nc" id="L178">                getLog().info(&quot;    [DRY RUN] &quot; + snapshot</span>
+                        + &quot; → &quot; + checkpointVersion);
+<span class="nc" id="L180">                CheckpointSupport.dryRun(dir, checkpointVersion,</span>
+<span class="nc" id="L181">                        deploySite, skipVerify, getLog());</span>
+<span class="nc" id="L182">                snapshots.add(new ComponentSnapshot(</span>
+                        compName, sha, shortSha, branch,
+<span class="nc" id="L184">                        checkpointVersion, false, component.type(), composite));</span>
+<span class="nc" id="L185">            } else {</span>
+<span class="fc" id="L186">                getLog().info(&quot;  ⚙ &quot; + compName + &quot;: &quot;</span>
+                        + snapshot + &quot; → &quot; + checkpointVersion);
+<span class="fc" id="L188">                checkpointComponent(dir, checkpointVersion);</span>
+
+                // Record the SHA the tag points to, not the post-restore HEAD
+<span class="fc" id="L191">                String tagSha = ReleaseSupport.execCapture(dir,</span>
+                        &quot;git&quot;, &quot;rev-parse&quot;, tagName);
+<span class="pc bpc" id="L193" title="1 of 2 branches missed.">                String shortTagSha = tagSha.length() &gt;= 8</span>
+<span class="pc" id="L194">                        ? tagSha.substring(0, 8) : tagSha;</span>
+<span class="fc" id="L195">                getLog().info(&quot;  ✓ &quot; + compName + &quot; [&quot;</span>
+                        + shortTagSha + &quot;] → &quot; + tagName);
+<span class="fc" id="L197">                snapshots.add(new ComponentSnapshot(</span>
+                        compName, tagSha, shortTagSha, branch,
+<span class="fc" id="L199">                        checkpointVersion, false, component.type(), composite));</span>
+            }
+<span class="fc" id="L201">        }</span>
+
+        // ── Build checkpoint YAML ──────────────────────────────────────
+<span class="fc" id="L204">        String yamlContent = buildCheckpointYaml(</span>
+                name, timestamp, author,
+<span class="fc" id="L206">                graph.manifest().schemaVersion(),</span>
+                snapshots, absentComponents);
+
+        // ── Append testing context from milestone ─────────────────────
+<span class="fc" id="L210">        String testingContextYaml = snapshotTestingContext(graph);</span>
+<span class="pc bpc" id="L211" title="1 of 2 branches missed.">        if (testingContextYaml != null) {</span>
+<span class="nc" id="L212">            yamlContent = yamlContent + &quot;\n&quot; + testingContextYaml;</span>
+        }
+
+<span class="pc bpc" id="L215" title="1 of 2 branches missed.">        if (dryRun) {</span>
+<span class="nc" id="L216">            getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L217">            getLog().info(&quot;[DRY RUN] Checkpoint file would be written to:&quot;);</span>
+<span class="nc" id="L218">            getLog().info(&quot;[DRY RUN]   checkpoints/&quot; + checkpointFileName(name));</span>
+<span class="nc" id="L219">            getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L220">            getLog().info(&quot;[DRY RUN] Contents:&quot;);</span>
+<span class="nc" id="L221">            yamlContent.lines().forEach(line -&gt;</span>
+<span class="nc" id="L222">                    getLog().info(&quot;[DRY RUN]   &quot; + line));</span>
+<span class="nc" id="L223">            getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L224">            return;</span>
+        }
+
+        // ── Write checkpoint file ──────────────────────────────────────
+<span class="fc" id="L228">        Path checkpointsDir = root.toPath().resolve(&quot;checkpoints&quot;);</span>
+        try {
+<span class="fc" id="L230">            Files.createDirectories(checkpointsDir);</span>
+<span class="nc" id="L231">        } catch (IOException e) {</span>
+<span class="nc" id="L232">            throw new MojoExecutionException(</span>
+                    &quot;Cannot create checkpoints directory&quot;, e);
+<span class="fc" id="L234">        }</span>
+<span class="fc" id="L235">        Path checkpointFile = checkpointsDir.resolve(checkpointFileName(name));</span>
+        try {
+<span class="fc" id="L237">            Files.writeString(checkpointFile, yamlContent, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L238">        } catch (IOException e) {</span>
+<span class="nc" id="L239">            throw new MojoExecutionException(</span>
+                    &quot;Failed to write &quot; + checkpointFile, e);
+<span class="fc" id="L241">        }</span>
+
+        // VCS bridge: write state file after checkpoint
+<span class="fc bfc" id="L244" title="All 2 branches covered.">        for (var entry : graph.manifest().components().entrySet()) {</span>
+<span class="fc" id="L245">            File compDir = new File(root, entry.getKey());</span>
+<span class="pc bpc" id="L246" title="1 of 2 branches missed.">            if (new File(compDir, &quot;.git&quot;).exists()</span>
+<span class="pc bpc" id="L247" title="1 of 2 branches missed.">                    &amp;&amp; VcsState.isIkeManaged(compDir.toPath())) {</span>
+<span class="nc" id="L248">                VcsOperations.writeVcsState(compDir, VcsState.ACTION_CHECKPOINT);</span>
+            }
+<span class="fc" id="L250">        }</span>
+<span class="pc bpc" id="L251" title="1 of 2 branches missed.">        if (VcsState.isIkeManaged(root.toPath())) {</span>
+<span class="nc" id="L252">            VcsOperations.writeVcsState(root, VcsState.ACTION_CHECKPOINT);</span>
+        }
+
+<span class="fc" id="L255">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L256">        getLog().info(&quot;  Checkpoint: &quot; + checkpointFile);</span>
+<span class="fc" id="L257">        getLog().info(&quot;  Components: &quot; + snapshots.size()</span>
+<span class="fc" id="L258">                + &quot; | Absent: &quot; + absentComponents.size());</span>
+<span class="fc" id="L259">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L260">        finishReport(&quot;ws:checkpoint&quot;, report);</span>
+<span class="fc" id="L261">    }</span>
+
+    // ── Per-component checkpoint (overridable for tests) ──────────────
+
+    /**
+     * Execute the per-component checkpoint. Calls {@link CheckpointSupport}
+     * directly — no subprocess spawn.
+     *
+     * &lt;p&gt;Override in tests to substitute a lighter-weight simulation
+     * that creates the git tag without running a real build.
+     *
+     * @param dir             component git root
+     * @param checkpointLabel version label (e.g.,
+     *                        {@code 1.0.0-checkpoint.20260330.abc1234})
+     * @throws MojoExecutionException if the checkpoint fails
+     */
+    protected void checkpointComponent(File dir, String checkpointLabel)
+            throws MojoExecutionException {
+<span class="nc" id="L279">        CheckpointSupport.checkpoint(dir, checkpointLabel,</span>
+<span class="nc" id="L280">                deploySite, skipVerify, getLog());</span>
+<span class="nc" id="L281">    }</span>
+
+    // ── YAML generation (pure, static, testable) ──────────────────────
+
+    /**
+     * Build checkpoint YAML content from pre-gathered component data.
+     *
+     * &lt;p&gt;This is a pure function with no git or I/O dependencies,
+     * suitable for direct unit testing.
+     *
+     * @param name            checkpoint name
+     * @param timestamp       ISO-8601 UTC timestamp
+     * @param author          checkpoint author name
+     * @param schemaVersion   workspace schema version
+     * @param snapshots       component snapshots (checkpoint versions, not SNAPSHOTs)
+     * @param absentNames     names of components not checked out
+     * @return YAML checkpoint content
+     */
+    public static String buildCheckpointYaml(String name, String timestamp,
+                                              String author, String schemaVersion,
+                                              List&lt;ComponentSnapshot&gt; snapshots,
+                                              List&lt;String&gt; absentNames) {
+<span class="fc" id="L303">        List&lt;String&gt; yaml = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L304">        yaml.add(&quot;# IKE Workspace Checkpoint&quot;);</span>
+<span class="fc" id="L305">        yaml.add(&quot;# Generated by: mvn ike:ws-checkpoint&quot;);</span>
+<span class="fc" id="L306">        yaml.add(&quot;#&quot;);</span>
+<span class="fc" id="L307">        yaml.add(&quot;checkpoint:&quot;);</span>
+<span class="fc" id="L308">        yaml.add(&quot;  name: \&quot;&quot; + name + &quot;\&quot;&quot;);</span>
+<span class="fc" id="L309">        yaml.add(&quot;  created: \&quot;&quot; + timestamp + &quot;\&quot;&quot;);</span>
+<span class="fc" id="L310">        yaml.add(&quot;  author: \&quot;&quot; + author + &quot;\&quot;&quot;);</span>
+<span class="fc" id="L311">        yaml.add(&quot;  schema-version: \&quot;&quot; + schemaVersion + &quot;\&quot;&quot;);</span>
+<span class="fc" id="L312">        yaml.add(&quot;&quot;);</span>
+<span class="fc" id="L313">        yaml.add(&quot;  components:&quot;);</span>
+
+<span class="fc bfc" id="L315" title="All 2 branches covered.">        for (String absent : absentNames) {</span>
+<span class="fc" id="L316">            yaml.add(&quot;    &quot; + absent + &quot;:&quot;);</span>
+<span class="fc" id="L317">            yaml.add(&quot;      status: absent&quot;);</span>
+<span class="fc" id="L318">        }</span>
+
+<span class="fc bfc" id="L320" title="All 2 branches covered.">        for (ComponentSnapshot snap : snapshots) {</span>
+<span class="fc" id="L321">            yaml.add(&quot;    &quot; + snap.name() + &quot;:&quot;);</span>
+<span class="fc bfc" id="L322" title="All 2 branches covered.">            if (snap.version() != null) {</span>
+<span class="fc" id="L323">                yaml.add(&quot;      version: \&quot;&quot; + snap.version() + &quot;\&quot;&quot;);</span>
+<span class="fc" id="L324">                yaml.add(&quot;      tag: \&quot;checkpoint/&quot; + snap.version() + &quot;\&quot;&quot;);</span>
+            }
+<span class="fc" id="L326">            yaml.add(&quot;      sha: \&quot;&quot; + snap.sha() + &quot;\&quot;&quot;);</span>
+<span class="fc" id="L327">            yaml.add(&quot;      short-sha: \&quot;&quot; + snap.shortSha() + &quot;\&quot;&quot;);</span>
+<span class="fc" id="L328">            yaml.add(&quot;      branch: \&quot;&quot; + snap.branch() + &quot;\&quot;&quot;);</span>
+<span class="fc" id="L329">            yaml.add(&quot;      type: &quot; + snap.type());</span>
+<span class="fc bfc" id="L330" title="All 2 branches covered.">            if (snap.compositeCheckpoint()) {</span>
+<span class="fc" id="L331">                yaml.add(&quot;      # TODO: add view-coordinate from Tinkar runtime&quot;);</span>
+            }
+<span class="fc" id="L333">        }</span>
+
+<span class="fc" id="L335">        return String.join(&quot;\n&quot;, yaml) + &quot;\n&quot;;</span>
+    }
+
+    /**
+     * Derive the checkpoint YAML file name.
+     *
+     * @param checkpointName the checkpoint name
+     * @return file name in the form {@code checkpoint-&lt;name&gt;.yaml}
+     */
+    public static String checkpointFileName(String checkpointName) {
+<span class="fc" id="L345">        return &quot;checkpoint-&quot; + checkpointName + &quot;.yaml&quot;;</span>
+    }
+
+    // ── Private helpers ────────────────────────────────────────────────
+
+    /**
+     * Validate that all present components have clean working trees.
+     * Fails fast before any component is checkpointed.
+     */
+    private void validateCleanWorktrees(WorkspaceGraph graph, File root)
+            throws MojoExecutionException {
+<span class="fc" id="L356">        List&lt;String&gt; dirty = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L357" title="All 2 branches covered.">        for (String compName : graph.manifest().components().keySet()) {</span>
+<span class="fc" id="L358">            File dir = new File(root, compName);</span>
+<span class="pc bpc" id="L359" title="1 of 2 branches missed.">            if (!new File(dir, &quot;.git&quot;).exists()) continue;</span>
+<span class="fc" id="L360">            String status = gitStatus(dir);</span>
+<span class="pc bpc" id="L361" title="1 of 2 branches missed.">            if (!status.isEmpty()) {</span>
+<span class="nc" id="L362">                dirty.add(compName);</span>
+            }
+<span class="fc" id="L364">        }</span>
+<span class="pc bpc" id="L365" title="1 of 2 branches missed.">        if (!dirty.isEmpty()) {</span>
+<span class="nc" id="L366">            throw new MojoExecutionException(</span>
+                    &quot;Cannot checkpoint — dirty working tree in: &quot;
+<span class="nc" id="L368">                    + String.join(&quot;, &quot;, dirty)</span>
+                    + &quot;. Commit or stash changes first.&quot;);
+        }
+<span class="fc" id="L371">    }</span>
+
+    private String gitFullSha(File dir) {
+        try {
+<span class="nc" id="L375">            return ReleaseSupport.execCapture(dir, &quot;git&quot;, &quot;rev-parse&quot;, &quot;HEAD&quot;);</span>
+<span class="nc" id="L376">        } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L377">            return &quot;unknown&quot;;</span>
+        }
+    }
+
+    private String readVersion(File dir) throws MojoExecutionException {
+<span class="fc" id="L382">        return ReleaseSupport.readPomVersion(new File(dir, &quot;pom.xml&quot;));</span>
+    }
+
+    private String resolveAuthor(File root) {
+        try {
+<span class="fc" id="L387">            return ReleaseSupport.execCapture(root, &quot;git&quot;, &quot;config&quot;, &quot;user.name&quot;);</span>
+<span class="nc" id="L388">        } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L389">            return System.getProperty(&quot;user.name&quot;, &quot;unknown&quot;);</span>
+        }
+    }
+
+    /**
+     * Query the issue tracker for the current milestone and return
+     * a YAML-formatted testing context, or null if no milestone found.
+     */
+    private String snapshotTestingContext(WorkspaceGraph graph)
+            throws MojoExecutionException {
+<span class="pc bpc" id="L399" title="3 of 4 branches missed.">        if (issueRepo == null || issueRepo.isBlank()) return null;</span>
+
+<span class="nc" id="L401">        String milestoneName = milestone;</span>
+
+        // Auto-derive milestone name from first component if not specified
+<span class="nc bnc" id="L404" title="All 4 branches missed.">        if (milestoneName == null || milestoneName.isBlank()) {</span>
+<span class="nc" id="L405">            var components = graph.manifest().components();</span>
+<span class="nc bnc" id="L406" title="All 2 branches missed.">            if (!components.isEmpty()) {</span>
+<span class="nc" id="L407">                var first = components.entrySet().iterator().next();</span>
+<span class="nc" id="L408">                String compName = first.getKey();</span>
+<span class="nc" id="L409">                String version = first.getValue().version();</span>
+<span class="nc bnc" id="L410" title="All 2 branches missed.">                if (version != null) {</span>
+<span class="nc" id="L411">                    String releaseVersion = version.replace(&quot;-SNAPSHOT&quot;, &quot;&quot;);</span>
+<span class="nc" id="L412">                    milestoneName = compName + &quot; v&quot; + releaseVersion;</span>
+                }
+            }
+        }
+
+<span class="nc bnc" id="L417" title="All 4 branches missed.">        if (milestoneName == null || milestoneName.isBlank()) return null;</span>
+
+<span class="nc" id="L419">        getLog().info(&quot;  Querying milestone: &quot; + milestoneName);</span>
+<span class="nc" id="L420">        var context = ReleaseNotesSupport.snapshotMilestone(</span>
+<span class="nc" id="L421">                issueRepo, milestoneName, getLog());</span>
+
+<span class="nc bnc" id="L423" title="All 2 branches missed.">        if (context == null) {</span>
+<span class="nc" id="L424">            getLog().info(&quot;  No milestone found — skipping testing context&quot;);</span>
+<span class="nc" id="L425">            return null;</span>
+        }
+
+<span class="nc" id="L428">        getLog().info(&quot;  Testing context: &quot;</span>
+<span class="nc" id="L429">                + context.readyToTest().size() + &quot; ready, &quot;</span>
+<span class="nc" id="L430">                + context.inProgress().size() + &quot; in progress&quot;);</span>
+
+<span class="nc" id="L432">        return context.toYaml(&quot;  &quot;);</span>
+    }
+
+    /**
+     * Derive a checkpoint name from the workspace branch and current UTC
+     * timestamp. The branch name is sanitized for use in filenames
+     * ({@code /} replaced with {@code -}).
+     *
+     * &lt;p&gt;Examples:
+     * &lt;ul&gt;
+     *   &lt;li&gt;{@code main} → {@code main-20260402-143022}&lt;/li&gt;
+     *   &lt;li&gt;{@code feature/my-feature} → {@code feature-my-feature-20260402-143022}&lt;/li&gt;
+     * &lt;/ul&gt;
+     *
+     * @param root workspace root directory (must be a git repository)
+     * @return derived checkpoint name
+     */
+    private String deriveCheckpointName(File root) throws MojoExecutionException {
+<span class="nc" id="L450">        String branch = gitBranch(root);</span>
+<span class="nc" id="L451">        String safeBranch = branch.replace('/', '-');</span>
+<span class="nc" id="L452">        String compactTime = COMPACT_UTC.format(Instant.now());</span>
+<span class="nc" id="L453">        return safeBranch + &quot;-&quot; + compactTime;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

@@ -1,0 +1,1097 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WsAddMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">WsAddMojo.java</span></div><h1>WsAddMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.plugin.ReleaseSupport;
+import network.ike.workspace.Component;
+import network.ike.workspace.Dependency;
+import network.ike.workspace.Manifest;
+import network.ike.workspace.ManifestException;
+import network.ike.workspace.ManifestReader;
+import network.ike.workspace.PublishedArtifactSet;
+
+import org.apache.maven.plugin.AbstractMojo;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import javax.xml.parsers.DocumentBuilder;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+/**
+ * Add a component repository to an existing workspace.
+ *
+ * &lt;p&gt;Given a git URL, this goal:
+ * &lt;ol&gt;
+ *   &lt;li&gt;Clones the repository into the workspace&lt;/li&gt;
+ *   &lt;li&gt;Derives the component name from the URL (or accepts
+ *       {@code -Dcomponent=&lt;name&gt;})&lt;/li&gt;
+ *   &lt;li&gt;Scans the POM to derive groupId and inter-component
+ *       dependencies (matching dependency/parent groupIds against
+ *       already-registered workspace components)&lt;/li&gt;
+ *   &lt;li&gt;Appends a component entry to workspace.yaml&lt;/li&gt;
+ *   &lt;li&gt;Adds a file-activated profile to the reactor POM&lt;/li&gt;
+ *   &lt;li&gt;Re-scans existing components to discover any that depend
+ *       on the newly added component (backward resolution)&lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * &lt;p&gt;The component name is derived from the last path segment of the
+ * URL with {@code .git} stripped. For example,
+ * {@code https://github.com/ikmdev/tinkar-core.git} becomes
+ * {@code tinkar-core}.
+ *
+ * &lt;pre&gt;{@code
+ * mvn ws:add -Drepo=https://github.com/ikmdev/tinkar-core.git
+ * mvn ws:add -Drepo=https://github.com/ikmdev/rocks-kb.git
+ * mvn ws:add -Drepo=https://github.com/ikmdev/komet.git
+ * }&lt;/pre&gt;
+ *
+ * @see WsCreateMojo for creating a new workspace
+ * @see InitWorkspaceMojo for cloning all components
+ */
+@Mojo(name = &quot;add&quot;, requiresProject = false, threadSafe = true)
+public class WsAddMojo extends AbstractMojo {
+
+    /**
+     * Git repository URL (required). The component name is derived
+     * from the URL unless {@code -Dcomponent} is specified.
+     */
+    @Parameter(property = &quot;repo&quot;, required = true)
+    private String repo;
+
+    /**
+     * Component name override. If omitted, derived from the repo URL
+     * (last path segment minus {@code .git}).
+     */
+    @Parameter(property = &quot;component&quot;)
+    private String component;
+
+    /**
+     * Component type. Must match a key in the workspace.yaml
+     * {@code component-types} section.
+     */
+    @Parameter(property = &quot;type&quot;, defaultValue = &quot;software&quot;)
+    private String type;
+
+    /**
+     * Short description of the component.
+     */
+    @Parameter(property = &quot;description&quot;)
+    private String description;
+
+    /**
+     * Branch to track. If omitted, uses the workspace default.
+     */
+    @Parameter(property = &quot;branch&quot;)
+    private String branch;
+
+    /**
+     * Maven groupId for the component. If omitted, left as
+     * a placeholder in workspace.yaml.
+     */
+    @Parameter(property = &quot;groupId&quot;)
+    private String groupId;
+
+    /**
+     * Maven version for the component. If omitted, derived from
+     * the component's root POM. Written to workspace.yaml so that
+     * {@code ws:feature-start} can branch-qualify it.
+     */
+    @Parameter(property = &quot;version&quot;)
+    private String version;
+
+    /**
+     * Skip cloning — register the component in workspace.yaml without
+     * cloning. Dependencies cannot be derived without a POM to scan,
+     * so they will be empty. Use {@code ws:init} to clone later.
+     */
+    @Parameter(property = &quot;skipClone&quot;, defaultValue = &quot;false&quot;)
+    private boolean skipClone;
+
+    /** Derived dependency with optional version-property name. */
+<span class="fc" id="L125">    record DerivedDep(String component, String versionProperty) {}</span>
+
+    /** Creates this goal instance. */
+<span class="fc" id="L128">    public WsAddMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+        // Resolve workspace root
+<span class="nc" id="L133">        Path wsDir = findWorkspaceRoot();</span>
+<span class="nc" id="L134">        Path manifestPath = wsDir.resolve(&quot;workspace.yaml&quot;);</span>
+<span class="nc" id="L135">        Path pomPath = wsDir.resolve(&quot;pom.xml&quot;);</span>
+
+<span class="nc bnc" id="L137" title="All 2 branches missed.">        if (!Files.exists(manifestPath)) {</span>
+<span class="nc" id="L138">            throw new MojoExecutionException(</span>
+                    &quot;No workspace.yaml found in &quot; + wsDir
+                    + &quot;. Run ws:create first.&quot;);
+        }
+
+        // Derive component name from URL if not specified
+<span class="nc bnc" id="L144" title="All 4 branches missed.">        if (component == null || component.isBlank()) {</span>
+<span class="nc" id="L145">            component = deriveComponentName(repo);</span>
+        }
+
+        // Check if already registered — if so, re-derive and update
+        // rather than appending a duplicate (idempotent behavior)
+<span class="nc" id="L150">        boolean alreadyRegistered = false;</span>
+        try {
+<span class="nc" id="L152">            Manifest existing = ManifestReader.read(manifestPath);</span>
+<span class="nc" id="L153">            alreadyRegistered = existing.components().containsKey(component);</span>
+<span class="nc" id="L154">        } catch (ManifestException e) {</span>
+            // Manifest may be empty/malformed on first add — continue
+<span class="nc" id="L156">        }</span>
+
+<span class="nc bnc" id="L158" title="All 4 branches missed.">        if (description == null || description.isBlank()) {</span>
+<span class="nc" id="L159">            description = component + &quot; component.&quot;;</span>
+        }
+
+        // Clone so we can scan the POM for groupId and dependencies
+<span class="nc" id="L163">        Path componentDir = wsDir.resolve(component);</span>
+<span class="nc" id="L164">        boolean cloned = false;</span>
+<span class="nc" id="L165">        List&lt;DerivedDep&gt; derivedDeps = null;</span>
+
+<span class="nc bnc" id="L167" title="All 4 branches missed.">        if (!skipClone &amp;&amp; !Files.exists(componentDir)) {</span>
+<span class="nc" id="L168">            cloneComponent(wsDir);</span>
+<span class="nc" id="L169">            cloned = true;</span>
+        }
+
+<span class="nc" id="L172">        String detectedParent = null;</span>
+
+<span class="nc bnc" id="L174" title="All 2 branches missed.">        if (Files.exists(componentDir.resolve(&quot;pom.xml&quot;))) {</span>
+            // Derive groupId from POM if not explicitly specified
+<span class="nc bnc" id="L176" title="All 4 branches missed.">            if (groupId == null || groupId.isBlank()) {</span>
+<span class="nc" id="L177">                groupId = deriveGroupId(componentDir);</span>
+            }
+
+            // Derive version from POM if not explicitly specified
+<span class="nc bnc" id="L181" title="All 4 branches missed.">            if (version == null || version.isBlank()) {</span>
+                try {
+<span class="nc" id="L183">                    version = ReleaseSupport.readPomVersion(</span>
+<span class="nc" id="L184">                            componentDir.resolve(&quot;pom.xml&quot;).toFile());</span>
+<span class="nc" id="L185">                } catch (MojoExecutionException e) {</span>
+                    // Non-fatal — version will be null in manifest
+<span class="nc" id="L187">                }</span>
+            }
+
+            // Detect parent POM — match against workspace components
+            try {
+<span class="nc" id="L192">                PomParentSupport.ParentInfo parentInfo =</span>
+<span class="nc" id="L193">                        PomParentSupport.readParent(componentDir.resolve(&quot;pom.xml&quot;));</span>
+<span class="nc bnc" id="L194" title="All 2 branches missed.">                if (parentInfo != null) {</span>
+<span class="nc" id="L195">                    Manifest existing = ManifestReader.read(manifestPath);</span>
+                    for (Map.Entry&lt;String, Component&gt; candidate :
+<span class="nc bnc" id="L197" title="All 2 branches missed.">                            existing.components().entrySet()) {</span>
+<span class="nc bnc" id="L198" title="All 2 branches missed.">                        if (candidate.getValue().groupId() != null</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">                                &amp;&amp; candidate.getValue().groupId().equals(parentInfo.groupId())) {</span>
+<span class="nc" id="L200">                            detectedParent = candidate.getKey();</span>
+<span class="nc" id="L201">                            break;</span>
+                        }
+<span class="nc" id="L203">                    }</span>
+                }
+<span class="nc" id="L205">            } catch (Exception e) {</span>
+                // Non-fatal — parent detection is best-effort
+<span class="nc" id="L207">            }</span>
+
+            // Derive dependencies by matching POM groupIds against
+            // already-registered workspace components
+            try {
+<span class="nc" id="L212">                derivedDeps = deriveDependencies(wsDir, manifestPath,</span>
+                        componentDir, component);
+<span class="nc" id="L214">            } catch (IOException e) {</span>
+<span class="nc" id="L215">                getLog().warn(&quot;  Could not derive dependencies from POM: &quot;</span>
+<span class="nc" id="L216">                        + e.getMessage());</span>
+<span class="nc" id="L217">            }</span>
+<span class="nc bnc" id="L218" title="All 2 branches missed.">        } else if (!skipClone) {</span>
+<span class="nc" id="L219">            getLog().warn(&quot;  No pom.xml found — dependencies not derived&quot;);</span>
+        }
+
+<span class="nc" id="L222">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L223">        String wsName = readWorkspaceName(wsDir);</span>
+<span class="nc" id="L224">        getLog().info(wsName + &quot; — Add Component&quot;);</span>
+<span class="nc" id="L225">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+<span class="nc" id="L226">        getLog().info(&quot;  Component: &quot; + component);</span>
+<span class="nc" id="L227">        getLog().info(&quot;  Repo:      &quot; + repo);</span>
+<span class="nc" id="L228">        getLog().info(&quot;  Type:      &quot; + type);</span>
+<span class="nc bnc" id="L229" title="All 2 branches missed.">        if (branch != null) {</span>
+<span class="nc" id="L230">            getLog().info(&quot;  Branch:    &quot; + branch);</span>
+        }
+<span class="nc bnc" id="L232" title="All 4 branches missed.">        if (version != null &amp;&amp; !version.isBlank()) {</span>
+<span class="nc" id="L233">            getLog().info(&quot;  Version:   &quot; + version);</span>
+        }
+<span class="nc bnc" id="L235" title="All 4 branches missed.">        if (groupId != null &amp;&amp; !groupId.isBlank()) {</span>
+<span class="nc" id="L236">            getLog().info(&quot;  GroupId:   &quot; + groupId);</span>
+        }
+<span class="nc bnc" id="L238" title="All 2 branches missed.">        if (detectedParent != null) {</span>
+<span class="nc" id="L239">            getLog().info(&quot;  Parent:    &quot; + detectedParent + &quot; (detected from POM)&quot;);</span>
+        }
+<span class="nc bnc" id="L241" title="All 4 branches missed.">        if (derivedDeps != null &amp;&amp; !derivedDeps.isEmpty()) {</span>
+<span class="nc" id="L242">            String depNames = derivedDeps.stream()</span>
+<span class="nc" id="L243">                    .map(DerivedDep::component)</span>
+<span class="nc" id="L244">                    .collect(Collectors.joining(&quot;, &quot;));</span>
+<span class="nc" id="L245">            getLog().info(&quot;  Depends:   &quot; + depNames + &quot; (derived from POM)&quot;);</span>
+<span class="nc" id="L246">        } else {</span>
+<span class="nc" id="L247">            getLog().info(&quot;  Depends:   (none)&quot;);</span>
+        }
+<span class="nc bnc" id="L249" title="All 2 branches missed.">        if (alreadyRegistered) {</span>
+<span class="nc" id="L250">            getLog().info(&quot;  (already registered — re-validating dependencies)&quot;);</span>
+        }
+<span class="nc bnc" id="L252" title="All 2 branches missed.">        if (cloned) {</span>
+<span class="nc" id="L253">            getLog().info(&quot;  ✓ Cloned &quot; + component);</span>
+        }
+<span class="nc" id="L255">        getLog().info(&quot;&quot;);</span>
+
+        try {
+<span class="nc bnc" id="L258" title="All 2 branches missed.">            if (alreadyRegistered) {</span>
+                // Update existing entry's depends-on in workspace.yaml
+<span class="nc" id="L260">                updateComponentDependencies(manifestPath, component, derivedDeps);</span>
+<span class="nc" id="L261">                getLog().info(&quot;  ✓ workspace.yaml updated (dependencies re-derived)&quot;);</span>
+            } else {
+                // Append new component to workspace.yaml
+<span class="nc" id="L264">                appendComponentToManifest(manifestPath, derivedDeps, detectedParent);</span>
+<span class="nc" id="L265">                getLog().info(&quot;  ✓ workspace.yaml updated&quot;);</span>
+            }
+
+            // Profile is idempotent — addProfileToPom already checks for existence
+<span class="nc" id="L269">            addProfileToPom(pomPath);</span>
+<span class="nc" id="L270">            getLog().info(&quot;  ✓ pom.xml updated (profile: with-&quot; + component + &quot;)&quot;);</span>
+
+<span class="nc" id="L272">        } catch (IOException e) {</span>
+<span class="nc" id="L273">            throw new MojoExecutionException(</span>
+<span class="nc" id="L274">                    &quot;Failed to update workspace files: &quot; + e.getMessage(), e);</span>
+<span class="nc" id="L275">        }</span>
+
+        // Backward resolution: check if any existing components
+        // depend on the newly added component's groupId
+<span class="nc bnc" id="L279" title="All 2 branches missed.">        if (Files.exists(componentDir.resolve(&quot;pom.xml&quot;))) {</span>
+            try {
+<span class="nc" id="L281">                int backfilled = backfillDependencies(</span>
+                        wsDir, manifestPath, component, componentDir);
+<span class="nc bnc" id="L283" title="All 2 branches missed.">                if (backfilled &gt; 0) {</span>
+<span class="nc" id="L284">                    getLog().info(&quot;  ✓ Updated &quot; + backfilled</span>
+                            + &quot; existing component(s) with dependency on &quot;
+                            + component);
+                }
+<span class="nc" id="L288">            } catch (IOException e) {</span>
+<span class="nc" id="L289">                getLog().warn(&quot;  Could not backfill dependencies: &quot;</span>
+<span class="nc" id="L290">                        + e.getMessage());</span>
+<span class="nc" id="L291">            }</span>
+        }
+
+        // Auto-commit workspace.yaml + pom.xml changes
+        try {
+<span class="nc" id="L296">            ReleaseSupport.exec(wsDir.toFile(), getLog(), &quot;git&quot;, &quot;add&quot;, &quot;workspace.yaml&quot;, &quot;pom.xml&quot;);</span>
+<span class="nc" id="L297">            ReleaseSupport.exec(wsDir.toFile(), getLog(), &quot;git&quot;, &quot;commit&quot;, &quot;-m&quot;, &quot;workspace: add &quot; + component);</span>
+<span class="nc" id="L298">            getLog().info(&quot;  \u2713 committed workspace.yaml + pom.xml&quot;);</span>
+<span class="nc" id="L299">        } catch (Exception e) {</span>
+<span class="nc" id="L300">            getLog().warn(&quot;  Auto-commit failed (non-fatal): &quot; + e.getMessage());</span>
+<span class="nc" id="L301">        }</span>
+
+        // Version alignment: update dependency versions in the newly
+        // added component (and any backfilled components) to match
+        // workspace SNAPSHOT versions. Changes are left uncommitted
+        // so the developer can review and fold them into a feature branch.
+<span class="nc bnc" id="L307" title="All 2 branches missed.">        if (Files.exists(componentDir.resolve(&quot;pom.xml&quot;))) {</span>
+            try {
+<span class="nc" id="L309">                Manifest updatedManifest = ManifestReader.read(manifestPath);</span>
+<span class="nc" id="L310">                int aligned = alignVersions(wsDir, componentDir, component,</span>
+                        updatedManifest);
+<span class="nc bnc" id="L312" title="All 2 branches missed.">                if (aligned &gt; 0) {</span>
+<span class="nc" id="L313">                    getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L314">                    getLog().info(&quot;  ⚠ &quot; + aligned + &quot; file(s) modified for version &quot;</span>
+                            + &quot;alignment (uncommitted)&quot;);
+<span class="nc" id="L316">                    getLog().info(&quot;    Review with 'git diff' in &quot; + component);</span>
+                }
+<span class="nc" id="L318">            } catch (IOException e) {</span>
+<span class="nc" id="L319">                getLog().warn(&quot;  Could not align versions: &quot; + e.getMessage());</span>
+<span class="nc" id="L320">            }</span>
+        }
+
+<span class="nc" id="L323">        getLog().info(&quot;&quot;);</span>
+<span class="nc bnc" id="L324" title="All 2 branches missed.">        if (cloned) {</span>
+<span class="nc" id="L325">            getLog().info(&quot;  Component added and cloned.&quot;);</span>
+        } else {
+<span class="nc" id="L327">            getLog().info(&quot;  Component added. Run 'mvn ws:init' to clone.&quot;);</span>
+        }
+<span class="nc" id="L329">        getLog().info(&quot;&quot;);</span>
+<span class="nc bnc" id="L330" title="All 2 branches missed.">        WorkspaceReport.append(wsDir, &quot;ws:add&quot;, &quot;Added component: &quot; + component + &quot;\nRepo: &quot; + repo + (cloned ? &quot;\nCloned: yes&quot; : &quot;\nCloned: no (run ws:init)&quot;), null);</span>
+<span class="nc" id="L331">    }</span>
+
+    // ── YAML generation ──────────────────────────────────────────
+
+    void appendComponentToManifest(Path manifestPath, List&lt;DerivedDep&gt; derivedDeps,
+                                     String detectedParent)
+            throws IOException {
+<span class="nc" id="L338">        String yaml = Files.readString(manifestPath, StandardCharsets.UTF_8);</span>
+
+<span class="nc" id="L340">        StringBuilder entry = new StringBuilder();</span>
+<span class="nc" id="L341">        entry.append(&quot;\n  &quot;).append(component).append(&quot;:\n&quot;);</span>
+<span class="nc" id="L342">        entry.append(&quot;    type: &quot;).append(type).append(&quot;\n&quot;);</span>
+<span class="nc" id="L343">        entry.append(&quot;    description: &gt;\n&quot;);</span>
+<span class="nc" id="L344">        entry.append(&quot;      &quot;).append(description).append(&quot;\n&quot;);</span>
+<span class="nc" id="L345">        entry.append(&quot;    repo: &quot;).append(repo).append(&quot;\n&quot;);</span>
+<span class="nc bnc" id="L346" title="All 4 branches missed.">        if (branch != null &amp;&amp; !branch.isBlank()) {</span>
+<span class="nc" id="L347">            entry.append(&quot;    branch: &quot;).append(branch).append(&quot;\n&quot;);</span>
+        }
+<span class="nc bnc" id="L349" title="All 4 branches missed.">        if (version != null &amp;&amp; !version.isBlank()) {</span>
+<span class="nc" id="L350">            entry.append(&quot;    version: \&quot;&quot;).append(version).append(&quot;\&quot;\n&quot;);</span>
+        }
+<span class="nc bnc" id="L352" title="All 4 branches missed.">        if (groupId != null &amp;&amp; !groupId.isBlank()) {</span>
+<span class="nc" id="L353">            entry.append(&quot;    groupId: &quot;).append(groupId).append(&quot;\n&quot;);</span>
+        }
+<span class="nc bnc" id="L355" title="All 2 branches missed.">        if (detectedParent != null) {</span>
+<span class="nc" id="L356">            entry.append(&quot;    parent: &quot;).append(detectedParent).append(&quot;\n&quot;);</span>
+        }
+<span class="nc bnc" id="L358" title="All 4 branches missed.">        if (derivedDeps != null &amp;&amp; !derivedDeps.isEmpty()) {</span>
+<span class="nc" id="L359">            entry.append(&quot;    depends-on:\n&quot;);</span>
+<span class="nc bnc" id="L360" title="All 2 branches missed.">            for (DerivedDep dep : derivedDeps) {</span>
+<span class="nc" id="L361">                entry.append(&quot;      - component: &quot;).append(dep.component()).append(&quot;\n&quot;);</span>
+<span class="nc" id="L362">                entry.append(&quot;        relationship: build\n&quot;);</span>
+<span class="nc bnc" id="L363" title="All 2 branches missed.">                if (dep.versionProperty() != null) {</span>
+<span class="nc" id="L364">                    entry.append(&quot;        version-property: &quot;).append(dep.versionProperty()).append(&quot;\n&quot;);</span>
+                }
+<span class="nc" id="L366">            }</span>
+        } else {
+<span class="nc" id="L368">            entry.append(&quot;    depends-on: []\n&quot;);</span>
+        }
+
+        // Insert before the &quot;groups:&quot; section if it exists,
+        // otherwise append at end
+<span class="nc" id="L373">        int groupsIdx = yaml.indexOf(&quot;\ngroups:&quot;);</span>
+<span class="nc bnc" id="L374" title="All 2 branches missed.">        if (groupsIdx &gt;= 0) {</span>
+<span class="nc" id="L375">            yaml = yaml.substring(0, groupsIdx) + entry + yaml.substring(groupsIdx);</span>
+        } else {
+<span class="nc" id="L377">            yaml = yaml + entry;</span>
+        }
+
+        // Update the &quot;all&quot; group to include the new component
+<span class="nc" id="L381">        yaml = addToAllGroup(yaml, component);</span>
+
+<span class="nc" id="L383">        Files.writeString(manifestPath, yaml, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L384">    }</span>
+
+    /**
+     * Update the depends-on section for an existing component in
+     * workspace.yaml. Replaces the current depends-on block with
+     * the newly derived dependencies.
+     */
+    void updateComponentDependencies(Path manifestPath, String componentName,
+                                      List&lt;DerivedDep&gt; derivedDeps) throws IOException {
+<span class="nc" id="L393">        String yaml = Files.readString(manifestPath, StandardCharsets.UTF_8);</span>
+
+        // Build the new depends-on block
+<span class="nc" id="L396">        StringBuilder newDeps = new StringBuilder();</span>
+<span class="nc bnc" id="L397" title="All 4 branches missed.">        if (derivedDeps != null &amp;&amp; !derivedDeps.isEmpty()) {</span>
+<span class="nc" id="L398">            newDeps.append(&quot;    depends-on:\n&quot;);</span>
+<span class="nc bnc" id="L399" title="All 2 branches missed.">            for (DerivedDep dep : derivedDeps) {</span>
+<span class="nc" id="L400">                newDeps.append(&quot;      - component: &quot;).append(dep.component()).append(&quot;\n&quot;);</span>
+<span class="nc" id="L401">                newDeps.append(&quot;        relationship: build\n&quot;);</span>
+<span class="nc bnc" id="L402" title="All 2 branches missed.">                if (dep.versionProperty() != null) {</span>
+<span class="nc" id="L403">                    newDeps.append(&quot;        version-property: &quot;).append(dep.versionProperty()).append(&quot;\n&quot;);</span>
+                }
+<span class="nc" id="L405">            }</span>
+        } else {
+<span class="nc" id="L407">            newDeps.append(&quot;    depends-on: []\n&quot;);</span>
+        }
+
+        // Replace the existing depends-on block for this component.
+        // Match: &quot;    depends-on: []\n&quot; or &quot;    depends-on:\n      - ...\n&quot;
+        // within this component's section.
+<span class="nc" id="L413">        String escaped = Pattern.quote(componentName);</span>
+<span class="nc" id="L414">        Pattern depsPattern = Pattern.compile(</span>
+                &quot;(&quot; + escaped + &quot;:[\\s\\S]*?)(    depends-on:.*(?:\\n      .*)*\\n)&quot;,
+                Pattern.MULTILINE);
+<span class="nc" id="L417">        Matcher m = depsPattern.matcher(yaml);</span>
+<span class="nc bnc" id="L418" title="All 2 branches missed.">        if (m.find()) {</span>
+<span class="nc" id="L419">            yaml = yaml.substring(0, m.start(2))</span>
+                    + newDeps
+<span class="nc" id="L421">                    + yaml.substring(m.end(2));</span>
+        }
+
+<span class="nc" id="L424">        Files.writeString(manifestPath, yaml, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L425">    }</span>
+
+    // ── POM generation ───────────────────────────────────────────
+
+    void addProfileToPom(Path pomPath) throws IOException {
+<span class="nc" id="L430">        String pom = Files.readString(pomPath, StandardCharsets.UTF_8);</span>
+
+        // Check if profile already exists
+<span class="nc bnc" id="L433" title="All 2 branches missed.">        if (pom.contains(&quot;with-&quot; + component)) {</span>
+<span class="nc" id="L434">            getLog().info(&quot;  Profile with-&quot; + component + &quot; already exists&quot;);</span>
+<span class="nc" id="L435">            return;</span>
+        }
+
+<span class="nc" id="L438">        String profile = &quot;\n&quot;</span>
+                + &quot;        &lt;profile&gt;\n&quot;
+                + &quot;            &lt;id&gt;with-&quot; + component + &quot;&lt;/id&gt;\n&quot;
+                + &quot;            &lt;activation&gt;\n&quot;
+                + &quot;                &lt;file&gt;\n&quot;
+                + &quot;                    &lt;exists&gt;${project.basedir}/&quot; + component + &quot;/pom.xml&lt;/exists&gt;\n&quot;
+                + &quot;                &lt;/file&gt;\n&quot;
+                + &quot;            &lt;/activation&gt;\n&quot;
+                + &quot;            &lt;subprojects&gt;\n&quot;
+                + &quot;                &lt;subproject&gt;&quot; + component + &quot;&lt;/subproject&gt;\n&quot;
+                + &quot;            &lt;/subprojects&gt;\n&quot;
+                + &quot;        &lt;/profile&gt;\n&quot;;
+
+        // Insert before closing &lt;/profiles&gt;
+<span class="nc" id="L452">        int closingIdx = pom.lastIndexOf(&quot;&lt;/profiles&gt;&quot;);</span>
+<span class="nc bnc" id="L453" title="All 2 branches missed.">        if (closingIdx &gt;= 0) {</span>
+<span class="nc" id="L454">            pom = pom.substring(0, closingIdx) + profile + &quot;\n    &quot; + pom.substring(closingIdx);</span>
+        } else {
+<span class="nc" id="L456">            getLog().warn(&quot;  No &lt;/profiles&gt; tag found in pom.xml — add profile manually&quot;);</span>
+        }
+
+<span class="nc" id="L459">        Files.writeString(pomPath, pom, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L460">    }</span>
+
+    // ── Clone ────────────────────────────────────────────────────
+
+    private void cloneComponent(Path wsDir) throws MojoExecutionException {
+<span class="nc" id="L465">        List&lt;String&gt; cmd = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L466">        cmd.add(&quot;git&quot;);</span>
+<span class="nc" id="L467">        cmd.add(&quot;clone&quot;);</span>
+<span class="nc" id="L468">        cmd.add(&quot;--depth&quot;);</span>
+<span class="nc" id="L469">        cmd.add(&quot;1&quot;);</span>
+<span class="nc bnc" id="L470" title="All 4 branches missed.">        if (branch != null &amp;&amp; !branch.isBlank()) {</span>
+<span class="nc" id="L471">            cmd.add(&quot;-b&quot;);</span>
+<span class="nc" id="L472">            cmd.add(branch);</span>
+        }
+<span class="nc" id="L474">        cmd.add(repo);</span>
+<span class="nc" id="L475">        cmd.add(component);</span>
+<span class="nc" id="L476">        ReleaseSupport.exec(wsDir.toFile(), getLog(), cmd.toArray(new String[0]));</span>
+<span class="nc" id="L477">    }</span>
+
+    // ── POM-based dependency derivation ────────────────────────
+
+    /**
+     * Scan the new component's POM for dependency and parent groupIds,
+     * then match against groupIds of already-registered workspace
+     * components to derive the depends-on list.
+     *
+     * @param manifestPath path to workspace.yaml
+     * @param componentDir the cloned component directory
+     * @return list of derived dependencies, or null if none found
+     */
+    /**
+     * Derive dependencies by scanning the new component's POMs for
+     * referenced {@code groupId:artifactId} pairs and matching them
+     * against the published artifact sets of already-registered
+     * workspace components.
+     *
+     * &lt;p&gt;This is artifact-level matching, not groupId-level — it
+     * correctly handles components that share a groupId (e.g.,
+     * tinkar-core and tinkar-composer both use {@code dev.ikm.tinkar}).
+     */
+    private List&lt;DerivedDep&gt; deriveDependencies(Path wsDir, Path manifestPath,
+                                                Path componentDir, String componentName)
+            throws IOException {
+        // Collect all groupId:artifactId pairs referenced by this component
+<span class="fc" id="L504">        Set&lt;String&gt; referencedArtifacts = extractReferencedArtifacts(</span>
+<span class="fc" id="L505">                componentDir.resolve(&quot;pom.xml&quot;));</span>
+<span class="pc bpc" id="L506" title="1 of 2 branches missed.">        if (referencedArtifacts.isEmpty()) return null;</span>
+
+        // Read the new component's &lt;properties&gt; for version-property detection
+        Map&lt;String, String&gt; newCompProperties;
+        try {
+<span class="fc" id="L511">            DocumentBuilder db = DBF.newDocumentBuilder();</span>
+<span class="fc" id="L512">            Document doc = db.parse(componentDir.resolve(&quot;pom.xml&quot;).toFile());</span>
+<span class="fc" id="L513">            newCompProperties = readProperties(doc.getDocumentElement());</span>
+<span class="nc" id="L514">        } catch (Exception e) {</span>
+<span class="nc" id="L515">            newCompProperties = Map.of();</span>
+<span class="fc" id="L516">        }</span>
+
+<span class="fc" id="L518">        Manifest manifest = ManifestReader.read(manifestPath);</span>
+
+<span class="fc" id="L520">        List&lt;DerivedDep&gt; matched = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L521" title="All 2 branches covered.">        for (Map.Entry&lt;String, Component&gt; entry : manifest.components().entrySet()) {</span>
+<span class="fc" id="L522">            String existingName = entry.getKey();</span>
+<span class="fc" id="L523">            Component existingComp = entry.getValue();</span>
+
+            // Never depend on yourself
+<span class="fc bfc" id="L526" title="All 2 branches covered.">            if (existingName.equals(componentName)) continue;</span>
+
+<span class="fc" id="L528">            Path existingDir = wsDir.resolve(existingName);</span>
+<span class="pc bpc" id="L529" title="1 of 2 branches missed.">            if (!Files.exists(existingDir.resolve(&quot;pom.xml&quot;))) continue;</span>
+
+            // Build the published artifact set for the existing component
+<span class="fc" id="L532">            Set&lt;PublishedArtifactSet.Artifact&gt; published =</span>
+<span class="fc" id="L533">                    PublishedArtifactSet.scan(existingDir);</span>
+
+            // Check if any referenced artifact is published by this component
+<span class="fc bfc" id="L536" title="All 2 branches covered.">            for (PublishedArtifactSet.Artifact artifact : published) {</span>
+<span class="fc" id="L537">                String key = artifact.groupId() + &quot;:&quot; + artifact.artifactId();</span>
+<span class="fc bfc" id="L538" title="All 2 branches covered.">                if (referencedArtifacts.contains(key)) {</span>
+                    // Try to find a property whose value matches the upstream version
+<span class="fc" id="L540">                    String versionProperty = null;</span>
+<span class="fc" id="L541">                    String upstreamVersion = existingComp.version();</span>
+<span class="pc bpc" id="L542" title="3 of 4 branches missed.">                    if (upstreamVersion != null &amp;&amp; !newCompProperties.isEmpty()) {</span>
+<span class="nc bnc" id="L543" title="All 2 branches missed.">                        for (Map.Entry&lt;String, String&gt; prop : newCompProperties.entrySet()) {</span>
+<span class="nc bnc" id="L544" title="All 2 branches missed.">                            if (upstreamVersion.equals(prop.getValue())) {</span>
+<span class="nc" id="L545">                                versionProperty = prop.getKey();</span>
+<span class="nc" id="L546">                                break;</span>
+                            }
+<span class="nc" id="L548">                        }</span>
+                    }
+<span class="fc" id="L550">                    matched.add(new DerivedDep(existingName, versionProperty));</span>
+<span class="fc" id="L551">                    break;</span>
+                }
+<span class="fc" id="L553">            }</span>
+<span class="fc" id="L554">        }</span>
+
+<span class="fc bfc" id="L556" title="All 2 branches covered.">        return matched.isEmpty() ? null : matched;</span>
+    }
+
+    /**
+     * Backward resolution: for each existing cloned component, scan
+     * its POM and check whether it references the newly added
+     * component's groupId. If so, and it doesn't already have a
+     * depends-on edge, add one to workspace.yaml.
+     *
+     * @return the number of existing components updated
+     */
+    /**
+     * Backward resolution: for each existing cloned component, check
+     * whether its POMs reference any artifact published by the newly
+     * added component. Uses artifact-level matching via
+     * {@link PublishedArtifactSet} to avoid false positives from
+     * shared groupIds.
+     */
+    private int backfillDependencies(Path wsDir, Path manifestPath,
+                                     String newComponent, Path newComponentDir)
+            throws IOException {
+        // Build the published artifact set for the new component
+<span class="nc" id="L578">        Set&lt;PublishedArtifactSet.Artifact&gt; newPublished =</span>
+<span class="nc" id="L579">                PublishedArtifactSet.scan(newComponentDir);</span>
+<span class="nc bnc" id="L580" title="All 2 branches missed.">        if (newPublished.isEmpty()) return 0;</span>
+
+        // Build a lookup set of &quot;groupId:artifactId&quot; strings
+<span class="nc" id="L583">        Set&lt;String&gt; newArtifactKeys = new LinkedHashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L584" title="All 2 branches missed.">        for (PublishedArtifactSet.Artifact a : newPublished) {</span>
+<span class="nc" id="L585">            newArtifactKeys.add(a.groupId() + &quot;:&quot; + a.artifactId());</span>
+<span class="nc" id="L586">        }</span>
+
+<span class="nc" id="L588">        String yaml = Files.readString(manifestPath, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L589">        Manifest manifest = ManifestReader.read(manifestPath);</span>
+<span class="nc" id="L590">        int updated = 0;</span>
+
+<span class="nc bnc" id="L592" title="All 2 branches missed.">        for (Map.Entry&lt;String, Component&gt; entry : manifest.components().entrySet()) {</span>
+<span class="nc" id="L593">            String existingName = entry.getKey();</span>
+<span class="nc" id="L594">            Component existing = entry.getValue();</span>
+
+            // Skip the newly added component itself
+<span class="nc bnc" id="L597" title="All 2 branches missed.">            if (existingName.equals(newComponent)) continue;</span>
+
+            // Skip if already depends on the new component
+<span class="nc bnc" id="L600" title="All 2 branches missed.">            if (existing.dependsOn() != null</span>
+<span class="nc" id="L601">                    &amp;&amp; existing.dependsOn().stream()</span>
+<span class="nc bnc" id="L602" title="All 2 branches missed.">                    .anyMatch(d -&gt; newComponent.equals(d.component()))) {</span>
+<span class="nc" id="L603">                continue;</span>
+            }
+
+            // Check if this existing component references any artifact
+            // published by the new component
+<span class="nc" id="L608">            Path existingPom = wsDir.resolve(existingName).resolve(&quot;pom.xml&quot;);</span>
+<span class="nc bnc" id="L609" title="All 2 branches missed.">            if (!Files.exists(existingPom)) continue;</span>
+
+<span class="nc" id="L611">            Set&lt;String&gt; referenced = extractReferencedArtifacts(existingPom);</span>
+<span class="nc" id="L612">            boolean dependsOnNew = referenced.stream()</span>
+<span class="nc" id="L613">                    .anyMatch(newArtifactKeys::contains);</span>
+
+<span class="nc bnc" id="L615" title="All 2 branches missed.">            if (!dependsOnNew) continue;</span>
+
+<span class="nc" id="L617">            yaml = addDependencyEdge(yaml, existingName, newComponent, null);</span>
+<span class="nc" id="L618">            updated++;</span>
+<span class="nc" id="L619">            getLog().info(&quot;  → &quot; + existingName + &quot; depends on &quot; + newComponent);</span>
+<span class="nc" id="L620">        }</span>
+
+<span class="nc bnc" id="L622" title="All 2 branches missed.">        if (updated &gt; 0) {</span>
+<span class="nc" id="L623">            Files.writeString(manifestPath, yaml, StandardCharsets.UTF_8);</span>
+        }
+
+<span class="nc" id="L626">        return updated;</span>
+    }
+
+    /**
+     * Add a depends-on edge for an existing component in workspace.yaml.
+     * Converts {@code depends-on: []} to a populated list, or appends
+     * to an existing list.
+     */
+    static String addDependencyEdge(String yaml, String componentName,
+                                    String dependsOnName, String versionProperty) {
+<span class="pc bpc" id="L636" title="1 of 2 branches missed.">        String versionPropertyLine = (versionProperty != null)</span>
+<span class="pc" id="L637">                ? &quot;        version-property: &quot; + versionProperty + &quot;\n&quot; : &quot;&quot;;</span>
+
+        // Case 1: depends-on: [] — replace with populated entry
+<span class="fc" id="L640">        String emptyDeps = &quot;(&quot; + componentName + &quot;:[\\s\\S]*?)(depends-on:\\s*\\[])&quot;;</span>
+<span class="fc" id="L641">        Pattern emptyPattern = Pattern.compile(emptyDeps);</span>
+<span class="fc" id="L642">        Matcher emptyMatcher = emptyPattern.matcher(yaml);</span>
+<span class="fc bfc" id="L643" title="All 2 branches covered.">        if (emptyMatcher.find()) {</span>
+<span class="fc" id="L644">            String replacement = emptyMatcher.group(1)</span>
+                    + &quot;depends-on:\n&quot;
+                    + &quot;      - component: &quot; + dependsOnName + &quot;\n&quot;
+                    + &quot;        relationship: build\n&quot;
+                    + versionPropertyLine;
+<span class="fc" id="L649">            return emptyMatcher.replaceFirst(Matcher.quoteReplacement(replacement));</span>
+        }
+
+        // Case 2: existing depends-on list — append before next component
+        // or section. Find the component's depends-on block and add an entry.
+<span class="fc" id="L654">        String existingDeps = &quot;(&quot; + componentName</span>
+                + &quot;:[\\s\\S]*?depends-on:\\n)((?:\\s+- component:.*\\n(?:\\s+relationship:.*\\n)(?:\\s+version-property:.*\\n)?)*)&quot;;
+<span class="fc" id="L656">        Pattern existingPattern = Pattern.compile(existingDeps);</span>
+<span class="fc" id="L657">        Matcher existingMatcher = existingPattern.matcher(yaml);</span>
+<span class="pc bpc" id="L658" title="1 of 2 branches missed.">        if (existingMatcher.find()) {</span>
+<span class="fc" id="L659">            String replacement = existingMatcher.group(1)</span>
+<span class="fc" id="L660">                    + existingMatcher.group(2)</span>
+                    + &quot;      - component: &quot; + dependsOnName + &quot;\n&quot;
+                    + &quot;        relationship: build\n&quot;
+                    + versionPropertyLine;
+<span class="fc" id="L664">            return existingMatcher.replaceFirst(Matcher.quoteReplacement(replacement));</span>
+        }
+
+<span class="nc" id="L667">        return yaml;</span>
+    }
+
+    /**
+     * Extract all {@code groupId:artifactId} pairs referenced as
+     * build dependencies across the entire component (root POM +
+     * all submodules/subprojects).
+     *
+     * &lt;p&gt;Uses DOM parsing to correctly read XML structure and
+     * resolves Maven property references ({@code ${property.name}})
+     * from the POM's {@code &lt;properties&gt;} section.
+     *
+     * &lt;p&gt;Scans {@code &lt;parent&gt;} and {@code &lt;dependencies&gt;} blocks,
+     * but excludes {@code &lt;dependencyManagement&gt;} (which contains
+     * BOM imports and version constraints, not build dependencies).
+     *
+     * @return set of &quot;groupId:artifactId&quot; strings
+     */
+    private Set&lt;String&gt; extractReferencedArtifacts(Path pomFile) throws IOException {
+<span class="fc" id="L686">        Set&lt;String&gt; artifacts = new LinkedHashSet&lt;&gt;();</span>
+<span class="fc" id="L687">        scanPomForArtifacts(pomFile, artifacts);</span>
+<span class="fc" id="L688">        return artifacts;</span>
+    }
+
+    /**
+     * Recursively scan a POM and its submodules for referenced
+     * groupId:artifactId pairs using DOM parsing with property
+     * resolution.
+     */
+    private void scanPomForArtifacts(Path pomFile, Set&lt;String&gt; artifacts)
+            throws IOException {
+<span class="pc bpc" id="L698" title="1 of 2 branches missed.">        if (!Files.exists(pomFile)) return;</span>
+
+        Document doc;
+        try {
+<span class="fc" id="L702">            DocumentBuilder db = DBF.newDocumentBuilder();</span>
+<span class="fc" id="L703">            doc = db.parse(pomFile.toFile());</span>
+<span class="nc" id="L704">        } catch (Exception e) {</span>
+            // If we can't parse, skip this POM
+<span class="nc" id="L706">            return;</span>
+<span class="fc" id="L707">        }</span>
+
+<span class="fc" id="L709">        Element project = doc.getDocumentElement();</span>
+
+        // Read &lt;properties&gt; for ${...} resolution
+<span class="fc" id="L712">        Map&lt;String, String&gt; properties = readProperties(project);</span>
+
+        // Extract parent groupId:artifactId
+<span class="fc" id="L715">        Element parentEl = firstChild(project, &quot;parent&quot;);</span>
+<span class="fc bfc" id="L716" title="All 2 branches covered.">        if (parentEl != null) {</span>
+<span class="fc" id="L717">            String gid = resolve(childText(parentEl, &quot;groupId&quot;), properties);</span>
+<span class="fc" id="L718">            String aid = resolve(childText(parentEl, &quot;artifactId&quot;), properties);</span>
+<span class="pc bpc" id="L719" title="2 of 4 branches missed.">            if (gid != null &amp;&amp; aid != null) {</span>
+<span class="fc" id="L720">                artifacts.add(gid + &quot;:&quot; + aid);</span>
+            }
+        }
+
+        // Extract dependency groupId:artifactId — skip dependencyManagement
+<span class="fc" id="L725">        Element depsEl = firstChild(project, &quot;dependencies&quot;);</span>
+<span class="fc bfc" id="L726" title="All 2 branches covered.">        if (depsEl != null) {</span>
+<span class="fc bfc" id="L727" title="All 2 branches covered.">            for (Element dep : children(depsEl, &quot;dependency&quot;)) {</span>
+<span class="fc" id="L728">                String gid = resolve(childText(dep, &quot;groupId&quot;), properties);</span>
+<span class="fc" id="L729">                String aid = resolve(childText(dep, &quot;artifactId&quot;), properties);</span>
+<span class="pc bpc" id="L730" title="2 of 4 branches missed.">                if (gid != null &amp;&amp; aid != null) {</span>
+<span class="fc" id="L731">                    artifacts.add(gid + &quot;:&quot; + aid);</span>
+                }
+<span class="fc" id="L733">            }</span>
+        }
+
+        // Recurse into subprojects (Maven 4.1.0) and modules (Maven 4.0.0)
+<span class="fc" id="L737">        Path pomDir = pomFile.getParent();</span>
+
+<span class="fc" id="L739">        Element subprojects = firstChild(project, &quot;subprojects&quot;);</span>
+<span class="pc bpc" id="L740" title="1 of 2 branches missed.">        if (subprojects != null) {</span>
+<span class="nc bnc" id="L741" title="All 2 branches missed.">            for (Element sub : children(subprojects, &quot;subproject&quot;)) {</span>
+<span class="nc" id="L742">                String name = sub.getTextContent().trim();</span>
+<span class="nc" id="L743">                scanPomForArtifacts(pomDir.resolve(name).resolve(&quot;pom.xml&quot;), artifacts);</span>
+<span class="nc" id="L744">            }</span>
+        }
+
+<span class="fc" id="L747">        Element modules = firstChild(project, &quot;modules&quot;);</span>
+<span class="pc bpc" id="L748" title="1 of 2 branches missed.">        if (modules != null) {</span>
+<span class="nc bnc" id="L749" title="All 2 branches missed.">            for (Element mod : children(modules, &quot;module&quot;)) {</span>
+<span class="nc" id="L750">                String name = mod.getTextContent().trim();</span>
+<span class="nc" id="L751">                scanPomForArtifacts(pomDir.resolve(name).resolve(&quot;pom.xml&quot;), artifacts);</span>
+<span class="nc" id="L752">            }</span>
+        }
+<span class="fc" id="L754">    }</span>
+
+    // ── DOM helpers ─────────────────────────────────────────────
+
+    /**
+     * Extract the first match of a regex pattern's first group.
+     * Used by the version alignment code which operates on raw POM text.
+     */
+    private static String extractFirst(Pattern pattern, String text) {
+<span class="nc" id="L763">        Matcher m = pattern.matcher(text);</span>
+<span class="nc bnc" id="L764" title="All 2 branches missed.">        return m.find() ? m.group(1).trim() : null;</span>
+    }
+
+    private static final javax.xml.parsers.DocumentBuilderFactory DBF;
+    static {
+<span class="fc" id="L769">        DBF = javax.xml.parsers.DocumentBuilderFactory.newInstance();</span>
+        try {
+<span class="fc" id="L771">            DBF.setFeature(&quot;http://apache.org/xml/features/nonvalidating/load-external-dtd&quot;, false);</span>
+<span class="fc" id="L772">            DBF.setFeature(&quot;http://xml.org/sax/features/external-general-entities&quot;, false);</span>
+<span class="fc" id="L773">            DBF.setFeature(&quot;http://xml.org/sax/features/external-parameter-entities&quot;, false);</span>
+<span class="nc" id="L774">        } catch (javax.xml.parsers.ParserConfigurationException e) {</span>
+            // Non-fatal
+<span class="fc" id="L776">        }</span>
+    }
+
+    /**
+     * Read {@code &lt;properties&gt;} from a POM's project element into
+     * a map for {@code ${...}} resolution.
+     */
+    private static Map&lt;String, String&gt; readProperties(Element project) {
+<span class="fc" id="L784">        Map&lt;String, String&gt; props = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L785">        Element propsEl = firstChild(project, &quot;properties&quot;);</span>
+<span class="pc bpc" id="L786" title="1 of 2 branches missed.">        if (propsEl != null) {</span>
+<span class="nc" id="L787">            org.w3c.dom.NodeList children = propsEl.getChildNodes();</span>
+<span class="nc bnc" id="L788" title="All 2 branches missed.">            for (int i = 0; i &lt; children.getLength(); i++) {</span>
+<span class="nc" id="L789">                org.w3c.dom.Node node = children.item(i);</span>
+<span class="nc bnc" id="L790" title="All 2 branches missed.">                if (node.getNodeType() == org.w3c.dom.Node.ELEMENT_NODE) {</span>
+<span class="nc" id="L791">                    String value = node.getTextContent().trim();</span>
+<span class="nc bnc" id="L792" title="All 2 branches missed.">                    if (!value.isEmpty()) {</span>
+<span class="nc" id="L793">                        props.put(node.getNodeName(), value);</span>
+                    }
+                }
+            }
+        }
+<span class="fc" id="L798">        return props;</span>
+    }
+
+    /**
+     * Resolve {@code ${property.name}} references in a string using
+     * the given property map. Returns the input unchanged if no
+     * property reference is present or if the property is not found.
+     */
+    private static String resolve(String value, Map&lt;String, String&gt; properties) {
+<span class="pc bpc" id="L807" title="2 of 4 branches missed.">        if (value == null || !value.contains(&quot;${&quot;)) return value;</span>
+<span class="nc bnc" id="L808" title="All 2 branches missed.">        for (Map.Entry&lt;String, String&gt; entry : properties.entrySet()) {</span>
+<span class="nc" id="L809">            value = value.replace(&quot;${&quot; + entry.getKey() + &quot;}&quot;, entry.getValue());</span>
+<span class="nc" id="L810">        }</span>
+        // If still contains unresolved references, return as-is
+<span class="nc" id="L812">        return value;</span>
+    }
+
+    /**
+     * Get the text content of a direct child element, or null.
+     */
+    private static String childText(Element parent, String tagName) {
+<span class="fc" id="L819">        Element child = firstChild(parent, tagName);</span>
+<span class="pc bpc" id="L820" title="1 of 2 branches missed.">        if (child == null) return null;</span>
+<span class="fc" id="L821">        String text = child.getTextContent().trim();</span>
+<span class="pc bpc" id="L822" title="1 of 2 branches missed.">        return text.isEmpty() ? null : text;</span>
+    }
+
+    /**
+     * Get the first direct child element with the given tag name.
+     */
+    private static Element firstChild(Element parent, String tagName) {
+<span class="fc" id="L829">        org.w3c.dom.NodeList children = parent.getChildNodes();</span>
+<span class="fc bfc" id="L830" title="All 2 branches covered.">        for (int i = 0; i &lt; children.getLength(); i++) {</span>
+<span class="fc" id="L831">            org.w3c.dom.Node node = children.item(i);</span>
+<span class="fc bfc" id="L832" title="All 2 branches covered.">            if (node.getNodeType() == org.w3c.dom.Node.ELEMENT_NODE</span>
+<span class="fc bfc" id="L833" title="All 2 branches covered.">                    &amp;&amp; tagName.equals(node.getNodeName())) {</span>
+<span class="fc" id="L834">                return (Element) node;</span>
+            }
+        }
+<span class="fc" id="L837">        return null;</span>
+    }
+
+    /**
+     * Get all direct child elements with the given tag name.
+     */
+    private static List&lt;Element&gt; children(Element parent, String tagName) {
+<span class="fc" id="L844">        List&lt;Element&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L845">        org.w3c.dom.NodeList children = parent.getChildNodes();</span>
+<span class="fc bfc" id="L846" title="All 2 branches covered.">        for (int i = 0; i &lt; children.getLength(); i++) {</span>
+<span class="fc" id="L847">            org.w3c.dom.Node node = children.item(i);</span>
+<span class="fc bfc" id="L848" title="All 2 branches covered.">            if (node.getNodeType() == org.w3c.dom.Node.ELEMENT_NODE</span>
+<span class="pc bpc" id="L849" title="1 of 2 branches missed.">                    &amp;&amp; tagName.equals(node.getNodeName())) {</span>
+<span class="fc" id="L850">                result.add((Element) node);</span>
+            }
+        }
+<span class="fc" id="L853">        return result;</span>
+    }
+
+    // ── Version alignment ───────────────────────────────────────
+
+    /**
+     * Align dependency versions in the newly added component's POMs
+     * to match workspace SNAPSHOT versions. For each workspace component
+     * that this component depends on, find explicit version declarations
+     * and update them.
+     *
+     * @return the number of POM files modified
+     */
+    private int alignVersions(Path wsDir, Path componentDir,
+                               String componentName, Manifest manifest)
+            throws IOException {
+        // Build a map: groupId:artifactId → workspace version
+        // for all workspace components (except the one being added)
+<span class="nc" id="L871">        Map&lt;String, String&gt; artifactVersions = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L872" title="All 2 branches missed.">        for (Map.Entry&lt;String, Component&gt; entry : manifest.components().entrySet()) {</span>
+<span class="nc bnc" id="L873" title="All 2 branches missed.">            if (entry.getKey().equals(componentName)) continue;</span>
+<span class="nc" id="L874">            Component comp = entry.getValue();</span>
+<span class="nc bnc" id="L875" title="All 2 branches missed.">            if (comp.version() == null) continue;</span>
+
+<span class="nc" id="L877">            Path compDir = wsDir.resolve(entry.getKey());</span>
+<span class="nc bnc" id="L878" title="All 2 branches missed.">            if (!Files.exists(compDir.resolve(&quot;pom.xml&quot;))) continue;</span>
+
+<span class="nc" id="L880">            Set&lt;PublishedArtifactSet.Artifact&gt; published =</span>
+<span class="nc" id="L881">                    PublishedArtifactSet.scan(compDir);</span>
+<span class="nc bnc" id="L882" title="All 2 branches missed.">            for (PublishedArtifactSet.Artifact artifact : published) {</span>
+<span class="nc" id="L883">                artifactVersions.put(</span>
+<span class="nc" id="L884">                        artifact.groupId() + &quot;:&quot; + artifact.artifactId(),</span>
+<span class="nc" id="L885">                        comp.version());</span>
+<span class="nc" id="L886">            }</span>
+<span class="nc" id="L887">        }</span>
+
+<span class="nc bnc" id="L889" title="All 2 branches missed.">        if (artifactVersions.isEmpty()) return 0;</span>
+
+        // Walk all POM files in the new component and update versions
+<span class="nc" id="L892">        int filesModified = 0;</span>
+<span class="nc" id="L893">        List&lt;Path&gt; pomFiles = findAllPomFiles(componentDir);</span>
+
+<span class="nc bnc" id="L895" title="All 2 branches missed.">        for (Path pomFile : pomFiles) {</span>
+<span class="nc" id="L896">            String original = Files.readString(pomFile, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L897">            String updated = alignDependencyVersions(original, artifactVersions);</span>
+
+<span class="nc bnc" id="L899" title="All 2 branches missed.">            if (!updated.equals(original)) {</span>
+<span class="nc" id="L900">                Files.writeString(pomFile, updated, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L901">                filesModified++;</span>
+                // Log each change
+<span class="nc" id="L903">                Path relative = componentDir.getParent().relativize(pomFile);</span>
+<span class="nc" id="L904">                getLog().info(&quot;  Version alignment: &quot; + relative);</span>
+            }
+<span class="nc" id="L906">        }</span>
+
+<span class="nc" id="L908">        return filesModified;</span>
+    }
+
+    /**
+     * In a POM content string, find {@code &lt;dependency&gt;} blocks that
+     * reference a known workspace artifact and update their
+     * {@code &lt;version&gt;} to the workspace version. Skips dependencies
+     * inside {@code &lt;dependencyManagement&gt;}.
+     */
+    static String alignDependencyVersions(String pom,
+                                            Map&lt;String, String&gt; artifactVersions) {
+        // Strip dependencyManagement to avoid modifying BOM imports
+        // We'll process only dependencies outside of dependencyManagement
+<span class="nc" id="L921">        StringBuilder result = new StringBuilder();</span>
+<span class="nc" id="L922">        Matcher dmMatcher = DEP_MGMT_BLOCK.matcher(pom);</span>
+<span class="nc" id="L923">        int lastEnd = 0;</span>
+
+<span class="nc bnc" id="L925" title="All 2 branches missed.">        while (dmMatcher.find()) {</span>
+            // Process the segment before this dependencyManagement block
+<span class="nc" id="L927">            String segment = pom.substring(lastEnd, dmMatcher.start());</span>
+<span class="nc" id="L928">            result.append(alignDepsInSegment(segment, artifactVersions));</span>
+            // Append the dependencyManagement block unchanged
+<span class="nc" id="L930">            result.append(dmMatcher.group());</span>
+<span class="nc" id="L931">            lastEnd = dmMatcher.end();</span>
+<span class="nc" id="L932">        }</span>
+        // Process remaining content after last dependencyManagement
+<span class="nc" id="L934">        result.append(alignDepsInSegment(pom.substring(lastEnd), artifactVersions));</span>
+
+<span class="nc" id="L936">        return result.toString();</span>
+    }
+
+    private static String alignDepsInSegment(String segment,
+                                              Map&lt;String, String&gt; artifactVersions) {
+<span class="nc" id="L941">        Matcher depMatcher = DEPENDENCY_BLOCK.matcher(segment);</span>
+<span class="nc" id="L942">        StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L943">        int lastEnd = 0;</span>
+
+<span class="nc bnc" id="L945" title="All 2 branches missed.">        while (depMatcher.find()) {</span>
+<span class="nc" id="L946">            sb.append(segment, lastEnd, depMatcher.start());</span>
+
+<span class="nc" id="L948">            String depBlock = depMatcher.group();</span>
+<span class="nc" id="L949">            String gid = extractFirst(GROUP_ID_PATTERN, depBlock);</span>
+<span class="nc" id="L950">            String aid = extractFirst(ARTIFACT_ID_PATTERN, depBlock);</span>
+<span class="nc" id="L951">            String key = gid + &quot;:&quot; + aid;</span>
+
+<span class="nc" id="L953">            String targetVersion = artifactVersions.get(key);</span>
+<span class="nc bnc" id="L954" title="All 2 branches missed.">            if (targetVersion != null) {</span>
+                // Update the version in this dependency block
+<span class="nc" id="L956">                String currentVersion = extractFirst(VERSION_PATTERN, depBlock);</span>
+<span class="nc bnc" id="L957" title="All 4 branches missed.">                if (currentVersion != null &amp;&amp; !currentVersion.equals(targetVersion)) {</span>
+<span class="nc" id="L958">                    depBlock = depBlock.replaceFirst(</span>
+<span class="nc" id="L959">                            &quot;&lt;version&gt;&quot; + Pattern.quote(currentVersion) + &quot;&lt;/version&gt;&quot;,</span>
+                            &quot;&lt;version&gt;&quot; + targetVersion + &quot;&lt;/version&gt;&quot;);
+                }
+            }
+
+<span class="nc" id="L964">            sb.append(depBlock);</span>
+<span class="nc" id="L965">            lastEnd = depMatcher.end();</span>
+<span class="nc" id="L966">        }</span>
+
+<span class="nc" id="L968">        sb.append(segment.substring(lastEnd));</span>
+<span class="nc" id="L969">        return sb.toString();</span>
+    }
+
+    /**
+     * Find all pom.xml files in a component directory (root + submodules).
+     */
+    private List&lt;Path&gt; findAllPomFiles(Path componentDir) throws IOException {
+<span class="nc" id="L976">        try (var stream = Files.walk(componentDir)) {</span>
+<span class="nc" id="L977">            return stream</span>
+<span class="nc" id="L978">                    .filter(p -&gt; p.getFileName().toString().equals(&quot;pom.xml&quot;))</span>
+<span class="nc bnc" id="L979" title="All 2 branches missed.">                    .filter(p -&gt; !p.toString().contains(&quot;/target/&quot;))</span>
+<span class="nc" id="L980">                    .toList();</span>
+        }
+    }
+
+<span class="fc" id="L984">    private static final Pattern VERSION_PATTERN =</span>
+<span class="fc" id="L985">            Pattern.compile(&quot;&lt;version&gt;([^&lt;]+)&lt;/version&gt;&quot;);</span>
+
+    /**
+     * Derive the Maven groupId from the component's root POM.
+     * Strips the parent block first; if no groupId is declared
+     * outside parent, falls back to the parent's groupId.
+     */
+    private String deriveGroupId(Path componentDir) {
+<span class="nc" id="L993">        Path pomFile = componentDir.resolve(&quot;pom.xml&quot;);</span>
+<span class="nc bnc" id="L994" title="All 2 branches missed.">        if (!Files.exists(pomFile)) return null;</span>
+
+        try {
+<span class="nc" id="L997">            String content = Files.readString(pomFile, StandardCharsets.UTF_8);</span>
+
+            // Try groupId outside parent block first
+<span class="nc" id="L1000">            String stripped = PARENT_BLOCK.matcher(content).replaceFirst(&quot;&quot;);</span>
+<span class="nc" id="L1001">            Matcher gm = GROUP_ID_PATTERN.matcher(stripped);</span>
+<span class="nc bnc" id="L1002" title="All 2 branches missed.">            if (gm.find()) return gm.group(1).trim();</span>
+
+            // Fall back to parent groupId
+<span class="nc" id="L1005">            Matcher parentBlock = PARENT_BLOCK.matcher(content);</span>
+<span class="nc bnc" id="L1006" title="All 2 branches missed.">            if (parentBlock.find()) {</span>
+<span class="nc" id="L1007">                gm = GROUP_ID_PATTERN.matcher(parentBlock.group());</span>
+<span class="nc bnc" id="L1008" title="All 2 branches missed.">                if (gm.find()) return gm.group(1).trim();</span>
+            }
+<span class="nc" id="L1010">        } catch (IOException e) {</span>
+            // Non-fatal — groupId will be null in manifest
+<span class="nc" id="L1012">        }</span>
+<span class="nc" id="L1013">        return null;</span>
+    }
+
+<span class="fc" id="L1016">    private static final Pattern PARENT_BLOCK =</span>
+<span class="fc" id="L1017">            Pattern.compile(&quot;(?s)&lt;parent&gt;.*?&lt;/parent&gt;&quot;);</span>
+<span class="fc" id="L1018">    private static final Pattern GROUP_ID_PATTERN =</span>
+<span class="fc" id="L1019">            Pattern.compile(&quot;&lt;groupId&gt;([^&lt;]+)&lt;/groupId&gt;&quot;);</span>
+<span class="fc" id="L1020">    private static final Pattern ARTIFACT_ID_PATTERN =</span>
+<span class="fc" id="L1021">            Pattern.compile(&quot;&lt;artifactId&gt;([^&lt;]+)&lt;/artifactId&gt;&quot;);</span>
+<span class="fc" id="L1022">    private static final Pattern DEPENDENCY_BLOCK =</span>
+<span class="fc" id="L1023">            Pattern.compile(&quot;(?s)&lt;dependency&gt;.*?&lt;/dependency&gt;&quot;);</span>
+<span class="fc" id="L1024">    private static final Pattern DEP_MGMT_BLOCK =</span>
+<span class="fc" id="L1025">            Pattern.compile(&quot;(?s)&lt;dependencyManagement&gt;.*?&lt;/dependencyManagement&gt;&quot;);</span>
+<span class="fc" id="L1026">    private static final Pattern SUBPROJECT_PATTERN =</span>
+<span class="fc" id="L1027">            Pattern.compile(&quot;&lt;subproject&gt;([^&lt;]+)&lt;/subproject&gt;&quot;);</span>
+<span class="fc" id="L1028">    private static final Pattern MODULE_PATTERN =</span>
+<span class="fc" id="L1029">            Pattern.compile(&quot;&lt;module&gt;([^&lt;]+)&lt;/module&gt;&quot;);</span>
+
+    // ── Helpers ──────────────────────────────────────────────────
+
+    /**
+     * Derive a component name from a git URL.
+     * {@code https://github.com/ikmdev/tinkar-core.git} → {@code tinkar-core}
+     */
+    static String deriveComponentName(String repoUrl) {
+<span class="fc" id="L1038">        String name = repoUrl;</span>
+        // Strip trailing .git
+<span class="fc bfc" id="L1040" title="All 2 branches covered.">        if (name.endsWith(&quot;.git&quot;)) {</span>
+<span class="fc" id="L1041">            name = name.substring(0, name.length() - 4);</span>
+        }
+        // Strip trailing slash
+<span class="fc bfc" id="L1044" title="All 2 branches covered.">        if (name.endsWith(&quot;/&quot;)) {</span>
+<span class="fc" id="L1045">            name = name.substring(0, name.length() - 1);</span>
+        }
+        // Take last path segment
+<span class="fc" id="L1048">        int lastSlash = name.lastIndexOf('/');</span>
+<span class="pc bpc" id="L1049" title="1 of 2 branches missed.">        if (lastSlash &gt;= 0) {</span>
+<span class="fc" id="L1050">            name = name.substring(lastSlash + 1);</span>
+        }
+<span class="fc" id="L1052">        return name;</span>
+    }
+
+    /**
+     * Add a component to the &quot;all&quot; group in workspace.yaml.
+     */
+    static String addToAllGroup(String yaml, String componentName) {
+        // Match &quot;  all: [...]&quot; and add the component
+<span class="fc" id="L1060">        Pattern allGroup = Pattern.compile(</span>
+                &quot;(  all:\\s*\\[)(.*?)(])&quot;, Pattern.DOTALL);
+<span class="fc" id="L1062">        Matcher m = allGroup.matcher(yaml);</span>
+<span class="pc bpc" id="L1063" title="1 of 2 branches missed.">        if (m.find()) {</span>
+<span class="fc" id="L1064">            String existing = m.group(2).trim();</span>
+            String updated;
+<span class="fc bfc" id="L1066" title="All 2 branches covered.">            if (existing.isEmpty()) {</span>
+<span class="fc" id="L1067">                updated = componentName;</span>
+            } else {
+<span class="fc" id="L1069">                updated = existing + &quot;, &quot; + componentName;</span>
+            }
+<span class="fc" id="L1071">            return m.replaceFirst(&quot;$1&quot; + Matcher.quoteReplacement(updated) + &quot;]&quot;);</span>
+        }
+<span class="nc" id="L1073">        return yaml;</span>
+    }
+
+    private String readWorkspaceName(Path wsDir) {
+        try {
+<span class="nc" id="L1078">            return ReleaseSupport.readPomArtifactId(wsDir.resolve(&quot;pom.xml&quot;).toFile());</span>
+<span class="nc" id="L1079">        } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L1080">            return &quot;Workspace&quot;;</span>
+        }
+    }
+
+    private Path findWorkspaceRoot() throws MojoExecutionException {
+<span class="nc" id="L1085">        Path dir = Path.of(System.getProperty(&quot;user.dir&quot;));</span>
+<span class="nc bnc" id="L1086" title="All 2 branches missed.">        while (dir != null) {</span>
+<span class="nc bnc" id="L1087" title="All 2 branches missed.">            if (Files.exists(dir.resolve(&quot;workspace.yaml&quot;))) {</span>
+<span class="nc" id="L1088">                return dir;</span>
+            }
+<span class="nc" id="L1090">            dir = dir.getParent();</span>
+        }
+<span class="nc" id="L1092">        throw new MojoExecutionException(</span>
+                &quot;Cannot find workspace.yaml. Run from within a workspace &quot;
+                + &quot;directory or use ws:create first.&quot;);
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DashboardWorkspaceMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">DashboardWorkspaceMojo.java</span></div><h1>DashboardWorkspaceMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.workspace.Component;
+import network.ike.workspace.Dependency;
+import network.ike.workspace.WorkspaceGraph;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Composite workspace dashboard — one invocation, full overview.
+ *
+ * &lt;p&gt;Runs verify + status + cascade-from-dirty in a single pass,
+ * loading the manifest once and iterating components once. This is
+ * the recommended &quot;morning standup&quot; command.
+ *
+ * &lt;pre&gt;{@code mvn ike:dashboard}&lt;/pre&gt;
+ */
+@Mojo(name = &quot;dashboard&quot;, requiresProject = false, threadSafe = true)
+public class DashboardWorkspaceMojo extends AbstractWorkspaceMojo {
+
+    /** Creates this goal instance. */
+<span class="fc" id="L28">    public DashboardWorkspaceMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="fc" id="L32">        ReportLog report = startReport();</span>
+<span class="fc" id="L33">        WorkspaceGraph graph = loadGraph();</span>
+<span class="fc" id="L34">        File root = workspaceRoot();</span>
+
+<span class="fc" id="L36">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L37">        getLog().info(header(&quot;Dashboard&quot;));</span>
+<span class="fc" id="L38">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+
+        // ── Section 1: Manifest health ──────────────────────────────
+<span class="fc" id="L41">        List&lt;String&gt; errors = graph.verify();</span>
+<span class="fc" id="L42">        getLog().info(&quot;&quot;);</span>
+<span class="pc bpc" id="L43" title="1 of 2 branches missed.">        if (errors.isEmpty()) {</span>
+<span class="fc" id="L44">            getLog().info(&quot;  ✓ Manifest: &quot; + graph.manifest().components().size()</span>
+<span class="fc" id="L45">                    + &quot; components, &quot; + graph.manifest().groups().size()</span>
+                    + &quot; groups — consistent&quot;);
+        } else {
+<span class="nc" id="L48">            getLog().warn(&quot;  ✗ Manifest: &quot; + errors.size() + &quot; error(s)&quot;);</span>
+<span class="nc bnc" id="L49" title="All 2 branches missed.">            for (String error : errors) {</span>
+<span class="nc" id="L50">                getLog().warn(&quot;    &quot; + error);</span>
+<span class="nc" id="L51">            }</span>
+        }
+
+        // ── Section 2: Component status ─────────────────────────────
+<span class="fc" id="L55">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L56">        getLog().info(&quot;  Status&quot;);</span>
+<span class="fc" id="L57">        getLog().info(&quot;  ──────────────────────────────────────────────────────&quot;);</span>
+<span class="fc" id="L58">        getLog().info(String.format(&quot;  %-24s %-24s %-8s %s&quot;,</span>
+                &quot;COMPONENT&quot;, &quot;BRANCH&quot;, &quot;SHA&quot;, &quot;&quot;));
+
+<span class="fc" id="L61">        List&lt;String&gt; dirtyComponents = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L62">        int cloned = 0;</span>
+<span class="fc" id="L63">        int notCloned = 0;</span>
+
+<span class="fc bfc" id="L65" title="All 2 branches covered.">        for (var entry : graph.manifest().components().entrySet()) {</span>
+<span class="fc" id="L66">            String name = entry.getKey();</span>
+<span class="fc" id="L67">            Component comp = entry.getValue();</span>
+<span class="fc" id="L68">            File dir = new File(root, name);</span>
+
+<span class="pc bpc" id="L70" title="1 of 2 branches missed.">            if (!dir.exists()) {</span>
+<span class="nc" id="L71">                notCloned++;</span>
+<span class="nc" id="L72">                getLog().info(String.format(&quot;  %-24s %-24s %-8s %s&quot;,</span>
+                        name, &quot;—&quot;, &quot;—&quot;, &quot;not cloned&quot;));
+<span class="nc" id="L74">                continue;</span>
+            }
+
+<span class="fc" id="L77">            cloned++;</span>
+<span class="fc" id="L78">            String branch = gitBranch(dir);</span>
+<span class="fc" id="L79">            String sha = gitShortSha(dir);</span>
+<span class="fc" id="L80">            String status = gitStatus(dir);</span>
+
+            String marker;
+<span class="fc bfc" id="L83" title="All 2 branches covered.">            if (status.isEmpty()) {</span>
+<span class="fc" id="L84">                marker = &quot;✓&quot;;</span>
+            } else {
+<span class="fc" id="L86">                long count = status.lines().count();</span>
+<span class="fc" id="L87">                marker = &quot;✗ &quot; + count + &quot; changed&quot;;</span>
+<span class="fc" id="L88">                dirtyComponents.add(name);</span>
+            }
+
+            // Branch mismatch warning
+<span class="fc" id="L92">            String branchCol = branch;</span>
+<span class="pc bpc" id="L93" title="2 of 4 branches missed.">            if (comp.branch() != null &amp;&amp; !branch.equals(comp.branch())) {</span>
+<span class="nc" id="L94">                branchCol = branch + &quot; ⚠&quot;;</span>
+            }
+
+<span class="fc" id="L97">            getLog().info(String.format(&quot;  %-24s %-24s %-8s %s&quot;,</span>
+                    name, branchCol, sha, marker));
+<span class="fc" id="L99">        }</span>
+
+<span class="fc" id="L101">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L102">        getLog().info(&quot;  &quot; + cloned + &quot; cloned, &quot; + notCloned + &quot; not cloned, &quot;</span>
+<span class="fc" id="L103">                + dirtyComponents.size() + &quot; dirty&quot;);</span>
+
+        // ── Section 3: Cascade from dirty ───────────────────────────
+<span class="fc bfc" id="L106" title="All 2 branches covered.">        if (!dirtyComponents.isEmpty()) {</span>
+<span class="fc" id="L107">            Set&lt;String&gt; allAffected = new LinkedHashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L108" title="All 2 branches covered.">            for (String dirty : dirtyComponents) {</span>
+<span class="fc" id="L109">                allAffected.addAll(graph.cascade(dirty));</span>
+<span class="fc" id="L110">            }</span>
+            // Remove components that are themselves dirty (already known)
+<span class="fc" id="L112">            allAffected.removeAll(dirtyComponents);</span>
+
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">            if (!allAffected.isEmpty()) {</span>
+<span class="fc" id="L115">                getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L116">                getLog().info(&quot;  Cascade — components needing rebuild:&quot;);</span>
+<span class="fc" id="L117">                getLog().info(&quot;  ──────────────────────────────────────────────────────&quot;);</span>
+
+<span class="fc" id="L119">                List&lt;String&gt; buildOrder = graph.topologicalSort(</span>
+                        new LinkedHashSet&lt;&gt;(allAffected));
+<span class="fc bfc" id="L121" title="All 2 branches covered.">                for (String name : buildOrder) {</span>
+                    // Show which dirty component triggers this
+<span class="fc" id="L123">                    List&lt;String&gt; triggeredBy = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L124">                    Component comp = graph.manifest().components().get(name);</span>
+<span class="pc bpc" id="L125" title="1 of 2 branches missed.">                    if (comp != null) {</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">                        for (Dependency dep : comp.dependsOn()) {</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">                            if (dirtyComponents.contains(dep.component())</span>
+<span class="pc bpc" id="L128" title="1 of 2 branches missed.">                                    || allAffected.contains(dep.component())) {</span>
+<span class="fc" id="L129">                                triggeredBy.add(dep.component());</span>
+                            }
+<span class="fc" id="L131">                        }</span>
+                    }
+<span class="fc" id="L133">                    getLog().info(&quot;    &quot; + name + &quot; ← &quot;</span>
+<span class="fc" id="L134">                            + String.join(&quot;, &quot;, triggeredBy));</span>
+<span class="fc" id="L135">                }</span>
+            }
+        }
+
+<span class="fc" id="L139">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L140">        finishReport(&quot;ws:dashboard&quot;, report);</span>
+<span class="fc" id="L141">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

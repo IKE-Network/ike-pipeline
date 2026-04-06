@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FeatureFinishMergeMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">FeatureFinishMergeMojo.java</span></div><h1>FeatureFinishMergeMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.workspace.Component;
+import network.ike.workspace.WorkspaceGraph;
+import network.ike.plugin.ws.vcs.VcsOperations;
+import network.ike.plugin.ws.vcs.VcsState;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+
+/**
+ * No-fast-forward merge of a feature branch, preserving full history.
+ *
+ * &lt;p&gt;Creates a merge commit on the target branch containing the
+ * complete feature branch history. The feature branch is &lt;b&gt;kept alive&lt;/b&gt;
+ * by default because histories stay connected — the branch can
+ * continue to receive work and be merged again later.
+ *
+ * &lt;p&gt;When to use: long-lived feature branches that periodically merge
+ * intermediate work to the target branch. Use when you need
+ * traceability of individual feature commits on the target branch.
+ *
+ * &lt;pre&gt;{@code
+ * mvn ike:feature-finish-merge -Dfeature=long-running
+ * mvn ike:feature-finish-merge -Dfeature=done-feature -DkeepBranch=false
+ * }&lt;/pre&gt;
+ *
+ * @see FeatureFinishSquashMojo for clean single-commit merges (default)
+ * @see FeatureFinishRebaseMojo for linear history
+ */
+@Mojo(name = &quot;feature-finish-merge&quot;, requiresProject = false, threadSafe = true)
+public class FeatureFinishMergeMojo extends AbstractWorkspaceMojo {
+
+    /** Creates this goal instance. */
+<span class="fc" id="L42">    public FeatureFinishMergeMojo() {}</span>
+
+    @Parameter(property = &quot;feature&quot;)
+    String feature;
+
+    @Parameter(property = &quot;group&quot;)
+    String group;
+
+    @Parameter(property = &quot;targetBranch&quot;, defaultValue = &quot;main&quot;)
+    String targetBranch;
+
+    /**
+     * Keep the feature branch after merge. Default is true because
+     * no-ff merge preserves history — the branch can continue to
+     * receive work and be merged again.
+     */
+<span class="fc" id="L58">    @Parameter(property = &quot;keepBranch&quot;, defaultValue = &quot;true&quot;)</span>
+    boolean keepBranch = true;
+
+    @Parameter(property = &quot;message&quot;)
+    String message;
+
+    @Parameter(property = &quot;dryRun&quot;, defaultValue = &quot;false&quot;)
+    boolean dryRun;
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="fc" id="L69">        feature = requireParam(feature, &quot;feature&quot;,</span>
+                &quot;Feature name (expects branch feature/&lt;name&gt;)&quot;);
+<span class="fc" id="L71">        String branchName = &quot;feature/&quot; + feature;</span>
+
+<span class="pc bpc" id="L73" title="3 of 4 branches missed.">        if (message == null || message.isBlank()) {</span>
+<span class="fc" id="L74">            message = &quot;Merge &quot; + branchName + &quot; into &quot; + targetBranch;</span>
+        }
+
+<span class="fc bfc" id="L77" title="All 2 branches covered.">        if (!isWorkspaceMode()) {</span>
+<span class="fc" id="L78">            executeBareMode(branchName);</span>
+<span class="fc" id="L79">            return;</span>
+        }
+
+<span class="fc" id="L82">        executeWorkspaceMode(branchName);</span>
+<span class="fc" id="L83">    }</span>
+
+    private void executeWorkspaceMode(String branchName) throws MojoExecutionException {
+<span class="fc" id="L86">        WorkspaceGraph graph = loadGraph();</span>
+<span class="fc" id="L87">        File root = workspaceRoot();</span>
+<span class="fc" id="L88">        Path manifestPath = resolveManifest();</span>
+
+<span class="pc bpc" id="L90" title="3 of 4 branches missed.">        var targets = group != null &amp;&amp; !group.isEmpty()</span>
+<span class="nc" id="L91">                ? graph.expandGroup(group)</span>
+<span class="fc" id="L92">                : graph.manifest().components().keySet();</span>
+<span class="fc" id="L93">        List&lt;String&gt; sorted = graph.topologicalSort(new LinkedHashSet&lt;&gt;(targets));</span>
+<span class="fc" id="L94">        List&lt;String&gt; reversed = new ArrayList&lt;&gt;(sorted);</span>
+<span class="fc" id="L95">        Collections.reverse(reversed);</span>
+
+<span class="fc" id="L97">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L98">        getLog().info(header(&quot;Feature Finish (merge)&quot;));</span>
+<span class="fc" id="L99">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+<span class="fc" id="L100">        getLog().info(&quot;  Feature:  &quot; + feature);</span>
+<span class="fc" id="L101">        getLog().info(&quot;  Branch:   &quot; + branchName + &quot; → &quot; + targetBranch);</span>
+<span class="fc" id="L102">        getLog().info(&quot;  Strategy: no-fast-forward merge&quot;);</span>
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">        if (dryRun) getLog().info(&quot;  Mode:     DRY RUN&quot;);</span>
+<span class="fc" id="L104">        getLog().info(&quot;&quot;);</span>
+
+<span class="fc" id="L106">        VcsOperations.catchUp(root, getLog());</span>
+
+<span class="fc" id="L108">        List&lt;String&gt; eligible = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L109" title="All 2 branches covered.">        for (String name : reversed) {</span>
+<span class="fc" id="L110">            String reason = FeatureFinishSupport.validateComponent(</span>
+                    root, name, branchName, this);
+<span class="pc bpc" id="L112" title="1 of 2 branches missed.">            if (reason == null) {</span>
+<span class="fc" id="L113">                eligible.add(name);</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">            } else if (&quot;DIRTY&quot;.equals(reason)) {</span>
+<span class="nc" id="L115">                throw new MojoExecutionException(</span>
+                        name + &quot; has uncommitted changes. Commit or stash first.&quot;);
+            } else {
+<span class="nc" id="L118">                getLog().info(&quot;  · &quot; + name + &quot; — &quot; + reason + &quot;, skipping&quot;);</span>
+            }
+<span class="fc" id="L120">        }</span>
+
+<span class="pc bpc" id="L122" title="1 of 2 branches missed.">        if (eligible.isEmpty()) {</span>
+<span class="nc" id="L123">            getLog().info(&quot;  No components on &quot; + branchName + &quot; — nothing to do.&quot;);</span>
+<span class="nc" id="L124">            return;</span>
+        }
+
+<span class="fc" id="L127">        int merged = 0;</span>
+<span class="fc bfc" id="L128" title="All 2 branches covered.">        for (String name : eligible) {</span>
+<span class="fc" id="L129">            File dir = new File(root, name);</span>
+
+<span class="pc bpc" id="L131" title="1 of 2 branches missed.">            if (dryRun) {</span>
+<span class="nc" id="L132">                getLog().info(&quot;  [dry-run] &quot; + name + &quot; — would merge → &quot; + targetBranch);</span>
+<span class="nc" id="L133">                merged++;</span>
+<span class="nc" id="L134">                continue;</span>
+            }
+
+<span class="fc" id="L137">            getLog().info(&quot;  → &quot; + name);</span>
+<span class="fc" id="L138">            VcsOperations.catchUp(dir, getLog());</span>
+<span class="fc" id="L139">            VcsOperations.checkout(dir, getLog(), targetBranch);</span>
+<span class="fc" id="L140">            VcsOperations.mergeNoFf(dir, getLog(), branchName, message);</span>
+<span class="fc" id="L141">            VcsOperations.pushIfRemoteExists(dir, getLog(), &quot;origin&quot;, targetBranch);</span>
+
+<span class="pc bpc" id="L143" title="1 of 2 branches missed.">            if (!keepBranch) {</span>
+<span class="nc" id="L144">                FeatureFinishSupport.deleteBranch(dir, getLog(), branchName);</span>
+            }
+
+<span class="fc" id="L147">            VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_FINISH);</span>
+<span class="fc" id="L148">            merged++;</span>
+<span class="fc" id="L149">        }</span>
+
+<span class="pc bpc" id="L151" title="2 of 4 branches missed.">        if (merged &gt; 0 &amp;&amp; !dryRun) {</span>
+<span class="fc" id="L152">            FeatureFinishSupport.updateWorkspaceYaml(</span>
+<span class="fc" id="L153">                    manifestPath, eligible, targetBranch, feature, getLog());</span>
+<span class="fc" id="L154">            FeatureFinishSupport.mergeWorkspaceRepo(</span>
+<span class="fc" id="L155">                    manifestPath, branchName, targetBranch, keepBranch, getLog());</span>
+        }
+
+<span class="fc" id="L158">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L159">        getLog().info(&quot;  Merged: &quot; + merged + &quot; components (no-ff)&quot;);</span>
+<span class="pc bpc" id="L160" title="1 of 2 branches missed.">        getLog().info(&quot;  Branch &quot; + (keepBranch ? &quot;kept&quot; : &quot;deleted&quot;) + &quot;: &quot; + branchName);</span>
+<span class="fc" id="L161">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L162">    }</span>
+
+    private void executeBareMode(String branchName) throws MojoExecutionException {
+<span class="fc" id="L165">        File dir = new File(System.getProperty(&quot;user.dir&quot;));</span>
+
+<span class="fc" id="L167">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L168">        getLog().info(&quot;IKE Feature Finish — Merge (bare repo)&quot;);</span>
+<span class="fc" id="L169">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+
+<span class="fc" id="L171">        VcsOperations.catchUp(dir, getLog());</span>
+
+<span class="fc" id="L173">        String currentBranch = gitBranch(dir);</span>
+<span class="pc bpc" id="L174" title="1 of 2 branches missed.">        if (!currentBranch.equals(branchName)) {</span>
+<span class="nc" id="L175">            throw new MojoExecutionException(</span>
+                    &quot;Not on &quot; + branchName + &quot; (currently on &quot; + currentBranch + &quot;)&quot;);
+        }
+<span class="pc bpc" id="L178" title="1 of 2 branches missed.">        if (!gitStatus(dir).isEmpty()) {</span>
+<span class="nc" id="L179">            throw new MojoExecutionException(&quot;Uncommitted changes. Commit or stash first.&quot;);</span>
+        }
+
+<span class="pc bpc" id="L182" title="1 of 2 branches missed.">        if (dryRun) {</span>
+<span class="nc" id="L183">            getLog().info(&quot;  [dry-run] Would merge → &quot; + targetBranch);</span>
+<span class="nc" id="L184">            return;</span>
+        }
+
+<span class="fc" id="L187">        VcsOperations.checkout(dir, getLog(), targetBranch);</span>
+<span class="fc" id="L188">        VcsOperations.mergeNoFf(dir, getLog(), branchName, message);</span>
+<span class="fc" id="L189">        VcsOperations.pushIfRemoteExists(dir, getLog(), &quot;origin&quot;, targetBranch);</span>
+
+<span class="pc bpc" id="L191" title="1 of 2 branches missed.">        if (!keepBranch) {</span>
+<span class="nc" id="L192">            FeatureFinishSupport.deleteBranch(dir, getLog(), branchName);</span>
+        }
+
+<span class="fc" id="L195">        VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_FINISH);</span>
+
+<span class="fc" id="L197">        getLog().info(&quot;  Done.&quot;);</span>
+<span class="fc" id="L198">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L199">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

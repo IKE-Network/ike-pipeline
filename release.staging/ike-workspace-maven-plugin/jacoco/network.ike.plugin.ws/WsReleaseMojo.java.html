@@ -1,0 +1,486 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WsReleaseMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">WsReleaseMojo.java</span></div><h1>WsReleaseMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.plugin.ReleaseSupport;
+
+import network.ike.workspace.Component;
+import network.ike.workspace.WorkspaceGraph;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import network.ike.workspace.VersionSupport;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Workspace-level release — release all dirty checked-out components
+ * in topological order.
+ *
+ * &lt;p&gt;Scans checked-out components for commits since their last release
+ * tag. Dirty components are topologically sorted and released in
+ * dependency order. After each release, downstream parent version
+ * references are updated automatically.&lt;/p&gt;
+ *
+ * &lt;p&gt;&lt;strong&gt;What it does, per component:&lt;/strong&gt;&lt;/p&gt;
+ * &lt;ol&gt;
+ *   &lt;li&gt;Detect latest release tag ({@code v*})&lt;/li&gt;
+ *   &lt;li&gt;Check for commits since that tag&lt;/li&gt;
+ *   &lt;li&gt;If dirty: run {@code mvn ike:release} in that component's directory&lt;/li&gt;
+ *   &lt;li&gt;After release: update parent version in downstream components&lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * &lt;p&gt;The cascade is self-limiting: only checked-out components with
+ * changes since their last release are candidates. Components not
+ * present in the aggregator are not considered.&lt;/p&gt;
+ *
+ * &lt;pre&gt;{@code
+ * mvn ike:ws-release                         # release all dirty components
+ * mvn ike:ws-release -DdryRun=true           # show what would be released
+ * mvn ike:ws-release -Dgroup=core            # only components in the core group
+ * mvn ike:ws-release -Dcomponent=ike-pipeline  # release one specific component
+ * }&lt;/pre&gt;
+ */
+@Mojo(name = &quot;release&quot;, requiresProject = false, threadSafe = true)
+public class WsReleaseMojo extends AbstractWorkspaceMojo {
+
+<span class="fc" id="L57">    private static final DateTimeFormatter ISO_UTC =</span>
+<span class="fc" id="L58">            DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd'T'HH:mm:ss'Z'&quot;)</span>
+<span class="fc" id="L59">                    .withZone(ZoneOffset.UTC);</span>
+
+    /** Release only components in this group. */
+    @Parameter(property = &quot;group&quot;)
+    String group;
+
+    /** Release only this specific component. */
+    @Parameter(property = &quot;component&quot;)
+    String component;
+
+    /** Preview what would be released without executing. */
+    @Parameter(property = &quot;dryRun&quot;, defaultValue = &quot;false&quot;)
+    boolean dryRun;
+
+    /** Skip the pre-release checkpoint. */
+    @Parameter(property = &quot;skipCheckpoint&quot;, defaultValue = &quot;false&quot;)
+    boolean skipCheckpoint;
+
+    /** Push releases to remote. Passed through to ike:release. */
+    @Parameter(property = &quot;push&quot;, defaultValue = &quot;true&quot;)
+    boolean push;
+
+    /** Creates this goal instance. */
+<span class="fc" id="L82">    public WsReleaseMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="fc" id="L86">        ReportLog report = startReport();</span>
+<span class="fc" id="L87">        WorkspaceGraph graph = loadGraph();</span>
+<span class="fc" id="L88">        File root = workspaceRoot();</span>
+
+        // ── 1. Determine candidate components ─────────────────────────
+        List&lt;String&gt; candidates;
+<span class="fc bfc" id="L92" title="All 2 branches covered.">        if (component != null) {</span>
+<span class="fc" id="L93">            candidates = List.of(component);</span>
+<span class="fc bfc" id="L94" title="All 2 branches covered.">        } else if (group != null) {</span>
+<span class="fc" id="L95">            candidates = new ArrayList&lt;&gt;(graph.expandGroup(group));</span>
+        } else {
+<span class="fc" id="L97">            candidates = graph.topologicalSort();</span>
+        }
+
+        // ── 2. Filter to checked-out and dirty ────────────────────────
+<span class="fc" id="L101">        Map&lt;String, ReleaseCandidate&gt; dirty = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L102" title="All 2 branches covered.">        for (String name : graph.topologicalSort()) {</span>
+<span class="fc bfc" id="L103" title="All 2 branches covered.">            if (!candidates.contains(name)) continue;</span>
+
+<span class="fc" id="L105">            Component comp = graph.manifest().components().get(name);</span>
+<span class="pc bpc" id="L106" title="1 of 2 branches missed.">            if (comp == null) continue;</span>
+
+<span class="fc" id="L108">            File compDir = new File(root, name);</span>
+<span class="pc bpc" id="L109" title="2 of 4 branches missed.">            if (!compDir.isDirectory() || !new File(compDir, &quot;pom.xml&quot;).exists()) {</span>
+<span class="nc" id="L110">                getLog().debug(&quot;Skipping &quot; + name + &quot; — not checked out&quot;);</span>
+<span class="nc" id="L111">                continue;</span>
+            }
+
+<span class="fc" id="L114">            String latestTag = latestReleaseTag(compDir);</span>
+<span class="fc bfc" id="L115" title="All 2 branches covered.">            if (latestTag == null) {</span>
+                // No release tag exists — component has never been released
+<span class="fc" id="L117">                dirty.put(name, new ReleaseCandidate(name, comp, compDir,</span>
+                        null, &quot;never released&quot;));
+<span class="fc" id="L119">                continue;</span>
+            }
+
+<span class="fc" id="L122">            int commitsSinceTag = commitsSinceTag(compDir, latestTag);</span>
+<span class="fc bfc" id="L123" title="All 2 branches covered.">            if (commitsSinceTag &gt; 0) {</span>
+<span class="fc" id="L124">                dirty.put(name, new ReleaseCandidate(name, comp, compDir,</span>
+                        latestTag, commitsSinceTag + &quot; commits since &quot; + latestTag));
+<span class="fc" id="L126">                continue;</span>
+            }
+
+<span class="fc" id="L129">            getLog().debug(&quot;Skipping &quot; + name + &quot; — clean (at &quot; + latestTag + &quot;)&quot;);</span>
+<span class="fc" id="L130">        }</span>
+
+<span class="fc bfc" id="L132" title="All 2 branches covered.">        if (dirty.isEmpty()) {</span>
+<span class="fc" id="L133">            getLog().info(&quot;No components need releasing. All are clean.&quot;);</span>
+<span class="fc" id="L134">            return;</span>
+        }
+
+        // ── 3. Topological sort of dirty components ───────────────────
+<span class="fc" id="L138">        List&lt;String&gt; releaseOrder = graph.topologicalSort().stream()</span>
+<span class="fc" id="L139">                .filter(dirty::containsKey)</span>
+<span class="fc" id="L140">                .toList();</span>
+
+        // ── 4. Report plan ────────────────────────────────────────────
+<span class="fc" id="L143">        getLog().info(&quot;════════════════════════════════════════════════════&quot;);</span>
+<span class="fc bfc" id="L144" title="All 2 branches covered.">        getLog().info(dryRun ? &quot;  WORKSPACE RELEASE — DRY RUN&quot; : &quot;  WORKSPACE RELEASE&quot;);</span>
+<span class="fc" id="L145">        getLog().info(&quot;════════════════════════════════════════════════════&quot;);</span>
+<span class="fc" id="L146">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L147">        getLog().info(&quot;Components to release (&quot; + releaseOrder.size() + &quot;):&quot;);</span>
+<span class="fc bfc" id="L148" title="All 2 branches covered.">        for (int i = 0; i &lt; releaseOrder.size(); i++) {</span>
+<span class="fc" id="L149">            ReleaseCandidate rc = dirty.get(releaseOrder.get(i));</span>
+<span class="fc" id="L150">            String version = currentVersion(rc.dir);</span>
+<span class="fc" id="L151">            getLog().info(&quot;  &quot; + (i + 1) + &quot;. &quot; + rc.name</span>
+                    + &quot; (&quot; + version + &quot;) — &quot; + rc.reason);
+        }
+<span class="fc" id="L154">        getLog().info(&quot;&quot;);</span>
+
+<span class="fc bfc" id="L156" title="All 2 branches covered.">        if (dryRun) {</span>
+<span class="fc" id="L157">            getLog().info(&quot;[DRY RUN] No releases executed.&quot;);</span>
+<span class="fc" id="L158">            return;</span>
+        }
+
+        // ── 5. Pre-release checkpoint ─────────────────────────────────
+<span class="fc bfc" id="L162" title="All 2 branches covered.">        if (!skipCheckpoint) {</span>
+            String checkpointName = &quot;pre-release-&quot;
+<span class="fc" id="L164">                    + Instant.now().atZone(ZoneOffset.UTC)</span>
+<span class="fc" id="L165">                            .format(DateTimeFormatter.ofPattern(&quot;yyyyMMdd-HHmmss&quot;));</span>
+<span class="fc" id="L166">            getLog().info(&quot;Creating pre-release checkpoint: &quot; + checkpointName);</span>
+<span class="fc" id="L167">            writeCheckpoint(root, graph, checkpointName);</span>
+        }
+
+        // ── 6. Release each component in order ────────────────────────
+<span class="fc" id="L171">        List&lt;String&gt; released = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L172">        Map&lt;String, String&gt; releasedVersions = new LinkedHashMap&lt;&gt;();</span>
+
+<span class="pc bpc" id="L174" title="1 of 2 branches missed.">        for (String name : releaseOrder) {</span>
+<span class="fc" id="L175">            ReleaseCandidate rc = dirty.get(name);</span>
+<span class="fc" id="L176">            getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L177">            getLog().info(&quot;────────────────────────────────────────────────&quot;);</span>
+<span class="fc" id="L178">            getLog().info(&quot;  Releasing: &quot; + rc.name);</span>
+<span class="fc" id="L179">            getLog().info(&quot;────────────────────────────────────────────────&quot;);</span>
+
+            // Update parent version if an upstream component was just released
+<span class="fc" id="L182">            updateParentVersions(rc, releasedVersions);</span>
+
+            // Derive release version from current SNAPSHOT
+<span class="fc" id="L185">            String currentVersion = currentVersion(rc.dir);</span>
+<span class="fc" id="L186">            String releaseVersion = currentVersion.replace(&quot;-SNAPSHOT&quot;, &quot;&quot;);</span>
+
+            try {
+                // Find mvnw or mvn
+<span class="fc" id="L190">                String mvn = findMvn(rc.dir);</span>
+
+<span class="nc" id="L192">                ReleaseSupport.exec(rc.dir, getLog(),</span>
+                        mvn, &quot;ike:release&quot;,
+                        &quot;-DpushRelease=&quot; + push,
+                        &quot;-B&quot;);
+
+<span class="nc" id="L197">                released.add(rc.name);</span>
+<span class="nc" id="L198">                releasedVersions.put(rc.name, releaseVersion);</span>
+<span class="nc" id="L199">                getLog().info(&quot;  ✓ Released &quot; + rc.name + &quot; &quot; + releaseVersion);</span>
+<span class="fc" id="L200">            } catch (Exception e) {</span>
+<span class="fc" id="L201">                getLog().error(&quot;  ✗ Failed to release &quot; + rc.name + &quot;: &quot; + e.getMessage());</span>
+<span class="fc" id="L202">                getLog().error(&quot;&quot;);</span>
+<span class="fc" id="L203">                getLog().error(&quot;Released so far: &quot; + released);</span>
+<span class="fc" id="L204">                getLog().error(&quot;Failed at: &quot; + rc.name);</span>
+<span class="fc" id="L205">                getLog().error(&quot;Remaining: &quot; + releaseOrder.subList(</span>
+<span class="fc" id="L206">                        releaseOrder.indexOf(name) + 1, releaseOrder.size()));</span>
+<span class="fc" id="L207">                throw new MojoExecutionException(</span>
+                        &quot;Workspace release failed at &quot; + rc.name, e);
+<span class="nc" id="L209">            }</span>
+<span class="nc" id="L210">        }</span>
+
+        // ── 7. Summary ───────────────────────────────────────────────
+<span class="nc" id="L213">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L214">        getLog().info(&quot;════════════════════════════════════════════════════&quot;);</span>
+<span class="nc" id="L215">        getLog().info(&quot;  WORKSPACE RELEASE COMPLETE&quot;);</span>
+<span class="nc" id="L216">        getLog().info(&quot;════════════════════════════════════════════════════&quot;);</span>
+<span class="nc bnc" id="L217" title="All 2 branches missed.">        for (var entry : releasedVersions.entrySet()) {</span>
+<span class="nc" id="L218">            getLog().info(&quot;  &quot; + entry.getKey() + &quot; → &quot; + entry.getValue());</span>
+<span class="nc" id="L219">        }</span>
+<span class="nc" id="L220">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L221">        finishReport(&quot;ws:release&quot;, report);</span>
+<span class="nc" id="L222">    }</span>
+
+    // ── Helper: find latest release tag ──────────────────────────────
+
+    private String latestReleaseTag(File compDir) {
+        try {
+<span class="fc" id="L228">            String tags = ReleaseSupport.execCapture(compDir,</span>
+                    &quot;git&quot;, &quot;tag&quot;, &quot;-l&quot;, &quot;v*&quot;, &quot;--sort=-version:refname&quot;);
+<span class="pc bpc" id="L230" title="1 of 4 branches missed.">            if (tags == null || tags.isBlank()) return null;</span>
+<span class="fc" id="L231">            return tags.lines().findFirst().orElse(null);</span>
+<span class="nc" id="L232">        } catch (Exception e) {</span>
+<span class="nc" id="L233">            return null;</span>
+        }
+    }
+
+    // ── Helper: count commits since tag ──────────────────────────────
+
+    private int commitsSinceTag(File compDir, String tag) {
+        try {
+<span class="fc" id="L241">            String count = ReleaseSupport.execCapture(compDir,</span>
+                    &quot;git&quot;, &quot;rev-list&quot;, tag + &quot;..HEAD&quot;, &quot;--count&quot;);
+<span class="fc" id="L243">            return Integer.parseInt(count.strip());</span>
+<span class="nc" id="L244">        } catch (Exception e) {</span>
+<span class="nc" id="L245">            return -1;</span>
+        }
+    }
+
+    // ── Helper: read current POM version ─────────────────────────────
+
+    private String currentVersion(File compDir) {
+        try {
+<span class="fc" id="L253">            Path pom = compDir.toPath().resolve(&quot;pom.xml&quot;);</span>
+<span class="fc" id="L254">            String content = Files.readString(pom, StandardCharsets.UTF_8);</span>
+<span class="fc" id="L255">            return extractVersionFromPom(content);</span>
+<span class="nc" id="L256">        } catch (Exception e) {</span>
+<span class="nc" id="L257">            return &quot;unknown&quot;;</span>
+        }
+    }
+
+    /**
+     * Extract the first {@code &lt;version&gt;} value from POM XML content.
+     *
+     * &lt;p&gt;This is a simple regex extraction — finds the first
+     * {@code &lt;version&gt;...&lt;/version&gt;} in the content. Good enough for
+     * workspace POMs where the project version appears early.
+     *
+     * @param pomContent raw POM XML as a string
+     * @return the version string, or {@code &quot;unknown&quot;} if not found
+     */
+    public static String extractVersionFromPom(String pomContent) {
+<span class="fc bfc" id="L272" title="All 4 branches covered.">        if (pomContent == null || pomContent.isBlank()) return &quot;unknown&quot;;</span>
+<span class="fc" id="L273">        var matcher = java.util.regex.Pattern.compile(</span>
+<span class="fc" id="L274">                &quot;&lt;version&gt;([^&lt;]+)&lt;/version&gt;&quot;).matcher(pomContent);</span>
+<span class="fc bfc" id="L275" title="All 2 branches covered.">        if (matcher.find()) return matcher.group(1);</span>
+<span class="fc" id="L276">        return &quot;unknown&quot;;</span>
+    }
+
+    // ── Helper: update parent/BOM version in downstream POM ─────────
+
+    private void updateParentVersions(ReleaseCandidate rc,
+                                       Map&lt;String, String&gt; releasedVersions) {
+<span class="pc bpc" id="L283" title="1 of 2 branches missed.">        if (releasedVersions.isEmpty()) return;</span>
+
+        try {
+<span class="nc" id="L286">            Path pom = rc.dir.toPath().resolve(&quot;pom.xml&quot;);</span>
+<span class="nc" id="L287">            String content = Files.readString(pom, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L288">            String original = content;</span>
+
+            // Use explicit version-property declarations from depends-on edges
+<span class="nc bnc" id="L291" title="All 2 branches missed.">            for (network.ike.workspace.Dependency dep : rc.component.dependsOn()) {</span>
+<span class="nc" id="L292">                String upstreamName = dep.component();</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">                if (!releasedVersions.containsKey(upstreamName)) continue;</span>
+
+<span class="nc" id="L295">                String releasedVersion = releasedVersions.get(upstreamName);</span>
+<span class="nc" id="L296">                String nextSnapshot = bumpToNextSnapshot(releasedVersion);</span>
+
+                // Always try parent version update (matches &lt;parent&gt;&lt;artifactId&gt;)
+<span class="nc" id="L299">                content = updateParentVersion(content, upstreamName, nextSnapshot);</span>
+
+                // Use declared version-property if present
+<span class="nc bnc" id="L302" title="All 2 branches missed.">                if (dep.versionProperty() != null) {</span>
+<span class="nc" id="L303">                    content = updateVersionProperty(content, dep.versionProperty(), nextSnapshot);</span>
+<span class="nc" id="L304">                    getLog().info(&quot;    &quot; + rc.name + &quot;: &quot; + dep.versionProperty()</span>
+                            + &quot; → &quot; + nextSnapshot
+                            + &quot; (from &quot; + upstreamName + &quot; &quot; + releasedVersion + &quot;)&quot;);
+                } else {
+                    // Fallback: heuristic property name matching
+<span class="nc" id="L309">                    String propName1 = upstreamName + &quot;.version&quot;;</span>
+<span class="nc" id="L310">                    String propName2 = upstreamName.replace(&quot;-&quot;, &quot;.&quot;) + &quot;.version&quot;;</span>
+<span class="nc bnc" id="L311" title="All 2 branches missed.">                    for (String prop : List.of(propName1, propName2)) {</span>
+<span class="nc" id="L312">                        String before = content;</span>
+<span class="nc" id="L313">                        content = updateVersionProperty(content, prop, nextSnapshot);</span>
+<span class="nc bnc" id="L314" title="All 2 branches missed.">                        if (!content.equals(before)) {</span>
+<span class="nc" id="L315">                            getLog().info(&quot;    &quot; + rc.name + &quot;: &quot; + prop</span>
+                                    + &quot; → &quot; + nextSnapshot
+                                    + &quot; (heuristic, from &quot; + upstreamName + &quot;)&quot;);
+                        }
+<span class="nc" id="L319">                    }</span>
+                }
+<span class="nc" id="L321">            }</span>
+
+<span class="nc bnc" id="L323" title="All 2 branches missed.">            if (!content.equals(original)) {</span>
+<span class="nc" id="L324">                Files.writeString(pom, content, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L325">                getLog().info(&quot;  Updated version references in &quot; + rc.name + &quot;/pom.xml&quot;);</span>
+
+                // Stage and commit the version update
+<span class="nc" id="L328">                ReleaseSupport.exec(rc.dir, getLog(),</span>
+                        &quot;git&quot;, &quot;add&quot;, &quot;pom.xml&quot;);
+<span class="nc" id="L330">                ReleaseSupport.exec(rc.dir, getLog(),</span>
+                        &quot;git&quot;, &quot;commit&quot;, &quot;-m&quot;,
+                        &quot;chore: bump dependency versions after upstream release&quot;);
+            }
+<span class="nc" id="L334">        } catch (IOException | MojoExecutionException e) {</span>
+<span class="nc" id="L335">            getLog().warn(&quot;Could not update parent versions in &quot; + rc.name + &quot;: &quot; + e);</span>
+<span class="nc" id="L336">        }</span>
+<span class="nc" id="L337">    }</span>
+
+    /**
+     * Update the parent version in POM content when the parent's
+     * artifactId matches {@code parentArtifactId}.
+     *
+     * &lt;p&gt;Matches the pattern:
+     * {@code &lt;parent&gt;...&lt;artifactId&gt;name&lt;/artifactId&gt;...&lt;version&gt;old&lt;/version&gt;...&lt;/parent&gt;}
+     * and replaces the version with {@code newVersion}.
+     *
+     * @param pomContent       raw POM XML as a string
+     * @param parentArtifactId the parent artifact ID to match
+     * @param newVersion       the new version to set
+     * @return the updated POM content (unchanged if no match)
+     */
+    public static String updateParentVersion(String pomContent,
+                                              String parentArtifactId,
+                                              String newVersion) {
+<span class="fc" id="L355">        var parentPattern = java.util.regex.Pattern.compile(</span>
+                &quot;(&lt;parent&gt;\\s*&quot; +
+                &quot;&lt;groupId&gt;[^&lt;]+&lt;/groupId&gt;\\s*&quot; +
+<span class="fc" id="L358">                &quot;&lt;artifactId&gt;&quot; + java.util.regex.Pattern.quote(parentArtifactId)</span>
+                        + &quot;&lt;/artifactId&gt;\\s*&quot; +
+                &quot;&lt;version&gt;)[^&lt;]+(&lt;/version&gt;)&quot;,
+                java.util.regex.Pattern.DOTALL);
+<span class="fc" id="L362">        return parentPattern.matcher(pomContent)</span>
+<span class="fc" id="L363">                .replaceFirst(&quot;$1&quot; + newVersion + &quot;$2&quot;);</span>
+    }
+
+    /**
+     * Delegate to shared utility in {@link ReleaseSupport}.
+     *
+     * @param pomContent   the POM file content as a string
+     * @param propertyName the property element name to update
+     * @param newVersion   the new version value
+     * @return the updated POM content
+     */
+    public static String updateVersionProperty(String pomContent,
+                                                String propertyName,
+                                                String newVersion) {
+<span class="fc" id="L377">        return ReleaseSupport.updateVersionProperty(pomContent, propertyName, newVersion);</span>
+    }
+
+    // ── Helper: version bump ─────────────────────────────────────────
+
+    private String bumpToNextSnapshot(String releaseVersion) {
+<span class="nc" id="L383">        return VersionSupport.deriveNextSnapshot(releaseVersion);</span>
+    }
+
+    // ── Helper: write checkpoint YAML ────────────────────────────────
+
+    private void writeCheckpoint(File root, WorkspaceGraph graph, String name)
+            throws MojoExecutionException {
+<span class="fc" id="L390">        Path checkpointsDir = root.toPath().resolve(&quot;checkpoints&quot;);</span>
+        try {
+<span class="fc" id="L392">            Files.createDirectories(checkpointsDir);</span>
+<span class="fc" id="L393">            Path file = checkpointsDir.resolve(&quot;checkpoint-&quot; + name + &quot;.yaml&quot;);</span>
+
+            // Gather component data for the pure function
+<span class="fc" id="L396">            String timestamp = ISO_UTC.format(Instant.now());</span>
+<span class="fc" id="L397">            List&lt;String[]&gt; componentData = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L398" title="All 2 branches covered.">            for (String compName : graph.topologicalSort()) {</span>
+<span class="fc" id="L399">                File compDir = new File(root, compName);</span>
+<span class="pc bpc" id="L400" title="1 of 2 branches missed.">                if (!compDir.isDirectory()) continue;</span>
+<span class="fc" id="L401">                componentData.add(new String[]{</span>
+<span class="fc" id="L402">                        compName, gitBranch(compDir), gitShortSha(compDir),</span>
+<span class="fc" id="L403">                        currentVersion(compDir),</span>
+<span class="pc bpc" id="L404" title="1 of 2 branches missed.">                        String.valueOf(!gitStatus(compDir).isEmpty())</span>
+                });
+<span class="fc" id="L406">            }</span>
+
+<span class="fc" id="L408">            String yaml = buildPreReleaseCheckpointYaml(name, timestamp, componentData);</span>
+<span class="fc" id="L409">            Files.writeString(file, yaml, StandardCharsets.UTF_8);</span>
+<span class="fc" id="L410">            getLog().info(&quot;Checkpoint written: &quot; + file);</span>
+<span class="nc" id="L411">        } catch (IOException e) {</span>
+<span class="nc" id="L412">            getLog().warn(&quot;Could not write checkpoint: &quot; + e.getMessage());</span>
+<span class="fc" id="L413">        }</span>
+<span class="fc" id="L414">    }</span>
+
+    /**
+     * Build pre-release checkpoint YAML content from pre-gathered
+     * component data.
+     *
+     * &lt;p&gt;This is a pure function with no git or I/O dependencies,
+     * suitable for direct unit testing.
+     *
+     * @param name          checkpoint name
+     * @param timestamp     ISO-8601 UTC timestamp
+     * @param componentData list of {@code [name, branch, sha, version, dirty]}
+     *                      arrays for each present component
+     * @return YAML checkpoint content
+     */
+    public static String buildPreReleaseCheckpointYaml(
+            String name, String timestamp, List&lt;String[]&gt; componentData) {
+<span class="fc" id="L431">        StringBuilder yaml = new StringBuilder();</span>
+<span class="fc" id="L432">        yaml.append(&quot;# Workspace checkpoint: &quot;).append(name).append(&quot;\n&quot;);</span>
+<span class="fc" id="L433">        yaml.append(&quot;# Generated: &quot;).append(timestamp).append(&quot;\n&quot;);</span>
+<span class="fc" id="L434">        yaml.append(&quot;checkpoint: &quot;).append(name).append(&quot;\n&quot;);</span>
+<span class="fc" id="L435">        yaml.append(&quot;timestamp: &quot;).append(timestamp).append(&quot;\n&quot;);</span>
+<span class="fc" id="L436">        yaml.append(&quot;components:\n&quot;);</span>
+
+<span class="fc bfc" id="L438" title="All 2 branches covered.">        for (String[] comp : componentData) {</span>
+<span class="fc" id="L439">            yaml.append(&quot;  &quot;).append(comp[0]).append(&quot;:\n&quot;);</span>
+<span class="fc" id="L440">            yaml.append(&quot;    branch: &quot;).append(comp[1]).append(&quot;\n&quot;);</span>
+<span class="fc" id="L441">            yaml.append(&quot;    sha: &quot;).append(comp[2]).append(&quot;\n&quot;);</span>
+<span class="fc" id="L442">            yaml.append(&quot;    version: &quot;).append(comp[3]).append(&quot;\n&quot;);</span>
+<span class="fc" id="L443">            yaml.append(&quot;    dirty: &quot;).append(comp[4]).append(&quot;\n&quot;);</span>
+<span class="fc" id="L444">        }</span>
+
+<span class="fc" id="L446">        return yaml.toString();</span>
+    }
+
+    // ── Helper: find mvn or mvnw ─────────────────────────────────────
+
+    private String findMvn(File compDir) {
+<span class="fc" id="L452">        return resolveMvnCommand(compDir);</span>
+    }
+
+    /**
+     * Resolve the Maven executable for a component directory.
+     *
+     * &lt;p&gt;Checks for {@code mvnw} (executable) and {@code mvnw.cmd} in
+     * the given directory. Falls back to {@code &quot;mvn&quot;} from the system
+     * PATH if no wrapper is found.
+     *
+     * @param compDir the component directory to check
+     * @return absolute path to mvnw/mvnw.cmd, or {@code &quot;mvn&quot;}
+     */
+    public static String resolveMvnCommand(File compDir) {
+<span class="fc" id="L466">        File mvnw = new File(compDir, &quot;mvnw&quot;);</span>
+<span class="fc bfc" id="L467" title="All 4 branches covered.">        if (mvnw.exists() &amp;&amp; mvnw.canExecute()) {</span>
+<span class="fc" id="L468">            return mvnw.getAbsolutePath();</span>
+        }
+<span class="fc" id="L470">        File mvnwCmd = new File(compDir, &quot;mvnw.cmd&quot;);</span>
+<span class="fc bfc" id="L471" title="All 2 branches covered.">        if (mvnwCmd.exists()) {</span>
+<span class="fc" id="L472">            return mvnwCmd.getAbsolutePath();</span>
+        }
+<span class="fc" id="L474">        return &quot;mvn&quot;;</span>
+    }
+
+    // ── Record for candidate tracking ────────────────────────────────
+
+<span class="fc" id="L479">    private record ReleaseCandidate(</span>
+            String name,
+            Component component,
+            File dir,
+            String lastTag,
+            String reason) {}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

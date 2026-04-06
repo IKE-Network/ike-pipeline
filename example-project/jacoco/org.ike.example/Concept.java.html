@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Concept.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Example Project</a> &gt; <a href="index.source.html" class="el_package">org.ike.example</a> &gt; <span class="el_source">Concept.java</span></div><h1>Concept.java</h1><pre class="source lang-java linenums">/*
+ * Copyright 2025 IKE Community
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ike.example;
+
+/**
+ * Example terminology concept demonstrating SNOMED CT-like structures.
+ * 
+ * &lt;p&gt;This class represents a simple clinical concept with:
+ * &lt;ul&gt;
+ *   &lt;li&gt;Unique identifier (SCTID-like)&lt;/li&gt;
+ *   &lt;li&gt;Fully specified name&lt;/li&gt;
+ *   &lt;li&gt;Preferred term&lt;/li&gt;
+ *   &lt;li&gt;Definition&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * @author IKE Community
+ * @version 1.0.0
+ */
+public record Concept(
+    long conceptId,
+    String fullySpecifiedName,
+    String preferredTerm,
+    String definition
+) {
+    
+    /**
+     * Creates a concept with validation.
+     * 
+     * @param conceptId unique identifier
+     * @param fullySpecifiedName the FSN
+     * @param preferredTerm the PT
+     * @param definition clinical definition
+     * @throws IllegalArgumentException if any field is invalid
+     */
+<span class="fc" id="L48">    public Concept {</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">        if (conceptId &lt;= 0) {</span>
+<span class="fc" id="L50">            throw new IllegalArgumentException(&quot;Concept ID must be positive&quot;);</span>
+        }
+<span class="pc bpc" id="L52" title="1 of 4 branches missed.">        if (fullySpecifiedName == null || fullySpecifiedName.isBlank()) {</span>
+<span class="fc" id="L53">            throw new IllegalArgumentException(&quot;Fully specified name required&quot;);</span>
+        }
+<span class="pc bpc" id="L55" title="2 of 4 branches missed.">        if (preferredTerm == null || preferredTerm.isBlank()) {</span>
+<span class="nc" id="L56">            throw new IllegalArgumentException(&quot;Preferred term required&quot;);</span>
+        }
+<span class="pc bpc" id="L58" title="2 of 4 branches missed.">        if (definition == null || definition.isBlank()) {</span>
+<span class="nc" id="L59">            throw new IllegalArgumentException(&quot;Definition required&quot;);</span>
+        }
+<span class="fc" id="L61">    }</span>
+    
+    /**
+     * Determines if this concept is a primitive (non-fully-defined) concept.
+     * In a real SNOMED implementation, this would check the definition status.
+     * 
+     * @return true if primitive
+     */
+    public boolean isPrimitive() {
+        // Simplified: odd IDs are primitive
+<span class="fc bfc" id="L71" title="All 2 branches covered.">        return conceptId % 2 != 0;</span>
+    }
+    
+    /**
+     * Factory method for creating a clinical finding concept.
+     * 
+     * @param conceptId unique identifier
+     * @param fsn fully specified name (should include semantic tag)
+     * @param pt preferred term
+     * @param definition clinical definition
+     * @return new Concept instance
+     */
+    public static Concept clinicalFinding(long conceptId, String fsn, String pt, String definition) {
+<span class="fc bfc" id="L84" title="All 2 branches covered.">        if (!fsn.contains(&quot;(finding)&quot;)) {</span>
+<span class="fc" id="L85">            fsn = fsn + &quot; (finding)&quot;;</span>
+        }
+<span class="fc" id="L87">        return new Concept(conceptId, fsn, pt, definition);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

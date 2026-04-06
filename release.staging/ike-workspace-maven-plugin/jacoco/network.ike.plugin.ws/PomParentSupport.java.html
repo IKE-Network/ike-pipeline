@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PomParentSupport.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">PomParentSupport.java</span></div><h1>PomParentSupport.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * Utilities for reading and updating {@code &lt;parent&gt;} blocks in POM files.
+ *
+ * &lt;p&gt;Uses regex-based extraction for lightweight POM inspection without
+ * requiring a full DOM parse. Thread-safe — all methods are stateless.
+ */
+final class PomParentSupport {
+
+    private PomParentSupport() {}
+
+<span class="fc" id="L20">    private static final Pattern PARENT_BLOCK = Pattern.compile(</span>
+            &quot;(?s)&lt;parent&gt;\\s*&quot; +
+            &quot;&lt;groupId&gt;([^&lt;]+)&lt;/groupId&gt;\\s*&quot; +
+            &quot;&lt;artifactId&gt;([^&lt;]+)&lt;/artifactId&gt;\\s*&quot; +
+            &quot;&lt;version&gt;([^&lt;]*)&lt;/version&gt;&quot; +
+            &quot;.*?&lt;/parent&gt;&quot;);
+
+    /**
+     * Read the parent block from a POM file.
+     *
+     * @param pomFile path to pom.xml
+     * @return the parent info, or null if no parent block
+     * @throws IOException if the file cannot be read
+     */
+    static ParentInfo readParent(Path pomFile) throws IOException {
+<span class="fc" id="L35">        String content = Files.readString(pomFile, StandardCharsets.UTF_8);</span>
+<span class="fc" id="L36">        return readParent(content);</span>
+    }
+
+    /**
+     * Read the parent block from POM content.
+     *
+     * @param pomContent POM XML as a string
+     * @return the parent info, or null if no parent block
+     */
+    static ParentInfo readParent(String pomContent) {
+<span class="fc" id="L46">        Matcher m = PARENT_BLOCK.matcher(pomContent);</span>
+<span class="pc bpc" id="L47" title="1 of 2 branches missed.">        if (m.find()) {</span>
+<span class="nc" id="L48">            return new ParentInfo(m.group(1), m.group(2), m.group(3));</span>
+        }
+<span class="fc" id="L50">        return null;</span>
+    }
+
+    /**
+     * Update the parent version for a matching artifactId.
+     *
+     * @param pomContent      POM XML as a string
+     * @param parentArtifactId the artifactId to match in the parent block
+     * @param newVersion      the new version to set
+     * @return updated POM content (unchanged if no match)
+     */
+    static String updateParentVersion(String pomContent,
+                                       String parentArtifactId,
+                                       String newVersion) {
+<span class="nc" id="L64">        Pattern p = Pattern.compile(</span>
+                &quot;(?s)(&lt;parent&gt;\\s*&quot; +
+                &quot;&lt;groupId&gt;[^&lt;]+&lt;/groupId&gt;\\s*&quot; +
+<span class="nc" id="L67">                &quot;&lt;artifactId&gt;&quot; + Pattern.quote(parentArtifactId) + &quot;&lt;/artifactId&gt;\\s*&quot; +</span>
+                &quot;&lt;version&gt;)[^&lt;]*(&lt;/version&gt;)&quot;);
+<span class="nc" id="L69">        Matcher m = p.matcher(pomContent);</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        if (m.find()) {</span>
+<span class="nc" id="L71">            return m.replaceFirst(&quot;$1&quot; + Matcher.quoteReplacement(newVersion) + &quot;$2&quot;);</span>
+        }
+<span class="nc" id="L73">        return pomContent;</span>
+    }
+
+    /**
+     * Parsed parent block from a POM file.
+     *
+     * @param groupId    parent groupId
+     * @param artifactId parent artifactId
+     * @param version    parent version
+     */
+<span class="nc" id="L83">    record ParentInfo(String groupId, String artifactId, String version) {}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

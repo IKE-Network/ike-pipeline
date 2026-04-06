@@ -1,0 +1,473 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InitWorkspaceMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">InitWorkspaceMojo.java</span></div><h1>InitWorkspaceMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.plugin.ReleaseSupport;
+
+import network.ike.workspace.Component;
+import network.ike.workspace.Defaults;
+import network.ike.workspace.WorkspaceGraph;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
+
+/**
+ * Clone and initialize workspace components from the manifest.
+ *
+ * &lt;p&gt;Three initialization modes per component:
+ * &lt;ol&gt;
+ *   &lt;li&gt;&lt;b&gt;Already cloned&lt;/b&gt; — directory has {@code .git/}; skip.&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;Syncthing working tree&lt;/b&gt; — directory exists but no
+ *       {@code .git/}. Initializes git in-place: {@code git init},
+ *       adds the remote, fetches, and resets to match the remote branch.
+ *       This preserves file content synced from another machine.&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;Fresh clone&lt;/b&gt; — no directory; runs {@code git clone}.&lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * &lt;p&gt;Components are initialized in topological (dependency) order.
+ *
+ * &lt;pre&gt;{@code
+ * mvn ike:init
+ * mvn ike:init -Dgroup=studio
+ * mvn ike:init -Dgroup=docs
+ * }&lt;/pre&gt;
+ */
+@Mojo(name = &quot;init&quot;, requiresProject = false, threadSafe = true)
+public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
+
+    /**
+     * Restrict to a named group (or single component). Default: all.
+     */
+    @Parameter(property = &quot;group&quot;)
+    String group;
+
+    /** Creates this goal instance. */
+<span class="fc" id="L53">    public InitWorkspaceMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="fc" id="L57">        ReportLog report = startReport();</span>
+<span class="fc" id="L58">        WorkspaceGraph graph = loadGraph();</span>
+<span class="fc" id="L59">        File root = workspaceRoot();</span>
+<span class="fc" id="L60">        Defaults defaults = graph.manifest().defaults();</span>
+
+        Set&lt;String&gt; targets;
+<span class="pc bpc" id="L63" title="1 of 4 branches missed.">        if (group != null &amp;&amp; !group.isEmpty()) {</span>
+<span class="fc" id="L64">            targets = graph.expandGroup(group);</span>
+        } else {
+<span class="fc" id="L66">            targets = graph.manifest().components().keySet();</span>
+        }
+
+        // Sort in dependency order
+<span class="fc" id="L70">        List&lt;String&gt; sorted = graph.topologicalSort(new LinkedHashSet&lt;&gt;(targets));</span>
+
+<span class="fc" id="L72">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L73">        getLog().info(header(&quot;Init&quot;));</span>
+<span class="fc" id="L74">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        getLog().info(&quot;  Target: &quot; + (group != null ? group : &quot;all&quot;)</span>
+<span class="fc" id="L76">                + &quot; (&quot; + sorted.size() + &quot; components)&quot;);</span>
+<span class="fc" id="L77">        getLog().info(&quot;  Root:   &quot; + root.getAbsolutePath());</span>
+<span class="pc bpc" id="L78" title="1 of 2 branches missed.">        if (defaults.mavenVersion() != null) {</span>
+<span class="nc" id="L79">            getLog().info(&quot;  Maven:  &quot; + defaults.mavenVersion() + &quot; (default)&quot;);</span>
+        }
+<span class="fc" id="L81">        getLog().info(&quot;&quot;);</span>
+
+<span class="fc" id="L83">        int cloned = 0;</span>
+<span class="fc" id="L84">        int syncthing = 0;</span>
+<span class="fc" id="L85">        int skipped = 0;</span>
+<span class="fc" id="L86">        int wrappers = 0;</span>
+
+<span class="fc bfc" id="L88" title="All 2 branches covered.">        for (String name : sorted) {</span>
+<span class="fc" id="L89">            Component component = graph.manifest().components().get(name);</span>
+<span class="fc" id="L90">            File dir = new File(root, name);</span>
+<span class="fc" id="L91">            File gitDir = new File(dir, &quot;.git&quot;);</span>
+
+<span class="fc bfc" id="L93" title="All 2 branches covered.">            if (gitDir.exists()) {</span>
+                // Already a git repo — still ensure wrapper and jvm.config are current
+<span class="fc" id="L95">                getLog().info(&quot;  ✓ &quot; + name + &quot; — already initialized&quot;);</span>
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">                if (ensureMavenWrapper(dir, component, defaults)) {</span>
+<span class="nc" id="L97">                    wrappers++;</span>
+                }
+<span class="fc" id="L99">                ensureJvmConfig(dir);</span>
+<span class="fc" id="L100">                skipped++;</span>
+<span class="fc" id="L101">                continue;</span>
+            }
+
+<span class="fc" id="L104">            String repo = component.repo();</span>
+<span class="fc" id="L105">            String branch = component.branch();</span>
+
+<span class="pc bpc" id="L107" title="2 of 4 branches missed.">            if (repo == null || repo.isEmpty()) {</span>
+<span class="nc" id="L108">                getLog().warn(&quot;  ⚠ &quot; + name + &quot; — no repo URL, skipping&quot;);</span>
+<span class="nc" id="L109">                continue;</span>
+            }
+
+<span class="pc bpc" id="L112" title="1 of 2 branches missed.">            if (dir.exists()) {</span>
+                // Syncthing working tree — init git in-place
+<span class="nc" id="L114">                getLog().info(&quot;  ↻ &quot; + name</span>
+                        + &quot; — initializing git in existing directory (Syncthing)&quot;);
+<span class="nc" id="L116">                initSyncthingRepo(dir, repo, branch);</span>
+<span class="nc" id="L117">                installHooks(dir);</span>
+<span class="nc bnc" id="L118" title="All 2 branches missed.">                if (ensureMavenWrapper(dir, component, defaults)) {</span>
+<span class="nc" id="L119">                    wrappers++;</span>
+                }
+<span class="nc" id="L121">                ensureJvmConfig(dir);</span>
+<span class="nc" id="L122">                syncthing++;</span>
+            } else {
+                // Fresh clone
+<span class="fc" id="L125">                getLog().info(&quot;  ↓ &quot; + name + &quot; — cloning from &quot; + repo);</span>
+<span class="fc" id="L126">                cloneRepo(root, name, repo, branch);</span>
+<span class="fc" id="L127">                File componentDir = new File(root, name);</span>
+<span class="fc" id="L128">                installHooks(componentDir);</span>
+<span class="pc bpc" id="L129" title="1 of 2 branches missed.">                if (ensureMavenWrapper(componentDir, component, defaults)) {</span>
+<span class="nc" id="L130">                    wrappers++;</span>
+                }
+<span class="fc" id="L132">                ensureJvmConfig(componentDir);</span>
+<span class="fc" id="L133">                cloned++;</span>
+            }
+<span class="fc" id="L135">        }</span>
+
+        // Ensure Maven wrapper at the workspace root itself (the aggregator POM)
+<span class="pc bpc" id="L138" title="1 of 2 branches missed.">        if (ensureWorkspaceRootWrapper(root, defaults)) {</span>
+<span class="nc" id="L139">            wrappers++;</span>
+        }
+
+<span class="fc" id="L142">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L143">        getLog().info(&quot;  Done: &quot; + cloned + &quot; cloned, &quot; + syncthing</span>
+                + &quot; Syncthing-initialized, &quot; + skipped + &quot; already present&quot;
+<span class="pc bpc" id="L145" title="1 of 2 branches missed.">                + (wrappers &gt; 0 ? &quot;, &quot; + wrappers + &quot; Maven wrappers installed/updated&quot; : &quot;&quot;));</span>
+<span class="fc" id="L146">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L147">        finishReport(&quot;ws:init&quot;, report);</span>
+<span class="fc" id="L148">    }</span>
+
+    /**
+     * Initialize a git repo inside an existing directory (Syncthing case).
+     * The directory has files but no .git — we init, add remote, fetch,
+     * and reset to match the remote branch without overwriting working-tree files.
+     */
+    private void initSyncthingRepo(File dir, String repo, String branch)
+            throws MojoExecutionException {
+<span class="nc" id="L157">        ReleaseSupport.exec(dir, getLog(), &quot;git&quot;, &quot;init&quot;);</span>
+<span class="nc" id="L158">        ReleaseSupport.exec(dir, getLog(), &quot;git&quot;, &quot;remote&quot;, &quot;add&quot;, &quot;origin&quot;, repo);</span>
+<span class="nc" id="L159">        ReleaseSupport.exec(dir, getLog(), &quot;git&quot;, &quot;fetch&quot;, &quot;origin&quot;, branch);</span>
+        // Mixed reset: updates HEAD and index to match remote, keeps working tree
+<span class="nc" id="L161">        ReleaseSupport.exec(dir, getLog(),</span>
+                &quot;git&quot;, &quot;reset&quot;, &quot;origin/&quot; + branch);
+<span class="nc" id="L163">    }</span>
+
+    /**
+     * Standard git clone into a new directory.
+     */
+    private void cloneRepo(File root, String name, String repo, String branch)
+            throws MojoExecutionException {
+<span class="fc" id="L170">        ReleaseSupport.exec(root, getLog(),</span>
+                &quot;git&quot;, &quot;clone&quot;, &quot;-b&quot;, branch, repo, name);
+<span class="fc" id="L172">    }</span>
+
+    /**
+     * Resolve the effective Maven version for a component: component override,
+     * then workspace default, then null (no wrapper).
+     */
+    private String resolveMavenVersion(Component component, Defaults defaults) {
+<span class="pc bpc" id="L179" title="1 of 2 branches missed.">        if (component.mavenVersion() != null) {</span>
+<span class="nc" id="L180">            return component.mavenVersion();</span>
+        }
+<span class="fc" id="L182">        return defaults.mavenVersion();</span>
+    }
+
+    /**
+     * Ensure the Maven wrapper is installed at the workspace root directory.
+     * The workspace aggregator POM needs the wrapper so that IntelliJ (and
+     * command-line builds) resolve to the correct Maven version rather than
+     * falling back to the system default.
+     *
+     * &lt;p&gt;Uses the workspace default maven-version from {@code workspace.yaml}.
+     *
+     * @param root     the workspace root directory
+     * @param defaults workspace defaults
+     * @return true if wrapper was installed or updated
+     */
+    private boolean ensureWorkspaceRootWrapper(File root, Defaults defaults) {
+<span class="fc" id="L198">        String mavenVersion = defaults.mavenVersion();</span>
+<span class="pc bpc" id="L199" title="1 of 2 branches missed.">        if (mavenVersion == null) {</span>
+<span class="fc" id="L200">            return false;</span>
+        }
+
+<span class="nc" id="L203">        File pomFile = new File(root, &quot;pom.xml&quot;);</span>
+<span class="nc bnc" id="L204" title="All 2 branches missed.">        if (!pomFile.exists()) {</span>
+<span class="nc" id="L205">            return false;</span>
+        }
+
+        try {
+<span class="nc" id="L209">            Path wrapperDir = root.toPath().resolve(&quot;.mvn&quot;).resolve(&quot;wrapper&quot;);</span>
+<span class="nc" id="L210">            Path propsFile = wrapperDir.resolve(&quot;maven-wrapper.properties&quot;);</span>
+
+<span class="nc bnc" id="L212" title="All 2 branches missed.">            if (propsFile.toFile().exists()) {</span>
+<span class="nc" id="L213">                Properties existing = new Properties();</span>
+<span class="nc" id="L214">                try (var reader = Files.newBufferedReader(propsFile, StandardCharsets.UTF_8)) {</span>
+<span class="nc" id="L215">                    existing.load(reader);</span>
+                }
+<span class="nc" id="L217">                String currentVersion = existing.getProperty(&quot;maven.version&quot;);</span>
+<span class="nc bnc" id="L218" title="All 2 branches missed.">                if (mavenVersion.equals(currentVersion)) {</span>
+<span class="nc" id="L219">                    getLog().debug(&quot;    Workspace root Maven wrapper already at &quot; + mavenVersion);</span>
+<span class="nc" id="L220">                    return false;</span>
+                }
+<span class="nc" id="L222">                getLog().info(&quot;  ↻ workspace root — updating Maven wrapper: &quot;</span>
+                        + currentVersion + &quot; → &quot; + mavenVersion);
+<span class="nc" id="L224">            } else {</span>
+<span class="nc" id="L225">                getLog().info(&quot;  + workspace root — installing Maven wrapper for Maven &quot;</span>
+                        + mavenVersion);
+            }
+
+<span class="nc" id="L229">            Files.createDirectories(wrapperDir);</span>
+
+<span class="nc" id="L231">            String props = &quot;# Maven Wrapper properties — managed by ike:init from workspace.yaml\n&quot;</span>
+                    + &quot;maven.version=&quot; + mavenVersion + &quot;\n&quot;
+                    + &quot;distributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/&quot;
+                    + &quot;apache-maven/&quot; + mavenVersion + &quot;/apache-maven-&quot; + mavenVersion
+                    + &quot;-bin.zip\n&quot;;
+<span class="nc" id="L236">            Files.writeString(propsFile, props, StandardCharsets.UTF_8);</span>
+
+<span class="nc" id="L238">            Path mvnw = root.toPath().resolve(&quot;mvnw&quot;);</span>
+<span class="nc bnc" id="L239" title="All 2 branches missed.">            if (!mvnw.toFile().exists()) {</span>
+<span class="nc" id="L240">                writeMvnwScript(mvnw);</span>
+            }
+
+<span class="nc" id="L243">            Path mvnwCmd = root.toPath().resolve(&quot;mvnw.cmd&quot;);</span>
+<span class="nc bnc" id="L244" title="All 2 branches missed.">            if (!mvnwCmd.toFile().exists()) {</span>
+<span class="nc" id="L245">                writeMvnwCmdScript(mvnwCmd);</span>
+            }
+
+<span class="nc" id="L248">            return true;</span>
+<span class="nc" id="L249">        } catch (IOException e) {</span>
+<span class="nc" id="L250">            getLog().warn(&quot;    Could not install workspace root Maven wrapper: &quot; + e.getMessage());</span>
+<span class="nc" id="L251">            return false;</span>
+        }
+    }
+
+    /**
+     * Ensure the Maven wrapper is installed and points to the correct version.
+     * Writes {@code .mvn/wrapper/maven-wrapper.properties} and the
+     * {@code mvnw} / {@code mvnw.cmd} launcher scripts.
+     *
+     * &lt;p&gt;Skips if no maven-version is configured for this component.
+     * Updates the properties file if the version has changed (e.g., after
+     * a branch switch updates workspace.yaml).
+     *
+     * @param componentDir the component root directory
+     * @param component    the component definition
+     * @param defaults     workspace defaults
+     * @return true if wrapper was installed or updated
+     */
+    private boolean ensureMavenWrapper(File componentDir, Component component,
+                                        Defaults defaults) {
+<span class="fc" id="L271">        String mavenVersion = resolveMavenVersion(component, defaults);</span>
+<span class="pc bpc" id="L272" title="1 of 2 branches missed.">        if (mavenVersion == null) {</span>
+<span class="fc" id="L273">            return false;</span>
+        }
+
+        // Only install wrapper if the component has a pom.xml (it's a Maven project)
+<span class="nc" id="L277">        File pomFile = new File(componentDir, &quot;pom.xml&quot;);</span>
+<span class="nc bnc" id="L278" title="All 2 branches missed.">        if (!pomFile.exists()) {</span>
+<span class="nc" id="L279">            return false;</span>
+        }
+
+        try {
+<span class="nc" id="L283">            Path wrapperDir = componentDir.toPath().resolve(&quot;.mvn&quot;).resolve(&quot;wrapper&quot;);</span>
+<span class="nc" id="L284">            Path propsFile = wrapperDir.resolve(&quot;maven-wrapper.properties&quot;);</span>
+
+            // Check if already at the correct version
+<span class="nc bnc" id="L287" title="All 2 branches missed.">            if (propsFile.toFile().exists()) {</span>
+<span class="nc" id="L288">                Properties existing = new Properties();</span>
+<span class="nc" id="L289">                try (var reader = Files.newBufferedReader(propsFile, StandardCharsets.UTF_8)) {</span>
+<span class="nc" id="L290">                    existing.load(reader);</span>
+                }
+<span class="nc" id="L292">                String currentVersion = existing.getProperty(&quot;maven.version&quot;);</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">                if (mavenVersion.equals(currentVersion)) {</span>
+<span class="nc" id="L294">                    getLog().debug(&quot;    Maven wrapper already at &quot; + mavenVersion);</span>
+<span class="nc" id="L295">                    return false;</span>
+                }
+<span class="nc" id="L297">                getLog().info(&quot;    Updating Maven wrapper: &quot; + currentVersion</span>
+                        + &quot; → &quot; + mavenVersion);
+<span class="nc" id="L299">            } else {</span>
+<span class="nc" id="L300">                getLog().info(&quot;    Installing Maven wrapper for Maven &quot; + mavenVersion);</span>
+            }
+
+            // Create .mvn/wrapper/ directory
+<span class="nc" id="L304">            Files.createDirectories(wrapperDir);</span>
+
+            // Write maven-wrapper.properties
+<span class="nc" id="L307">            String props = &quot;# Maven Wrapper properties — managed by ike:init from workspace.yaml\n&quot;</span>
+                    + &quot;maven.version=&quot; + mavenVersion + &quot;\n&quot;
+                    + &quot;distributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/&quot;
+                    + &quot;apache-maven/&quot; + mavenVersion + &quot;/apache-maven-&quot; + mavenVersion
+                    + &quot;-bin.zip\n&quot;;
+<span class="nc" id="L312">            Files.writeString(propsFile, props, StandardCharsets.UTF_8);</span>
+
+            // Write mvnw launcher script (Unix)
+<span class="nc" id="L315">            Path mvnw = componentDir.toPath().resolve(&quot;mvnw&quot;);</span>
+<span class="nc bnc" id="L316" title="All 2 branches missed.">            if (!mvnw.toFile().exists()) {</span>
+<span class="nc" id="L317">                writeMvnwScript(mvnw);</span>
+            }
+
+            // Write mvnw.cmd launcher script (Windows)
+<span class="nc" id="L321">            Path mvnwCmd = componentDir.toPath().resolve(&quot;mvnw.cmd&quot;);</span>
+<span class="nc bnc" id="L322" title="All 2 branches missed.">            if (!mvnwCmd.toFile().exists()) {</span>
+<span class="nc" id="L323">                writeMvnwCmdScript(mvnwCmd);</span>
+            }
+
+<span class="nc" id="L326">            return true;</span>
+<span class="nc" id="L327">        } catch (IOException e) {</span>
+<span class="nc" id="L328">            getLog().warn(&quot;    Could not install Maven wrapper: &quot; + e.getMessage());</span>
+<span class="nc" id="L329">            return false;</span>
+        }
+    }
+
+    /**
+     * Write the Unix mvnw launcher script. This is the standard Maven Wrapper
+     * bootstrap script that downloads the correct Maven version on first use.
+     */
+    private void writeMvnwScript(Path mvnw) throws IOException {
+<span class="nc" id="L338">        String script = &quot;&quot;&quot;</span>
+                #!/bin/sh
+                # Maven Wrapper launcher — installed by ike:init
+                # Downloads and caches the Maven version specified in
+                # .mvn/wrapper/maven-wrapper.properties
+                #
+                # This is a minimal bootstrap. For the full-featured wrapper script,
+                # run: mvn wrapper:wrapper
+
+                set -e
+
+                PROPS_FILE=&quot;$(dirname &quot;$0&quot;)/.mvn/wrapper/maven-wrapper.properties&quot;
+                if [ ! -f &quot;$PROPS_FILE&quot; ]; then
+                    echo &quot;Error: $PROPS_FILE not found&quot; &gt;&amp;2
+                    exit 1
+                fi
+
+                DIST_URL=$(grep '^distributionUrl=' &quot;$PROPS_FILE&quot; | cut -d'=' -f2-)
+                MAVEN_VERSION=$(grep '^maven.version=' &quot;$PROPS_FILE&quot; | cut -d'=' -f2-)
+
+                WRAPPER_HOME=&quot;${HOME}/.m2/wrapper/dists/apache-maven-${MAVEN_VERSION}&quot;
+                MAVEN_HOME=&quot;${WRAPPER_HOME}/apache-maven-${MAVEN_VERSION}&quot;
+
+                if [ ! -d &quot;$MAVEN_HOME&quot; ]; then
+                    echo &quot;Downloading Maven ${MAVEN_VERSION}...&quot;
+                    mkdir -p &quot;$WRAPPER_HOME&quot;
+                    ZIP_FILE=&quot;${WRAPPER_HOME}/apache-maven-${MAVEN_VERSION}-bin.zip&quot;
+                    curl -fsSL -o &quot;$ZIP_FILE&quot; &quot;$DIST_URL&quot;
+                    unzip -qo &quot;$ZIP_FILE&quot; -d &quot;$WRAPPER_HOME&quot;
+                    rm -f &quot;$ZIP_FILE&quot;
+                    echo &quot;Maven ${MAVEN_VERSION} installed to ${MAVEN_HOME}&quot;
+                fi
+
+                exec &quot;$MAVEN_HOME/bin/mvn&quot; &quot;$@&quot;
+                &quot;&quot;&quot;;
+<span class="nc" id="L373">        Files.writeString(mvnw, script, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L374">        mvnw.toFile().setExecutable(true);</span>
+<span class="nc" id="L375">    }</span>
+
+    /**
+     * Write the Windows mvnw.cmd launcher script.
+     */
+    private void writeMvnwCmdScript(Path mvnwCmd) throws IOException {
+<span class="nc" id="L381">        String script = &quot;&quot;&quot;</span>
+                @REM Maven Wrapper launcher — installed by ike:init
+                @REM Downloads and caches the Maven version specified in
+                @REM .mvn/wrapper/maven-wrapper.properties
+                @echo off
+                setlocal
+
+                set &quot;PROPS_FILE=%~dp0.mvn\\wrapper\\maven-wrapper.properties&quot;
+                if not exist &quot;%PROPS_FILE%&quot; (
+                    echo Error: %PROPS_FILE% not found &gt;&amp;2
+                    exit /b 1
+                )
+
+                for /f &quot;tokens=1,* delims==&quot; %%a in ('findstr &quot;^maven.version=&quot; &quot;%PROPS_FILE%&quot;') do set &quot;MAVEN_VERSION=%%b&quot;
+                for /f &quot;tokens=1,* delims==&quot; %%a in ('findstr &quot;^distributionUrl=&quot; &quot;%PROPS_FILE%&quot;') do set &quot;DIST_URL=%%b&quot;
+
+                set &quot;WRAPPER_HOME=%USERPROFILE%\\.m2\\wrapper\\dists\\apache-maven-%MAVEN_VERSION%&quot;
+                set &quot;MAVEN_HOME=%WRAPPER_HOME%\\apache-maven-%MAVEN_VERSION%&quot;
+
+                if not exist &quot;%MAVEN_HOME%&quot; (
+                    echo Downloading Maven %MAVEN_VERSION%...
+                    mkdir &quot;%WRAPPER_HOME%&quot; 2&gt;nul
+                    set &quot;ZIP_FILE=%WRAPPER_HOME%\\apache-maven-%MAVEN_VERSION%-bin.zip&quot;
+                    powershell -Command &quot;Invoke-WebRequest -Uri '%DIST_URL%' -OutFile '%ZIP_FILE%'&quot;
+                    powershell -Command &quot;Expand-Archive -Path '%ZIP_FILE%' -DestinationPath '%WRAPPER_HOME%' -Force&quot;
+                    del &quot;%ZIP_FILE%&quot;
+                    echo Maven %MAVEN_VERSION% installed to %MAVEN_HOME%
+                )
+
+                &quot;%MAVEN_HOME%\\bin\\mvn.cmd&quot; %*
+                &quot;&quot;&quot;;
+<span class="nc" id="L412">        Files.writeString(mvnwCmd, script, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L413">    }</span>
+
+    /**
+     * Ensure {@code .mvn/jvm.config} exists with standard JVM flags.
+     * Only applies to Maven projects (must have a {@code pom.xml}).
+     * Does not overwrite an existing file.
+     */
+    private void ensureJvmConfig(File componentDir) {
+<span class="fc" id="L421">        File pomFile = new File(componentDir, &quot;pom.xml&quot;);</span>
+<span class="pc bpc" id="L422" title="1 of 2 branches missed.">        if (!pomFile.exists()) {</span>
+<span class="nc" id="L423">            return;</span>
+        }
+
+        try {
+<span class="fc" id="L427">            Path mvnDir = componentDir.toPath().resolve(&quot;.mvn&quot;);</span>
+<span class="fc" id="L428">            Path jvmConfig = mvnDir.resolve(&quot;jvm.config&quot;);</span>
+
+<span class="pc bpc" id="L430" title="1 of 2 branches missed.">            if (jvmConfig.toFile().exists()) {</span>
+<span class="nc" id="L431">                return;</span>
+            }
+
+<span class="fc" id="L434">            Files.createDirectories(mvnDir);</span>
+<span class="fc" id="L435">            String config = &quot;-Dpolyglotimpl.AttachLibraryFailureAction=ignore\n&quot;;</span>
+<span class="fc" id="L436">            Files.writeString(jvmConfig, config, StandardCharsets.UTF_8);</span>
+<span class="fc" id="L437">            getLog().info(&quot;    Created .mvn/jvm.config&quot;);</span>
+<span class="nc" id="L438">        } catch (IOException e) {</span>
+<span class="nc" id="L439">            getLog().warn(&quot;    Could not create jvm.config: &quot; + e.getMessage());</span>
+<span class="fc" id="L440">        }</span>
+<span class="fc" id="L441">    }</span>
+
+    /**
+     * Install defensive git hooks in the component's .git/hooks/ directory.
+     * Skips if the hook already exists (don't overwrite custom hooks).
+     */
+    private void installHooks(File componentDir) {
+<span class="fc" id="L448">        File hooksDir = new File(componentDir, &quot;.git/hooks&quot;);</span>
+<span class="fc" id="L449">        File postCheckout = new File(hooksDir, &quot;post-checkout&quot;);</span>
+
+<span class="pc bpc" id="L451" title="1 of 2 branches missed.">        if (postCheckout.exists()) {</span>
+<span class="nc" id="L452">            getLog().debug(&quot;  Hook already exists: &quot; + postCheckout);</span>
+<span class="nc" id="L453">            return;</span>
+        }
+
+        try {
+<span class="pc bpc" id="L457" title="1 of 2 branches missed.">            if (!hooksDir.exists()) {</span>
+<span class="nc" id="L458">                hooksDir.mkdirs();</span>
+            }
+<span class="fc" id="L460">            String hookScript = &quot;#!/bin/sh\n&quot;</span>
+                    + &quot;# Installed by ike:init \u2014 warns on direct branching.\n&quot;
+                    + &quot;# Remove this file to disable the check.\n&quot;
+                    + &quot;mvn -q ike:check-branch 2&gt;/dev/null\n&quot;;
+<span class="fc" id="L464">            java.nio.file.Files.writeString(postCheckout.toPath(), hookScript,</span>
+                    java.nio.charset.StandardCharsets.UTF_8);
+<span class="fc" id="L466">            postCheckout.setExecutable(true);</span>
+<span class="fc" id="L467">            getLog().info(&quot;    Installed post-checkout hook&quot;);</span>
+<span class="nc" id="L468">        } catch (java.io.IOException e) {</span>
+<span class="nc" id="L469">            getLog().warn(&quot;    Could not install hook: &quot; + e.getMessage());</span>
+<span class="fc" id="L470">        }</span>
+<span class="fc" id="L471">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

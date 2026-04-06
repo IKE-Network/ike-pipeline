@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FeatureAbandonMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">FeatureAbandonMojo.java</span></div><h1>FeatureAbandonMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.plugin.ReleaseSupport;
+
+import network.ike.workspace.ManifestWriter;
+import network.ike.workspace.WorkspaceGraph;
+import network.ike.plugin.ws.vcs.VcsOperations;
+import network.ike.plugin.ws.vcs.VcsState;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Abandon a feature branch across all workspace components.
+ *
+ * &lt;p&gt;Checks out the default branch (or a specified target branch) in
+ * each component that is currently on the feature branch, then deletes
+ * the feature branch locally. Optionally deletes the remote branches
+ * as well.
+ *
+ * &lt;p&gt;Components are processed in reverse topological order (downstream
+ * first) to avoid transient dependency issues.
+ *
+ * &lt;p&gt;Safety: warns about unmerged commits before deleting. Use
+ * {@code -Dforce=true} to suppress the warning and force-delete.
+ *
+ * &lt;pre&gt;{@code
+ * mvn ike:feature-abandon -Dfeature=my-experiment
+ * mvn ike:feature-abandon -Dfeature=dead-end -DdeleteRemote=true
+ * mvn ike:feature-abandon -Dfeature=stale -Dforce=true
+ * }&lt;/pre&gt;
+ *
+ * @see FeatureStartMojo for creating feature branches
+ */
+@Mojo(name = &quot;feature-abandon&quot;, requiresProject = false, threadSafe = true)
+public class FeatureAbandonMojo extends AbstractWorkspaceMojo {
+
+    /**
+     * Feature name. The branch {@code feature/&lt;name&gt;} will be abandoned.
+     */
+    @Parameter(property = &quot;feature&quot;)
+    String feature;
+
+    /**
+     * Restrict to a named group (or single component). Default: all.
+     */
+    @Parameter(property = &quot;group&quot;)
+    String group;
+
+    /**
+     * Branch to check out after abandoning. Defaults to the workspace
+     * default branch (usually {@code main}).
+     */
+    @Parameter(property = &quot;targetBranch&quot;)
+    String targetBranch;
+
+    /**
+     * Also delete remote feature branches on origin.
+     */
+    @Parameter(property = &quot;deleteRemote&quot;, defaultValue = &quot;false&quot;)
+    boolean deleteRemote;
+
+    /**
+     * Show what would happen without making changes.
+     */
+    @Parameter(property = &quot;dryRun&quot;, defaultValue = &quot;false&quot;)
+    boolean dryRun;
+
+    /**
+     * Force-delete branches even if they have unmerged commits.
+     */
+    @Parameter(property = &quot;force&quot;, defaultValue = &quot;false&quot;)
+    boolean force;
+
+    /** Creates this goal instance. */
+<span class="nc" id="L87">    public FeatureAbandonMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="nc" id="L91">        feature = requireParam(feature, &quot;feature&quot;,</span>
+                &quot;Feature name (branch will be feature/&lt;name&gt;)&quot;);
+<span class="nc" id="L93">        String branchName = &quot;feature/&quot; + feature;</span>
+
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        if (!isWorkspaceMode()) {</span>
+<span class="nc" id="L96">            executeBareMode(branchName);</span>
+<span class="nc" id="L97">            return;</span>
+        }
+
+<span class="nc" id="L100">        executeWorkspaceMode(branchName);</span>
+<span class="nc" id="L101">    }</span>
+
+    private void executeWorkspaceMode(String branchName)
+            throws MojoExecutionException {
+
+<span class="nc" id="L106">        WorkspaceGraph graph = loadGraph();</span>
+<span class="nc" id="L107">        File root = workspaceRoot();</span>
+<span class="nc" id="L108">        Path manifestPath = resolveManifest();</span>
+
+        // Resolve target branch from parameter or workspace defaults
+<span class="nc bnc" id="L111" title="All 4 branches missed.">        if (targetBranch == null || targetBranch.isBlank()) {</span>
+<span class="nc" id="L112">            targetBranch = graph.manifest().defaults().branch();</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">            if (targetBranch == null) targetBranch = &quot;main&quot;;</span>
+        }
+
+        Set&lt;String&gt; targets;
+<span class="nc bnc" id="L117" title="All 4 branches missed.">        if (group != null &amp;&amp; !group.isEmpty()) {</span>
+<span class="nc" id="L118">            targets = graph.expandGroup(group);</span>
+        } else {
+<span class="nc" id="L120">            targets = graph.manifest().components().keySet();</span>
+        }
+
+        // Reverse topological order — downstream first
+<span class="nc" id="L124">        List&lt;String&gt; sorted = graph.topologicalSort(new LinkedHashSet&lt;&gt;(targets));</span>
+<span class="nc" id="L125">        List&lt;String&gt; reversed = new ArrayList&lt;&gt;(sorted);</span>
+<span class="nc" id="L126">        Collections.reverse(reversed);</span>
+
+<span class="nc" id="L128">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L129">        getLog().info(header(&quot;Feature Abandon&quot;));</span>
+<span class="nc" id="L130">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+<span class="nc" id="L131">        getLog().info(&quot;  Feature:  &quot; + feature);</span>
+<span class="nc" id="L132">        getLog().info(&quot;  Branch:   &quot; + branchName + &quot; → &quot; + targetBranch);</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        getLog().info(&quot;  Scope:    &quot; + (group != null ? group : &quot;all&quot;)</span>
+<span class="nc" id="L134">                + &quot; (&quot; + reversed.size() + &quot; components)&quot;);</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">        if (deleteRemote) getLog().info(&quot;  Remote:   will delete origin/&quot; + branchName);</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">        if (dryRun) getLog().info(&quot;  Mode:     DRY RUN&quot;);</span>
+<span class="nc" id="L137">        getLog().info(&quot;&quot;);</span>
+
+<span class="nc" id="L139">        List&lt;String&gt; abandoned = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L140">        List&lt;String&gt; skipped = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        for (String name : reversed) {</span>
+<span class="nc" id="L143">            File dir = new File(root, name);</span>
+<span class="nc" id="L144">            File gitDir = new File(dir, &quot;.git&quot;);</span>
+
+<span class="nc bnc" id="L146" title="All 2 branches missed.">            if (!gitDir.exists()) {</span>
+<span class="nc" id="L147">                getLog().info(&quot;  · &quot; + name + &quot; — not cloned, skipping&quot;);</span>
+<span class="nc" id="L148">                skipped.add(name);</span>
+<span class="nc" id="L149">                continue;</span>
+            }
+
+<span class="nc" id="L152">            String currentBranch = gitBranch(dir);</span>
+<span class="nc bnc" id="L153" title="All 2 branches missed.">            if (!currentBranch.equals(branchName)) {</span>
+<span class="nc" id="L154">                getLog().info(&quot;  · &quot; + name + &quot; — not on &quot; + branchName</span>
+                        + &quot; (on &quot; + currentBranch + &quot;), skipping&quot;);
+<span class="nc" id="L156">                skipped.add(name);</span>
+<span class="nc" id="L157">                continue;</span>
+            }
+
+            // Check for uncommitted changes
+<span class="nc" id="L161">            String status = gitStatus(dir);</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">            if (!status.isEmpty()) {</span>
+<span class="nc" id="L163">                throw new MojoExecutionException(</span>
+                        name + &quot; has uncommitted changes. Commit, stash, or discard before abandoning.&quot;);
+            }
+
+            // Warn about unmerged commits
+<span class="nc bnc" id="L168" title="All 4 branches missed.">            if (!force &amp;&amp; !dryRun) {</span>
+                try {
+<span class="nc" id="L170">                    String unmerged = ReleaseSupport.execCapture(dir,</span>
+                            &quot;git&quot;, &quot;log&quot;, &quot;--oneline&quot;,
+                            targetBranch + &quot;..&quot; + branchName);
+<span class="nc bnc" id="L173" title="All 2 branches missed.">                    if (!unmerged.isBlank()) {</span>
+<span class="nc" id="L174">                        long commitCount = unmerged.lines().count();</span>
+<span class="nc" id="L175">                        getLog().warn(&quot;  ⚠ &quot; + name + &quot; has &quot; + commitCount</span>
+                                + &quot; unmerged commit(s) on &quot; + branchName + &quot;:&quot;);
+<span class="nc" id="L177">                        unmerged.lines().limit(5).forEach(</span>
+<span class="nc" id="L178">                                line -&gt; getLog().warn(&quot;      &quot; + line));</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">                        if (commitCount &gt; 5) {</span>
+<span class="nc" id="L180">                            getLog().warn(&quot;      ... and &quot; + (commitCount - 5) + &quot; more&quot;);</span>
+                        }
+                    }
+<span class="nc" id="L183">                } catch (MojoExecutionException e) {</span>
+                    // Target branch may not exist locally — not fatal
+<span class="nc" id="L185">                    getLog().debug(&quot;Could not check unmerged commits: &quot; + e.getMessage());</span>
+<span class="nc" id="L186">                }</span>
+            }
+
+<span class="nc bnc" id="L189" title="All 2 branches missed.">            if (dryRun) {</span>
+<span class="nc" id="L190">                getLog().info(&quot;  [dry-run] &quot; + name + &quot; — would abandon &quot; + branchName</span>
+                        + &quot; → &quot; + targetBranch);
+<span class="nc" id="L192">                abandoned.add(name);</span>
+<span class="nc" id="L193">                continue;</span>
+            }
+
+<span class="nc" id="L196">            getLog().info(&quot;  ✕ &quot; + name + &quot; — abandoning &quot; + branchName);</span>
+
+            // Switch to target branch
+<span class="nc" id="L199">            VcsOperations.checkout(dir, getLog(), targetBranch);</span>
+
+            // Delete local feature branch
+<span class="nc" id="L202">            VcsOperations.deleteBranch(dir, getLog(), branchName);</span>
+<span class="nc" id="L203">            getLog().info(&quot;    deleted local branch: &quot; + branchName);</span>
+
+            // Optionally delete remote branch
+<span class="nc bnc" id="L206" title="All 2 branches missed.">            if (deleteRemote) {</span>
+                try {
+<span class="nc" id="L208">                    VcsOperations.deleteRemoteBranch(dir, getLog(), &quot;origin&quot;, branchName);</span>
+<span class="nc" id="L209">                    getLog().info(&quot;    deleted remote branch: origin/&quot; + branchName);</span>
+<span class="nc" id="L210">                } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L211">                    getLog().warn(&quot;    could not delete remote branch: &quot; + e.getMessage());</span>
+<span class="nc" id="L212">                }</span>
+            }
+
+<span class="nc" id="L215">            VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_FINISH);</span>
+<span class="nc" id="L216">            abandoned.add(name);</span>
+<span class="nc" id="L217">        }</span>
+
+        // Update workspace.yaml and workspace repo
+<span class="nc bnc" id="L220" title="All 4 branches missed.">        if (!abandoned.isEmpty() &amp;&amp; !dryRun) {</span>
+<span class="nc" id="L221">            abandonWorkspaceRepo(manifestPath, abandoned, branchName);</span>
+        }
+
+<span class="nc" id="L224">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L225">        getLog().info(&quot;  Abandoned: &quot; + abandoned.size()</span>
+<span class="nc" id="L226">                + &quot; | Skipped: &quot; + skipped.size());</span>
+<span class="nc bnc" id="L227" title="All 4 branches missed.">        if (!deleteRemote &amp;&amp; !abandoned.isEmpty()) {</span>
+<span class="nc" id="L228">            getLog().info(&quot;  Remote branches kept. Use -DdeleteRemote=true to delete them.&quot;);</span>
+        }
+<span class="nc" id="L230">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L231">    }</span>
+
+    /**
+     * Bare-mode: abandon feature branch in the current repo only.
+     */
+    private void executeBareMode(String branchName) throws MojoExecutionException {
+<span class="nc" id="L237">        File dir = new File(System.getProperty(&quot;user.dir&quot;));</span>
+
+<span class="nc bnc" id="L239" title="All 4 branches missed.">        if (targetBranch == null || targetBranch.isBlank()) {</span>
+<span class="nc" id="L240">            targetBranch = &quot;main&quot;;</span>
+        }
+
+<span class="nc" id="L243">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L244">        getLog().info(&quot;IKE Feature Abandon (bare repo)&quot;);</span>
+<span class="nc" id="L245">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+<span class="nc" id="L246">        getLog().info(&quot;  Feature: &quot; + feature);</span>
+<span class="nc" id="L247">        getLog().info(&quot;  Branch:  &quot; + branchName + &quot; → &quot; + targetBranch);</span>
+<span class="nc" id="L248">        getLog().info(&quot;&quot;);</span>
+
+<span class="nc" id="L250">        String currentBranch = gitBranch(dir);</span>
+<span class="nc bnc" id="L251" title="All 2 branches missed.">        if (!currentBranch.equals(branchName)) {</span>
+<span class="nc" id="L252">            throw new MojoExecutionException(</span>
+                    &quot;Not on &quot; + branchName + &quot; (currently on &quot; + currentBranch + &quot;)&quot;);
+        }
+<span class="nc bnc" id="L255" title="All 2 branches missed.">        if (!gitStatus(dir).isEmpty()) {</span>
+<span class="nc" id="L256">            throw new MojoExecutionException(</span>
+                    &quot;Uncommitted changes. Commit, stash, or discard first.&quot;);
+        }
+
+<span class="nc bnc" id="L260" title="All 2 branches missed.">        if (dryRun) {</span>
+<span class="nc" id="L261">            getLog().info(&quot;  [dry-run] Would abandon &quot; + branchName + &quot; → &quot; + targetBranch);</span>
+<span class="nc" id="L262">            return;</span>
+        }
+
+<span class="nc" id="L265">        VcsOperations.checkout(dir, getLog(), targetBranch);</span>
+<span class="nc" id="L266">        VcsOperations.deleteBranch(dir, getLog(), branchName);</span>
+<span class="nc" id="L267">        getLog().info(&quot;  Deleted local branch: &quot; + branchName);</span>
+
+<span class="nc bnc" id="L269" title="All 2 branches missed.">        if (deleteRemote) {</span>
+            try {
+<span class="nc" id="L271">                VcsOperations.deleteRemoteBranch(dir, getLog(), &quot;origin&quot;, branchName);</span>
+<span class="nc" id="L272">                getLog().info(&quot;  Deleted remote branch: origin/&quot; + branchName);</span>
+<span class="nc" id="L273">            } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L274">                getLog().warn(&quot;  Could not delete remote branch: &quot; + e.getMessage());</span>
+<span class="nc" id="L275">            }</span>
+        }
+
+<span class="nc" id="L278">        VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_FINISH);</span>
+<span class="nc" id="L279">        getLog().info(&quot;  Done.&quot;);</span>
+<span class="nc" id="L280">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L281">    }</span>
+
+    /**
+     * Revert workspace.yaml branches back to targetBranch and clean up
+     * the workspace repo's feature branch.
+     */
+    private void abandonWorkspaceRepo(Path manifestPath,
+                                       List&lt;String&gt; components,
+                                       String branchName)
+            throws MojoExecutionException {
+        try {
+            // Update workspace.yaml branch fields back to target
+<span class="nc" id="L293">            Map&lt;String, String&gt; updates = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L294" title="All 2 branches missed.">            for (String name : components) {</span>
+<span class="nc" id="L295">                updates.put(name, targetBranch);</span>
+<span class="nc" id="L296">            }</span>
+<span class="nc" id="L297">            ManifestWriter.updateBranches(manifestPath, updates);</span>
+<span class="nc" id="L298">            getLog().info(&quot;  Updated workspace.yaml branches → &quot; + targetBranch);</span>
+
+<span class="nc" id="L300">            File wsRoot = manifestPath.getParent().toFile();</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">            if (!new File(wsRoot, &quot;.git&quot;).exists()) return;</span>
+
+            // If workspace repo is on the feature branch, switch back
+<span class="nc" id="L304">            String wsBranch = gitBranch(wsRoot);</span>
+<span class="nc bnc" id="L305" title="All 2 branches missed.">            if (wsBranch.equals(branchName)) {</span>
+                // Commit yaml changes on feature branch first, then switch
+<span class="nc" id="L307">                ReleaseSupport.exec(wsRoot, getLog(), &quot;git&quot;, &quot;add&quot;, &quot;workspace.yaml&quot;);</span>
+<span class="nc" id="L308">                VcsOperations.commit(wsRoot, getLog(),</span>
+                        &quot;workspace: revert branches for abandon &quot; + branchName);
+
+<span class="nc" id="L311">                VcsOperations.checkout(wsRoot, getLog(), targetBranch);</span>
+
+                // Cherry-pick the workspace.yaml update to target branch
+                try {
+<span class="nc" id="L315">                    ReleaseSupport.exec(wsRoot, getLog(),</span>
+                            &quot;git&quot;, &quot;cherry-pick&quot;, branchName);
+<span class="nc" id="L317">                } catch (MojoExecutionException e) {</span>
+                    // If cherry-pick fails, just update directly
+<span class="nc" id="L319">                    ManifestWriter.updateBranches(manifestPath, updates);</span>
+<span class="nc" id="L320">                    ReleaseSupport.exec(wsRoot, getLog(), &quot;git&quot;, &quot;add&quot;, &quot;workspace.yaml&quot;);</span>
+<span class="nc" id="L321">                    VcsOperations.commit(wsRoot, getLog(),</span>
+                            &quot;workspace: revert branches after abandon &quot; + branchName);
+<span class="nc" id="L323">                }</span>
+
+                // Delete workspace feature branch
+<span class="nc" id="L326">                VcsOperations.deleteBranch(wsRoot, getLog(), branchName);</span>
+<span class="nc" id="L327">                getLog().info(&quot;  Deleted workspace feature branch: &quot; + branchName);</span>
+
+<span class="nc bnc" id="L329" title="All 2 branches missed.">                if (deleteRemote) {</span>
+                    try {
+<span class="nc" id="L331">                        VcsOperations.deleteRemoteBranch(wsRoot, getLog(), &quot;origin&quot;, branchName);</span>
+<span class="nc" id="L332">                    } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L333">                        getLog().warn(&quot;  Could not delete workspace remote branch: &quot; + e.getMessage());</span>
+<span class="nc" id="L334">                    }</span>
+                }
+            } else {
+                // Already on target — just commit the yaml update
+<span class="nc" id="L338">                ReleaseSupport.exec(wsRoot, getLog(), &quot;git&quot;, &quot;add&quot;, &quot;workspace.yaml&quot;);</span>
+<span class="nc" id="L339">                VcsOperations.commit(wsRoot, getLog(),</span>
+                        &quot;workspace: revert branches after abandon &quot; + branchName);
+            }
+
+<span class="nc" id="L343">            VcsOperations.pushIfRemoteExists(wsRoot, getLog(), &quot;origin&quot;, targetBranch);</span>
+
+<span class="nc" id="L345">        } catch (IOException e) {</span>
+<span class="nc" id="L346">            getLog().warn(&quot;  Could not update workspace.yaml: &quot; + e.getMessage());</span>
+<span class="nc" id="L347">        }</span>
+<span class="nc" id="L348">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

@@ -1,0 +1,464 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WsAlignMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">WsAlignMojo.java</span></div><h1>WsAlignMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.plugin.ReleaseSupport;
+import network.ike.workspace.Component;
+import network.ike.workspace.Dependency;
+import network.ike.workspace.PublishedArtifactSet;
+import network.ike.workspace.WorkspaceGraph;
+import org.apache.maven.api.model.Parent;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Align inter-component dependency versions in POM files to match the
+ * current workspace component versions.
+ *
+ * &lt;p&gt;This is the {@code ws:align} goal. For each component on disk, it
+ * scans POM dependency declarations. When a dependency's groupId matches
+ * another workspace component and the declared version does not match
+ * that component's current POM version, the dependency version is
+ * updated.
+ *
+ * &lt;p&gt;Property-based versions (e.g., {@code &lt;ike-bom.version&gt;}) are
+ * updated via {@code ReleaseSupport.updateVersionProperty()}. Direct
+ * {@code &lt;version&gt;} tags in dependency blocks are updated via text
+ * replacement.
+ *
+ * &lt;pre&gt;{@code
+ * mvn ws:align                    # apply changes
+ * mvn ws:align -DdryRun=true      # report only
+ * }&lt;/pre&gt;
+ */
+@Mojo(name = &quot;align&quot;, requiresProject = false, threadSafe = true)
+public class WsAlignMojo extends AbstractWorkspaceMojo {
+
+    /**
+     * When true, report changes without writing to POM files.
+     */
+    @Parameter(property = &quot;dryRun&quot;, defaultValue = &quot;false&quot;)
+    private boolean dryRun;
+
+    /** Creates this goal instance. */
+<span class="nc" id="L54">    public WsAlignMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="nc" id="L58">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L59">        getLog().info(&quot;IKE Workspace Align — synchronize inter-component dependency versions&quot;);</span>
+<span class="nc" id="L60">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (dryRun) {</span>
+<span class="nc" id="L63">            getLog().info(&quot;  (dry run — no files will be modified)&quot;);</span>
+<span class="nc" id="L64">            getLog().info(&quot;&quot;);</span>
+        }
+
+<span class="nc" id="L67">        WorkspaceGraph graph = loadGraph();</span>
+<span class="nc" id="L68">        File root = workspaceRoot();</span>
+
+        // Build lookup: groupId:artifactId → (component name, current POM version)
+<span class="nc" id="L71">        Map&lt;String, ComponentVersion&gt; artifactIndex = buildArtifactIndex(graph, root);</span>
+
+<span class="nc" id="L73">        int totalChanges = 0;</span>
+<span class="nc" id="L74">        List&lt;String&gt; changedComponents = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L75">        List&lt;AlignChange&gt; reportChanges = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L77" title="All 2 branches missed.">        for (Map.Entry&lt;String, Component&gt; entry : graph.manifest().components().entrySet()) {</span>
+<span class="nc" id="L78">            String name = entry.getKey();</span>
+<span class="nc" id="L79">            Component component = entry.getValue();</span>
+<span class="nc" id="L80">            File componentDir = new File(root, name);</span>
+
+<span class="nc bnc" id="L82" title="All 2 branches missed.">            if (!new File(componentDir, &quot;pom.xml&quot;).exists()) {</span>
+<span class="nc" id="L83">                getLog().debug(&quot;  &quot; + name + &quot;: not cloned — skipping&quot;);</span>
+<span class="nc" id="L84">                continue;</span>
+            }
+
+            // Find all POM files in this component
+            List&lt;File&gt; pomFiles;
+            try {
+<span class="nc" id="L90">                pomFiles = ReleaseSupport.findPomFiles(componentDir);</span>
+<span class="nc" id="L91">            } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L92">                getLog().warn(&quot;  &quot; + name + &quot;: could not scan POM files — &quot;</span>
+<span class="nc" id="L93">                        + e.getMessage());</span>
+<span class="nc" id="L94">                continue;</span>
+<span class="nc" id="L95">            }</span>
+
+            // Also use the declared depends-on to find version-property hints
+<span class="nc" id="L98">            Map&lt;String, String&gt; versionPropertyMap = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">            for (Dependency dep : component.dependsOn()) {</span>
+<span class="nc bnc" id="L100" title="All 4 branches missed.">                if (dep.versionProperty() != null &amp;&amp; !dep.versionProperty().isEmpty()) {</span>
+<span class="nc" id="L101">                    Component target = graph.manifest().components().get(dep.component());</span>
+<span class="nc bnc" id="L102" title="All 4 branches missed.">                    if (target != null &amp;&amp; target.groupId() != null</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">                            &amp;&amp; !target.groupId().isEmpty()) {</span>
+<span class="nc" id="L104">                        versionPropertyMap.put(dep.component(), dep.versionProperty());</span>
+                    }
+                }
+<span class="nc" id="L107">            }</span>
+
+<span class="nc" id="L109">            int componentChanges = 0;</span>
+
+<span class="nc bnc" id="L111" title="All 2 branches missed.">            for (File pomFile : pomFiles) {</span>
+<span class="nc" id="L112">                int changes = alignPomDependencies(</span>
+                        name, pomFile, artifactIndex, versionPropertyMap,
+                        componentDir, graph, reportChanges);
+<span class="nc" id="L115">                componentChanges += changes;</span>
+<span class="nc" id="L116">            }</span>
+
+<span class="nc bnc" id="L118" title="All 2 branches missed.">            if (componentChanges &gt; 0) {</span>
+<span class="nc" id="L119">                totalChanges += componentChanges;</span>
+<span class="nc" id="L120">                changedComponents.add(name);</span>
+            }
+<span class="nc" id="L122">        }</span>
+
+        // --- Parent version alignment (via Maven 4 Model API) ---
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        for (Map.Entry&lt;String, Component&gt; entry : graph.manifest().components().entrySet()) {</span>
+<span class="nc" id="L126">            String name = entry.getKey();</span>
+<span class="nc" id="L127">            Component component = entry.getValue();</span>
+<span class="nc" id="L128">            String parentComponentName = component.parent();</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">            if (parentComponentName == null) continue;</span>
+
+<span class="nc" id="L131">            Component parentComponent = graph.manifest().components().get(parentComponentName);</span>
+<span class="nc bnc" id="L132" title="All 4 branches missed.">            if (parentComponent == null || parentComponent.version() == null) continue;</span>
+
+<span class="nc" id="L134">            File componentDir = new File(root, name);</span>
+<span class="nc" id="L135">            Path pomPath = componentDir.toPath().resolve(&quot;pom.xml&quot;);</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">            if (!Files.exists(pomPath)) continue;</span>
+
+            try {
+<span class="nc" id="L139">                PomModel pom = PomModel.parse(pomPath);</span>
+<span class="nc" id="L140">                Parent parentInfo = pom.parent();</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">                if (parentInfo == null) continue;</span>
+
+<span class="nc" id="L143">                String expectedVersion = parentComponent.version();</span>
+<span class="nc" id="L144">                String currentVersion = parentInfo.getVersion();</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">                if (currentVersion == null</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">                        || expectedVersion.equals(currentVersion)) {</span>
+<span class="nc" id="L147">                    continue;</span>
+                }
+
+<span class="nc" id="L150">                String parentAid = parentInfo.getArtifactId();</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">                if (dryRun) {</span>
+<span class="nc" id="L152">                    getLog().info(&quot;  &quot; + name + &quot;: parent &quot; + parentAid</span>
+                            + &quot; &quot; + currentVersion + &quot; → &quot; + expectedVersion
+                            + &quot; (dry run)&quot;);
+                } else {
+<span class="nc" id="L156">                    String updated = PomModel.updateParentVersion(</span>
+<span class="nc" id="L157">                            pom.content(), parentAid, expectedVersion);</span>
+<span class="nc" id="L158">                    Files.writeString(pomPath, updated, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L159">                    getLog().info(&quot;  &quot; + name + &quot;: parent &quot; + parentAid</span>
+                            + &quot; &quot; + currentVersion + &quot; → &quot; + expectedVersion);
+
+                    // Also update submodule POMs that reference the same parent
+<span class="nc" id="L163">                    List&lt;File&gt; subPoms = ReleaseSupport.findPomFiles(componentDir);</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">                    for (File subPom : subPoms) {</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">                        if (subPom.toPath().equals(pomPath)) continue;</span>
+<span class="nc" id="L166">                        String subContent = Files.readString(</span>
+<span class="nc" id="L167">                                subPom.toPath(), StandardCharsets.UTF_8);</span>
+<span class="nc" id="L168">                        String subUpdated = PomModel.updateParentVersion(</span>
+                                subContent, parentAid, expectedVersion);
+<span class="nc bnc" id="L170" title="All 2 branches missed.">                        if (!subUpdated.equals(subContent)) {</span>
+<span class="nc" id="L171">                            Files.writeString(subPom.toPath(), subUpdated,</span>
+                                    StandardCharsets.UTF_8);
+                        }
+<span class="nc" id="L174">                    }</span>
+                }
+<span class="nc" id="L176">                reportChanges.add(new AlignChange(</span>
+                        name, &quot;pom.xml&quot;, &quot;parent:&quot; + parentAid,
+                        currentVersion, expectedVersion));
+<span class="nc" id="L179">                totalChanges++;</span>
+<span class="nc bnc" id="L180" title="All 2 branches missed.">                if (!changedComponents.contains(name)) {</span>
+<span class="nc" id="L181">                    changedComponents.add(name);</span>
+                }
+<span class="nc" id="L183">            } catch (IOException e) {</span>
+<span class="nc" id="L184">                getLog().warn(&quot;  &quot; + name + &quot;: could not align parent version — &quot;</span>
+<span class="nc" id="L185">                        + e.getMessage());</span>
+<span class="nc" id="L186">            }</span>
+<span class="nc" id="L187">        }</span>
+
+        // --- Summary ---
+<span class="nc" id="L190">        getLog().info(&quot;&quot;);</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">        if (totalChanges == 0) {</span>
+<span class="nc" id="L192">            getLog().info(&quot;  All inter-component dependency and parent versions are aligned  ✓&quot;);</span>
+<span class="nc bnc" id="L193" title="All 2 branches missed.">        } else if (dryRun) {</span>
+<span class="nc" id="L194">            getLog().info(&quot;  &quot; + totalChanges + &quot; version(s) would be updated across &quot;</span>
+<span class="nc" id="L195">                    + changedComponents.size() + &quot; component(s)&quot;);</span>
+<span class="nc" id="L196">            getLog().info(&quot;  Run without -DdryRun to apply changes.&quot;);</span>
+        } else {
+<span class="nc" id="L198">            getLog().info(&quot;  Updated &quot; + totalChanges + &quot; version(s) across &quot;</span>
+<span class="nc" id="L199">                    + changedComponents.size() + &quot; component(s)&quot;);</span>
+        }
+<span class="nc" id="L201">        getLog().info(&quot;&quot;);</span>
+
+        // --- Structured markdown report ---
+<span class="nc" id="L204">        appendReport(&quot;ws:align&quot;, buildMarkdownReport(</span>
+                totalChanges, changedComponents, reportChanges));
+<span class="nc" id="L206">    }</span>
+
+    /**
+     * Build a structured markdown report from collected alignment changes.
+     */
+    private String buildMarkdownReport(int totalChanges,
+                                        List&lt;String&gt; changedComponents,
+                                        List&lt;AlignChange&gt; changes) {
+<span class="nc" id="L214">        StringBuilder md = new StringBuilder();</span>
+
+<span class="nc bnc" id="L216" title="All 2 branches missed.">        if (totalChanges == 0) {</span>
+<span class="nc" id="L217">            md.append(&quot;All inter-component dependency and parent versions are aligned.\n&quot;);</span>
+<span class="nc" id="L218">            return md.toString();</span>
+        }
+
+<span class="nc bnc" id="L221" title="All 2 branches missed.">        if (dryRun) {</span>
+<span class="nc" id="L222">            md.append(&quot;**Dry run** — &quot;).append(totalChanges)</span>
+<span class="nc" id="L223">              .append(&quot; version(s) would be updated across &quot;)</span>
+<span class="nc" id="L224">              .append(changedComponents.size()).append(&quot; component(s).\n\n&quot;);</span>
+        } else {
+<span class="nc" id="L226">            md.append(&quot;Updated &quot;).append(totalChanges)</span>
+<span class="nc" id="L227">              .append(&quot; version(s) across &quot;)</span>
+<span class="nc" id="L228">              .append(changedComponents.size()).append(&quot; component(s).\n\n&quot;);</span>
+        }
+
+<span class="nc" id="L231">        md.append(&quot;| Component | POM | Artifact | From | To |\n&quot;);</span>
+<span class="nc" id="L232">        md.append(&quot;|-----------|-----|----------|------|----|\n&quot;);</span>
+<span class="nc bnc" id="L233" title="All 2 branches missed.">        for (AlignChange c : changes) {</span>
+<span class="nc" id="L234">            md.append(&quot;| &quot;).append(c.component)</span>
+<span class="nc" id="L235">              .append(&quot; | &quot;).append(c.pomRelPath)</span>
+<span class="nc" id="L236">              .append(&quot; | `&quot;).append(c.artifact).append('`')</span>
+<span class="nc" id="L237">              .append(&quot; | &quot;).append(c.fromVersion)</span>
+<span class="nc" id="L238">              .append(&quot; | &quot;).append(c.toVersion)</span>
+<span class="nc" id="L239">              .append(&quot; |\n&quot;);</span>
+<span class="nc" id="L240">        }</span>
+
+<span class="nc" id="L242">        return md.toString();</span>
+    }
+
+    /** A single version alignment change for the report. */
+<span class="nc" id="L246">    private record AlignChange(String component, String pomRelPath,</span>
+                                String artifact, String fromVersion,
+                                String toVersion) {}
+
+    // ── Artifact index ───────────────────────────────────────────────
+
+    /**
+     * Build an index from {@code groupId:artifactId} to (component name,
+     * current POM version) for all cloned workspace components.
+     *
+     * &lt;p&gt;Uses {@link PublishedArtifactSet#scan} to discover every
+     * artifact each component publishes, so components sharing a
+     * groupId (e.g., {@code dev.ikm.ike}) are correctly distinguished
+     * by artifactId.
+     */
+    private Map&lt;String, ComponentVersion&gt; buildArtifactIndex(
+            WorkspaceGraph graph, File root) throws MojoExecutionException {
+<span class="nc" id="L263">        Map&lt;String, ComponentVersion&gt; index = new LinkedHashMap&lt;&gt;();</span>
+
+<span class="nc bnc" id="L265" title="All 2 branches missed.">        for (Map.Entry&lt;String, Component&gt; entry : graph.manifest().components().entrySet()) {</span>
+<span class="nc" id="L266">            String name = entry.getKey();</span>
+<span class="nc" id="L267">            File componentDir = new File(root, name);</span>
+
+<span class="nc bnc" id="L269" title="All 2 branches missed.">            if (!new File(componentDir, &quot;pom.xml&quot;).exists()) {</span>
+<span class="nc" id="L270">                continue;</span>
+            }
+
+            String pomVersion;
+            try {
+<span class="nc" id="L275">                pomVersion = ReleaseSupport.readPomVersion(</span>
+                        new File(componentDir, &quot;pom.xml&quot;));
+<span class="nc" id="L277">            } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L278">                getLog().warn(&quot;  &quot; + name + &quot;: could not read POM version — &quot;</span>
+<span class="nc" id="L279">                        + e.getMessage());</span>
+<span class="nc" id="L280">                continue;</span>
+<span class="nc" id="L281">            }</span>
+
+            Set&lt;PublishedArtifactSet.Artifact&gt; published;
+            try {
+<span class="nc" id="L285">                published = PublishedArtifactSet.scan(componentDir.toPath());</span>
+<span class="nc" id="L286">            } catch (IOException e) {</span>
+<span class="nc" id="L287">                getLog().warn(&quot;  &quot; + name + &quot;: could not scan published artifacts — &quot;</span>
+<span class="nc" id="L288">                        + e.getMessage());</span>
+<span class="nc" id="L289">                continue;</span>
+<span class="nc" id="L290">            }</span>
+
+<span class="nc" id="L292">            ComponentVersion cv = new ComponentVersion(name, pomVersion);</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">            for (PublishedArtifactSet.Artifact artifact : published) {</span>
+<span class="nc" id="L294">                String key = artifact.groupId() + &quot;:&quot; + artifact.artifactId();</span>
+<span class="nc" id="L295">                index.put(key, cv);</span>
+<span class="nc" id="L296">            }</span>
+<span class="nc" id="L297">        }</span>
+
+<span class="nc" id="L299">        return index;</span>
+    }
+
+    // ── POM dependency alignment ────────────────────────────────────
+
+    /**
+     * Scan a single POM file for dependencies whose {@code groupId:artifactId}
+     * matches a workspace component's published artifact, and update
+     * mismatched versions.
+     *
+     * &lt;p&gt;Uses Maven 4's {@link PomModel} for reading dependency coordinates
+     * (no regex for extraction). Writes use targeted text replacement via
+     * {@link PomModel#updateDependencyVersion} to preserve formatting.
+     *
+     * @return number of changes made (or that would be made in dry-run)
+     */
+    private int alignPomDependencies(String ownerName, File pomFile,
+                                     Map&lt;String, ComponentVersion&gt; artifactIndex,
+                                     Map&lt;String, String&gt; versionPropertyMap,
+                                     File componentDir, WorkspaceGraph graph,
+                                     List&lt;AlignChange&gt; reportChanges)
+            throws MojoExecutionException {
+        PomModel pom;
+        try {
+<span class="nc" id="L323">            pom = PomModel.parse(pomFile.toPath());</span>
+<span class="nc" id="L324">        } catch (IOException e) {</span>
+<span class="nc" id="L325">            throw new MojoExecutionException(&quot;Failed to parse &quot; + pomFile, e);</span>
+<span class="nc" id="L326">        }</span>
+
+<span class="nc" id="L328">        String updated = pom.content();</span>
+<span class="nc" id="L329">        int changes = 0;</span>
+
+        // Iterate all dependencies using the Maven 4 Model API
+<span class="nc bnc" id="L332" title="All 2 branches missed.">        for (org.apache.maven.api.model.Dependency dep : pom.allDependencies()) {</span>
+<span class="nc" id="L333">            String depGroupId = dep.getGroupId();</span>
+<span class="nc" id="L334">            String depArtifactId = dep.getArtifactId();</span>
+<span class="nc" id="L335">            String currentVersion = dep.getVersion();</span>
+
+<span class="nc bnc" id="L337" title="All 6 branches missed.">            if (depGroupId == null || depArtifactId == null</span>
+                    || currentVersion == null) {
+<span class="nc" id="L339">                continue;</span>
+            }
+
+<span class="nc" id="L342">            String key = depGroupId + &quot;:&quot; + depArtifactId;</span>
+<span class="nc" id="L343">            ComponentVersion target = artifactIndex.get(key);</span>
+
+            // Skip if not a workspace artifact or self-reference
+<span class="nc bnc" id="L346" title="All 4 branches missed.">            if (target == null || target.name.equals(ownerName)) {</span>
+<span class="nc" id="L347">                continue;</span>
+            }
+
+<span class="nc bnc" id="L350" title="All 4 branches missed.">            if (currentVersion.startsWith(&quot;${&quot;) &amp;&amp; currentVersion.endsWith(&quot;}&quot;)) {</span>
+                // Property-based version — resolve via model properties
+<span class="nc" id="L352">                String propName = currentVersion.substring(2,</span>
+<span class="nc" id="L353">                        currentVersion.length() - 1);</span>
+<span class="nc" id="L354">                String propValue = pom.properties().get(propName);</span>
+<span class="nc bnc" id="L355" title="All 4 branches missed.">                if (propValue != null &amp;&amp; !propValue.equals(target.version)) {</span>
+<span class="nc" id="L356">                    String relPath = componentDir.toPath().relativize(</span>
+<span class="nc" id="L357">                            pomFile.toPath()).toString();</span>
+<span class="nc" id="L358">                    getLog().info(&quot;  &quot; + ownerName + &quot; (&quot; + relPath</span>
+                            + &quot;): property &lt;&quot; + propName + &quot;&gt; &quot;
+                            + propValue + &quot; → &quot; + target.version);
+<span class="nc" id="L361">                    reportChanges.add(new AlignChange(</span>
+                            ownerName, relPath,
+                            &quot;property:&quot; + propName,
+                            propValue, target.version));
+<span class="nc" id="L365">                    updated = PomModel.updateProperty(</span>
+                            updated, propName, target.version);
+<span class="nc" id="L367">                    changes++;</span>
+                }
+<span class="nc bnc" id="L369" title="All 2 branches missed.">            } else if (!currentVersion.equals(target.version)) {</span>
+                // Direct version mismatch — targeted text replacement
+<span class="nc" id="L371">                String relPath = componentDir.toPath().relativize(</span>
+<span class="nc" id="L372">                        pomFile.toPath()).toString();</span>
+<span class="nc" id="L373">                getLog().info(&quot;  &quot; + ownerName + &quot; (&quot; + relPath + &quot;): &quot;</span>
+                        + key + &quot; &quot; + currentVersion
+                        + &quot; → &quot; + target.version);
+<span class="nc" id="L376">                reportChanges.add(new AlignChange(</span>
+                        ownerName, relPath, key,
+                        currentVersion, target.version));
+<span class="nc" id="L379">                updated = PomModel.updateDependencyVersion(</span>
+                        updated, depGroupId, depArtifactId, target.version);
+<span class="nc" id="L381">                changes++;</span>
+            }
+<span class="nc" id="L383">        }</span>
+
+        // Handle version-property updates declared in depends-on.
+        // Look up the target component's version by name (via the
+        // artifact index), not by groupId — avoids the collision.
+<span class="nc bnc" id="L388" title="All 2 branches missed.">        for (Map.Entry&lt;String, String&gt; vpEntry : versionPropertyMap.entrySet()) {</span>
+<span class="nc" id="L389">            String targetComponent = vpEntry.getKey();</span>
+<span class="nc" id="L390">            String versionProperty = vpEntry.getValue();</span>
+
+<span class="nc" id="L392">            ComponentVersion cv = findComponentVersion(</span>
+<span class="nc" id="L393">                    targetComponent, artifactIndex, workspaceRoot());</span>
+<span class="nc bnc" id="L394" title="All 2 branches missed.">            if (cv == null) continue;</span>
+
+            // Read current property value from the model
+<span class="nc" id="L397">            String currentValue = pom.properties().get(versionProperty);</span>
+<span class="nc bnc" id="L398" title="All 4 branches missed.">            if (currentValue != null &amp;&amp; !currentValue.equals(cv.version)) {</span>
+<span class="nc" id="L399">                String relPath = componentDir.toPath().relativize(</span>
+<span class="nc" id="L400">                        pomFile.toPath()).toString();</span>
+<span class="nc" id="L401">                getLog().info(&quot;  &quot; + ownerName + &quot; (&quot; + relPath</span>
+                        + &quot;): property &lt;&quot; + versionProperty + &quot;&gt; &quot;
+                        + currentValue + &quot; → &quot; + cv.version);
+<span class="nc" id="L404">                reportChanges.add(new AlignChange(</span>
+                        ownerName, relPath,
+                        &quot;property:&quot; + versionProperty,
+                        currentValue, cv.version));
+<span class="nc" id="L408">                updated = PomModel.updateProperty(</span>
+                        updated, versionProperty, cv.version);
+<span class="nc" id="L410">                changes++;</span>
+            }
+<span class="nc" id="L412">        }</span>
+
+        // Write if changed
+<span class="nc bnc" id="L415" title="All 6 branches missed.">        if (changes &gt; 0 &amp;&amp; !dryRun &amp;&amp; !updated.equals(pom.content())) {</span>
+            try {
+<span class="nc" id="L417">                Files.writeString(pomFile.toPath(), updated,</span>
+                        StandardCharsets.UTF_8);
+<span class="nc" id="L419">            } catch (IOException e) {</span>
+<span class="nc" id="L420">                throw new MojoExecutionException(</span>
+                        &quot;Failed to write &quot; + pomFile + &quot;: &quot;
+<span class="nc" id="L422">                        + e.getMessage(), e);</span>
+<span class="nc" id="L423">            }</span>
+        }
+
+<span class="nc" id="L426">        return changes;</span>
+    }
+
+    /**
+     * Find a component's version by scanning its published artifacts
+     * and looking them up in the artifact index. Matches by component
+     * name (not groupId), so it handles groupId collisions.
+     */
+    private ComponentVersion findComponentVersion(
+            String componentName,
+            Map&lt;String, ComponentVersion&gt; artifactIndex, File root) {
+<span class="nc" id="L437">        File componentDir = new File(root, componentName);</span>
+<span class="nc bnc" id="L438" title="All 2 branches missed.">        if (!new File(componentDir, &quot;pom.xml&quot;).exists()) {</span>
+<span class="nc" id="L439">            return null;</span>
+        }
+        try {
+<span class="nc" id="L442">            Set&lt;PublishedArtifactSet.Artifact&gt; published =</span>
+<span class="nc" id="L443">                    PublishedArtifactSet.scan(componentDir.toPath());</span>
+<span class="nc bnc" id="L444" title="All 2 branches missed.">            for (PublishedArtifactSet.Artifact artifact : published) {</span>
+<span class="nc" id="L445">                String key = artifact.groupId() + &quot;:&quot; + artifact.artifactId();</span>
+<span class="nc" id="L446">                ComponentVersion cv = artifactIndex.get(key);</span>
+<span class="nc bnc" id="L447" title="All 4 branches missed.">                if (cv != null &amp;&amp; cv.name.equals(componentName)) {</span>
+<span class="nc" id="L448">                    return cv;</span>
+                }
+<span class="nc" id="L450">            }</span>
+<span class="nc" id="L451">        } catch (IOException e) {</span>
+            // Fall through
+<span class="nc" id="L453">        }</span>
+<span class="nc" id="L454">        return null;</span>
+    }
+
+    // ── Internal record ─────────────────────────────────────────────
+
+    /**
+     * Associates a component name with its current POM version.
+     */
+<span class="nc" id="L462">    private record ComponentVersion(String name, String version) {}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

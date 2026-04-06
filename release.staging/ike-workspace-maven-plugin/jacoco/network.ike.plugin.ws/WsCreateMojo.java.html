@@ -1,0 +1,472 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WsCreateMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">WsCreateMojo.java</span></div><h1>WsCreateMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.plugin.ReleaseSupport;
+
+import org.apache.maven.plugin.AbstractMojo;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDate;
+
+/**
+ * Create a new IKE workspace from scratch.
+ *
+ * &lt;p&gt;Generates the standard workspace scaffolding in the current
+ * directory (or a named subdirectory): reactor POM, workspace.yaml,
+ * .gitignore, .mvn/maven.config, and a README.adoc. Optionally
+ * initializes git and sets the remote.
+ *
+ * &lt;p&gt;The generated files follow current IKE conventions:
+ * &lt;ul&gt;
+ *   &lt;li&gt;POM uses Maven 4.1.0 model with {@code root=&quot;true&quot;}&lt;/li&gt;
+ *   &lt;li&gt;.gitignore uses whitelist strategy (ignore everything,
+ *       whitelist workspace-owned files)&lt;/li&gt;
+ *   &lt;li&gt;workspace.yaml has schema-version 1.0 with empty components&lt;/li&gt;
+ *   &lt;li&gt;.mvn/maven.config sets {@code -T 1C}&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * &lt;p&gt;After creation, use {@code ws:add} to add component repos,
+ * then {@code ws:init} to clone them.
+ *
+ * &lt;pre&gt;{@code
+ * mvn ws:create -Dname=my-workspace
+ * mvn ws:create -Dname=my-workspace -Dorg=knowledge-graphlet
+ * }&lt;/pre&gt;
+ *
+ * @see WsAddMojo for adding components to an existing workspace
+ * @see WsUpgradeMojo for upgrading workspace conventions
+ */
+@Mojo(name = &quot;create&quot;, requiresProject = false, threadSafe = true)
+public class WsCreateMojo extends AbstractMojo {
+
+    /**
+     * Workspace name. Used as the directory name, Maven artifactId,
+     * and in generated documentation. Prompted if omitted.
+     */
+    @Parameter(property = &quot;name&quot;)
+    private String name;
+
+    /**
+     * Short description of the workspace purpose.
+     */
+    /**
+     * Short description of the workspace purpose. Defaults to the
+     * workspace name, which is also used as the Maven POM {@code &lt;name&gt;}
+     * element (shown in Maven build output).
+     */
+    @Parameter(property = &quot;description&quot;)
+    private String description;
+
+    /**
+     * GitHub organization or user for the remote URL.
+     * If set, the remote is configured as
+     * {@code https://github.com/&lt;org&gt;/&lt;name&gt;.git}.
+     */
+    @Parameter(property = &quot;org&quot;)
+    private String org;
+
+    /**
+     * Default Maven version for components. Written to
+     * {@code defaults.maven-version} in workspace.yaml.
+     */
+    @Parameter(property = &quot;mavenVersion&quot;, defaultValue = &quot;4.0.0-rc-5&quot;)
+    private String mavenVersion;
+
+    /**
+     * Default branch for components. Written to
+     * {@code defaults.branch} in workspace.yaml.
+     */
+    @Parameter(property = &quot;branch&quot;, defaultValue = &quot;main&quot;)
+    private String defaultBranch;
+
+    /**
+     * Skip git init and remote setup.
+     */
+    @Parameter(property = &quot;skipGit&quot;, defaultValue = &quot;false&quot;)
+    private boolean skipGit;
+
+    /** Creates this goal instance. */
+<span class="nc" id="L94">    public WsCreateMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="nc bnc" id="L98" title="All 4 branches missed.">        if (name == null || name.isBlank()) {</span>
+<span class="nc" id="L99">            name = promptParam(&quot;name&quot;, &quot;Workspace name&quot;);</span>
+        }
+
+        // Default description to the workspace name
+<span class="nc bnc" id="L103" title="All 4 branches missed.">        if (description == null || description.isBlank()) {</span>
+<span class="nc" id="L104">            description = name;</span>
+        }
+
+<span class="nc" id="L107">        Path wsDir = Path.of(System.getProperty(&quot;user.dir&quot;)).resolve(name);</span>
+
+        // Fail if workspace files already exist (prevent silent overwrite)
+<span class="nc bnc" id="L110" title="All 2 branches missed.">        if (Files.exists(wsDir.resolve(&quot;pom.xml&quot;))</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">                || Files.exists(wsDir.resolve(&quot;workspace.yaml&quot;))) {</span>
+<span class="nc" id="L112">            throw new MojoExecutionException(</span>
+                    &quot;Workspace already exists at &quot; + wsDir
+                    + &quot; (pom.xml or workspace.yaml found). &quot;
+                    + &quot;Remove the directory first or choose a different name.&quot;);
+        }
+
+<span class="nc" id="L118">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L119">        getLog().info(name + &quot; — Create&quot;);</span>
+<span class="nc" id="L120">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+<span class="nc" id="L121">        getLog().info(&quot;  Name:      &quot; + name);</span>
+<span class="nc" id="L122">        getLog().info(&quot;  Directory: &quot; + wsDir);</span>
+<span class="nc bnc" id="L123" title="All 4 branches missed.">        if (org != null &amp;&amp; !org.isBlank()) {</span>
+<span class="nc" id="L124">            getLog().info(&quot;  Remote:    https://github.com/&quot; + org + &quot;/&quot; + name + &quot;.git&quot;);</span>
+        }
+<span class="nc" id="L126">        getLog().info(&quot;&quot;);</span>
+
+        try {
+<span class="nc" id="L129">            Files.createDirectories(wsDir);</span>
+<span class="nc" id="L130">            Files.createDirectories(wsDir.resolve(&quot;.mvn&quot;));</span>
+
+<span class="nc" id="L132">            writeFile(wsDir.resolve(&quot;pom.xml&quot;), generatePom());</span>
+<span class="nc" id="L133">            writeFile(wsDir.resolve(&quot;workspace.yaml&quot;), generateManifest());</span>
+<span class="nc" id="L134">            writeFile(wsDir.resolve(&quot;.gitignore&quot;), generateGitignore());</span>
+<span class="nc" id="L135">            writeFile(wsDir.resolve(&quot;.mvn/maven.config&quot;), &quot;-T 1C\n&quot;);</span>
+<span class="nc" id="L136">            writeFile(wsDir.resolve(&quot;README.adoc&quot;), generateReadme());</span>
+<span class="nc" id="L137">            installMavenWrapper(wsDir);</span>
+
+<span class="nc" id="L139">            getLog().info(&quot;  ✓ pom.xml&quot;);</span>
+<span class="nc" id="L140">            getLog().info(&quot;  ✓ workspace.yaml&quot;);</span>
+<span class="nc" id="L141">            getLog().info(&quot;  ✓ .gitignore&quot;);</span>
+<span class="nc" id="L142">            getLog().info(&quot;  ✓ .mvn/maven.config&quot;);</span>
+<span class="nc" id="L143">            getLog().info(&quot;  ✓ README.adoc&quot;);</span>
+<span class="nc" id="L144">            getLog().info(&quot;  ✓ mvnw (Maven &quot; + mavenVersion + &quot;)&quot;);</span>
+
+<span class="nc" id="L146">        } catch (IOException e) {</span>
+<span class="nc" id="L147">            throw new MojoExecutionException(</span>
+<span class="nc" id="L148">                    &quot;Failed to create workspace files: &quot; + e.getMessage(), e);</span>
+<span class="nc" id="L149">        }</span>
+
+        // Git init
+<span class="nc bnc" id="L152" title="All 2 branches missed.">        if (!skipGit) {</span>
+            try {
+<span class="nc" id="L154">                initGit(wsDir);</span>
+<span class="nc" id="L155">            } catch (Exception e) {</span>
+<span class="nc" id="L156">                getLog().warn(&quot;  Git init failed (non-fatal): &quot; + e.getMessage());</span>
+<span class="nc" id="L157">                getLog().warn(&quot;  Initialize git manually in &quot; + wsDir);</span>
+<span class="nc" id="L158">            }</span>
+        }
+
+<span class="nc" id="L161">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L162">        getLog().info(&quot;  Workspace created: &quot; + wsDir);</span>
+<span class="nc" id="L163">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L164">        getLog().info(&quot;  Next steps:&quot;);</span>
+<span class="nc" id="L165">        getLog().info(&quot;    cd &quot; + name);</span>
+<span class="nc" id="L166">        getLog().info(&quot;    mvn ws:add -Drepo=&lt;git-url&gt;    # add components&quot;);</span>
+<span class="nc" id="L167">        getLog().info(&quot;    mvn ws:init                        # clone components&quot;);</span>
+<span class="nc" id="L168">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L169">        WorkspaceReport.append(wsDir, &quot;ws:create&quot;, &quot;Created workspace: &quot; + name + &quot;\nDirectory: &quot; + wsDir, null);</span>
+<span class="nc" id="L170">    }</span>
+
+    // ── File generators (pure, testable) ─────────────────────────
+
+    String generatePom() {
+        // ike-tooling.version is resolved at build time via resource filtering
+        // from the ike-pipeline root POM — single source of truth.
+<span class="nc" id="L177">        String toolingVersion = loadBuildProperty(&quot;ike-tooling.version&quot;);</span>
+
+<span class="nc" id="L179">        StringBuilder xml = new StringBuilder(2048);</span>
+<span class="nc" id="L180">        xml.append(&quot;&lt;?xml version=\&quot;1.0\&quot; encoding=\&quot;UTF-8\&quot;?&gt;\n&quot;);</span>
+<span class="nc" id="L181">        xml.append(&quot;&lt;!--\n&quot;);</span>
+<span class="nc" id="L182">        xml.append(&quot;  &quot;).append(description).append(&quot;\n&quot;);</span>
+<span class="nc" id="L183">        xml.append(&quot;\n&quot;);</span>
+<span class="nc" id="L184">        xml.append(&quot;  Every subproject is inside a file-activated profile so the reactor\n&quot;);</span>
+<span class="nc" id="L185">        xml.append(&quot;  automatically includes only the repos that are physically cloned.\n&quot;);</span>
+<span class="nc" id="L186">        xml.append(&quot;  Clone more repos and they join the reactor on the next build.\n&quot;);</span>
+<span class="nc" id="L187">        xml.append(&quot;\n&quot;);</span>
+<span class="nc" id="L188">        xml.append(&quot;  Usage:\n&quot;);</span>
+<span class="nc" id="L189">        xml.append(&quot;    mvn clean install                        # All cloned repos\n&quot;);</span>
+<span class="nc" id="L190">        xml.append(&quot;    mvn ws:init                              # Clone all repos\n&quot;);</span>
+<span class="nc" id="L191">        xml.append(&quot;    mvn ws:status                            # Git status across repos\n&quot;);</span>
+<span class="nc" id="L192">        xml.append(&quot;    mvn ws:dashboard                         # Full workspace overview\n&quot;);</span>
+<span class="nc" id="L193">        xml.append(&quot;--&gt;\n&quot;);</span>
+<span class="nc" id="L194">        xml.append(&quot;&lt;project xmlns=\&quot;http://maven.apache.org/POM/4.1.0\&quot;\n&quot;);</span>
+<span class="nc" id="L195">        xml.append(&quot;         xmlns:xsi=\&quot;http://www.w3.org/2001/XMLSchema-instance\&quot;\n&quot;);</span>
+<span class="nc" id="L196">        xml.append(&quot;         xsi:schemaLocation=\&quot;http://maven.apache.org/POM/4.1.0\n&quot;);</span>
+<span class="nc" id="L197">        xml.append(&quot;                             https://maven.apache.org/xsd/maven-4.1.0.xsd\&quot;\n&quot;);</span>
+<span class="nc" id="L198">        xml.append(&quot;         root=\&quot;true\&quot;&gt;\n&quot;);</span>
+<span class="nc" id="L199">        xml.append(&quot;    &lt;modelVersion&gt;4.1.0&lt;/modelVersion&gt;\n\n&quot;);</span>
+<span class="nc" id="L200">        xml.append(&quot;    &lt;groupId&gt;local.aggregate&lt;/groupId&gt;\n&quot;);</span>
+<span class="nc" id="L201">        xml.append(&quot;    &lt;artifactId&gt;&quot;).append(name).append(&quot;&lt;/artifactId&gt;\n&quot;);</span>
+<span class="nc" id="L202">        xml.append(&quot;    &lt;version&gt;1.0.0-SNAPSHOT&lt;/version&gt;\n&quot;);</span>
+<span class="nc" id="L203">        xml.append(&quot;    &lt;packaging&gt;pom&lt;/packaging&gt;\n\n&quot;);</span>
+<span class="nc" id="L204">        xml.append(&quot;    &lt;name&gt;&quot;).append(description).append(&quot;&lt;/name&gt;\n\n&quot;);</span>
+<span class="nc" id="L205">        xml.append(&quot;    &lt;properties&gt;\n&quot;);</span>
+<span class="nc" id="L206">        xml.append(&quot;        &lt;ike-tooling.version&gt;&quot;).append(toolingVersion).append(&quot;&lt;/ike-tooling.version&gt;\n&quot;);</span>
+<span class="nc" id="L207">        xml.append(&quot;    &lt;/properties&gt;\n\n&quot;);</span>
+<span class="nc" id="L208">        xml.append(&quot;    &lt;build&gt;\n&quot;);</span>
+<span class="nc" id="L209">        xml.append(&quot;        &lt;plugins&gt;\n&quot;);</span>
+<span class="nc" id="L210">        xml.append(&quot;            &lt;plugin&gt;\n&quot;);</span>
+<span class="nc" id="L211">        xml.append(&quot;                &lt;groupId&gt;network.ike&lt;/groupId&gt;\n&quot;);</span>
+<span class="nc" id="L212">        xml.append(&quot;                &lt;artifactId&gt;ike-maven-plugin&lt;/artifactId&gt;\n&quot;);</span>
+<span class="nc" id="L213">        xml.append(&quot;                &lt;version&gt;${ike-tooling.version}&lt;/version&gt;\n&quot;);</span>
+<span class="nc" id="L214">        xml.append(&quot;            &lt;/plugin&gt;\n&quot;);</span>
+<span class="nc" id="L215">        xml.append(&quot;        &lt;/plugins&gt;\n&quot;);</span>
+<span class="nc" id="L216">        xml.append(&quot;    &lt;/build&gt;\n\n&quot;);</span>
+<span class="nc" id="L217">        xml.append(&quot;    &lt;!-- Profiles are added by ws:add --&gt;\n&quot;);</span>
+<span class="nc" id="L218">        xml.append(&quot;    &lt;profiles&gt;\n&quot;);</span>
+<span class="nc" id="L219">        xml.append(&quot;    &lt;/profiles&gt;\n\n&quot;);</span>
+<span class="nc" id="L220">        xml.append(&quot;&lt;/project&gt;\n&quot;);</span>
+<span class="nc" id="L221">        return xml.toString();</span>
+    }
+
+    String generateManifest() {
+<span class="nc" id="L225">        String today = LocalDate.now().toString();</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">        String orgName = org != null ? org : &quot;&lt;org&gt;&quot;;</span>
+
+<span class="nc" id="L228">        StringBuilder yaml = new StringBuilder(1024);</span>
+<span class="nc" id="L229">        yaml.append(&quot;# workspace.yaml — &quot;).append(name).append(&quot;\n&quot;);</span>
+<span class="nc" id="L230">        yaml.append(&quot;# &quot;).append(&quot;═&quot;.repeat(name.length() + 22)).append(&quot;\n&quot;);</span>
+<span class="nc" id="L231">        yaml.append(&quot;#\n&quot;);</span>
+<span class="nc" id="L232">        yaml.append(&quot;# &quot;).append(description).append(&quot;\n&quot;);</span>
+<span class="nc" id="L233">        yaml.append(&quot;#\n&quot;);</span>
+<span class="nc" id="L234">        yaml.append(&quot;# Bootstrap:\n&quot;);</span>
+<span class="nc" id="L235">        yaml.append(&quot;#   git clone https://github.com/&quot;).append(orgName).append(&quot;/&quot;).append(name).append(&quot;.git\n&quot;);</span>
+<span class="nc" id="L236">        yaml.append(&quot;#   cd &quot;).append(name).append(&quot;\n&quot;);</span>
+<span class="nc" id="L237">        yaml.append(&quot;#   mvn ws:init\n&quot;);</span>
+<span class="nc" id="L238">        yaml.append(&quot;#   mvn clean install\n\n&quot;);</span>
+<span class="nc" id="L239">        yaml.append(&quot;schema-version: \&quot;1.0\&quot;\n&quot;);</span>
+<span class="nc" id="L240">        yaml.append(&quot;generated: &quot;).append(today).append(&quot;\n\n&quot;);</span>
+<span class="nc" id="L241">        yaml.append(&quot;defaults:\n&quot;);</span>
+<span class="nc" id="L242">        yaml.append(&quot;  branch: &quot;).append(defaultBranch).append(&quot;\n&quot;);</span>
+<span class="nc" id="L243">        yaml.append(&quot;  maven-version: \&quot;&quot;).append(mavenVersion).append(&quot;\&quot;\n\n&quot;);</span>
+<span class="nc" id="L244">        yaml.append(&quot;component-types:\n&quot;);</span>
+<span class="nc" id="L245">        yaml.append(&quot;  software:\n&quot;);</span>
+<span class="nc" id="L246">        yaml.append(&quot;    description: \&quot;Java libraries and applications\&quot;\n&quot;);</span>
+<span class="nc" id="L247">        yaml.append(&quot;    build-command: \&quot;mvn clean install\&quot;\n&quot;);</span>
+<span class="nc" id="L248">        yaml.append(&quot;    checkpoint-mechanism: git-tag\n\n&quot;);</span>
+<span class="nc" id="L249">        yaml.append(&quot;components:\n&quot;);</span>
+<span class="nc" id="L250">        yaml.append(&quot;  # Add components with: mvn ws:add -Drepo=&lt;git-url&gt;\n\n&quot;);</span>
+<span class="nc" id="L251">        yaml.append(&quot;groups:\n&quot;);</span>
+<span class="nc" id="L252">        yaml.append(&quot;  all: []\n&quot;);</span>
+<span class="nc" id="L253">        return yaml.toString();</span>
+    }
+
+    String generateGitignore() {
+<span class="nc" id="L257">        StringBuilder gi = new StringBuilder(512);</span>
+<span class="nc" id="L258">        gi.append(&quot;# &quot;).append(name).append(&quot; .gitignore\n&quot;);</span>
+<span class="nc" id="L259">        gi.append(&quot;# &quot;).append(&quot;═&quot;.repeat(name.length() + 11)).append(&quot;\n&quot;);</span>
+<span class="nc" id="L260">        gi.append(&quot;#\n&quot;);</span>
+<span class="nc" id="L261">        gi.append(&quot;# Ignore everything, whitelist only workspace-owned files.\n&quot;);</span>
+<span class="nc" id="L262">        gi.append(&quot;# Component repos are independent git repos cloned by ws:init.\n\n&quot;);</span>
+<span class="nc" id="L263">        gi.append(&quot;# ── Ignore everything by default ─────────────────────────────────\n&quot;);</span>
+<span class="nc" id="L264">        gi.append(&quot;*\n\n&quot;);</span>
+<span class="nc" id="L265">        gi.append(&quot;# ── Whitelist workspace-level files ──────────────────────────────\n&quot;);</span>
+<span class="nc" id="L266">        gi.append(&quot;!.gitignore\n&quot;);</span>
+<span class="nc" id="L267">        gi.append(&quot;!pom.xml\n&quot;);</span>
+<span class="nc" id="L268">        gi.append(&quot;!workspace.yaml\n&quot;);</span>
+<span class="nc" id="L269">        gi.append(&quot;!README.adoc\n&quot;);</span>
+<span class="nc" id="L270">        gi.append(&quot;!mvnw\n&quot;);</span>
+<span class="nc" id="L271">        gi.append(&quot;!mvnw.cmd\n\n&quot;);</span>
+<span class="nc" id="L272">        gi.append(&quot;# ── Whitelist workspace-owned directories ────────────────────────\n&quot;);</span>
+<span class="nc" id="L273">        gi.append(&quot;!.mvn/\n&quot;);</span>
+<span class="nc" id="L274">        gi.append(&quot;!.mvn/**\n&quot;);</span>
+<span class="nc" id="L275">        gi.append(&quot;!checkpoints/\n&quot;);</span>
+<span class="nc" id="L276">        gi.append(&quot;!checkpoints/**\n&quot;);</span>
+<span class="nc" id="L277">        gi.append(&quot;!.run/\n&quot;);</span>
+<span class="nc" id="L278">        gi.append(&quot;!.run/**\n&quot;);</span>
+<span class="nc" id="L279">        return gi.toString();</span>
+    }
+
+    String generateReadme() {
+<span class="nc bnc" id="L283" title="All 2 branches missed.">        String orgName = org != null ? org : &quot;&lt;org&gt;&quot;;</span>
+
+<span class="nc" id="L285">        StringBuilder adoc = new StringBuilder(1024);</span>
+<span class="nc" id="L286">        adoc.append(&quot;= &quot;).append(description).append(&quot;\n&quot;);</span>
+<span class="nc" id="L287">        adoc.append(&quot;:toc:\n&quot;);</span>
+<span class="nc" id="L288">        adoc.append(&quot;:toc-placement!:\n\n&quot;);</span>
+<span class="nc" id="L289">        adoc.append(description).append(&quot;\n\n&quot;);</span>
+<span class="nc" id="L290">        adoc.append(&quot;toc::[]\n\n&quot;);</span>
+<span class="nc" id="L291">        adoc.append(&quot;== Bootstrap\n\n&quot;);</span>
+<span class="nc" id="L292">        adoc.append(&quot;[source,bash]\n&quot;);</span>
+<span class="nc" id="L293">        adoc.append(&quot;----\n&quot;);</span>
+<span class="nc" id="L294">        adoc.append(&quot;git clone https://github.com/&quot;).append(orgName).append(&quot;/&quot;).append(name).append(&quot;.git\n&quot;);</span>
+<span class="nc" id="L295">        adoc.append(&quot;cd &quot;).append(name).append(&quot;\n&quot;);</span>
+<span class="nc" id="L296">        adoc.append(&quot;mvn ws:init         # &lt;1&gt;\n&quot;);</span>
+<span class="nc" id="L297">        adoc.append(&quot;mvn clean install   # &lt;2&gt;\n&quot;);</span>
+<span class="nc" id="L298">        adoc.append(&quot;----\n&quot;);</span>
+<span class="nc" id="L299">        adoc.append(&quot;&lt;1&gt; Clones all component repos in dependency order; installs Maven\n&quot;);</span>
+<span class="nc" id="L300">        adoc.append(&quot;    wrapper and JVM config per component.\n&quot;);</span>
+<span class="nc" id="L301">        adoc.append(&quot;&lt;2&gt; Builds the full stack.\n\n&quot;);</span>
+<span class="nc" id="L302">        adoc.append(&quot;== Workspace Commands\n\n&quot;);</span>
+<span class="nc" id="L303">        adoc.append(&quot;All `ws:` goals appear in the IntelliJ Maven tool window\n&quot;);</span>
+<span class="nc" id="L304">        adoc.append(&quot;(under _Plugins &gt; ws_). Double-click any goal to run it.\n\n&quot;);</span>
+<span class="nc" id="L305">        adoc.append(&quot;[source,bash]\n&quot;);</span>
+<span class="nc" id="L306">        adoc.append(&quot;----\n&quot;);</span>
+<span class="nc" id="L307">        adoc.append(&quot;mvn ws:status           # Git status across components\n&quot;);</span>
+<span class="nc" id="L308">        adoc.append(&quot;mvn ws:dashboard        # Full workspace health check\n&quot;);</span>
+<span class="nc" id="L309">        adoc.append(&quot;mvn ws:add -Drepo=      # Add a component repo\n&quot;);</span>
+<span class="nc" id="L310">        adoc.append(&quot;mvn ws:upgrade          # Upgrade workspace conventions\n&quot;);</span>
+<span class="nc" id="L311">        adoc.append(&quot;----\n&quot;);</span>
+<span class="nc" id="L312">        return adoc.toString();</span>
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────
+
+    private void initGit(Path wsDir) throws MojoExecutionException {
+<span class="nc" id="L318">        ReleaseSupport.exec(wsDir.toFile(), getLog(),</span>
+                &quot;git&quot;, &quot;init&quot;);
+<span class="nc" id="L320">        getLog().info(&quot;  ✓ git init&quot;);</span>
+
+<span class="nc bnc" id="L322" title="All 4 branches missed.">        if (org != null &amp;&amp; !org.isBlank()) {</span>
+<span class="nc" id="L323">            String remoteUrl = &quot;https://github.com/&quot; + org + &quot;/&quot; + name + &quot;.git&quot;;</span>
+<span class="nc" id="L324">            ReleaseSupport.exec(wsDir.toFile(), getLog(),</span>
+                    &quot;git&quot;, &quot;remote&quot;, &quot;add&quot;, &quot;origin&quot;, remoteUrl);
+<span class="nc" id="L326">            getLog().info(&quot;  ✓ remote: &quot; + remoteUrl);</span>
+        }
+
+        // Auto-commit scaffold so ws:add and ws:feature-start
+        // have a baseline commit to work from.
+        try {
+<span class="nc" id="L332">            ReleaseSupport.exec(wsDir.toFile(), getLog(),</span>
+                    &quot;git&quot;, &quot;add&quot;, &quot;.&quot;);
+<span class="nc" id="L334">            ReleaseSupport.exec(wsDir.toFile(), getLog(),</span>
+                    &quot;git&quot;, &quot;commit&quot;, &quot;-m&quot;, &quot;workspace: initial scaffold&quot;);
+<span class="nc" id="L336">            getLog().info(&quot;  ✓ initial commit&quot;);</span>
+<span class="nc" id="L337">        } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L338">            getLog().warn(&quot;  Auto-commit failed (set git user.email/user.name): &quot;</span>
+<span class="nc" id="L339">                    + e.getMessage());</span>
+<span class="nc" id="L340">        }</span>
+<span class="nc" id="L341">    }</span>
+
+    /**
+     * Install Maven wrapper (mvnw, mvnw.cmd, .mvn/wrapper/maven-wrapper.properties)
+     * at the workspace root so the aggregator POM resolves the correct Maven version.
+     */
+    private void installMavenWrapper(Path wsDir) throws IOException {
+<span class="nc" id="L348">        Path wrapperDir = wsDir.resolve(&quot;.mvn&quot;).resolve(&quot;wrapper&quot;);</span>
+<span class="nc" id="L349">        Files.createDirectories(wrapperDir);</span>
+
+<span class="nc" id="L351">        String props = &quot;# Maven Wrapper properties — managed by ws:init from workspace.yaml\n&quot;</span>
+                + &quot;maven.version=&quot; + mavenVersion + &quot;\n&quot;
+                + &quot;distributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/&quot;
+                + &quot;apache-maven/&quot; + mavenVersion + &quot;/apache-maven-&quot; + mavenVersion
+                + &quot;-bin.zip\n&quot;;
+<span class="nc" id="L356">        Files.writeString(wrapperDir.resolve(&quot;maven-wrapper.properties&quot;), props,</span>
+                StandardCharsets.UTF_8);
+
+<span class="nc" id="L359">        Path mvnw = wsDir.resolve(&quot;mvnw&quot;);</span>
+<span class="nc" id="L360">        String script = &quot;&quot;&quot;</span>
+                #!/bin/sh
+                # Maven Wrapper launcher — installed by ws:init
+                # Downloads and caches the Maven version specified in
+                # .mvn/wrapper/maven-wrapper.properties
+                #
+                # This is a minimal bootstrap. For the full-featured wrapper script,
+                # run: mvn wrapper:wrapper
+
+                set -e
+
+                PROPS_FILE=&quot;$(dirname &quot;$0&quot;)/.mvn/wrapper/maven-wrapper.properties&quot;
+                if [ ! -f &quot;$PROPS_FILE&quot; ]; then
+                    echo &quot;Error: $PROPS_FILE not found&quot; &gt;&amp;2
+                    exit 1
+                fi
+
+                DIST_URL=$(grep '^distributionUrl=' &quot;$PROPS_FILE&quot; | cut -d'=' -f2-)
+                MAVEN_VERSION=$(grep '^maven.version=' &quot;$PROPS_FILE&quot; | cut -d'=' -f2-)
+
+                WRAPPER_HOME=&quot;${HOME}/.m2/wrapper/dists/apache-maven-${MAVEN_VERSION}&quot;
+                MAVEN_HOME=&quot;${WRAPPER_HOME}/apache-maven-${MAVEN_VERSION}&quot;
+
+                if [ ! -d &quot;$MAVEN_HOME&quot; ]; then
+                    echo &quot;Downloading Maven ${MAVEN_VERSION}...&quot;
+                    mkdir -p &quot;$WRAPPER_HOME&quot;
+                    ZIP_FILE=&quot;${WRAPPER_HOME}/apache-maven-${MAVEN_VERSION}-bin.zip&quot;
+                    curl -fsSL -o &quot;$ZIP_FILE&quot; &quot;$DIST_URL&quot;
+                    unzip -qo &quot;$ZIP_FILE&quot; -d &quot;$WRAPPER_HOME&quot;
+                    rm -f &quot;$ZIP_FILE&quot;
+                    echo &quot;Maven ${MAVEN_VERSION} installed to ${MAVEN_HOME}&quot;
+                fi
+
+                exec &quot;$MAVEN_HOME/bin/mvn&quot; &quot;$@&quot;
+                &quot;&quot;&quot;;
+<span class="nc" id="L395">        Files.writeString(mvnw, script, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L396">        mvnw.toFile().setExecutable(true);</span>
+
+<span class="nc" id="L398">        Path mvnwCmd = wsDir.resolve(&quot;mvnw.cmd&quot;);</span>
+<span class="nc" id="L399">        String cmdScript = &quot;&quot;&quot;</span>
+                @REM Maven Wrapper launcher — installed by ws:init
+                @REM Downloads and caches the Maven version specified in
+                @REM .mvn/wrapper/maven-wrapper.properties
+                @echo off
+                setlocal
+
+                set &quot;PROPS_FILE=%~dp0.mvn\\wrapper\\maven-wrapper.properties&quot;
+                if not exist &quot;%PROPS_FILE%&quot; (
+                    echo Error: %PROPS_FILE% not found &gt;&amp;2
+                    exit /b 1
+                )
+
+                for /f &quot;tokens=1,* delims==&quot; %%a in ('findstr &quot;^maven.version=&quot; &quot;%PROPS_FILE%&quot;') do set &quot;MAVEN_VERSION=%%b&quot;
+                for /f &quot;tokens=1,* delims==&quot; %%a in ('findstr &quot;^distributionUrl=&quot; &quot;%PROPS_FILE%&quot;') do set &quot;DIST_URL=%%b&quot;
+
+                set &quot;WRAPPER_HOME=%USERPROFILE%\\.m2\\wrapper\\dists\\apache-maven-%MAVEN_VERSION%&quot;
+                set &quot;MAVEN_HOME=%WRAPPER_HOME%\\apache-maven-%MAVEN_VERSION%&quot;
+
+                if not exist &quot;%MAVEN_HOME%&quot; (
+                    echo Downloading Maven %MAVEN_VERSION%...
+                    mkdir &quot;%WRAPPER_HOME%&quot; 2&gt;nul
+                    set &quot;ZIP_FILE=%WRAPPER_HOME%\\apache-maven-%MAVEN_VERSION%-bin.zip&quot;
+                    powershell -Command &quot;Invoke-WebRequest -Uri '%DIST_URL%' -OutFile '%ZIP_FILE%'&quot;
+                    powershell -Command &quot;Expand-Archive -Path '%ZIP_FILE%' -DestinationPath '%WRAPPER_HOME%' -Force&quot;
+                    del &quot;%ZIP_FILE%&quot;
+                    echo Maven %MAVEN_VERSION% installed to %MAVEN_HOME%
+                )
+
+                &quot;%MAVEN_HOME%\\bin\\mvn.cmd&quot; %*
+                &quot;&quot;&quot;;
+<span class="nc" id="L430">        Files.writeString(mvnwCmd, cmdScript, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L431">    }</span>
+
+    /**
+     * Load a build-time property from ws-plugin.properties (resolved
+     * by Maven resource filtering during the build).
+     */
+    private String loadBuildProperty(String key) {
+<span class="nc" id="L438">        try (var is = getClass().getResourceAsStream(&quot;ws-plugin.properties&quot;)) {</span>
+<span class="nc bnc" id="L439" title="All 2 branches missed.">            if (is != null) {</span>
+<span class="nc" id="L440">                var props = new java.util.Properties();</span>
+<span class="nc" id="L441">                props.load(is);</span>
+<span class="nc" id="L442">                String value = props.getProperty(key);</span>
+<span class="nc bnc" id="L443" title="All 6 branches missed.">                if (value != null &amp;&amp; !value.isBlank() &amp;&amp; !value.startsWith(&quot;${&quot;)) {</span>
+<span class="nc" id="L444">                    return value;</span>
+                }
+            }
+<span class="nc bnc" id="L447" title="All 2 branches missed.">        } catch (IOException e) {</span>
+            // Fall through to fallback
+<span class="nc" id="L449">        }</span>
+        // Fallback: use JAR manifest version
+<span class="nc" id="L451">        String jarVersion = getClass().getPackage().getImplementationVersion();</span>
+<span class="nc bnc" id="L452" title="All 2 branches missed.">        return jarVersion != null ? jarVersion : &quot;66&quot;;</span>
+    }
+
+    private void writeFile(Path path, String content) throws IOException {
+<span class="nc" id="L456">        Files.writeString(path, content, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L457">    }</span>
+
+    private String promptParam(String propertyName, String label)
+            throws MojoExecutionException {
+<span class="nc" id="L461">        java.io.Console console = System.console();</span>
+<span class="nc bnc" id="L462" title="All 2 branches missed.">        if (console != null) {</span>
+<span class="nc" id="L463">            String input = console.readLine(label + &quot;: &quot;);</span>
+<span class="nc bnc" id="L464" title="All 4 branches missed.">            if (input != null &amp;&amp; !input.isBlank()) {</span>
+<span class="nc" id="L465">                return input.trim();</span>
+            }
+        }
+<span class="nc" id="L468">        throw new MojoExecutionException(</span>
+                propertyName + &quot; is required. Specify -D&quot; + propertyName + &quot;=&lt;value&gt;&quot;);
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

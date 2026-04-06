@@ -1,0 +1,478 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VerifyWorkspaceMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">VerifyWorkspaceMojo.java</span></div><h1>VerifyWorkspaceMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.workspace.BomAnalysis;
+import network.ike.workspace.Component;
+import network.ike.workspace.PublishedArtifactSet;
+import network.ike.workspace.WorkspaceGraph;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+import network.ike.plugin.ws.vcs.VcsOperations;
+import network.ike.plugin.ws.vcs.VcsState;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+
+import java.io.File;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.List;
+import java.util.Optional;
+import java.util.Properties;
+
+/**
+ * Verify workspace manifest consistency and subproject git state.
+ *
+ * &lt;p&gt;Checks that all dependency references resolve, no cycles exist,
+ * all group members are valid, and all component types are defined.
+ * Also reports subproject git state, Syncthing health, and environment
+ * presence.
+ *
+ * &lt;pre&gt;{@code mvn ike:verify}&lt;/pre&gt;
+ */
+@Mojo(name = &quot;verify&quot;, requiresProject = false, threadSafe = true)
+public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
+
+    /** Creates this goal instance. */
+<span class="fc" id="L43">    public VerifyWorkspaceMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="fc" id="L47">        ReportLog report = startReport();</span>
+<span class="fc" id="L48">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L49">        getLog().info(header(&quot;Verification&quot;));</span>
+<span class="fc" id="L50">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        if (isWorkspaceMode()) {</span>
+<span class="fc" id="L53">            verifyWorkspaceManifest();</span>
+<span class="fc" id="L54">            verifyParentAlignment();</span>
+<span class="fc" id="L55">            verifyBomCascade();</span>
+<span class="fc" id="L56">            verifyWorkspaceVcs();</span>
+        } else {
+<span class="fc" id="L58">            verifyBareVcs();</span>
+        }
+
+<span class="fc" id="L61">        verifyEnvironment();</span>
+<span class="fc" id="L62">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L63">        finishReport(&quot;ws:verify&quot;, report);</span>
+<span class="fc" id="L64">    }</span>
+
+    // ── Workspace manifest verification (existing logic) ──────────
+
+    private void verifyWorkspaceManifest() throws MojoExecutionException {
+<span class="fc" id="L69">        WorkspaceGraph graph = loadGraph();</span>
+
+<span class="fc" id="L71">        List&lt;String&gt; errors = graph.verify();</span>
+
+<span class="fc" id="L73">        int componentCount = graph.manifest().components().size();</span>
+<span class="fc" id="L74">        int typeCount = graph.manifest().componentTypes().size();</span>
+<span class="fc" id="L75">        int groupCount = graph.manifest().groups().size();</span>
+
+<span class="fc" id="L77">        getLog().info(&quot;  Components:      &quot; + componentCount);</span>
+<span class="fc" id="L78">        getLog().info(&quot;  Component types: &quot; + typeCount);</span>
+<span class="fc" id="L79">        getLog().info(&quot;  Groups:          &quot; + groupCount);</span>
+<span class="fc" id="L80">        getLog().info(&quot;&quot;);</span>
+
+<span class="pc bpc" id="L82" title="1 of 2 branches missed.">        if (errors.isEmpty()) {</span>
+<span class="fc" id="L83">            getLog().info(&quot;  Manifest:    consistent  ✓&quot;);</span>
+        } else {
+<span class="nc" id="L85">            getLog().error(&quot;  Manifest:    &quot; + errors.size() + &quot; error(s)&quot;);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">            for (String error : errors) {</span>
+<span class="nc" id="L87">                getLog().error(&quot;    ✗ &quot; + error);</span>
+<span class="nc" id="L88">            }</span>
+        }
+<span class="fc" id="L90">    }</span>
+
+    // ── Parent version alignment ─────────────────────────────────
+
+    private void verifyParentAlignment() throws MojoExecutionException {
+<span class="fc" id="L95">        WorkspaceGraph graph = loadGraph();</span>
+<span class="fc" id="L96">        File root = workspaceRoot();</span>
+<span class="fc" id="L97">        int misaligned = 0;</span>
+<span class="fc" id="L98">        int checked = 0;</span>
+
+<span class="fc" id="L100">        getLog().info(&quot;&quot;);</span>
+
+        for (Map.Entry&lt;String, Component&gt; entry :
+<span class="fc bfc" id="L103" title="All 2 branches covered.">                graph.manifest().components().entrySet()) {</span>
+<span class="fc" id="L104">            String name = entry.getKey();</span>
+<span class="fc" id="L105">            Component component = entry.getValue();</span>
+<span class="fc" id="L106">            java.nio.file.Path pomFile = root.toPath().resolve(name).resolve(&quot;pom.xml&quot;);</span>
+
+<span class="pc bpc" id="L108" title="1 of 2 branches missed.">            if (!java.nio.file.Files.exists(pomFile)) continue;</span>
+
+            try {
+<span class="fc" id="L111">                PomParentSupport.ParentInfo parent =</span>
+<span class="fc" id="L112">                        PomParentSupport.readParent(pomFile);</span>
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">                if (parent == null) continue;</span>
+
+                // Check if parent matches a workspace component
+<span class="nc" id="L116">                String parentComponentName = component.parent();</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">                if (parentComponentName == null) {</span>
+                    // Try to detect: does the parent artifactId match a workspace component?
+                    for (Map.Entry&lt;String, Component&gt; candidate :
+<span class="nc bnc" id="L120" title="All 2 branches missed.">                            graph.manifest().components().entrySet()) {</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">                        if (candidate.getValue().groupId() != null</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">                                &amp;&amp; candidate.getValue().groupId().equals(parent.groupId())) {</span>
+<span class="nc" id="L123">                            getLog().info(&quot;  INFO: &quot; + name + &quot; has parent &quot;</span>
+<span class="nc" id="L124">                                    + parent.groupId() + &quot;:&quot; + parent.artifactId()</span>
+<span class="nc" id="L125">                                    + &quot;:&quot; + parent.version()</span>
+                                    + &quot; — consider adding 'parent: &quot;
+<span class="nc" id="L127">                                    + candidate.getKey() + &quot;' to workspace.yaml&quot;);</span>
+<span class="nc" id="L128">                            break;</span>
+                        }
+<span class="nc" id="L130">                    }</span>
+<span class="nc" id="L131">                    continue;</span>
+                }
+
+                // Parent is declared — check version alignment
+<span class="nc" id="L135">                checked++;</span>
+<span class="nc" id="L136">                Component parentComponent =</span>
+<span class="nc" id="L137">                        graph.manifest().components().get(parentComponentName);</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">                if (parentComponent == null) {</span>
+<span class="nc" id="L139">                    getLog().warn(&quot;  WARN: &quot; + name + &quot; declares parent '&quot;</span>
+                            + parentComponentName + &quot;' but it is not a workspace component&quot;);
+<span class="nc" id="L141">                    misaligned++;</span>
+<span class="nc" id="L142">                    continue;</span>
+                }
+
+<span class="nc" id="L145">                String expectedVersion = parentComponent.version();</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">                if (expectedVersion != null</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">                        &amp;&amp; !expectedVersion.equals(parent.version())) {</span>
+<span class="nc" id="L148">                    getLog().warn(&quot;  WARN: &quot; + name + &quot; parent version &quot;</span>
+<span class="nc" id="L149">                            + parent.version() + &quot; != &quot; + parentComponentName</span>
+                            + &quot; workspace version &quot; + expectedVersion);
+<span class="nc" id="L151">                    misaligned++;</span>
+                } else {
+<span class="nc" id="L153">                    getLog().info(&quot;  &quot; + name + &quot;: parent &quot; + parentComponentName</span>
+<span class="nc" id="L154">                            + &quot;:&quot; + parent.version() + &quot;  ✓&quot;);</span>
+                }
+<span class="nc" id="L156">            } catch (java.io.IOException e) {</span>
+<span class="nc" id="L157">                getLog().debug(&quot;  Could not read parent from &quot; + name + &quot;: &quot;</span>
+<span class="nc" id="L158">                        + e.getMessage());</span>
+<span class="nc" id="L159">            }</span>
+<span class="nc" id="L160">        }</span>
+
+<span class="pc bpc" id="L162" title="1 of 2 branches missed.">        if (checked == 0) {</span>
+<span class="fc" id="L163">            getLog().info(&quot;  Parent alignment: no components declare workspace parents&quot;);</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">        } else if (misaligned == 0) {</span>
+<span class="nc" id="L165">            getLog().info(&quot;  Parent alignment: &quot; + checked</span>
+                    + &quot; component(s) aligned  ✓&quot;);
+        } else {
+<span class="nc" id="L168">            getLog().warn(&quot;  Parent alignment: &quot; + misaligned + &quot;/&quot; + checked</span>
+                    + &quot; component(s) misaligned&quot;);
+        }
+<span class="fc" id="L171">    }</span>
+
+    // ── BOM cascade verification ──────────────────────────────────
+
+    private void verifyBomCascade() throws MojoExecutionException {
+<span class="fc" id="L176">        WorkspaceGraph graph = loadGraph();</span>
+<span class="fc" id="L177">        File root = workspaceRoot();</span>
+
+        // Build published artifact sets for all components
+<span class="fc" id="L180">        Map&lt;String, Set&lt;PublishedArtifactSet.Artifact&gt;&gt; workspaceArtifacts =</span>
+                new LinkedHashMap&lt;&gt;();
+<span class="fc bfc" id="L182" title="All 2 branches covered.">        for (String name : graph.manifest().components().keySet()) {</span>
+<span class="fc" id="L183">            java.nio.file.Path compDir = root.toPath().resolve(name);</span>
+<span class="pc bpc" id="L184" title="1 of 2 branches missed.">            if (java.nio.file.Files.exists(compDir.resolve(&quot;pom.xml&quot;))) {</span>
+                try {
+<span class="fc" id="L186">                    workspaceArtifacts.put(name,</span>
+<span class="fc" id="L187">                            PublishedArtifactSet.scan(compDir));</span>
+<span class="nc" id="L188">                } catch (java.io.IOException e) {</span>
+<span class="nc" id="L189">                    getLog().debug(&quot;Could not scan &quot; + name + &quot;: &quot; + e.getMessage());</span>
+<span class="fc" id="L190">                }</span>
+            }
+<span class="fc" id="L192">        }</span>
+
+        try {
+<span class="fc" id="L195">            var issues = BomAnalysis.analyzeCascadeIssues(</span>
+<span class="fc" id="L196">                    root.toPath(), graph.manifest(), workspaceArtifacts);</span>
+
+<span class="pc bpc" id="L198" title="1 of 2 branches missed.">            if (issues.isEmpty()) {</span>
+<span class="nc" id="L199">                getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L200">                getLog().info(&quot;  BOM cascade: all dependency edges can cascade  ✓&quot;);</span>
+            } else {
+<span class="fc" id="L202">                getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L203">                getLog().warn(&quot;  BOM cascade: &quot; + issues.size() + &quot; gap(s) detected&quot;);</span>
+<span class="fc bfc" id="L204" title="All 2 branches covered.">                for (var issue : issues) {</span>
+<span class="fc" id="L205">                    getLog().warn(&quot;    &quot; + issue.componentName() + &quot; → &quot;</span>
+<span class="fc" id="L206">                            + issue.dependsOn()</span>
+                            + &quot;: no version-property or workspace BOM import&quot;);
+<span class="pc bpc" id="L208" title="1 of 2 branches missed.">                    if (!issue.externalBomPins().isEmpty()) {</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">                        for (var bom : issue.externalBomPins()) {</span>
+<span class="nc" id="L210">                            getLog().warn(&quot;      external BOM: &quot;</span>
+<span class="nc" id="L211">                                    + bom.groupId() + &quot;:&quot; + bom.artifactId()</span>
+<span class="nc" id="L212">                                    + &quot;:&quot; + bom.version()</span>
+                                    + &quot; (may pin workspace artifact versions)&quot;);
+<span class="nc" id="L214">                        }</span>
+                    }
+<span class="fc" id="L216">                }</span>
+            }
+<span class="nc" id="L218">        } catch (java.io.IOException e) {</span>
+<span class="nc" id="L219">            getLog().warn(&quot;  BOM cascade check failed: &quot; + e.getMessage());</span>
+<span class="fc" id="L220">        }</span>
+<span class="fc" id="L221">    }</span>
+
+    // ── Subproject git state (workspace mode) ─────────────────────
+
+    private void verifyWorkspaceVcs() throws MojoExecutionException {
+<span class="fc" id="L226">        WorkspaceGraph graph = loadGraph();</span>
+<span class="fc" id="L227">        File root = workspaceRoot();</span>
+
+<span class="fc" id="L229">        getLog().info(&quot;&quot;);</span>
+
+        // Workspace repo itself
+<span class="pc bpc" id="L232" title="1 of 2 branches missed.">        if (VcsState.isIkeManaged(root.toPath())) {</span>
+<span class="nc" id="L233">            getLog().info(&quot;  Workspace&quot;);</span>
+<span class="nc" id="L234">            reportVcsState(root, &quot;    &quot;);</span>
+        }
+
+        // Each component
+<span class="fc bfc" id="L238" title="All 2 branches covered.">        for (var entry : graph.manifest().components().entrySet()) {</span>
+<span class="fc" id="L239">            String name = entry.getKey();</span>
+<span class="fc" id="L240">            File dir = new File(root, name);</span>
+
+<span class="pc bpc" id="L242" title="1 of 2 branches missed.">            if (!new File(dir, &quot;.git&quot;).exists()) {</span>
+<span class="nc" id="L243">                continue;</span>
+            }
+
+<span class="fc" id="L246">            getLog().info(&quot;  &quot; + name);</span>
+
+<span class="pc bpc" id="L248" title="1 of 2 branches missed.">            if (!VcsState.isIkeManaged(dir.toPath())) {</span>
+<span class="fc" id="L249">                getLog().info(&quot;    Git state: freshly added (no workspace operations yet)&quot;);</span>
+<span class="fc" id="L250">                continue;</span>
+            }
+
+<span class="nc" id="L253">            reportVcsState(dir, &quot;    &quot;);</span>
+<span class="nc" id="L254">        }</span>
+<span class="fc" id="L255">    }</span>
+
+    // ── Subproject git state (bare mode) ──────────────────────────
+
+    private void verifyBareVcs() throws MojoExecutionException {
+<span class="fc" id="L260">        File dir = new File(System.getProperty(&quot;user.dir&quot;));</span>
+<span class="fc" id="L261">        String dirName = dir.getName();</span>
+
+<span class="fc" id="L263">        getLog().info(&quot;  Machine:     &quot; + hostname());</span>
+
+<span class="pc bpc" id="L265" title="1 of 2 branches missed.">        if (!VcsState.isIkeManaged(dir.toPath())) {</span>
+<span class="nc" id="L266">            getLog().info(&quot;  Git state:   freshly added (no workspace operations yet)&quot;);</span>
+<span class="nc" id="L267">            return;</span>
+        }
+
+<span class="fc" id="L270">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L271">        getLog().info(&quot;  &quot; + dirName);</span>
+<span class="fc" id="L272">        reportVcsState(dir, &quot;    &quot;);</span>
+<span class="fc" id="L273">    }</span>
+
+    // ── Shared VCS state reporting ───────────────────────────────
+
+    private void reportVcsState(File dir, String indent)
+            throws MojoExecutionException {
+<span class="fc" id="L279">        String localBranch = gitBranch(dir);</span>
+<span class="fc" id="L280">        String localSha = gitShortSha(dir);</span>
+
+<span class="fc" id="L282">        getLog().info(indent + &quot;Branch:        &quot; + localBranch);</span>
+<span class="fc" id="L283">        getLog().info(indent + &quot;Local HEAD:    &quot; + localSha);</span>
+
+<span class="fc" id="L285">        Optional&lt;VcsState&gt; stateOpt = VcsState.readFrom(dir.toPath());</span>
+
+<span class="pc bpc" id="L287" title="1 of 2 branches missed.">        if (stateOpt.isEmpty()) {</span>
+<span class="nc" id="L288">            getLog().info(indent + &quot;State file:    absent (first commit, or Syncthing not delivered)&quot;);</span>
+<span class="nc" id="L289">            getLog().info(indent + &quot;Status:        no state file  ─&quot;);</span>
+<span class="nc" id="L290">            return;</span>
+        }
+
+<span class="fc" id="L293">        VcsState state = stateOpt.get();</span>
+<span class="fc" id="L294">        getLog().info(indent + &quot;State file:    &quot; + state.action()</span>
+<span class="fc" id="L295">                + &quot; by &quot; + state.machine() + &quot; at &quot; + state.timestamp());</span>
+<span class="fc" id="L296">        getLog().info(indent + &quot;State SHA:     &quot; + state.sha());</span>
+<span class="fc" id="L297">        getLog().info(indent + &quot;State branch:  &quot; + state.branch());</span>
+
+        // In sync?
+<span class="fc" id="L300">        boolean shaMatch = state.sha().equals(localSha);</span>
+<span class="fc" id="L301">        boolean branchMatch = state.branch().equals(localBranch);</span>
+
+<span class="pc bpc" id="L303" title="3 of 4 branches missed.">        if (shaMatch &amp;&amp; branchMatch) {</span>
+<span class="nc" id="L304">            getLog().info(indent + &quot;Status:        in sync  ✓&quot;);</span>
+<span class="nc" id="L305">            return;</span>
+        }
+
+        // Not in sync — diagnose based on action
+<span class="pc bpc" id="L309" title="1 of 2 branches missed.">        if (!branchMatch) {</span>
+<span class="nc" id="L310">            diagnoseBranchMismatch(dir, indent, state, localBranch);</span>
+        } else {
+<span class="fc" id="L312">            diagnoseShaMismatch(dir, indent, state, localSha);</span>
+        }
+<span class="fc" id="L314">    }</span>
+
+    private void diagnoseBranchMismatch(File dir, String indent,
+                                         VcsState state, String localBranch) {
+<span class="nc bnc" id="L318" title="All 3 branches missed.">        switch (state.action()) {</span>
+            case VcsState.ACTION_FEATURE_START:
+<span class="nc" id="L320">                getLog().warn(indent + &quot;Status:        feature branch '&quot;</span>
+<span class="nc" id="L321">                        + state.branch() + &quot;' started on &quot; + state.machine()</span>
+<span class="nc" id="L322">                        + &quot; at &quot; + state.timestamp());</span>
+<span class="nc" id="L323">                getLog().warn(indent + &quot;               You are on '&quot;</span>
+                        + localBranch + &quot;'.&quot;);
+<span class="nc" id="L325">                getLog().warn(indent + &quot;Action:        run 'mvnw ike:sync' to switch to the feature branch&quot;);</span>
+<span class="nc" id="L326">                break;</span>
+            case VcsState.ACTION_FEATURE_FINISH:
+<span class="nc" id="L328">                getLog().warn(indent + &quot;Status:        feature finished on &quot;</span>
+<span class="nc" id="L329">                        + state.machine() + &quot; at &quot; + state.timestamp()</span>
+<span class="nc" id="L330">                        + &quot;, merged to '&quot; + state.branch() + &quot;'&quot;);</span>
+<span class="nc" id="L331">                getLog().warn(indent + &quot;               You are on '&quot;</span>
+                        + localBranch + &quot;'.&quot;);
+<span class="nc" id="L333">                getLog().warn(indent + &quot;Action:        run 'mvnw ike:sync' to return to '&quot;</span>
+<span class="nc" id="L334">                        + state.branch() + &quot;'&quot;);</span>
+<span class="nc" id="L335">                break;</span>
+            default:
+<span class="nc" id="L337">                getLog().warn(indent + &quot;Status:        branch mismatch — local '&quot;</span>
+<span class="nc" id="L338">                        + localBranch + &quot;', state file '&quot; + state.branch() + &quot;'&quot;);</span>
+<span class="nc" id="L339">                getLog().warn(indent + &quot;Action:        run 'mvnw ike:sync' to reconcile&quot;);</span>
+                break;
+        }
+<span class="nc" id="L342">    }</span>
+
+    private void diagnoseShaMismatch(File dir, String indent,
+                                      VcsState state, String localSha) {
+        // Check if the state SHA exists on the remote
+        Optional&lt;String&gt; remoteSha;
+        try {
+<span class="fc" id="L349">            remoteSha = VcsOperations.remoteSha(dir, &quot;origin&quot;, state.branch());</span>
+<span class="nc" id="L350">        } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L351">            remoteSha = Optional.empty();</span>
+<span class="fc" id="L352">        }</span>
+
+<span class="fc" id="L354">        boolean shaOnRemote = remoteSha.isPresent();</span>
+
+<span class="pc bpc" id="L356" title="4 of 5 branches missed.">        switch (state.action()) {</span>
+            case VcsState.ACTION_COMMIT:
+<span class="pc bpc" id="L358" title="1 of 2 branches missed.">                if (shaOnRemote) {</span>
+<span class="fc" id="L359">                    getLog().warn(indent + &quot;Status:        commit on &quot;</span>
+<span class="fc" id="L360">                            + state.machine() + &quot; at &quot; + state.timestamp());</span>
+<span class="fc" id="L361">                    getLog().warn(indent + &quot;Action:        run 'mvnw ike:sync'&quot;);</span>
+                } else {
+<span class="nc" id="L363">                    getLog().warn(indent + &quot;Status:        commit on &quot;</span>
+<span class="nc" id="L364">                            + state.machine() + &quot; at &quot; + state.timestamp()</span>
+                            + &quot;, but push did not complete&quot;);
+<span class="nc" id="L366">                    getLog().warn(indent + &quot;Action:        push from &quot;</span>
+<span class="nc" id="L367">                            + state.machine() + &quot; first, then 'mvnw ike:sync' here&quot;);</span>
+<span class="nc" id="L368">                    getLog().warn(indent + &quot;               Or: IKE_VCS_OVERRIDE=1 to proceed independently&quot;);</span>
+                }
+<span class="nc" id="L370">                break;</span>
+            case VcsState.ACTION_PUSH:
+<span class="nc" id="L372">                getLog().warn(indent + &quot;Status:        push from &quot;</span>
+<span class="nc" id="L373">                        + state.machine() + &quot; at &quot; + state.timestamp());</span>
+<span class="nc" id="L374">                getLog().warn(indent + &quot;               Local HEAD behind remote.&quot;);</span>
+<span class="nc" id="L375">                getLog().warn(indent + &quot;Action:        run 'mvnw ike:sync'&quot;);</span>
+<span class="nc" id="L376">                break;</span>
+            case VcsState.ACTION_RELEASE:
+<span class="nc" id="L378">                getLog().warn(indent + &quot;Status:        release performed on &quot;</span>
+<span class="nc" id="L379">                        + state.machine() + &quot; at &quot; + state.timestamp());</span>
+<span class="nc" id="L380">                getLog().warn(indent + &quot;Action:        run 'mvnw ike:sync'&quot;);</span>
+<span class="nc" id="L381">                break;</span>
+            case VcsState.ACTION_CHECKPOINT:
+<span class="nc" id="L383">                getLog().warn(indent + &quot;Status:        checkpoint created on &quot;</span>
+<span class="nc" id="L384">                        + state.machine() + &quot; at &quot; + state.timestamp());</span>
+<span class="nc" id="L385">                getLog().warn(indent + &quot;Action:        run 'mvnw ike:sync'&quot;);</span>
+<span class="nc" id="L386">                break;</span>
+            default:
+<span class="nc" id="L388">                getLog().warn(indent + &quot;Status:        behind (&quot;</span>
+<span class="nc" id="L389">                        + state.action() + &quot; on &quot; + state.machine() + &quot;)&quot;);</span>
+<span class="nc" id="L390">                getLog().warn(indent + &quot;Action:        run 'mvnw ike:sync'&quot;);</span>
+                break;
+        }
+<span class="fc" id="L393">    }</span>
+
+    // ── Environment checks ──────────────────────────────────────
+
+    private void verifyEnvironment() {
+<span class="fc" id="L398">        File dir = new File(System.getProperty(&quot;user.dir&quot;));</span>
+
+<span class="fc" id="L400">        getLog().info(&quot;&quot;);</span>
+
+        // Standards
+<span class="fc" id="L403">        File standards = new File(dir, &quot;.claude/standards&quot;);</span>
+<span class="pc bpc" id="L404" title="1 of 2 branches missed.">        if (standards.isDirectory()) {</span>
+<span class="nc" id="L405">            getLog().info(&quot;  Standards:   .claude/standards/ present  ✓&quot;);</span>
+        } else {
+<span class="fc" id="L407">            getLog().info(&quot;  Standards:   .claude/standards/ absent&quot;);</span>
+        }
+
+        // CLAUDE.md
+<span class="fc" id="L411">        File claudeMd = new File(dir, &quot;CLAUDE.md&quot;);</span>
+<span class="pc bpc" id="L412" title="1 of 2 branches missed.">        if (claudeMd.exists()) {</span>
+<span class="nc" id="L413">            getLog().info(&quot;  CLAUDE.md:   present  ✓&quot;);</span>
+        } else {
+<span class="fc" id="L415">            getLog().info(&quot;  CLAUDE.md:   absent&quot;);</span>
+        }
+
+        // Syncthing
+<span class="fc" id="L419">        checkSyncthingHealth();</span>
+<span class="fc" id="L420">    }</span>
+
+    private void checkSyncthingHealth() {
+<span class="fc" id="L423">        int port = 8384;</span>
+
+        // Check for custom port in .ike/config
+<span class="fc" id="L426">        File dir = new File(System.getProperty(&quot;user.dir&quot;));</span>
+<span class="fc" id="L427">        Path config = dir.toPath().resolve(&quot;.ike/config&quot;);</span>
+<span class="pc bpc" id="L428" title="1 of 2 branches missed.">        if (Files.exists(config)) {</span>
+            try {
+<span class="nc" id="L430">                Properties props = new Properties();</span>
+<span class="nc" id="L431">                props.load(new java.io.StringReader(</span>
+<span class="nc" id="L432">                        Files.readString(config, StandardCharsets.UTF_8)));</span>
+<span class="nc" id="L433">                String portStr = props.getProperty(&quot;syncthing.port&quot;);</span>
+<span class="nc bnc" id="L434" title="All 2 branches missed.">                if (portStr != null) {</span>
+<span class="nc" id="L435">                    port = Integer.parseInt(portStr.trim());</span>
+                }
+<span class="nc" id="L437">            } catch (Exception e) {</span>
+<span class="nc" id="L438">                getLog().debug(&quot;Could not read .ike/config: &quot; + e.getMessage());</span>
+<span class="nc" id="L439">            }</span>
+        }
+
+        try {
+<span class="fc" id="L443">            HttpClient client = HttpClient.newBuilder()</span>
+<span class="fc" id="L444">                    .connectTimeout(Duration.ofSeconds(2))</span>
+<span class="fc" id="L445">                    .build();</span>
+<span class="fc" id="L446">            HttpRequest request = HttpRequest.newBuilder()</span>
+<span class="fc" id="L447">                    .uri(URI.create(&quot;http://localhost:&quot; + port + &quot;/rest/noauth/health&quot;))</span>
+<span class="fc" id="L448">                    .timeout(Duration.ofSeconds(2))</span>
+<span class="fc" id="L449">                    .GET()</span>
+<span class="fc" id="L450">                    .build();</span>
+<span class="fc" id="L451">            HttpResponse&lt;String&gt; response = client.send(request,</span>
+<span class="fc" id="L452">                    HttpResponse.BodyHandlers.ofString());</span>
+
+<span class="pc bpc" id="L454" title="1 of 2 branches missed.">            if (response.statusCode() == 200) {</span>
+<span class="fc" id="L455">                getLog().info(&quot;  Syncthing:   connected (port &quot; + port + &quot;)  ✓&quot;);</span>
+            } else {
+<span class="nc" id="L457">                getLog().info(&quot;  Syncthing:   responded with status &quot;</span>
+<span class="nc" id="L458">                        + response.statusCode());</span>
+            }
+<span class="nc" id="L460">        } catch (Exception e) {</span>
+<span class="nc" id="L461">            getLog().info(&quot;  Syncthing:   not running (port &quot; + port + &quot;)&quot;);</span>
+<span class="fc" id="L462">        }</span>
+<span class="fc" id="L463">    }</span>
+
+    private String hostname() {
+<span class="fc" id="L466">        String host = System.getenv(&quot;HOSTNAME&quot;);</span>
+<span class="pc bpc" id="L467" title="3 of 4 branches missed.">        if (host == null || host.isEmpty()) {</span>
+            try {
+<span class="fc" id="L469">                host = java.net.InetAddress.getLocalHost().getHostName();</span>
+<span class="nc" id="L470">            } catch (Exception e) {</span>
+<span class="nc" id="L471">                host = &quot;unknown&quot;;</span>
+<span class="fc" id="L472">            }</span>
+        }
+<span class="fc" id="L474">        int dot = host.indexOf('.');</span>
+<span class="pc bpc" id="L475" title="1 of 2 branches missed.">        return dot &gt; 0 ? host.substring(0, dot) : host;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

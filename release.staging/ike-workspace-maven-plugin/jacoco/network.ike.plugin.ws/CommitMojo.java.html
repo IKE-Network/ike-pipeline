@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CommitMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">CommitMojo.java</span></div><h1>CommitMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.plugin.ws.vcs.VcsOperations;
+import network.ike.plugin.ws.vcs.VcsState;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.io.File;
+
+/**
+ * Commit with a VCS bridge catch-up preamble.
+ *
+ * &lt;p&gt;Syncs local git state first (if behind), then commits.
+ * Sets {@code IKE_VCS_CONTEXT} so the pre-commit hook allows the
+ * operation through without a state file check.
+ *
+ * &lt;p&gt;Usage: {@code mvnw ws:commit -Dmessage=&quot;my commit message&quot;}
+ */
+@Mojo(name = &quot;commit&quot;, requiresProject = false, threadSafe = true)
+public class CommitMojo extends AbstractWorkspaceMojo {
+
+    /** Creates this goal instance. */
+<span class="fc" id="L24">    public CommitMojo() {}</span>
+
+    /**
+     * Commit message. If omitted, git opens the editor and the
+     * prepare-commit-msg hook generates a message via Claude.
+     */
+    @Parameter(property = &quot;message&quot;)
+    String message;
+
+    /**
+     * Stage all changes before committing ({@code git add -A}).
+     */
+    @Parameter(property = &quot;addAll&quot;, defaultValue = &quot;false&quot;)
+    boolean addAll;
+
+    /**
+     * Push to origin after committing.
+     */
+    @Parameter(property = &quot;push&quot;, defaultValue = &quot;false&quot;)
+    boolean push;
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="fc" id="L47">        File dir = new File(System.getProperty(&quot;user.dir&quot;));</span>
+
+<span class="fc" id="L49">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L50">        getLog().info(&quot;IKE VCS Bridge — Commit&quot;);</span>
+<span class="fc" id="L51">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+
+<span class="fc" id="L53">        VcsOperations.catchUp(dir, getLog());</span>
+
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">        if (addAll) {</span>
+<span class="nc" id="L56">            getLog().info(&quot;  Staging all changes...&quot;);</span>
+<span class="nc" id="L57">            VcsOperations.addAll(dir, getLog());</span>
+        }
+
+<span class="pc bpc" id="L60" title="2 of 4 branches missed.">        if (message != null &amp;&amp; !message.isBlank()) {</span>
+<span class="fc" id="L61">            getLog().info(&quot;  Committing...&quot;);</span>
+<span class="fc" id="L62">            VcsOperations.commit(dir, getLog(), message);</span>
+        } else {
+            // No message — open editor (prepare-commit-msg hook will generate)
+<span class="nc" id="L65">            getLog().info(&quot;  Committing (editor will open for message)...&quot;);</span>
+<span class="nc" id="L66">            VcsOperations.commitStaged(dir, getLog(), null);</span>
+        }
+
+<span class="fc" id="L69">        VcsOperations.writeVcsState(dir, VcsState.ACTION_COMMIT);</span>
+
+<span class="pc bpc" id="L71" title="1 of 2 branches missed.">        if (push) {</span>
+<span class="nc" id="L72">            String branch = VcsOperations.currentBranch(dir);</span>
+<span class="nc" id="L73">            getLog().info(&quot;  Pushing to origin/&quot; + branch + &quot;...&quot;);</span>
+<span class="nc" id="L74">            VcsOperations.push(dir, getLog(), &quot;origin&quot;, branch);</span>
+<span class="nc" id="L75">            VcsOperations.writeVcsState(dir, VcsState.ACTION_PUSH);</span>
+        }
+
+<span class="fc" id="L78">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L79">        getLog().info(&quot;  Done.&quot;);</span>
+<span class="fc" id="L80">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L81">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

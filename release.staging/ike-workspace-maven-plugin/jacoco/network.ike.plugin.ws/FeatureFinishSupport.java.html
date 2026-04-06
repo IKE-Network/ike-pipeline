@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FeatureFinishSupport.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">FeatureFinishSupport.java</span></div><h1>FeatureFinishSupport.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.plugin.ReleaseSupport;
+
+import network.ike.workspace.Component;
+import network.ike.workspace.ManifestWriter;
+import network.ike.workspace.VersionSupport;
+import network.ike.workspace.WorkspaceGraph;
+import network.ike.plugin.ws.vcs.VcsOperations;
+import network.ike.plugin.ws.vcs.VcsState;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.logging.Log;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Shared logic for feature-finish goals (squash, merge, rebase).
+ *
+ * &lt;p&gt;Each strategy goal delegates to this class for validation,
+ * version stripping, workspace.yaml updates, branch deletion,
+ * and state file writing. The actual merge operation is performed
+ * by the strategy goal itself.
+ */
+class FeatureFinishSupport {
+
+    private FeatureFinishSupport() {}
+
+    /**
+     * Validate that a component is eligible for feature-finish.
+     * Returns null if eligible, or a skip reason string.
+     */
+    static String validateComponent(File root, String name, String branchName,
+                                     AbstractWorkspaceMojo mojo) {
+<span class="fc" id="L42">        File dir = new File(root, name);</span>
+<span class="fc" id="L43">        File gitDir = new File(dir, &quot;.git&quot;);</span>
+
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">        if (!gitDir.exists()) {</span>
+<span class="nc" id="L46">            return &quot;not cloned&quot;;</span>
+        }
+
+<span class="fc" id="L49">        String currentBranch = mojo.gitBranch(dir);</span>
+<span class="pc bpc" id="L50" title="1 of 2 branches missed.">        if (!currentBranch.equals(branchName)) {</span>
+<span class="nc" id="L51">            return &quot;on &quot; + currentBranch + &quot;, not &quot; + branchName;</span>
+        }
+
+<span class="fc" id="L54">        String status = mojo.gitStatus(dir);</span>
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">        if (!status.isEmpty()) {</span>
+<span class="nc" id="L56">            return &quot;DIRTY&quot;;  // Caller should throw</span>
+        }
+
+<span class="fc" id="L59">        return null;</span>
+    }
+
+    /**
+     * Strip branch-qualified version back to base SNAPSHOT.
+     * Returns the base version, or null if no stripping was needed.
+     */
+    static String stripBranchVersion(File dir, Component component, Log log)
+            throws MojoExecutionException {
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">        if (component.version() == null</span>
+<span class="pc bpc" id="L69" title="1 of 2 branches missed.">                || !VersionSupport.isBranchQualified(component.version())) {</span>
+<span class="nc" id="L70">            return null;</span>
+        }
+
+<span class="fc" id="L73">        String currentVersion = readCurrentVersion(dir, log);</span>
+<span class="pc bpc" id="L74" title="2 of 4 branches missed.">        if (currentVersion == null || !VersionSupport.isBranchQualified(currentVersion)) {</span>
+<span class="nc" id="L75">            return null;</span>
+        }
+
+<span class="fc" id="L78">        String baseVersion = VersionSupport.extractNumericBase(</span>
+<span class="fc" id="L79">                VersionSupport.stripSnapshot(currentVersion)) + &quot;-SNAPSHOT&quot;;</span>
+
+<span class="fc" id="L81">        log.info(&quot;    version: &quot; + currentVersion + &quot; → &quot; + baseVersion);</span>
+<span class="fc" id="L82">        setAllVersions(dir, currentVersion, baseVersion, log);</span>
+<span class="fc" id="L83">        ReleaseSupport.exec(dir, log, &quot;git&quot;, &quot;add&quot;, &quot;-A&quot;);</span>
+<span class="fc" id="L84">        ReleaseSupport.exec(dir, log, &quot;git&quot;, &quot;commit&quot;, &quot;-m&quot;,</span>
+                &quot;merge-prep: strip branch qualifier → &quot; + baseVersion);
+
+<span class="fc" id="L87">        return baseVersion;</span>
+    }
+
+    /**
+     * Strip branch-qualified version in bare mode.
+     */
+    static String stripBranchVersionBare(File dir, Log log)
+            throws MojoExecutionException {
+<span class="fc" id="L95">        File pom = new File(dir, &quot;pom.xml&quot;);</span>
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">        if (!pom.exists()) return null;</span>
+
+        String currentVersion;
+        try {
+<span class="fc" id="L100">            currentVersion = ReleaseSupport.readPomVersion(pom);</span>
+<span class="nc" id="L101">        } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L102">            return null;</span>
+<span class="fc" id="L103">        }</span>
+
+<span class="pc bpc" id="L105" title="2 of 4 branches missed.">        if (currentVersion == null || !VersionSupport.isBranchQualified(currentVersion)) {</span>
+<span class="nc" id="L106">            return null;</span>
+        }
+
+<span class="fc" id="L109">        String baseVersion = VersionSupport.extractNumericBase(</span>
+<span class="fc" id="L110">                VersionSupport.stripSnapshot(currentVersion)) + &quot;-SNAPSHOT&quot;;</span>
+
+<span class="fc" id="L112">        log.info(&quot;  Version: &quot; + currentVersion + &quot; → &quot; + baseVersion);</span>
+<span class="fc" id="L113">        setAllVersions(dir, currentVersion, baseVersion, log);</span>
+<span class="fc" id="L114">        ReleaseSupport.exec(dir, log, &quot;git&quot;, &quot;add&quot;, &quot;-A&quot;);</span>
+<span class="fc" id="L115">        ReleaseSupport.exec(dir, log, &quot;git&quot;, &quot;commit&quot;, &quot;-m&quot;,</span>
+                &quot;merge-prep: strip branch qualifier → &quot; + baseVersion);
+
+<span class="fc" id="L118">        return baseVersion;</span>
+    }
+
+    /**
+     * Delete feature branch locally and remotely.
+     */
+    static void deleteBranch(File dir, Log log, String branchName)
+            throws MojoExecutionException {
+<span class="fc" id="L126">        VcsOperations.deleteBranch(dir, log, branchName);</span>
+<span class="fc" id="L127">        log.info(&quot;    deleted local branch: &quot; + branchName);</span>
+
+        try {
+<span class="nc" id="L130">            VcsOperations.deleteRemoteBranch(dir, log, &quot;origin&quot;, branchName);</span>
+<span class="nc" id="L131">            log.info(&quot;    deleted remote branch: origin/&quot; + branchName);</span>
+<span class="fc" id="L132">        } catch (MojoExecutionException e) {</span>
+<span class="fc" id="L133">            log.warn(&quot;    could not delete remote branch: &quot; + e.getMessage());</span>
+<span class="nc" id="L134">        }</span>
+<span class="fc" id="L135">    }</span>
+
+    /**
+     * Clean up feature branch snapshot sites.
+     */
+    static void cleanFeatureSites(File root, List&lt;String&gt; components,
+                                    String branchName, Log log) {
+<span class="fc" id="L142">        String featurePath = ReleaseSupport.branchToSitePath(branchName);</span>
+<span class="fc bfc" id="L143" title="All 2 branches covered.">        for (String name : components) {</span>
+<span class="fc" id="L144">            String siteDisk = ReleaseSupport.siteDiskPath(</span>
+                    name, &quot;snapshot&quot;, featurePath);
+            try {
+<span class="fc" id="L147">                ReleaseSupport.cleanRemoteSiteDir(</span>
+                        new File(root, name), log, siteDisk);
+<span class="nc" id="L149">            } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L150">                log.debug(&quot;No snapshot site to clean for &quot; + name</span>
+<span class="nc" id="L151">                        + &quot;: &quot; + e.getMessage());</span>
+<span class="fc" id="L152">            }</span>
+<span class="fc" id="L153">        }</span>
+<span class="fc" id="L154">    }</span>
+
+    /**
+     * Update workspace.yaml branch fields back to targetBranch and commit.
+     */
+    static void updateWorkspaceYaml(Path manifestPath, List&lt;String&gt; components,
+                                      String targetBranch, String feature,
+                                      Log log) {
+        try {
+<span class="fc" id="L163">            Map&lt;String, String&gt; updates = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L164" title="All 2 branches covered.">            for (String name : components) {</span>
+<span class="fc" id="L165">                updates.put(name, targetBranch);</span>
+<span class="fc" id="L166">            }</span>
+<span class="fc" id="L167">            ManifestWriter.updateBranches(manifestPath, updates);</span>
+<span class="fc" id="L168">            log.info(&quot;  Updated workspace.yaml branches → &quot; + targetBranch);</span>
+
+<span class="fc" id="L170">            File wsRoot = manifestPath.getParent().toFile();</span>
+<span class="fc" id="L171">            File wsGit = new File(wsRoot, &quot;.git&quot;);</span>
+<span class="pc bpc" id="L172" title="1 of 2 branches missed.">            if (wsGit.exists()) {</span>
+<span class="nc" id="L173">                ReleaseSupport.exec(wsRoot, log, &quot;git&quot;, &quot;add&quot;, &quot;workspace.yaml&quot;);</span>
+<span class="nc" id="L174">                ReleaseSupport.exec(wsRoot, log, &quot;git&quot;, &quot;commit&quot;, &quot;-m&quot;,</span>
+                        &quot;workspace: restore branches to &quot; + targetBranch
+                                + &quot; after feature/&quot; + feature);
+            }
+<span class="nc" id="L178">        } catch (IOException | MojoExecutionException e) {</span>
+<span class="nc" id="L179">            log.warn(&quot;  Could not update workspace.yaml: &quot; + e.getMessage());</span>
+<span class="fc" id="L180">        }</span>
+<span class="fc" id="L181">    }</span>
+
+    /**
+     * Merge the ws repo back to target branch.
+     */
+    static void mergeWorkspaceRepo(Path manifestPath, String branchName,
+                                     String targetBranch, boolean keepBranch,
+                                     Log log)
+            throws MojoExecutionException {
+<span class="fc" id="L190">        File wsRoot = manifestPath.getParent().toFile();</span>
+<span class="pc bpc" id="L191" title="1 of 2 branches missed.">        if (!new File(wsRoot, &quot;.git&quot;).exists()) return;</span>
+
+<span class="nc" id="L193">        String wsBranch = null;</span>
+        try {
+<span class="nc" id="L195">            wsBranch = VcsOperations.currentBranch(wsRoot);</span>
+<span class="nc" id="L196">        } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L197">            return;</span>
+<span class="nc" id="L198">        }</span>
+
+<span class="nc bnc" id="L200" title="All 4 branches missed.">        if (wsBranch != null &amp;&amp; wsBranch.equals(branchName)) {</span>
+<span class="nc" id="L201">            VcsOperations.checkout(wsRoot, log, targetBranch);</span>
+        }
+
+<span class="nc bnc" id="L204" title="All 2 branches missed.">        if (!keepBranch) {</span>
+            try {
+<span class="nc" id="L206">                deleteBranch(wsRoot, log, branchName);</span>
+<span class="nc" id="L207">            } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L208">                log.warn(&quot;  Could not delete ws branch: &quot; + e.getMessage());</span>
+<span class="nc" id="L209">            }</span>
+        }
+
+        // Write state file for ws
+<span class="nc bnc" id="L213" title="All 2 branches missed.">        if (VcsState.isIkeManaged(wsRoot.toPath())) {</span>
+<span class="nc" id="L214">            VcsOperations.writeVcsState(wsRoot, VcsState.ACTION_FEATURE_FINISH);</span>
+        }
+<span class="nc" id="L216">    }</span>
+
+    // ── Internal helpers ─────────────────────────────────────────
+
+    private static String readCurrentVersion(File dir, Log log) {
+        try {
+<span class="fc" id="L222">            return ReleaseSupport.readPomVersion(new File(dir, &quot;pom.xml&quot;));</span>
+<span class="nc" id="L223">        } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L224">            log.warn(&quot;    Could not read version from &quot; + dir.getName()</span>
+<span class="nc" id="L225">                    + &quot;/pom.xml: &quot; + e.getMessage());</span>
+<span class="nc" id="L226">            return null;</span>
+        }
+    }
+
+    static void setAllVersions(File dir, String oldVersion, String newVersion,
+                                 Log log) throws MojoExecutionException {
+<span class="fc" id="L232">        File pom = new File(dir, &quot;pom.xml&quot;);</span>
+<span class="fc" id="L233">        ReleaseSupport.setPomVersion(pom, oldVersion, newVersion);</span>
+
+<span class="fc" id="L235">        List&lt;File&gt; allPoms = ReleaseSupport.findPomFiles(dir);</span>
+<span class="fc bfc" id="L236" title="All 2 branches covered.">        for (File subPom : allPoms) {</span>
+<span class="fc bfc" id="L237" title="All 2 branches covered.">            if (subPom.equals(pom)) continue;</span>
+            try {
+<span class="fc" id="L239">                String content = Files.readString(subPom.toPath(), StandardCharsets.UTF_8);</span>
+<span class="pc bpc" id="L240" title="1 of 2 branches missed.">                if (content.contains(&quot;&lt;version&gt;&quot; + oldVersion + &quot;&lt;/version&gt;&quot;)) {</span>
+<span class="fc" id="L241">                    String updated = content.replace(</span>
+                            &quot;&lt;version&gt;&quot; + oldVersion + &quot;&lt;/version&gt;&quot;,
+                            &quot;&lt;version&gt;&quot; + newVersion + &quot;&lt;/version&gt;&quot;);
+<span class="fc" id="L244">                    Files.writeString(subPom.toPath(), updated, StandardCharsets.UTF_8);</span>
+                }
+<span class="nc" id="L246">            } catch (IOException e) {</span>
+<span class="nc" id="L247">                log.warn(&quot;    Could not update &quot; + subPom + &quot;: &quot; + e.getMessage());</span>
+<span class="fc" id="L248">            }</span>
+<span class="fc" id="L249">        }</span>
+<span class="fc" id="L250">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

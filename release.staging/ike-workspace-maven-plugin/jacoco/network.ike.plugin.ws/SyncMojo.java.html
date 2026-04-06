@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SyncMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">SyncMojo.java</span></div><h1>SyncMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.workspace.Component;
+import network.ike.workspace.WorkspaceGraph;
+import network.ike.plugin.ws.vcs.VcsOperations;
+import network.ike.plugin.ws.vcs.VcsState;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+
+import java.io.File;
+import java.util.Optional;
+
+/**
+ * Reconcile git state after Syncthing delivers changes from another machine.
+ *
+ * &lt;p&gt;Reads the VCS state file, fetches from all remotes, switches branch
+ * if needed, and soft-resets HEAD to match the remote. The working tree
+ * is left untouched — Syncthing already made it correct.
+ *
+ * &lt;p&gt;In workspace mode, syncs the workspace repo first, then each
+ * component that has a state file.
+ *
+ * &lt;p&gt;Usage: {@code mvnw ws:vcs-sync}
+ */
+@Mojo(name = &quot;vcs-sync&quot;, requiresProject = false, threadSafe = true)
+public class SyncMojo extends AbstractWorkspaceMojo {
+
+    /** Creates this goal instance. */
+<span class="fc" id="L29">    public SyncMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="fc" id="L33">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L34">        getLog().info(&quot;IKE VCS Bridge — Sync&quot;);</span>
+<span class="fc" id="L35">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+
+<span class="pc bpc" id="L37" title="1 of 2 branches missed.">        if (!isWorkspaceMode()) {</span>
+<span class="fc" id="L38">            syncBareMode();</span>
+<span class="fc" id="L39">            return;</span>
+        }
+
+<span class="nc" id="L42">        syncWorkspaceMode();</span>
+<span class="nc" id="L43">    }</span>
+
+    private void syncBareMode() throws MojoExecutionException {
+<span class="fc" id="L46">        File dir = new File(System.getProperty(&quot;user.dir&quot;));</span>
+<span class="pc bpc" id="L47" title="1 of 2 branches missed.">        if (!VcsState.isIkeManaged(dir.toPath())) {</span>
+<span class="nc" id="L48">            getLog().info(&quot;  Not an IKE-managed repo. Nothing to sync.&quot;);</span>
+<span class="nc" id="L49">            return;</span>
+        }
+
+<span class="fc" id="L52">        Optional&lt;VcsState&gt; state = VcsState.readFrom(dir.toPath());</span>
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">        if (state.isEmpty()) {</span>
+<span class="nc" id="L54">            getLog().info(&quot;  No VCS state file. Nothing to sync.&quot;);</span>
+<span class="nc" id="L55">            return;</span>
+        }
+
+<span class="fc" id="L58">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L59">        getLog().info(&quot;  &quot; + dir.getName());</span>
+<span class="fc" id="L60">        VcsOperations.sync(dir, getLog());</span>
+
+<span class="fc" id="L62">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L63">        getLog().info(&quot;  Sync complete.&quot;);</span>
+<span class="fc" id="L64">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L65">    }</span>
+
+    private void syncWorkspaceMode() throws MojoExecutionException {
+<span class="nc" id="L68">        WorkspaceGraph graph = loadGraph();</span>
+<span class="nc" id="L69">        File root = workspaceRoot();</span>
+
+        // Sync workspace repo first
+<span class="nc bnc" id="L72" title="All 2 branches missed.">        if (VcsState.isIkeManaged(root.toPath())) {</span>
+<span class="nc" id="L73">            getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L74">            getLog().info(&quot;  Workspace&quot;);</span>
+<span class="nc" id="L75">            Optional&lt;VcsState&gt; wsState = VcsState.readFrom(root.toPath());</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">            if (wsState.isPresent()) {</span>
+<span class="nc" id="L77">                VcsOperations.sync(root, getLog());</span>
+            } else {
+<span class="nc" id="L79">                getLog().info(&quot;  No VCS state file — skipping.&quot;);</span>
+            }
+        }
+
+        // Sync each component
+<span class="nc" id="L84">        int synced = 0;</span>
+<span class="nc" id="L85">        int skipped = 0;</span>
+
+<span class="nc bnc" id="L87" title="All 2 branches missed.">        for (var entry : graph.manifest().components().entrySet()) {</span>
+<span class="nc" id="L88">            String name = entry.getKey();</span>
+<span class="nc" id="L89">            File compDir = new File(root, name);</span>
+
+<span class="nc bnc" id="L91" title="All 2 branches missed.">            if (!new File(compDir, &quot;.git&quot;).exists()) {</span>
+<span class="nc" id="L92">                skipped++;</span>
+<span class="nc" id="L93">                continue;</span>
+            }
+
+<span class="nc bnc" id="L96" title="All 2 branches missed.">            if (!VcsState.isIkeManaged(compDir.toPath())) {</span>
+<span class="nc" id="L97">                skipped++;</span>
+<span class="nc" id="L98">                continue;</span>
+            }
+
+<span class="nc" id="L101">            Optional&lt;VcsState&gt; state = VcsState.readFrom(compDir.toPath());</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">            if (state.isEmpty()) {</span>
+<span class="nc" id="L103">                skipped++;</span>
+<span class="nc" id="L104">                continue;</span>
+            }
+
+<span class="nc bnc" id="L107" title="All 2 branches missed.">            if (!VcsOperations.needsSync(compDir)) {</span>
+<span class="nc" id="L108">                getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L109">                getLog().info(&quot;  &quot; + name + &quot;: already in sync ✓&quot;);</span>
+<span class="nc" id="L110">                continue;</span>
+            }
+
+<span class="nc" id="L113">            getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L114">            getLog().info(&quot;  &quot; + name);</span>
+<span class="nc" id="L115">            VcsOperations.sync(compDir, getLog());</span>
+<span class="nc" id="L116">            synced++;</span>
+<span class="nc" id="L117">        }</span>
+
+<span class="nc" id="L119">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L120">        getLog().info(&quot;  Sync complete. &quot; + synced + &quot; component(s) synced, &quot;</span>
+                + skipped + &quot; skipped.&quot;);
+<span class="nc" id="L122">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L123">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

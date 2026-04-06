@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WsUpgradeMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">WsUpgradeMojo.java</span></div><h1>WsUpgradeMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Upgrade workspace conventions to the current plugin version.
+ *
+ * &lt;p&gt;As workspace conventions evolve across plugin releases, this goal
+ * applies incremental upgrades to bring an existing workspace in line
+ * with current standards. Each upgrade step is idempotent — running
+ * the goal twice produces the same result.
+ *
+ * &lt;h2&gt;Current upgrade steps&lt;/h2&gt;
+ * &lt;ul&gt;
+ *   &lt;li&gt;&lt;b&gt;gitignore-vcs-state&lt;/b&gt; — ensure {@code .ike/vcs-state}
+ *       is in the global gitignore (VCS bridge coordination file
+ *       should be synced by Syncthing, not tracked by git)&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;gitignore-whitelist&lt;/b&gt; — ensure workspace .gitignore
+ *       uses the whitelist strategy and includes all standard entries&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;stignore-delete-flag&lt;/b&gt; — ensure {@code stignore-shared}
+ *       uses {@code (?d)} prefix on directory ignore patterns&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;pom-root-attribute&lt;/b&gt; — ensure workspace POM has
+ *       {@code root=&quot;true&quot;} for Maven 4.1.0 reactor boundary&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;maven-config&lt;/b&gt; — ensure {@code .mvn/maven.config} exists&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;plugin-version&lt;/b&gt; — update {@code ike-tooling.version}
+ *       property in the workspace POM to the current plugin version&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * &lt;pre&gt;{@code
+ * mvn ws:upgrade              # apply all upgrades
+ * mvn ws:upgrade -DdryRun     # preview what would change
+ * }&lt;/pre&gt;
+ *
+ * @see WsCreateMojo for creating a new workspace
+ */
+@Mojo(name = &quot;upgrade&quot;, requiresProject = false, threadSafe = true)
+public class WsUpgradeMojo extends AbstractWorkspaceMojo {
+
+    /**
+     * Show what would change without modifying any files.
+     */
+    @Parameter(property = &quot;dryRun&quot;, defaultValue = &quot;false&quot;)
+    private boolean dryRun;
+
+    /** Creates this goal instance. */
+<span class="nc" id="L56">    public WsUpgradeMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="nc" id="L60">        File root = workspaceRoot();</span>
+<span class="nc" id="L61">        Path rootPath = root.toPath();</span>
+
+<span class="nc" id="L63">        String pluginVersion = getClass().getPackage().getImplementationVersion();</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        if (pluginVersion == null) pluginVersion = &quot;49&quot;;</span>
+
+<span class="nc" id="L66">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L67">        getLog().info(header(&quot;Upgrade&quot;));</span>
+<span class="nc" id="L68">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+<span class="nc" id="L69">        getLog().info(&quot;  Workspace: &quot; + root.getName());</span>
+<span class="nc" id="L70">        getLog().info(&quot;  Plugin:    &quot; + pluginVersion);</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        if (dryRun) {</span>
+<span class="nc" id="L72">            getLog().info(&quot;  Mode:      DRY RUN&quot;);</span>
+        }
+<span class="nc" id="L74">        getLog().info(&quot;&quot;);</span>
+
+<span class="nc" id="L76">        List&lt;String&gt; applied = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L77">        List&lt;String&gt; skipped = new ArrayList&lt;&gt;();</span>
+
+        // ── 1. Global gitignore: .ike/vcs-state ─────────────────
+<span class="nc" id="L80">        upgradeGlobalGitignore(applied, skipped);</span>
+
+        // ── 2. Workspace .gitignore whitelist ───────────────────
+<span class="nc" id="L83">        upgradeWorkspaceGitignore(rootPath, applied, skipped);</span>
+
+        // ── 3. stignore-shared (?d) flags ───────────────────────
+<span class="nc" id="L86">        upgradeStignoreShared(rootPath, applied, skipped);</span>
+
+        // ── 4. POM root=&quot;true&quot; ──────────────────────────────────
+<span class="nc" id="L89">        upgradePomRoot(rootPath, applied, skipped);</span>
+
+        // ── 5. .mvn/maven.config ────────────────────────────────
+<span class="nc" id="L92">        upgradeMavenConfig(rootPath, applied, skipped);</span>
+
+        // ── 6. Plugin version ───────────────────────────────────
+<span class="nc" id="L95">        upgradePluginVersion(rootPath, pluginVersion, applied, skipped);</span>
+
+        // ── Summary ─────────────────────────────────────────────
+<span class="nc" id="L98">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L99">        getLog().info(&quot;  &quot; + applied.size() + &quot; upgrade(s) applied, &quot;</span>
+<span class="nc" id="L100">                + skipped.size() + &quot; already current.&quot;);</span>
+<span class="nc bnc" id="L101" title="All 4 branches missed.">        if (dryRun &amp;&amp; !applied.isEmpty()) {</span>
+<span class="nc" id="L102">            getLog().info(&quot;  (DRY RUN — no files modified)&quot;);</span>
+        }
+<span class="nc" id="L104">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L105">    }</span>
+
+    // ── Upgrade steps ────────────────────────────────────────────
+
+    private void upgradeGlobalGitignore(List&lt;String&gt; applied, List&lt;String&gt; skipped) {
+<span class="nc" id="L110">        Path globalIgnore = Path.of(System.getProperty(&quot;user.home&quot;), &quot;.gitignore_global&quot;);</span>
+        try {
+<span class="nc bnc" id="L112" title="All 2 branches missed.">            String content = Files.exists(globalIgnore)</span>
+<span class="nc" id="L113">                    ? Files.readString(globalIgnore, StandardCharsets.UTF_8) : &quot;&quot;;</span>
+
+<span class="nc bnc" id="L115" title="All 2 branches missed.">            boolean needsVcsState = !content.contains(&quot;vcs-state&quot;);</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">            boolean needsGitInit = !content.contains(&quot;_git-init&quot;);</span>
+
+<span class="nc bnc" id="L118" title="All 4 branches missed.">            if (!needsVcsState &amp;&amp; !needsGitInit) {</span>
+<span class="nc" id="L119">                skipped.add(&quot;global-gitignore&quot;);</span>
+<span class="nc" id="L120">                getLog().info(&quot;  ✓ Global gitignore: already current&quot;);</span>
+<span class="nc" id="L121">                return;</span>
+            }
+
+<span class="nc" id="L124">            StringBuilder additions = new StringBuilder();</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">            if (needsGitInit) additions.append(&quot;_git-init*\n&quot;);</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">            if (needsVcsState) additions.append(&quot;.ike/vcs-state\n&quot;);</span>
+
+<span class="nc bnc" id="L128" title="All 2 branches missed.">            if (!dryRun) {</span>
+<span class="nc" id="L129">                Files.writeString(globalIgnore,</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">                        content + (content.endsWith(&quot;\n&quot;) ? &quot;&quot; : &quot;\n&quot;) + additions,</span>
+                        StandardCharsets.UTF_8);
+            }
+
+<span class="nc" id="L134">            applied.add(&quot;global-gitignore&quot;);</span>
+<span class="nc" id="L135">            getLog().info(&quot;  ↑ Global gitignore: added &quot;</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">                    + (needsVcsState ? &quot;.ike/vcs-state &quot; : &quot;&quot;)</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">                    + (needsGitInit ? &quot;_git-init* &quot; : &quot;&quot;));</span>
+<span class="nc" id="L138">        } catch (IOException e) {</span>
+<span class="nc" id="L139">            getLog().warn(&quot;  ⚠ Could not update global gitignore: &quot; + e.getMessage());</span>
+<span class="nc" id="L140">        }</span>
+<span class="nc" id="L141">    }</span>
+
+    private void upgradeWorkspaceGitignore(Path root, List&lt;String&gt; applied,
+                                            List&lt;String&gt; skipped) {
+<span class="nc" id="L145">        Path gitignore = root.resolve(&quot;.gitignore&quot;);</span>
+        try {
+<span class="nc bnc" id="L147" title="All 2 branches missed.">            if (!Files.exists(gitignore)) {</span>
+<span class="nc" id="L148">                skipped.add(&quot;workspace-gitignore&quot;);</span>
+<span class="nc" id="L149">                getLog().info(&quot;  - Workspace .gitignore: not present (skipped)&quot;);</span>
+<span class="nc" id="L150">                return;</span>
+            }
+
+<span class="nc" id="L153">            String content = Files.readString(gitignore, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L154">            boolean changed = false;</span>
+
+            // Ensure whitelist entries exist
+<span class="nc" id="L157">            String[] required = {&quot;!.gitignore&quot;, &quot;!pom.xml&quot;, &quot;!workspace.yaml&quot;,</span>
+                    &quot;!.mvn/&quot;, &quot;!.mvn/**&quot;, &quot;!checkpoints/&quot;, &quot;!checkpoints/**&quot;};
+<span class="nc" id="L159">            StringBuilder additions = new StringBuilder();</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">            for (String entry : required) {</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">                if (!content.contains(entry)) {</span>
+<span class="nc" id="L162">                    additions.append(entry).append(&quot;\n&quot;);</span>
+<span class="nc" id="L163">                    changed = true;</span>
+                }
+            }
+
+<span class="nc bnc" id="L167" title="All 2 branches missed.">            if (!changed) {</span>
+<span class="nc" id="L168">                skipped.add(&quot;workspace-gitignore&quot;);</span>
+<span class="nc" id="L169">                getLog().info(&quot;  ✓ Workspace .gitignore: already current&quot;);</span>
+<span class="nc" id="L170">                return;</span>
+            }
+
+<span class="nc bnc" id="L173" title="All 2 branches missed.">            if (!dryRun) {</span>
+<span class="nc" id="L174">                Files.writeString(gitignore,</span>
+<span class="nc bnc" id="L175" title="All 2 branches missed.">                        content + (content.endsWith(&quot;\n&quot;) ? &quot;&quot; : &quot;\n&quot;) + additions,</span>
+                        StandardCharsets.UTF_8);
+            }
+<span class="nc" id="L178">            applied.add(&quot;workspace-gitignore&quot;);</span>
+<span class="nc" id="L179">            getLog().info(&quot;  ↑ Workspace .gitignore: added missing whitelist entries&quot;);</span>
+<span class="nc" id="L180">        } catch (IOException e) {</span>
+<span class="nc" id="L181">            getLog().warn(&quot;  ⚠ Could not update .gitignore: &quot; + e.getMessage());</span>
+<span class="nc" id="L182">        }</span>
+<span class="nc" id="L183">    }</span>
+
+    private void upgradeStignoreShared(Path root, List&lt;String&gt; applied,
+                                        List&lt;String&gt; skipped) {
+        // Look for stignore-shared in ike-dev root (parent of workspace)
+<span class="nc bnc" id="L188" title="All 2 branches missed.">        Path stignore = root.getParent() != null</span>
+<span class="nc" id="L189">                ? root.getParent().resolve(&quot;stignore-shared&quot;) : null;</span>
+<span class="nc bnc" id="L190" title="All 4 branches missed.">        if (stignore == null || !Files.exists(stignore)) {</span>
+<span class="nc" id="L191">            skipped.add(&quot;stignore-shared&quot;);</span>
+<span class="nc" id="L192">            getLog().info(&quot;  - stignore-shared: not found (Syncthing not configured?)&quot;);</span>
+<span class="nc" id="L193">            return;</span>
+        }
+
+        try {
+<span class="nc" id="L197">            String content = Files.readString(stignore, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L198">            boolean changed = false;</span>
+<span class="nc" id="L199">            String updated = content;</span>
+
+            // Upgrade patterns that lack (?d) prefix
+<span class="nc" id="L202">            String[][] upgrades = {</span>
+                    {&quot;\n.git/&quot;, &quot;\n(?d).git/&quot;},
+                    {&quot;\ntarget/&quot;, &quot;\n(?d)target/&quot;},
+                    {&quot;\nout/&quot;, &quot;\n(?d)out/&quot;},
+                    {&quot;\n.gradle/&quot;, &quot;\n(?d).gradle/&quot;},
+                    {&quot;\nbuild/&quot;, &quot;\n(?d)build/&quot;},
+            };
+
+<span class="nc bnc" id="L210" title="All 2 branches missed.">            for (String[] pair : upgrades) {</span>
+<span class="nc bnc" id="L211" title="All 4 branches missed.">                if (updated.contains(pair[0]) &amp;&amp; !updated.contains(pair[1])) {</span>
+<span class="nc" id="L212">                    updated = updated.replace(pair[0], pair[1]);</span>
+<span class="nc" id="L213">                    changed = true;</span>
+                }
+            }
+            // Handle first line (no leading newline)
+<span class="nc bnc" id="L217" title="All 4 branches missed.">            if (updated.startsWith(&quot;.git/&quot;) &amp;&amp; !updated.startsWith(&quot;(?d).git/&quot;)) {</span>
+<span class="nc" id="L218">                updated = &quot;(?d)&quot; + updated;</span>
+<span class="nc" id="L219">                changed = true;</span>
+            }
+
+<span class="nc bnc" id="L222" title="All 2 branches missed.">            if (!changed) {</span>
+<span class="nc" id="L223">                skipped.add(&quot;stignore-shared&quot;);</span>
+<span class="nc" id="L224">                getLog().info(&quot;  ✓ stignore-shared: (?d) flags already present&quot;);</span>
+<span class="nc" id="L225">                return;</span>
+            }
+
+<span class="nc bnc" id="L228" title="All 2 branches missed.">            if (!dryRun) {</span>
+<span class="nc" id="L229">                Files.writeString(stignore, updated, StandardCharsets.UTF_8);</span>
+            }
+<span class="nc" id="L231">            applied.add(&quot;stignore-shared&quot;);</span>
+<span class="nc" id="L232">            getLog().info(&quot;  ↑ stignore-shared: added (?d) prefix to directory patterns&quot;);</span>
+<span class="nc" id="L233">        } catch (IOException e) {</span>
+<span class="nc" id="L234">            getLog().warn(&quot;  ⚠ Could not update stignore-shared: &quot; + e.getMessage());</span>
+<span class="nc" id="L235">        }</span>
+<span class="nc" id="L236">    }</span>
+
+    private void upgradePomRoot(Path root, List&lt;String&gt; applied,
+                                 List&lt;String&gt; skipped) {
+<span class="nc" id="L240">        Path pom = root.resolve(&quot;pom.xml&quot;);</span>
+        try {
+<span class="nc bnc" id="L242" title="All 2 branches missed.">            if (!Files.exists(pom)) {</span>
+<span class="nc" id="L243">                skipped.add(&quot;pom-root&quot;);</span>
+<span class="nc" id="L244">                return;</span>
+            }
+
+<span class="nc" id="L247">            String content = Files.readString(pom, StandardCharsets.UTF_8);</span>
+<span class="nc bnc" id="L248" title="All 2 branches missed.">            if (content.contains(&quot;root=\&quot;true\&quot;&quot;)) {</span>
+<span class="nc" id="L249">                skipped.add(&quot;pom-root&quot;);</span>
+<span class="nc" id="L250">                getLog().info(&quot;  ✓ POM root attribute: already present&quot;);</span>
+<span class="nc" id="L251">                return;</span>
+            }
+
+            // Add root=&quot;true&quot; to &lt;project&gt; element
+<span class="nc" id="L255">            String updated = content.replaceFirst(</span>
+                    &quot;(&lt;project\\s[^&gt;]*?)(&gt;)&quot;,
+                    &quot;$1\n         root=\&quot;true\&quot;$2&quot;);
+
+<span class="nc bnc" id="L259" title="All 2 branches missed.">            if (!dryRun) {</span>
+<span class="nc" id="L260">                Files.writeString(pom, updated, StandardCharsets.UTF_8);</span>
+            }
+<span class="nc" id="L262">            applied.add(&quot;pom-root&quot;);</span>
+<span class="nc" id="L263">            getLog().info(&quot;  ↑ POM: added root=\&quot;true\&quot;&quot;);</span>
+<span class="nc" id="L264">        } catch (IOException e) {</span>
+<span class="nc" id="L265">            getLog().warn(&quot;  ⚠ Could not update pom.xml: &quot; + e.getMessage());</span>
+<span class="nc" id="L266">        }</span>
+<span class="nc" id="L267">    }</span>
+
+    private void upgradeMavenConfig(Path root, List&lt;String&gt; applied,
+                                     List&lt;String&gt; skipped) {
+<span class="nc" id="L271">        Path config = root.resolve(&quot;.mvn/maven.config&quot;);</span>
+        try {
+<span class="nc bnc" id="L273" title="All 2 branches missed.">            if (Files.exists(config)) {</span>
+<span class="nc" id="L274">                skipped.add(&quot;maven-config&quot;);</span>
+<span class="nc" id="L275">                getLog().info(&quot;  ✓ .mvn/maven.config: already present&quot;);</span>
+<span class="nc" id="L276">                return;</span>
+            }
+
+<span class="nc bnc" id="L279" title="All 2 branches missed.">            if (!dryRun) {</span>
+<span class="nc" id="L280">                Files.createDirectories(config.getParent());</span>
+<span class="nc" id="L281">                Files.writeString(config, &quot;-T 1C\n&quot;, StandardCharsets.UTF_8);</span>
+            }
+<span class="nc" id="L283">            applied.add(&quot;maven-config&quot;);</span>
+<span class="nc" id="L284">            getLog().info(&quot;  ↑ .mvn/maven.config: created with -T 1C&quot;);</span>
+<span class="nc" id="L285">        } catch (IOException e) {</span>
+<span class="nc" id="L286">            getLog().warn(&quot;  ⚠ Could not create .mvn/maven.config: &quot; + e.getMessage());</span>
+<span class="nc" id="L287">        }</span>
+<span class="nc" id="L288">    }</span>
+
+    private void upgradePluginVersion(Path root, String pluginVersion,
+                                       List&lt;String&gt; applied, List&lt;String&gt; skipped) {
+<span class="nc" id="L292">        Path pom = root.resolve(&quot;pom.xml&quot;);</span>
+        try {
+<span class="nc bnc" id="L294" title="All 2 branches missed.">            if (!Files.exists(pom)) {</span>
+<span class="nc" id="L295">                skipped.add(&quot;plugin-version&quot;);</span>
+<span class="nc" id="L296">                return;</span>
+            }
+
+<span class="nc" id="L299">            String content = Files.readString(pom, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L300">            boolean changed = false;</span>
+
+            // Migration: rename ike-maven-plugin.version → ike-tooling.version
+            // Also update the ${...} reference in the plugin version element
+<span class="nc bnc" id="L304" title="All 2 branches missed.">            if (content.contains(&quot;&lt;ike-maven-plugin.version&gt;&quot;)) {</span>
+<span class="nc" id="L305">                content = content.replace(</span>
+                        &quot;&lt;ike-maven-plugin.version&gt;&quot;, &quot;&lt;ike-tooling.version&gt;&quot;);
+<span class="nc" id="L307">                content = content.replace(</span>
+                        &quot;&lt;/ike-maven-plugin.version&gt;&quot;, &quot;&lt;/ike-tooling.version&gt;&quot;);
+<span class="nc" id="L309">                content = content.replace(</span>
+                        &quot;${ike-maven-plugin.version}&quot;, &quot;${ike-tooling.version}&quot;);
+<span class="nc" id="L311">                changed = true;</span>
+<span class="nc" id="L312">                getLog().info(&quot;  ↑ Property renamed: ike-maven-plugin.version → ike-tooling.version&quot;);</span>
+            }
+
+            // Find current ike-tooling.version property and bump
+<span class="nc" id="L316">            java.util.regex.Pattern versionProp = java.util.regex.Pattern.compile(</span>
+                    &quot;(&lt;ike-tooling\\.version&gt;)(.*?)(&lt;/ike-tooling\\.version&gt;)&quot;);
+<span class="nc" id="L318">            java.util.regex.Matcher m = versionProp.matcher(content);</span>
+
+<span class="nc bnc" id="L320" title="All 2 branches missed.">            if (!m.find()) {</span>
+<span class="nc bnc" id="L321" title="All 2 branches missed.">                if (!changed) {</span>
+<span class="nc" id="L322">                    skipped.add(&quot;plugin-version&quot;);</span>
+<span class="nc" id="L323">                    getLog().info(&quot;  - Plugin version: no ike-tooling.version property found&quot;);</span>
+                }
+<span class="nc" id="L325">                return;</span>
+            }
+
+<span class="nc" id="L328">            String currentVersion = m.group(2);</span>
+<span class="nc bnc" id="L329" title="All 2 branches missed.">            if (!currentVersion.equals(pluginVersion)) {</span>
+<span class="nc" id="L330">                content = m.replaceFirst(&quot;$1&quot; + pluginVersion + &quot;$3&quot;);</span>
+<span class="nc" id="L331">                changed = true;</span>
+<span class="nc" id="L332">                getLog().info(&quot;  ↑ Plugin version: &quot; + currentVersion + &quot; → &quot; + pluginVersion);</span>
+<span class="nc bnc" id="L333" title="All 2 branches missed.">            } else if (!changed) {</span>
+<span class="nc" id="L334">                skipped.add(&quot;plugin-version&quot;);</span>
+<span class="nc" id="L335">                getLog().info(&quot;  ✓ Plugin version: already &quot; + pluginVersion);</span>
+<span class="nc" id="L336">                return;</span>
+            }
+
+<span class="nc bnc" id="L339" title="All 4 branches missed.">            if (!dryRun &amp;&amp; changed) {</span>
+<span class="nc" id="L340">                Files.writeString(pom, content, StandardCharsets.UTF_8);</span>
+            }
+<span class="nc" id="L342">            applied.add(&quot;plugin-version&quot;);</span>
+<span class="nc" id="L343">        } catch (IOException e) {</span>
+<span class="nc" id="L344">            getLog().warn(&quot;  ⚠ Could not update plugin version: &quot; + e.getMessage());</span>
+<span class="nc" id="L345">        }</span>
+<span class="nc" id="L346">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

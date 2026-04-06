@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WsRemoveMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">WsRemoveMojo.java</span></div><h1>WsRemoveMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.workspace.WorkspaceGraph;
+
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * Remove a component from the workspace.
+ *
+ * &lt;p&gt;Given a component name, this goal:
+ * &lt;ol&gt;
+ *   &lt;li&gt;Loads the workspace graph and verifies the component exists&lt;/li&gt;
+ *   &lt;li&gt;Checks for downstream dependents — fails if any exist
+ *       (unless {@code -Dforce=true})&lt;/li&gt;
+ *   &lt;li&gt;Removes the component entry from workspace.yaml&lt;/li&gt;
+ *   &lt;li&gt;Removes the file-activated profile from the aggregator pom.xml&lt;/li&gt;
+ *   &lt;li&gt;Removes the component from any group lists in workspace.yaml&lt;/li&gt;
+ *   &lt;li&gt;Optionally deletes the cloned directory&lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * &lt;pre&gt;{@code
+ * mvn ike:ws-remove -Dcomponent=tinkar-core
+ * mvn ike:ws-remove -Dcomponent=tinkar-core -Dforce=true
+ * mvn ike:ws-remove -Dcomponent=tinkar-core -DdeleteDir=true
+ * }&lt;/pre&gt;
+ *
+ * @see WsAddMojo for adding a component
+ */
+@Mojo(name = &quot;remove&quot;, requiresProject = false, threadSafe = true)
+public class WsRemoveMojo extends AbstractWorkspaceMojo {
+
+    /**
+     * Component name to remove (required).
+     */
+    @Parameter(property = &quot;component&quot;, required = true)
+    private String component;
+
+    /**
+     * Skip the downstream-dependent safety check.
+     */
+    @Parameter(property = &quot;force&quot;, defaultValue = &quot;false&quot;)
+    private boolean force;
+
+    /**
+     * Also delete the cloned component directory from disk.
+     */
+    @Parameter(property = &quot;deleteDir&quot;, defaultValue = &quot;false&quot;)
+    private boolean deleteDir;
+
+    /** Creates this goal instance. */
+<span class="nc" id="L62">    public WsRemoveMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+        // Resolve workspace root and paths
+<span class="nc" id="L67">        Path manifestPath = resolveManifest();</span>
+<span class="nc" id="L68">        Path wsDir = manifestPath.getParent();</span>
+<span class="nc" id="L69">        Path pomPath = wsDir.resolve(&quot;pom.xml&quot;);</span>
+
+        // Remove is main-only — workspace composition changes belong on main,
+        // not on feature branches. Add is allowed on any branch (discovery
+        // during development), but removal is a structural decision.
+<span class="nc" id="L74">        File compDir = wsDir.resolve(component).toFile();</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">        if (new File(compDir, &quot;.git&quot;).exists()) {</span>
+<span class="nc" id="L76">            String currentBranch = gitBranch(compDir);</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">            if (!currentBranch.equals(&quot;main&quot;)) {</span>
+<span class="nc" id="L78">                throw new MojoExecutionException(</span>
+                        &quot;Cannot remove a component from a feature branch ('&quot;
+                        + currentBranch + &quot;'). Switch to 'main' first. &quot;
+                        + &quot;Workspace composition changes belong on main.&quot;);
+            }
+
+            // Verify clean working tree — no uncommitted changes
+<span class="nc" id="L85">            String status = gitStatus(compDir);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">            if (!status.isEmpty()) {</span>
+<span class="nc" id="L87">                throw new MojoExecutionException(</span>
+                        &quot;Cannot remove '&quot; + component + &quot;' — working tree has &quot;
+                        + &quot;uncommitted changes. Commit or stash first.&quot;);
+            }
+        }
+
+        // Load graph and validate component exists
+<span class="nc" id="L94">        WorkspaceGraph graph = loadGraph();</span>
+
+<span class="nc bnc" id="L96" title="All 2 branches missed.">        if (!graph.manifest().components().containsKey(component)) {</span>
+<span class="nc" id="L97">            throw new MojoExecutionException(</span>
+                    &quot;Component '&quot; + component + &quot;' not found in workspace.yaml.&quot;);
+        }
+
+        // Check for downstream dependents
+<span class="nc" id="L102">        List&lt;String&gt; dependents = graph.cascade(component);</span>
+<span class="nc bnc" id="L103" title="All 4 branches missed.">        if (!dependents.isEmpty() &amp;&amp; !force) {</span>
+<span class="nc" id="L104">            throw new MojoExecutionException(</span>
+                    &quot;Cannot remove '&quot; + component + &quot;' — the following components &quot;
+                    + &quot;depend on it: &quot; + dependents + &quot;\n&quot;
+                    + &quot;Use -Dforce=true to remove anyway.&quot;);
+        }
+
+<span class="nc" id="L110">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L111">        getLog().info(header(&quot;Remove Component&quot;));</span>
+<span class="nc" id="L112">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+<span class="nc" id="L113">        getLog().info(&quot;  Component: &quot; + component);</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        if (!dependents.isEmpty()) {</span>
+<span class="nc" id="L115">            getLog().warn(&quot;  Dependents (forced): &quot; + dependents);</span>
+        }
+<span class="nc" id="L117">        getLog().info(&quot;&quot;);</span>
+
+        try {
+            // Remove from workspace.yaml
+<span class="nc" id="L121">            removeComponentFromManifest(manifestPath);</span>
+<span class="nc" id="L122">            getLog().info(&quot;  ✓ workspace.yaml updated — component entry removed&quot;);</span>
+
+            // Remove from groups in workspace.yaml
+<span class="nc" id="L125">            removeFromGroups(manifestPath);</span>
+<span class="nc" id="L126">            getLog().info(&quot;  ✓ workspace.yaml updated — group references removed&quot;);</span>
+
+            // Remove profile from pom.xml
+<span class="nc" id="L129">            removeProfileFromPom(pomPath);</span>
+<span class="nc" id="L130">            getLog().info(&quot;  ✓ pom.xml updated — profile with-&quot; + component + &quot; removed&quot;);</span>
+
+<span class="nc" id="L132">        } catch (IOException e) {</span>
+<span class="nc" id="L133">            throw new MojoExecutionException(</span>
+<span class="nc" id="L134">                    &quot;Failed to update workspace files: &quot; + e.getMessage(), e);</span>
+<span class="nc" id="L135">        }</span>
+
+        // Optionally delete the cloned directory
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        if (deleteDir) {</span>
+<span class="nc" id="L139">            Path componentDir = wsDir.resolve(component);</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">            if (Files.isDirectory(componentDir)) {</span>
+<span class="nc" id="L141">                deleteDirectory(componentDir);</span>
+<span class="nc" id="L142">                getLog().info(&quot;  ✓ Deleted directory: &quot; + componentDir);</span>
+            } else {
+<span class="nc" id="L144">                getLog().info(&quot;  - Directory not present: &quot; + componentDir);</span>
+            }
+        }
+
+<span class="nc" id="L148">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L149">        getLog().info(&quot;  Component '&quot; + component + &quot;' removed.&quot;);</span>
+<span class="nc" id="L150">        getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L151">    }</span>
+
+    // ── YAML removal ────────────────────────────────────────────
+
+    /**
+     * Remove a component block from workspace.yaml.
+     *
+     * &lt;p&gt;Matches the component header at 2-space indent under
+     * {@code components:} and removes everything until the next
+     * component header or section header (a line at 0 or 2-space
+     * indent that is not a continuation of this block).
+     */
+    void removeComponentFromManifest(Path manifestPath) throws IOException {
+<span class="nc" id="L164">        String yaml = Files.readString(manifestPath, StandardCharsets.UTF_8);</span>
+
+        // Match:  &quot;  component-name:\n&quot; followed by lines at 4+ space indent
+        // (including multi-line description blocks) until the next 2-space key
+        // or top-level key or end of file.
+<span class="nc" id="L169">        String escaped = Pattern.quote(component);</span>
+<span class="nc" id="L170">        Pattern blockPattern = Pattern.compile(</span>
+                &quot;\\n  &quot; + escaped + &quot;:\\s*\\n(?:    .*\\n)*&quot;,
+                Pattern.MULTILINE);
+
+<span class="nc" id="L174">        Matcher m = blockPattern.matcher(yaml);</span>
+<span class="nc bnc" id="L175" title="All 2 branches missed.">        if (m.find()) {</span>
+<span class="nc" id="L176">            yaml = m.replaceFirst(&quot;\n&quot;);</span>
+        }
+
+<span class="nc" id="L179">        Files.writeString(manifestPath, yaml, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L180">    }</span>
+
+    /**
+     * Remove the component from all group lists in workspace.yaml.
+     *
+     * &lt;p&gt;Handles both inline bracket syntax {@code [a, b, c]} and
+     * removes the component from comma-separated lists within brackets.
+     */
+    void removeFromGroups(Path manifestPath) throws IOException {
+<span class="nc" id="L189">        String yaml = Files.readString(manifestPath, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L190">        String escaped = Pattern.quote(component);</span>
+
+        // Case 1: component is the only member — leave empty list
+        // e.g. &quot;  docs: [ike-lab-documents]&quot; → &quot;  docs: []&quot;
+<span class="nc" id="L194">        yaml = yaml.replaceAll(</span>
+                &quot;(:\\s*\\[)\\s*&quot; + escaped + &quot;\\s*(])&quot;,
+                &quot;$1$2&quot;);
+
+        // Case 2: component is first in list with others after
+        // e.g. &quot;[component, other]&quot; → &quot;[other]&quot;
+<span class="nc" id="L200">        yaml = yaml.replaceAll(</span>
+                &quot;(\\[)\\s*&quot; + escaped + &quot;\\s*,\\s*&quot;,
+                &quot;$1&quot;);
+
+        // Case 3: component is in the middle or at end
+        // e.g. &quot;[other, component]&quot; → &quot;[other]&quot;
+        // e.g. &quot;[a, component, b]&quot; → &quot;[a, b]&quot;
+<span class="nc" id="L207">        yaml = yaml.replaceAll(</span>
+                &quot;,\\s*&quot; + escaped + &quot;(?=\\s*[,\\]])&quot;,
+                &quot;&quot;);
+
+<span class="nc" id="L211">        Files.writeString(manifestPath, yaml, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L212">    }</span>
+
+    // ── POM removal ─────────────────────────────────────────────
+
+    /**
+     * Remove the file-activated profile for this component from pom.xml.
+     *
+     * &lt;p&gt;Matches the entire {@code &lt;profile&gt;} block whose
+     * {@code &lt;id&gt;} is {@code with-&lt;component&gt;}.
+     */
+    void removeProfileFromPom(Path pomPath) throws IOException {
+<span class="nc bnc" id="L223" title="All 2 branches missed.">        if (!Files.exists(pomPath)) {</span>
+<span class="nc" id="L224">            getLog().warn(&quot;  No pom.xml found at &quot; + pomPath);</span>
+<span class="nc" id="L225">            return;</span>
+        }
+
+<span class="nc" id="L228">        String pom = Files.readString(pomPath, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L229">        String profileId = &quot;with-&quot; + component;</span>
+
+<span class="nc bnc" id="L231" title="All 2 branches missed.">        if (!pom.contains(profileId)) {</span>
+<span class="nc" id="L232">            getLog().info(&quot;  - Profile &quot; + profileId + &quot; not found in pom.xml (already removed?)&quot;);</span>
+<span class="nc" id="L233">            return;</span>
+        }
+
+        // Match the entire &lt;profile&gt;...&lt;/profile&gt; block containing this profile id.
+        // Allow flexible whitespace. The profile block ends at &lt;/profile&gt;.
+<span class="nc" id="L238">        String escapedId = Pattern.quote(profileId);</span>
+<span class="nc" id="L239">        Pattern profilePattern = Pattern.compile(</span>
+                &quot;\\s*&lt;profile&gt;\\s*\\n&quot;
+                + &quot;\\s*&lt;id&gt;&quot; + escapedId + &quot;&lt;/id&gt;\\s*\\n&quot;
+                + &quot;.*?&quot;
+                + &quot;\\s*&lt;/profile&gt;\\s*\\n&quot;,
+                Pattern.DOTALL);
+
+<span class="nc" id="L246">        Matcher m = profilePattern.matcher(pom);</span>
+<span class="nc bnc" id="L247" title="All 2 branches missed.">        if (m.find()) {</span>
+<span class="nc" id="L248">            pom = pom.substring(0, m.start()) + &quot;\n&quot; + pom.substring(m.end());</span>
+        }
+
+<span class="nc" id="L251">        Files.writeString(pomPath, pom, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L252">    }</span>
+
+    // ── Directory deletion ──────────────────────────────────────
+
+    /**
+     * Recursively delete a directory tree.
+     */
+    private void deleteDirectory(Path dir) throws MojoExecutionException {
+        try {
+            // Walk the tree bottom-up and delete
+<span class="nc" id="L262">            Files.walk(dir)</span>
+<span class="nc" id="L263">                    .sorted(java.util.Comparator.reverseOrder())</span>
+<span class="nc" id="L264">                    .forEach(path -&gt; {</span>
+                        try {
+<span class="nc" id="L266">                            Files.delete(path);</span>
+<span class="nc" id="L267">                        } catch (IOException e) {</span>
+<span class="nc" id="L268">                            throw new RuntimeException(</span>
+<span class="nc" id="L269">                                    &quot;Failed to delete &quot; + path + &quot;: &quot; + e.getMessage(), e);</span>
+<span class="nc" id="L270">                        }</span>
+<span class="nc" id="L271">                    });</span>
+<span class="nc" id="L272">        } catch (IOException | RuntimeException e) {</span>
+<span class="nc" id="L273">            throw new MojoExecutionException(</span>
+<span class="nc" id="L274">                    &quot;Failed to delete directory &quot; + dir + &quot;: &quot; + e.getMessage(), e);</span>
+<span class="nc" id="L275">        }</span>
+<span class="nc" id="L276">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

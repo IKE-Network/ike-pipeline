@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WsSyncMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">WsSyncMojo.java</span></div><h1>WsSyncMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.plugin.ReleaseSupport;
+
+import network.ike.workspace.Component;
+import network.ike.workspace.ManifestWriter;
+import network.ike.workspace.WorkspaceGraph;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Synchronize workspace.yaml branch fields with actual git branches.
+ *
+ * &lt;p&gt;Two modes:
+ * &lt;ul&gt;
+ *   &lt;li&gt;&lt;b&gt;Default&lt;/b&gt; (from=repos): read actual branches from each
+ *       cloned component and update workspace.yaml to match reality.&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;from=manifest&lt;/b&gt;: read workspace.yaml branch fields and
+ *       switch each cloned component to the declared branch.&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * &lt;pre&gt;{@code
+ * mvn ike:ws-sync                    # update yaml from repos
+ * mvn ike:ws-sync -Dfrom=manifest    # switch repos to match yaml
+ * }&lt;/pre&gt;
+ */
+@Mojo(name = &quot;sync&quot;, requiresProject = false, threadSafe = true)
+public class WsSyncMojo extends AbstractWorkspaceMojo {
+
+    /**
+     * Sync direction: {@code repos} (default) updates workspace.yaml
+     * from actual branches; {@code manifest} switches repos to match
+     * workspace.yaml.
+     */
+    @Parameter(property = &quot;from&quot;, defaultValue = &quot;repos&quot;)
+    String from;
+
+    /** Show plan without executing. */
+    @Parameter(property = &quot;dryRun&quot;, defaultValue = &quot;false&quot;)
+    boolean dryRun;
+
+    /** Creates this goal instance. */
+<span class="fc" id="L50">    public WsSyncMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="fc" id="L54">        WorkspaceGraph graph = loadGraph();</span>
+<span class="fc" id="L55">        File root = workspaceRoot();</span>
+<span class="fc" id="L56">        Path manifestPath = resolveManifest();</span>
+
+<span class="fc" id="L58">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L59">        getLog().info(&quot;IKE Workspace \u2014 Sync&quot;);</span>
+<span class="fc" id="L60">        getLog().info(&quot;\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550&quot;);</span>
+<span class="fc bfc" id="L61" title="All 2 branches covered.">        getLog().info(&quot;  Direction: &quot; + (&quot;manifest&quot;.equals(from) ? &quot;manifest \u2192 repos&quot; : &quot;repos \u2192 manifest&quot;));</span>
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        if (dryRun) {</span>
+<span class="fc" id="L63">            getLog().info(&quot;  Mode:      DRY RUN&quot;);</span>
+        }
+<span class="fc" id="L65">        getLog().info(&quot;&quot;);</span>
+
+<span class="fc bfc" id="L67" title="All 2 branches covered.">        if (&quot;manifest&quot;.equals(from)) {</span>
+<span class="fc" id="L68">            syncFromManifest(graph, root);</span>
+        } else {
+<span class="fc" id="L70">            syncFromRepos(graph, root, manifestPath);</span>
+        }
+
+<span class="fc" id="L73">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L74">    }</span>
+
+    /**
+     * Read actual branches and update workspace.yaml.
+     */
+    private void syncFromRepos(WorkspaceGraph graph, File root, Path manifestPath)
+            throws MojoExecutionException {
+<span class="fc" id="L81">        Map&lt;String, String&gt; updates = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L82">        int unchanged = 0;</span>
+
+<span class="fc bfc" id="L84" title="All 2 branches covered.">        for (Map.Entry&lt;String, Component&gt; entry : graph.manifest().components().entrySet()) {</span>
+<span class="fc" id="L85">            String name = entry.getKey();</span>
+<span class="fc" id="L86">            Component component = entry.getValue();</span>
+<span class="fc" id="L87">            File dir = new File(root, name);</span>
+
+<span class="pc bpc" id="L89" title="1 of 2 branches missed.">            if (!new File(dir, &quot;.git&quot;).exists()) {</span>
+<span class="nc" id="L90">                continue;</span>
+            }
+
+<span class="fc" id="L93">            String actual = gitBranch(dir);</span>
+<span class="fc" id="L94">            String declared = component.branch();</span>
+
+<span class="fc bfc" id="L96" title="All 2 branches covered.">            if (actual.equals(declared)) {</span>
+<span class="fc" id="L97">                unchanged++;</span>
+            } else {
+<span class="fc" id="L99">                updates.put(name, actual);</span>
+<span class="fc" id="L100">                getLog().info(&quot;  &quot; + name + &quot;: &quot; + declared + &quot; \u2192 &quot; + actual);</span>
+            }
+<span class="fc" id="L102">        }</span>
+
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        if (updates.isEmpty()) {</span>
+<span class="fc" id="L105">            getLog().info(&quot;  All branches match workspace.yaml (&quot; + unchanged + &quot; components)&quot;);</span>
+<span class="fc" id="L106">            return;</span>
+        }
+
+<span class="fc bfc" id="L109" title="All 2 branches covered.">        if (!dryRun) {</span>
+            try {
+<span class="fc" id="L111">                ManifestWriter.updateBranches(manifestPath, updates);</span>
+<span class="fc" id="L112">                getLog().info(&quot;  Updated workspace.yaml (&quot; + updates.size() + &quot; changes)&quot;);</span>
+
+                // Commit if workspace is a git repo
+<span class="fc" id="L115">                File wsRoot = manifestPath.getParent().toFile();</span>
+<span class="pc bpc" id="L116" title="1 of 2 branches missed.">                if (new File(wsRoot, &quot;.git&quot;).exists()) {</span>
+<span class="fc" id="L117">                    ReleaseSupport.exec(wsRoot, getLog(),</span>
+                            &quot;git&quot;, &quot;add&quot;, &quot;workspace.yaml&quot;);
+<span class="fc" id="L119">                    ReleaseSupport.exec(wsRoot, getLog(),</span>
+                            &quot;git&quot;, &quot;commit&quot;, &quot;-m&quot;,
+                            &quot;workspace: sync branch fields from repos&quot;);
+<span class="fc" id="L122">                    getLog().info(&quot;  Committed workspace.yaml&quot;);</span>
+                }
+<span class="nc" id="L124">            } catch (IOException e) {</span>
+<span class="nc" id="L125">                throw new MojoExecutionException(</span>
+<span class="nc" id="L126">                        &quot;Failed to update workspace.yaml: &quot; + e.getMessage(), e);</span>
+<span class="fc" id="L127">            }</span>
+        }
+<span class="fc" id="L129">    }</span>
+
+    /**
+     * Read workspace.yaml and switch repos to declared branches.
+     */
+    private void syncFromManifest(WorkspaceGraph graph, File root)
+            throws MojoExecutionException {
+<span class="fc" id="L136">        int switched = 0;</span>
+<span class="fc" id="L137">        int unchanged = 0;</span>
+
+<span class="fc bfc" id="L139" title="All 2 branches covered.">        for (Map.Entry&lt;String, Component&gt; entry : graph.manifest().components().entrySet()) {</span>
+<span class="fc" id="L140">            String name = entry.getKey();</span>
+<span class="fc" id="L141">            Component component = entry.getValue();</span>
+<span class="fc" id="L142">            File dir = new File(root, name);</span>
+
+<span class="pc bpc" id="L144" title="1 of 2 branches missed.">            if (!new File(dir, &quot;.git&quot;).exists()) {</span>
+<span class="nc" id="L145">                continue;</span>
+            }
+
+<span class="fc" id="L148">            String actual = gitBranch(dir);</span>
+<span class="fc" id="L149">            String declared = component.branch();</span>
+
+<span class="pc bpc" id="L151" title="1 of 4 branches missed.">            if (declared == null || actual.equals(declared)) {</span>
+<span class="fc" id="L152">                unchanged++;</span>
+<span class="fc" id="L153">                continue;</span>
+            }
+
+            // Check for uncommitted changes
+<span class="fc" id="L157">            String status = gitStatus(dir);</span>
+<span class="fc bfc" id="L158" title="All 2 branches covered.">            if (!status.isEmpty()) {</span>
+<span class="fc" id="L159">                getLog().warn(&quot;  \u26A0 &quot; + name + &quot;: has uncommitted changes, skipping&quot;);</span>
+<span class="fc" id="L160">                continue;</span>
+            }
+
+<span class="fc" id="L163">            getLog().info(&quot;  &quot; + name + &quot;: &quot; + actual + &quot; \u2192 &quot; + declared);</span>
+
+<span class="pc bpc" id="L165" title="1 of 2 branches missed.">            if (!dryRun) {</span>
+<span class="fc" id="L166">                ReleaseSupport.exec(dir, getLog(),</span>
+                        &quot;git&quot;, &quot;checkout&quot;, declared);
+<span class="fc" id="L168">                switched++;</span>
+            }
+<span class="fc" id="L170">        }</span>
+
+<span class="fc" id="L172">        getLog().info(&quot;  Switched: &quot; + switched + &quot; | Unchanged: &quot; + unchanged);</span>
+<span class="fc" id="L173">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

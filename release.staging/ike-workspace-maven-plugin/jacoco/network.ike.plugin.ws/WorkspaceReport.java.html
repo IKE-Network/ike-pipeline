@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WorkspaceReport.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">WorkspaceReport.java</span></div><h1>WorkspaceReport.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import org.apache.maven.plugin.logging.Log;
+
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+/**
+ * Thread-safe cumulative report writer for workspace goals.
+ *
+ * &lt;p&gt;Each goal appends a timestamped markdown section to
+ * {@code target/ws-report.md} in the workspace root. The file
+ * accumulates across a session and is removed by {@code mvn clean}.
+ *
+ * &lt;p&gt;File locking via {@link FileChannel#lock()} ensures safe
+ * concurrent writes, honoring the {@code @ThreadSafe} contract
+ * of Maven plugins.
+ */
+public final class WorkspaceReport {
+
+    private static final String REPORT_FILENAME = &quot;ws-report.md&quot;;
+<span class="fc" id="L29">    private static final DateTimeFormatter TIMESTAMP_FMT =</span>
+<span class="fc" id="L30">            DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd HH:mm:ss&quot;);</span>
+
+    private WorkspaceReport() {}
+
+    /**
+     * Append a goal's output to the workspace report file.
+     *
+     * &lt;p&gt;Creates the {@code target/} directory and report file if they
+     * don't exist. Uses file-level locking for thread safety.
+     *
+     * @param workspaceRoot the workspace root directory
+     * @param goalName      the goal that produced this output (e.g., &quot;ws:add&quot;)
+     * @param content       the markdown content to append
+     * @param log           Maven logger (warnings only; null-safe)
+     */
+    public static void append(Path workspaceRoot, String goalName,
+                               String content, Log log) {
+<span class="fc" id="L47">        Path targetDir = workspaceRoot.resolve(&quot;target&quot;);</span>
+<span class="fc" id="L48">        Path reportFile = targetDir.resolve(REPORT_FILENAME);</span>
+
+        try {
+<span class="fc" id="L51">            Files.createDirectories(targetDir);</span>
+
+            // File-level lock for thread safety
+<span class="fc" id="L54">            try (RandomAccessFile raf = new RandomAccessFile(</span>
+<span class="fc" id="L55">                         reportFile.toFile(), &quot;rw&quot;);</span>
+<span class="fc" id="L56">                 FileChannel channel = raf.getChannel();</span>
+<span class="fc" id="L57">                 FileLock ignored = channel.lock()) {</span>
+
+                // Seek to end for append
+<span class="fc" id="L60">                long length = raf.length();</span>
+<span class="fc" id="L61">                raf.seek(length);</span>
+
+                // Write header on first section
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">                if (length == 0) {</span>
+<span class="fc" id="L65">                    String header = &quot;# Workspace Report\n\n&quot;;</span>
+<span class="fc" id="L66">                    raf.write(header.getBytes(StandardCharsets.UTF_8));</span>
+                }
+
+                // Timestamp + goal header + content
+<span class="fc" id="L70">                String timestamp = LocalDateTime.now().format(TIMESTAMP_FMT);</span>
+<span class="fc" id="L71">                String section = &quot;## &quot; + goalName + &quot;\n&quot;</span>
+                        + &quot;_&quot; + timestamp + &quot;_\n\n&quot;
+<span class="fc" id="L73">                        + content.stripTrailing() + &quot;\n\n---\n\n&quot;;</span>
+<span class="fc" id="L74">                raf.write(section.getBytes(StandardCharsets.UTF_8));</span>
+            }
+<span class="nc" id="L76">        } catch (IOException e) {</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">            if (log != null) {</span>
+<span class="nc" id="L78">                log.debug(&quot;Could not write workspace report: &quot; + e.getMessage());</span>
+            }
+<span class="fc" id="L80">        }</span>
+<span class="fc" id="L81">    }</span>
+
+    /**
+     * Resolve the report file path for the given workspace root.
+     *
+     * @param workspaceRoot the workspace root directory
+     * @return path to the report file (may not exist yet)
+     */
+    public static Path reportPath(Path workspaceRoot) {
+<span class="nc" id="L90">        return workspaceRoot.resolve(&quot;target&quot;).resolve(REPORT_FILENAME);</span>
+    }
+
+    /**
+     * Open the report file in the default browser.
+     *
+     * @param workspaceRoot the workspace root directory
+     * @param log           Maven logger
+     * @return true if the file was opened, false if it doesn't exist or open failed
+     */
+    public static boolean openInBrowser(Path workspaceRoot, Log log) {
+<span class="nc" id="L101">        Path reportFile = reportPath(workspaceRoot);</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">        if (!Files.exists(reportFile)) {</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">            if (log != null) {</span>
+<span class="nc" id="L104">                log.warn(&quot;No report file found at &quot; + reportFile);</span>
+            }
+<span class="nc" id="L106">            return false;</span>
+        }
+
+        try {
+            // macOS: open in IDE (renders markdown natively)
+<span class="nc bnc" id="L111" title="All 2 branches missed.">            if (System.getProperty(&quot;os.name&quot;, &quot;&quot;).toLowerCase().contains(&quot;mac&quot;)) {</span>
+                // Try IntelliJ IDEA first, then fall back to default app
+                try {
+<span class="nc" id="L114">                    new ProcessBuilder(&quot;open&quot;, &quot;-a&quot;, &quot;IntelliJ IDEA&quot;,</span>
+<span class="nc" id="L115">                            reportFile.toString()).start();</span>
+<span class="nc" id="L116">                    return true;</span>
+<span class="nc" id="L117">                } catch (IOException _) {</span>
+                    // IntelliJ not found — try default app
+<span class="nc" id="L119">                    new ProcessBuilder(&quot;open&quot;, reportFile.toString()).start();</span>
+<span class="nc" id="L120">                    return true;</span>
+                }
+            }
+            // Fallback: java.awt.Desktop
+<span class="nc bnc" id="L124" title="All 2 branches missed.">            if (java.awt.Desktop.isDesktopSupported()) {</span>
+<span class="nc" id="L125">                java.awt.Desktop.getDesktop().open(reportFile.toFile());</span>
+<span class="nc" id="L126">                return true;</span>
+            }
+<span class="nc" id="L128">        } catch (IOException e) {</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">            if (log != null) {</span>
+<span class="nc" id="L130">                log.warn(&quot;Could not open report in browser: &quot; + e.getMessage());</span>
+            }
+<span class="nc" id="L132">        }</span>
+<span class="nc" id="L133">        return false;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReportMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">ReportMojo.java</span></div><h1>ReportMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+/**
+ * Open the cumulative workspace report in the default browser.
+ *
+ * &lt;p&gt;The report file ({@code target/ws-report.md}) accumulates output
+ * from all ws: goals run in this session. This goal opens it for review.
+ *
+ * &lt;p&gt;Usage: {@code mvn ws:report}
+ */
+@Mojo(name = &quot;report&quot;, requiresProject = false, aggregator = true)
+<span class="nc" id="L19">public class ReportMojo extends AbstractWorkspaceMojo {</span>
+
+    /**
+     * Skip opening the browser; just print the report path.
+     */
+    @Parameter(property = &quot;ws.report.printOnly&quot;, defaultValue = &quot;false&quot;)
+    private boolean printOnly;
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="nc" id="L29">        Path reportFile = WorkspaceReport.reportPath(workspaceRoot().toPath());</span>
+
+<span class="nc bnc" id="L31" title="All 2 branches missed.">        if (!Files.exists(reportFile)) {</span>
+<span class="nc" id="L32">            getLog().info(&quot;No report found. Run a ws: goal first.&quot;);</span>
+<span class="nc" id="L33">            return;</span>
+        }
+
+<span class="nc" id="L36">        getLog().info(&quot;Report: &quot; + reportFile);</span>
+
+<span class="nc bnc" id="L38" title="All 2 branches missed.">        if (!printOnly) {</span>
+<span class="nc" id="L39">            boolean opened = WorkspaceReport.openInBrowser(</span>
+<span class="nc" id="L40">                    workspaceRoot().toPath(), getLog());</span>
+<span class="nc bnc" id="L41" title="All 2 branches missed.">            if (opened) {</span>
+<span class="nc" id="L42">                getLog().info(&quot;Opened in browser.&quot;);</span>
+            } else {
+<span class="nc" id="L44">                getLog().info(&quot;Could not open browser — view the file directly.&quot;);</span>
+            }
+        }
+<span class="nc" id="L47">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

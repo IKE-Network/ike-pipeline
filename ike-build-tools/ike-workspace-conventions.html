@@ -1,0 +1,1202 @@
+<!DOCTYPE html><html lang="">
+
+
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+	<title>IKE Workspace Conventions &ndash; IKE Build Tools</title>
+
+	<meta name="keywords" content="AsciiDoc,documentation pipeline,Maven,PDF,IKE Community,knowledge engineering" />
+	<meta name="generator" content="Maven Site Plugin, Doxia Site Renderer 2.0.0, Skin sentry-maven-skin 7.0.00, from asciidoc" />
+	<meta property="article:published_time" content="2026-02-22T00:00:00" />
+	<meta property="article:modified_time" content="2026-02-22T00:00:00" />
+
+
+	<link rel="canonical" href="https://github.com/IKE-Network/ike-pipeline/ike-workspace-conventions.html">
+	<link rel="alternate" type="text/markdown" href="ike-workspace-conventions.html.md">	<link rel="stylesheet" href="./css/main-combined.css">
+	<link rel="stylesheet" href="./css/site.css">
+
+<script type="application/ld+json">
+{
+	"@context": "https://schema.org",
+	"@type": "TechArticle",
+	"headline": "IKE Workspace Conventions",
+	"datePublished": "2026-02-22T00:00:00",
+	"dateModified": "2026-02-22T00:00:00",
+	"mainEntityOfPage": "https://github.com/IKE-Network/ike-pipeline/ike-workspace-conventions.html",
+}
+</script>
+</head>
+
+<body class="sentry-site sentry-purple" ng-class="{'dark': $matchMedia.dark }" ng-app="sentry.site" ng-strict-di ng-controller="siteController" ng-keydown="handleKeyboard($event)">
+
+<script>(function (){var d=window.localStorage.getItem('matchMediaLight.userIsDark');return null!=d?d==='true':window.matchMedia('(prefers-color-scheme: dark)').matches})()&&document.body.classList.add('dark')</script>
+
+	<header role="banner">
+
+		<div class="hidden-xs navbar navbar-inverse site-logo">
+			<div class="navbar-header">
+				<a class="navbar-brand" href="../../index.html"><img src="../images/ike-logo.svg" alt="IKE"></a>
+			</div>
+			<ul class="nav navbar-nav">
+<li><a href="..">GitHub</a></li>
+			</ul>
+		<ul class="nav navbar-nav navbar-right">
+<li class="dark-toggle"><toggle ng-model="$matchMedia.dark" ng-change="switchColors()" size="btn-xs" width="34px" height="22px" off-class="day" on-class="night" toggle-class="navbar-btn dark-toggle" on="<i class='fa-solid fa-moon'></i>" off="<i class='sun-icon'></i>" title="Switch between dark and light color schemes" tabindex="0"></toggle></li>
+					<li>
+					<a href="./">GitHub <i class='fa-brands fa-github'></i></a>
+				</li>
+				</ul>
+	</div>
+
+	<div class="visible-xs navbar navbar-inverse site-logo site-logo-xs">
+			<ul class="nav navbar-nav">
+				<li><a href="../../index.html">IKE Documentation Pipeline</a></li>
+			</ul>
+		</div>
+	<div class="visible-xs navbar navbar-inverse site-logo site-logo-xs breadcrumb-xs">
+			<ul class="nav navbar-nav">
+<li><a href="../../index.html">IKE</a></li>
+<li><a href="../index.html">IKE Pipeline</a></li>
+			</ul>
+		</div>
+
+		<div class="navbar site-banner">
+
+			<div class="container-fluid">
+
+				<div class="navbar-header" ng-class="{'show-search-xs': showSearchInput && $matchMedia.size == 'xs'}">
+					<button
+						class="navbar-toggle hidden-lg hidden-md hidden-sm"
+						ng-click="showSearchInput = !showSearchInput; clearSearch()"
+						title="{{ showSearchInput ? 'Close the search' : 'Search' }}"
+						type="button"
+					>
+						<i ng-class="showSearchInput ? 'fas fa-times' : 'fa fa-search'"></i>
+					</button>
+
+					<div class="navbar-brand">
+					<ol class="breadcrumb hidden-xs">
+<li><a href="../../index.html">IKE</a></li>
+<li><a href="../index.html">IKE Pipeline</a></li>
+						</ol>
+					<div class="header-title">IKE Build Tools</div>
+						<div class="header-subtitle">
+							<span class="version-prefix">Version</span>
+							<span class="version">34</span>
+						</div>
+					</div>
+					<div class="navbar-brand header-xxs visible-xs">
+						<div class="header-title">IKE Build Tools</div>
+						<div class="header-subtitle">
+							Version <strong>34</strong>
+						</div>
+					</div>
+					<form class="navbar-form site-search site-search-xs visible-xs" ng-show="showSearchInput">
+						<input
+							type="search"
+							class="form-control"
+							placeholder="Search..."
+							aria-label="Search"
+							ng-model="siteSearch"
+							ng-change="search(siteSearch)"
+							ng-model-options="{ debounce: 500 }"
+							ng-keydown="handleKeyboard($event)"
+							ng-focus="prefetchSearchIndex()"
+							focus-me="showSearchInput"
+						/>
+					</form>
+				</div>
+
+				<form class="navbar-form navbar-right site-search hidden-xs">
+					<div class="form-group has-feedback">
+						<input
+							type="text"
+							class="form-control"
+							placeholder="Search..."
+							aria-label="Search"
+							ng-model="siteSearch"
+							ng-change="search(siteSearch)"
+							ng-model-options="{ debounce: 500 }"
+							ng-keydown="handleKeyboard($event)"
+							ng-focus="prefetchSearchIndex()"
+						/>
+						<i class="fa fa-search form-control-feedback" aria-hidden="true"></i>
+					</div>
+				</form>
+
+			</div>
+		</div>
+	</header>
+
+	<div class="container-fluid main-container">
+		<div class="row display-flex">
+
+			<nav class="left-menu hidden-xs col-sm-4 col-md-3" role="navigation">
+		<h5 class="text-uppercase">Parent Project</h5>
+
+<ul class="nav nav-pills nav-stacked animate">
+<li><a href="../index.html"><i class="fas fa-file-alt"></i> IKE Pipeline</a></li>
+</ul>
+		<h5 class="text-uppercase">Overview</h5>
+
+<ul class="nav nav-pills nav-stacked animate">
+<li class="active"><a href="ike-workspace-conventions.html" ng-click="hideSubItems = !hideSubItems"><i class="fas fa-file-alt"></i> Workspace Conventions</a></li>
+</ul>
+		<h5 class="text-uppercase">Reports</h5>
+
+<ul class="nav nav-pills nav-stacked animate">
+<li><a href="project-info.html"><i class="fas fa-folder"></i> Project Information <span class="badge">4</span></a></li>
+</ul>
+			</nav>
+
+			<main class="main-content col-xs-12 col-sm-8 col-md-9">
+
+				<div ng-hide="siteSearch">
+
+					<div class="row">
+
+					<div class="col-md-12">
+					<div class="page-header visible-print-block">
+							<h3><small>IKE Documentation Pipeline</small><br/>							IKE Build Tools 34
+							</h3>
+						</div>
+						<div class="parents hidden-xs">
+								<ol class="breadcrumb">
+									<!-- Home -->
+									<li>
+										<a href="index.html">
+											<i class="fas fa-home"></i>Home
+										</a>
+									</li>
+								<!-- menus and items -->
+										<li>Overview</li>
+												</ol>
+							</div>
+						<div class="parents-xs visible-xs">
+								<ul class="list-group">
+									<!-- Home -->
+									<a class="list-group-item" href="index.html">
+										<i class="fas fa-home"></i>Home
+									</a>
+									<!-- menus and items -->
+										<li class="list-group-item"><i class="fas fa-level-up-alt fa-flip-horizontal"></i>Overview</li>
+											</ul>
+						</div>
+<h1 id="ike-workspace-conventions">IKE Workspace Conventions</h1>
+<div class="sect1">
+ <h2 id="the-problem"><a href="#the-problem">The Problem</a></h2>
+ <div class="sectionbody">
+  <div class="paragraph">
+   <p>IKE developers work across multiple machines. A developer editing source on a Mac Studio needs to continue that work on a MacBook Pro — sometimes at a natural commit point, sometimes mid-thought with uncommitted changes. The traditional approach — a single clone, branch switching, stash/unstash rituals — creates friction and risk. The risk compounds when multiple feature branches are active simultaneously.</p>
+  </div>
+  <div class="paragraph">
+   <p>This document defines the <strong>IKE Workspace</strong> convention: a disciplined approach to multi-machine, multi-branch development that provides safety through layered defenses rather than relying on any single mechanism.</p>
+  </div>
+ </div>
+</div>
+<div class="sect1">
+ <h2 id="design-principles"><a href="#design-principles">Design Principles</a></h2>
+ <div class="sectionbody">
+  <div class="paragraph">
+   <p>Three principles guide the IKE Workspace design:</p>
+  </div>
+  <div class="paragraph">
+   <p><strong>Every checkout is self-describing.</strong> Given a Git commit hash, you know exactly what artifact coordinates will be produced. No ambient state, no build-time injection, no hidden inputs. The POM is a declarative specification of what the artifact <em>is</em>, not a template that produces different artifacts depending on who builds it or where.</p>
+  </div>
+  <div class="paragraph">
+   <p><strong>Every workspace is a peer.</strong> No workspace is "the original" or "the primary clone." Any workspace can be the origin point for a new one. This mirrors the IKE Community’s broader architectural principle: no single point of authority, collaborative curation across organizational boundaries.</p>
+  </div>
+  <div class="paragraph">
+   <p><strong>Safety through layered defense, not single mechanisms.</strong> No single convention prevents all classes of error. We stack defenses so that each layer catches what the previous layer misses.</p>
+  </div>
+ </div>
+</div>
+<div class="sect1">
+ <h2 id="defense-in-depth-the-swiss-cheese-model"><a href="#defense-in-depth-the-swiss-cheese-model">Defense in Depth — The Swiss Cheese Model</a></h2>
+ <div class="sectionbody">
+  <div class="paragraph">
+   <p>James Reason’s Swiss cheese model, widely applied in aviation and healthcare safety, observes that every defensive layer has holes. Accidents occur when the holes in successive layers align, allowing a failure to pass through every defense. The remedy is not to demand perfection from any single layer but to stack enough layers that alignment becomes improbable.</p>
+  </div>
+  <div class="paragraph">
+   <p>The IKE Workspace convention applies four defensive layers:</p>
+  </div>
+  <div class="sect2">
+   <h3 id="layer-1-separate-workspace-directories"><a href="#layer-1-separate-workspace-directories">Layer 1: Separate Workspace Directories</a></h3>
+   <div class="paragraph">
+    <p>Each feature branch lives in its own directory — a full Git clone with a predictable name derived from the branch.</p>
+   </div>
+   <div class="listingblock">
+    <div class="content">
+     <pre copy-to-clipboard="">~/Projects/ike/
+  shield-terminology/         ← shield/terminology-refresh branch
+  stamp-coordinates/          ← stamp/coordinate-refactor branch
+  piqi-framework/             ← piqi/framework-update branch</pre>
+    </div>
+   </div>
+   <div class="paragraph">
+    <p><strong>What this defends against:</strong> Working tree confusion — editing files on the wrong branch, building with uncommitted changes from an unrelated feature.</p>
+   </div>
+   <div class="paragraph">
+    <p><strong>Where the holes are:</strong> Separate directories do not prevent artifacts from colliding in shared state (the Maven local repository, a deployment target). A developer can still <code>mvn deploy</code> from the wrong workspace.</p>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="layer-2-maven-4-project-local-repository"><a href="#layer-2-maven-4-project-local-repository">Layer 2: Maven 4 Project-Local Repository</a></h3>
+   <div class="paragraph">
+    <p>Maven 4 supports a project-local installed artifact repository, configured in <code>.mvn/maven.properties</code>:</p>
+   </div>
+   <div class="listingblock">
+    <div class="content">
+     <pre class="CodeRay highlight" copy-to-clipboard=""><code data-lang="properties">maven.repo.local.path.installed=${session.rootDirectory}/.mvn/local-repo</code></pre>
+    </div>
+   </div>
+   <div class="paragraph">
+    <p>When <code>mvn install</code> runs, artifacts are written to <code>.mvn/local-repo/</code> within the workspace — not to the shared <code>~/.m2/repository</code>. Each workspace’s build output is isolated from every other workspace.</p>
+   </div>
+   <div class="paragraph">
+    <p>The shared <code>~/.m2/repository</code> becomes a pure download cache: artifacts resolved from Maven Central and other remote repositories. It is safe to share because it contains only published, immutable release artifacts — never local SNAPSHOT builds.</p>
+   </div>
+   <div class="paragraph">
+    <p><strong>What this defends against:</strong> Build-time cross-contamination. Two workspaces building the same module at different SNAPSHOT states no longer overwrite each other’s artifacts.</p>
+   </div>
+   <div class="paragraph">
+    <p><strong>Where the holes are:</strong> Project-local repos are a build-time mechanism. Once an artifact leaves the workspace — via <code>mvn deploy</code> to a remote repository, or via a CI pipeline — the project-local repo provides no protection. The artifact’s version string is its only identity at that point.</p>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="layer-3-branch-qualified-versions"><a href="#layer-3-branch-qualified-versions">Layer 3: Branch-Qualified Versions</a></h3>
+   <div class="paragraph">
+    <p>Each workspace’s artifacts carry a version that identifies their branch lineage:</p>
+   </div>
+   <div class="listingblock">
+    <div class="content">
+     <pre copy-to-clipboard="">1.2.0-shield-terminology-SNAPSHOT
+1.2.0-stamp-coordinates-SNAPSHOT</pre>
+    </div>
+   </div>
+   <div class="paragraph">
+    <p>The <code>main</code> branch retains the unqualified version:</p>
+   </div>
+   <div class="listingblock">
+    <div class="content">
+     <pre copy-to-clipboard="">1.2.0-SNAPSHOT</pre>
+    </div>
+   </div>
+   <div class="paragraph">
+    <p><strong>What this defends against:</strong> Deployment collision. If a developer accidentally runs <code>mvn deploy</code> from a feature workspace, the artifact publishes under a distinct version coordinate — it cannot silently overwrite the main-branch artifact. It also provides <strong>provenance</strong>: six months later, an artifact’s version string tells you which branch produced it.</p>
+   </div>
+   <div class="paragraph">
+    <p><strong>Where the holes are:</strong> Someone could forget to set the branch-qualified version. The <code>ike:init</code> goal automates this, but a manual <code>git clone</code> bypasses the goal.</p>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="layer-4-syncthing-with-git-isolation"><a href="#layer-4-syncthing-with-git-isolation">Layer 4: Syncthing with Git Isolation</a></h3>
+   <div class="paragraph">
+    <p>Syncthing provides real-time file synchronization between machines, ensuring that uncommitted work-in-progress is available on any machine within seconds.</p>
+   </div>
+   <div class="paragraph">
+    <p>Critically, <code>.git/</code> directories are excluded from synchronization. Each machine maintains its own independent Git state. Syncthing handles the working tree; Git handles versioned history via push/pull to the remote.</p>
+   </div>
+   <div class="paragraph">
+    <p><strong>What this defends against:</strong> Stale files when switching machines. A developer can walk away from the Studio and resume on the MacBook Pro with current source files, even if they have not committed or pushed.</p>
+   </div>
+   <div class="paragraph">
+    <p><strong>Where the holes are:</strong> Git history is not synchronized in real time. If the developer made commits on the Studio but did not push, the MacBook Pro has current <em>files</em> but stale <em>history</em>. The developer must <code>git fetch</code> to synchronize history.</p>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="the-stack"><a href="#the-stack">The Stack</a></h3>
+   <table class="tableblock frame-all grid-all stretch">
+    <colgroup>
+     <col style="width: 20%;">
+     <col style="width: 40%;">
+     <col style="width: 40%;">
+    </colgroup>
+    <thead>
+     <tr>
+      <th class="tableblock halign-left valign-top">Layer</th>
+      <th class="tableblock halign-left valign-top">Defends Against</th>
+      <th class="tableblock halign-left valign-top">Hole</th>
+     </tr>
+    </thead>
+    <tbody>
+     <tr>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Separate workspaces</p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Working tree confusion</p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Shared state collision</p>
+      </td>
+     </tr>
+     <tr>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Project-local repo</p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Build-time cross-contamination</p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Artifacts leaving the workspace</p>
+      </td>
+     </tr>
+     <tr>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Branch-qualified versions</p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Deploy/publish collision, provenance loss</p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Manual clone bypassing the goal</p>
+      </td>
+     </tr>
+     <tr>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Syncthing + Git isolation</p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Stale files between machines</p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Git history not synced in real time</p>
+      </td>
+     </tr>
+    </tbody>
+   </table>
+   <div class="paragraph">
+    <p>No single layer is sufficient. Together, the probability of a corrupted deployment or misidentified artifact approaches zero.</p>
+   </div>
+  </div>
+ </div>
+</div>
+<div class="sect1">
+ <h2 id="leaning-into-maven-4"><a href="#leaning-into-maven-4">Leaning Into Maven 4</a></h2>
+ <div class="sectionbody">
+  <div class="paragraph">
+   <p>The IKE pipeline uses Maven 4 with POM model 4.1.0. Several conventions in this document depend on capabilities that did not exist in Maven 3. It is worth being explicit about what changed, because the Maven ecosystem carries a great deal of inherited folklore that no longer applies.</p>
+  </div>
+  <div class="sect2">
+   <h3 id="ghosts-of-maven-3"><a href="#ghosts-of-maven-3">Ghosts of Maven 3</a></h3>
+   <div class="paragraph">
+    <p>Maven 3 required child modules to declare their parent version explicitly:</p>
+   </div>
+   <div class="listingblock">
+    <div class="content">
+     <pre class="CodeRay highlight" copy-to-clipboard=""><code data-lang="xml"><span class="comment">&lt;!-- Maven 3: version required in every child --&gt;</span>
+<span class="tag">&lt;parent&gt;</span>
+    <span class="tag">&lt;groupId&gt;</span>network.ike<span class="tag">&lt;/groupId&gt;</span>
+    <span class="tag">&lt;artifactId&gt;</span>ike-parent<span class="tag">&lt;/artifactId&gt;</span>
+    <span class="tag">&lt;version&gt;</span>1.1.0-SNAPSHOT<span class="tag">&lt;/version&gt;</span>
+<span class="tag">&lt;/parent&gt;</span></code></pre>
+    </div>
+   </div>
+   <div class="paragraph">
+    <p>Changing the parent version meant editing every child POM. For the IKE pipeline with 11+ modules, this created real friction — noisy commits touching many files, merge conflicts on version strings, and human error when a module was missed.</p>
+   </div>
+   <div class="paragraph">
+    <p>The Maven community responded with <code>${revision}</code> — a CI-friendly property that allowed the version to be injected at build time. This solved the N-file-edit problem but introduced a new one: the checkout was no longer self-describing. The POM said <code>&lt;version&gt;${revision}&lt;/version&gt;</code>, and the actual version depended on command-line arguments, <code>.mvn/maven.properties</code>, or CI pipeline configuration. The artifact’s identity became ambient rather than declarative.</p>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="what-maven-4-pom-4-1-0-fixed"><a href="#what-maven-4-pom-4-1-0-fixed">What Maven 4 / POM 4.1.0 Fixed</a></h3>
+   <div class="paragraph">
+    <p>Maven 4 resolved the underlying problem that <code>${revision}</code> was working around.</p>
+   </div>
+   <div class="paragraph">
+    <p><strong>Parent version resolution from the reactor.</strong> In POM 4.1.0, child modules within a reactor omit the parent version entirely:</p>
+   </div>
+   <div class="listingblock">
+    <div class="content">
+     <pre class="CodeRay highlight" copy-to-clipboard=""><code data-lang="xml"><span class="comment">&lt;!-- Maven 4.1.0: no version needed — resolved from reactor --&gt;</span>
+<span class="tag">&lt;parent&gt;</span>
+    <span class="tag">&lt;groupId&gt;</span>network.ike<span class="tag">&lt;/groupId&gt;</span>
+    <span class="tag">&lt;artifactId&gt;</span>ike-parent<span class="tag">&lt;/artifactId&gt;</span>
+<span class="tag">&lt;/parent&gt;</span></code></pre>
+    </div>
+   </div>
+   <div class="paragraph">
+    <p>The reactor knows that <code>ike-parent</code> is a sibling module and resolves its version from the reactor graph. One version declaration in <code>ike-parent/pom.xml</code>, every child inherits it.</p>
+   </div>
+   <div class="paragraph">
+    <p><strong>Inter-module dependency resolution.</strong> Similarly, dependencies on reactor siblings are resolved without explicit version declarations. The BOM handles version coordination for modules consumed outside the reactor.</p>
+   </div>
+   <div class="paragraph">
+    <p><strong>The result:</strong> Changing the pipeline version is a one-line edit in one file. The commit diff is one line. The merge conflict, if any, is one line. The checkout is self-describing. The artifact identity is declarative.</p>
+   </div>
+   <div class="paragraph">
+    <p><code>${revision}</code> solved a problem that no longer exists. It is a ghost — an inherited workaround whose original justification has been removed by the platform.</p>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="a-note-on-devops-orthodoxy"><a href="#a-note-on-devops-orthodoxy">A Note on DevOps Orthodoxy</a></h3>
+   <div class="paragraph">
+    <p>The <code>${revision}</code> pattern persists in Maven documentation and blog posts not because the underlying problem persists, but because it serves the CI/CD pipeline author’s workflow. For a platform team managing hundreds of microservices with automated release trains, injecting versions at build time is operationally convenient. The pipeline becomes the source of truth, and humans rarely inspect POMs.</p>
+   </div>
+   <div class="paragraph">
+    <p>This is a legitimate optimization — for that context.</p>
+   </div>
+   <div class="paragraph">
+    <p>The error is in universalizing it. When DevOps practices are adopted uncritically, they optimize for pipeline convenience at the expense of developer comprehension and build safety. The tail wags the dog. The insight of <em>what to build</em> does not originate in the CI pipeline. The project’s identity — its version, its coordinates, its provenance — is a design decision that belongs to the project owner, not an operational detail to be injected at deployment time.</p>
+   </div>
+   <div class="paragraph">
+    <p>When a DevOps convention removes a safety layer (self-describing checkouts, reproducible builds from source alone) to simplify pipeline configuration, the project owner should push back. Convenience in the pipeline is not worth ambiguity in the artifact. The IKE Community’s position is clear: the POM declares what the artifact <em>is</em>. The build reproduces it. The pipeline ships it. The order of authority flows from design to implementation to operations, not the reverse.</p>
+   </div>
+  </div>
+ </div>
+</div>
+<div class="sect1">
+ <h2 id="unified-versioning"><a href="#unified-versioning">Unified Versioning</a></h2>
+ <div class="sectionbody">
+  <div class="sect2">
+   <h3 id="the-case-against-independent-module-versions"><a href="#the-case-against-independent-module-versions">The Case Against Independent Module Versions</a></h3>
+   <div class="paragraph">
+    <p>Traditional Maven practice assigns independent versions to each module: <code>ike-parent 1.2.0</code>, <code>docbook-xsl 1.3.1</code>, <code>minimal-fonts 1.1.0</code>. The rationale is that modules with different release cadences should communicate their change scope through independent version numbers.</p>
+   </div>
+   <div class="paragraph">
+    <p>For the IKE pipeline, this rationale does not survive contact with reality.</p>
+   </div>
+   <div class="paragraph">
+    <p><strong>No module has independent consumers.</strong> Every downstream IKE project consumes the pipeline through parent POM inheritance and BOM import. No consumer declares <code>&lt;dependency&gt;docbook-xsl&lt;/dependency&gt;&lt;version&gt;1.3.2&lt;/version&gt;</code>. Individual module versions are invisible to consumers. They see the BOM version and the parent version.</p>
+   </div>
+   <div class="paragraph">
+    <p><strong>Independent versions create coordination overhead without benefit.</strong> Maintaining a compatibility matrix (which <code>docbook-xsl</code> versions work with which <code>ike-parent</code> versions) serves no one when the modules are always released together and always consumed together.</p>
+   </div>
+   <div class="paragraph">
+    <p><strong>The pipeline is a platform, not a library collection.</strong> The Apache Commons model — independent libraries, independent consumers, independent release cadences — makes sense for a loose collection of utilities. The IKE pipeline is a coherent platform whose components are designed to work as a unit. The Spring Boot model — release together, version together — is the correct analogy.</p>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="unified-version-convention"><a href="#unified-version-convention">Unified Version Convention</a></h3>
+   <div class="paragraph">
+    <p>All modules in the IKE pipeline reactor share a single version. The version is declared in <code>ike-parent/pom.xml</code> and propagates to child modules via Maven 4 reactor resolution and parent inheritance.</p>
+   </div>
+   <div class="paragraph">
+    <p>Standalone infrastructure modules (<code>ike-build-standards</code>, <code>ike-build-tools</code>, <code>ike-doc-resources</code>, <code>minimal-fonts</code>, <code>docbook-xsl</code>, <code>koncept-asciidoc-extension</code>) declare the same version explicitly in their own POMs — they do not inherit from the parent chain, but they release at the same version as the parent.</p>
+   </div>
+   <div class="paragraph">
+    <p><strong>Versioning policy:</strong></p>
+   </div>
+   <div class="ulist">
+    <ul>
+     <li>
+      <p>Pipeline versions are sequential: 1.1.0, 1.2.0, 1.3.0, and so on.</p>
+     </li>
+     <li>
+      <p>No semantic versioning contract is implied. Each release supersedes the previous one. The version number is an ordering, not a compatibility encoding.</p>
+     </li>
+     <li>
+      <p>The minor version serves as the release sequence number. Major version increments are reserved for foundational infrastructure changes.</p>
+     </li>
+     <li>
+      <p>All modules in the reactor share the unified version.</p>
+     </li>
+     <li>
+      <p>The BOM exports all module versions at the unified pipeline version.</p>
+     </li>
+     <li>
+      <p>Branch-qualified versions append the branch name: <code>1.3.0-shield-terminology-SNAPSHOT</code>.</p>
+     </li>
+    </ul>
+   </div>
+  </div>
+ </div>
+</div>
+<div class="sect1">
+ <h2 id="ike-workspace-directory-convention"><a href="#ike-workspace-directory-convention">IKE Workspace Directory Convention</a></h2>
+ <div class="sectionbody">
+  <div class="sect2">
+   <h3 id="layout"><a href="#layout">Layout</a></h3>
+   <div class="paragraph">
+    <p>All IKE Workspaces for a given repository live under a common parent directory:</p>
+   </div>
+   <div class="listingblock">
+    <div class="content">
+     <pre copy-to-clipboard="">~/Projects/ike/
+  &lt;safe-branch-name&gt;/        ← one directory per active branch</pre>
+    </div>
+   </div>
+   <div class="paragraph">
+    <p>The safe branch name is derived from the Git branch name by replacing <code>/</code> with <code>-</code>. For example, <code>shield/terminology-refresh</code> becomes <code>shield-terminology-refresh</code>.</p>
+   </div>
+   <div class="paragraph">
+    <p>The <code>main</code> branch workspace, if present, is named <code>main/</code>.</p>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="creation"><a href="#creation">Creation</a></h3>
+   <div class="paragraph">
+    <p>The <code>ike:init</code> goal creates workspaces:</p>
+   </div>
+   <div class="listingblock">
+    <div class="content">
+     <pre class="CodeRay highlight" copy-to-clipboard=""><code data-lang="bash"># Create a workspace branching from origin/main
+mvn ike:init -Dbranch=shield/terminology-refresh
+
+# Create a workspace branching from the current workspace's branch
+mvn ike:init -Dbranch=shield/terminology-mappings -DfromHere
+
+# Show workspace status
+mvn ike:status
+
+# Show workspace dashboard
+mvn ike:dashboard</code></pre>
+    </div>
+   </div>
+   <div class="paragraph">
+    <p>When <code>-DfromHere</code> is used, the goal pushes the current branch to the remote before creating the new workspace. This ensures that the branch point is recorded in Git history.</p>
+   </div>
+   <div class="paragraph">
+    <p>After cloning and checking out the branch, the goal sets the branch-qualified version by editing the version in <code>ike-parent/pom.xml</code> and committing the change.</p>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="syncthing-configuration"><a href="#syncthing-configuration">Syncthing Configuration</a></h3>
+   <div class="paragraph">
+    <p>The workspace parent directory (<code>~/Projects/ike/</code>) is configured as a Syncthing shared folder between machines.</p>
+   </div>
+   <div class="paragraph">
+    <p>The <code>.stignore</code> file at that level excludes:</p>
+   </div>
+   <div class="listingblock">
+    <div class="content">
+     <pre copy-to-clipboard="">**/target/
+**/.mvn/local-repo/
+**/.idea/
+**/*.iml
+**/.DS_Store
+**/.git/
+**/node_modules/
+**/*.rocksdb/</pre>
+    </div>
+   </div>
+   <div class="paragraph">
+    <p>Key exclusions:</p>
+   </div>
+   <div class="ulist">
+    <ul>
+     <li>
+      <p><code>.git/</code> — each machine maintains independent Git state. Syncthing handles the working tree; Git handles history.</p>
+     </li>
+     <li>
+      <p><code>.mvn/local-repo/</code> — project-local Maven repository. Build artifacts are machine-specific.</p>
+     </li>
+     <li>
+      <p><code>target/</code> — build output. Rebuilt locally.</p>
+     </li>
+     <li>
+      <p><code>.idea/</code> — IDE state. Per-machine.</p>
+     </li>
+    </ul>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="cross-machine-workflow"><a href="#cross-machine-workflow">Cross-Machine Workflow</a></h3>
+   <div class="paragraph">
+    <p>The typical workflow for switching machines:</p>
+   </div>
+   <div class="olist arabic">
+    <ol class="arabic">
+     <li>
+      <p>Work in a workspace on Machine A. Edit, build, test. Syncthing propagates source file changes to Machine B in real time.</p>
+     </li>
+     <li>
+      <p>Walk to Machine B. The working tree is current — even uncommitted changes are present.</p>
+     </li>
+     <li>
+      <p>Run <code>git fetch origin</code> to synchronize Git history (only necessary if commits were made on Machine A).</p>
+     </li>
+     <li>
+      <p>Continue working.</p>
+     </li>
+    </ol>
+   </div>
+   <div class="paragraph">
+    <p>For a clean transition at a commit boundary:</p>
+   </div>
+   <div class="olist arabic">
+    <ol class="arabic">
+     <li>
+      <p>On Machine A: <code>git commit</code> and <code>git push</code>.</p>
+     </li>
+     <li>
+      <p>On Machine B: <code>git pull</code>. Build and continue.</p>
+     </li>
+    </ol>
+   </div>
+   <div class="paragraph">
+    <p>For a mid-thought transition (uncommitted work):</p>
+   </div>
+   <div class="olist arabic">
+    <ol class="arabic">
+     <li>
+      <p>On Machine A: just walk away. Syncthing has already propagated the changes.</p>
+     </li>
+     <li>
+      <p>On Machine B: the files are there. Continue editing.</p>
+     </li>
+     <li>
+      <p>When ready to commit, commit normally. Git operates on the local working tree, which Syncthing has kept current.</p>
+     </li>
+    </ol>
+   </div>
+  </div>
+ </div>
+</div>
+<div class="sect1">
+ <h2 id="release-process-design-constraints"><a href="#release-process-design-constraints">Release Process — Design Constraints</a></h2>
+ <div class="sectionbody">
+  <div class="paragraph">
+   <p>The IKE Workspace and checkpoint cascade patterns impose constraints on any release process. This section establishes those constraints and the script inventory that will implement them. The scripts themselves are placeholders for iterative development — the release process will mature through use, not through upfront design.</p>
+  </div>
+  <div class="sect2">
+   <h3 id="why-not-the-maven-release-plugin-or-gitflow-plugin"><a href="#why-not-the-maven-release-plugin-or-gitflow-plugin">Why Not the Maven Release Plugin or GitFlow Plugin?</a></h3>
+   <div class="paragraph">
+    <p>The <code>maven-release-plugin</code> and <code>maven-gitflow-plugin</code> encode workflow assumptions that do not match the IKE context. Both assume a linear version progression on a single branch. Neither understands:</p>
+   </div>
+   <div class="ulist">
+    <ul>
+     <li>
+      <p>Branch-qualified versions that must be stripped on merge</p>
+     </li>
+     <li>
+      <p>Checkpoint versions interleaved with development SNAPSHOTs</p>
+     </li>
+     <li>
+      <p>The separation between dependency coordination, release management, and continuous validation articulated in the Checkpoint Cascade whitepaper</p>
+     </li>
+    </ul>
+   </div>
+   <div class="paragraph">
+    <p>These plugins conflate concerns. They try to handle version manipulation, Git branch operations, build execution, and deployment in a single opaque plugin goal. When their assumptions don’t match your workflow, you fight the plugin rather than the problem.</p>
+   </div>
+   <div class="paragraph">
+    <p>The IKE Community does not use these plugins. Release operations are implemented as Maven plugin goals in <code>ike-maven-plugin</code>. This is a deliberate architectural choice, not a gap.</p>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="maven-plugin-as-the-implementation"><a href="#maven-plugin-as-the-implementation">Maven Plugin as the Implementation</a></h3>
+   <div class="paragraph">
+    <p>Release automation is implemented as Maven plugin goals in the <code>ike-maven-plugin</code> module. Each goal is an IDE-discoverable, clickable target in IntelliJ’s Maven tool window with parameter prompts.</p>
+   </div>
+   <div class="paragraph">
+    <p>The plugin provides:</p>
+   </div>
+   <div class="ulist">
+    <ul>
+     <li>
+      <p><strong>Discoverability.</strong> Goals appear in the IDE. A developer browsing the Maven tool window sees <code>ike:init</code>, <code>ike:status</code>, <code>ike:feature-finish</code>, <code>ike:release</code> — clickable, runnable targets.</p>
+     </li>
+     <li>
+      <p><strong>Transparency.</strong> Release logic lives in <code>ReleaseSupport.java</code>, a single utility class with clear method boundaries.</p>
+     </li>
+     <li>
+      <p><strong>Composability.</strong> Goals invoke other goals. Complex workflows are assembled from simple operations.</p>
+     </li>
+     <li>
+      <p><strong>Universality.</strong> Maven runs on macOS, Linux, and Windows without platform-specific shell dependencies.</p>
+     </li>
+    </ul>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="version-transitions"><a href="#version-transitions">Version Transitions</a></h3>
+   <div class="paragraph">
+    <p>The IKE Workspace pattern creates version states that must be managed through the development lifecycle:</p>
+   </div>
+   <div class="listingblock">
+    <div class="content">
+     <pre copy-to-clipboard="">1.2.0-SNAPSHOT                              (main branch, development)
+1.2.0-shield-terminology-SNAPSHOT           (feature workspace, development)
+1.2.0-shield-terminology-checkpoint.20250222.1  (checkpoint, immutable)
+1.2.0                                       (release, immutable)</pre>
+    </div>
+   </div>
+   <div class="paragraph">
+    <p>Key transitions:</p>
+   </div>
+   <div class="ulist">
+    <ul>
+     <li>
+      <p><strong>Workspace creation:</strong> <code>1.2.0-SNAPSHOT</code> → <code>1.2.0-shield-terminology-SNAPSHOT</code>. Automated by <code>mvn ike:init</code>.</p>
+     </li>
+     <li>
+      <p><strong>Checkpoint creation:</strong> <code>1.2.0-shield-terminology-SNAPSHOT</code> → <code>1.2.0-shield-terminology-checkpoint.20250222.1</code>. Automated by <code>mvn ike:ws-checkpoint</code>. The SNAPSHOT version is not changed; the checkpoint is a tagged, immutable build at a point in time.</p>
+     </li>
+     <li>
+      <p><strong>Merge to main:</strong> <code>1.2.0-shield-terminology-SNAPSHOT</code> → <code>1.2.0-SNAPSHOT</code>. The branch qualifier is stripped. Automated by <code>mvn ike:feature-finish</code>. PR reviewers should expect this version change in the diff — it is structural, not a conflict.</p>
+     </li>
+     <li>
+      <p><strong>Release:</strong> <code>1.2.0-SNAPSHOT</code> → <code>1.2.0</code>. Automated by <code>mvn ike:release</code>.</p>
+     </li>
+     <li>
+      <p><strong>Post-release:</strong> <code>1.2.0</code> → <code>1.3.0-SNAPSHOT</code>. Automated by <code>mvn ike:release</code> (integrated into single goal).</p>
+     </li>
+    </ul>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="goal-inventory"><a href="#goal-inventory">Goal Inventory</a></h3>
+   <div class="paragraph">
+    <p>The <code>ike-maven-plugin</code> provides:</p>
+   </div>
+   <table class="tableblock frame-all grid-all stretch">
+    <colgroup>
+     <col style="width: 40%;">
+     <col style="width: 60%;">
+    </colgroup>
+    <thead>
+     <tr>
+      <th class="tableblock halign-left valign-top">Goal</th>
+      <th class="tableblock halign-left valign-top">Purpose</th>
+     </tr>
+    </thead>
+    <tbody>
+     <tr>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock"><code>ike:init</code></p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Create a new IKE Workspace (clone, branch, set version)</p>
+      </td>
+     </tr>
+     <tr>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock"><code>ike:status</code></p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Show workspace status (branch, version, uncommitted changes)</p>
+      </td>
+     </tr>
+     <tr>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock"><code>ike:dashboard</code></p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Show dashboard of all workspaces</p>
+      </td>
+     </tr>
+     <tr>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock"><code>ike:feature-finish</code></p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Strip branch qualifier, merge feature to main, tag</p>
+      </td>
+     </tr>
+     <tr>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock"><code>ike:ws-checkpoint</code></p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Create immutable checkpoint from current branch</p>
+      </td>
+     </tr>
+     <tr>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock"><code>ike:release</code></p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Transition from SNAPSHOT to release version, build, tag, deploy, bump to next SNAPSHOT</p>
+      </td>
+     </tr>
+     <tr>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock"><code>ike:ws-release</code></p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Workspace-level release orchestration — scan, filter dirty, topo-sort, release in dependency order</p>
+      </td>
+     </tr>
+     <tr>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock"><code>ike:generate-bom</code></p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">Auto-generate a standalone BOM POM from <code>ike-parent</code> dependency management</p>
+      </td>
+     </tr>
+     <tr>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock"><code>ike:verify</code></p>
+      </td>
+      <td class="tableblock halign-left valign-top">
+       <p class="tableblock">PR validation</p>
+      </td>
+     </tr>
+    </tbody>
+   </table>
+   <div class="paragraph">
+    <p>Shared utility logic lives in <code>ReleaseSupport.java</code> in the <code>ike-maven-plugin</code> module.</p>
+   </div>
+  </div>
+ </div>
+</div>
+<div class="sect1">
+ <h2 id="workspace-release-orchestration"><a href="#workspace-release-orchestration">Workspace Release Orchestration</a></h2>
+ <div class="sectionbody">
+  <div class="paragraph">
+   <p>The <code>ike:ws-release</code> goal automates multi-component releases across a workspace. It replaces manual per-component release sequences with a single orchestrated workflow that respects inter-repository dependency order.</p>
+  </div>
+  <div class="sect2">
+   <h3 id="the-self-limiting-cascade"><a href="#the-self-limiting-cascade">The Self-Limiting Cascade</a></h3>
+   <div class="paragraph">
+    <p>The release is <em>self-limiting</em>: only checked-out repositories with commits since their last release tag are candidates. Components that are not checked out or have no changes are silently skipped.</p>
+   </div>
+   <div class="paragraph">
+    <p>The release scope is the intersection of two sets:</p>
+   </div>
+   <div class="olist arabic">
+    <ol class="arabic">
+     <li>
+      <p>Components physically present in the workspace (checked out)</p>
+     </li>
+     <li>
+      <p>Components with commits since their last release tag (dirty)</p>
+     </li>
+    </ol>
+   </div>
+   <div class="paragraph">
+    <p>A workspace with three of ten components checked out will release at most three components — and only those with actual changes.</p>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="release-workflow"><a href="#release-workflow">Release Workflow</a></h3>
+   <div class="paragraph">
+    <p>The goal executes five phases:</p>
+   </div>
+   <div class="olist arabic">
+    <ol class="arabic">
+     <li>
+      <p><strong>Scan</strong> — Walk the workspace manifest, identify checked-out repos.</p>
+     </li>
+     <li>
+      <p><strong>Filter dirty</strong> — For each checked-out repo, compare HEAD against the last release tag. Only repos with new commits are candidates.</p>
+     </li>
+     <li>
+      <p><strong>Topological sort</strong> — Order candidates by dependency graph so that upstream components release before their dependents.</p>
+     </li>
+     <li>
+      <p><strong>Release in order</strong> — For each candidate (in topo order): strip <code>-SNAPSHOT</code>, build, verify, tag, optionally push (<code>-Dpush=true</code>), bump to next SNAPSHOT.</p>
+     </li>
+     <li>
+      <p><strong>Update cross-references</strong> — After each release, update parent version references in downstream POMs that depend on the just-released component.</p>
+     </li>
+    </ol>
+   </div>
+   <div class="paragraph">
+    <p>The cross-reference update is the key to cascade consistency. When <code>ike-pipeline</code> releases version 24, downstream components that reference <code>ike-pipeline</code> as a parent are updated to <code>&lt;version&gt;24&lt;/version&gt;</code> before they build. This ensures each component builds against the release version of its upstream dependency, not the previous SNAPSHOT.</p>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="pre-release-checkpoint"><a href="#pre-release-checkpoint">Pre-Release Checkpoint</a></h3>
+   <div class="paragraph">
+    <p>By default, <code>ike:ws-release</code> creates a checkpoint before the first release to enable recovery. Use <code>-DskipCheckpoint=true</code> to bypass this.</p>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="examples"><a href="#examples">Examples</a></h3>
+   <div class="listingblock">
+    <div class="content">
+     <pre class="CodeRay highlight" copy-to-clipboard=""><code data-lang="bash"># Dry run — see what would be released and in what order
+mvn ike:ws-release -DdryRun=true
+
+# Release all dirty components, push results
+mvn ike:ws-release -Dpush=true
+
+# Release only ike-pipeline and its dirty dependents
+mvn ike:ws-release -Dcomponent=ike-pipeline -Dpush=true
+
+# Release the "core" group without creating a checkpoint
+mvn ike:ws-release -Dgroup=core -DskipCheckpoint=true -Dpush=true</code></pre>
+    </div>
+   </div>
+  </div>
+  <div class="sect2">
+   <h3 id="dry-run-output"><a href="#dry-run-output">Dry Run Output</a></h3>
+   <div class="paragraph">
+    <p>A dry run prints the release plan without executing:</p>
+   </div>
+   <div class="listingblock">
+    <div class="content">
+     <pre copy-to-clipboard="">[INFO] === Workspace Release Plan (DRY RUN) ===
+[INFO] Dirty components (topo order):
+[INFO]   1. ike-pipeline       24-SNAPSHOT → 24 → 25-SNAPSHOT
+[INFO]   2. tinkar-core         1.80.0-SNAPSHOT → 1.80.0 → 1.81.0-SNAPSHOT
+[INFO] Cross-reference updates:
+[INFO]   tinkar-core: ike-pipeline parent 24-SNAPSHOT → 24
+[INFO] Pre-release checkpoint: checkpoint/pre-release-20260320
+[INFO] === No changes made (dry run) ===</pre>
+    </div>
+   </div>
+  </div>
+ </div>
+</div>
+<div class="sect1">
+ <h2 id="auto-generated-bom"><a href="#auto-generated-bom">Auto-Generated BOM</a></h2>
+ <div class="sectionbody">
+  <div class="paragraph">
+   <p>The <code>ike:generate-bom</code> goal produces a standalone Bill of Materials (BOM) POM from <code>ike-parent</code> dependency management. The generated BOM resolves all property references to literal values, producing a self-contained POM that external consumers can import without inheriting <code>ike-parent</code>.</p>
+  </div>
+  <div class="paragraph">
+   <p>The goal is bound to the <code>generate-resources</code> phase in the <code>ike-bom</code> stub module. During a normal reactor build:</p>
+  </div>
+  <div class="olist arabic">
+   <ol class="arabic">
+    <li>
+     <p><code>ike-parent</code> builds first (it is earlier in the reactor order).</p>
+    </li>
+    <li>
+     <p><code>ike-bom</code> reaches <code>generate-resources</code>.</p>
+    </li>
+    <li>
+     <p><code>ike:generate-bom</code> reads <code>ike-parent</code> resolved model from the reactor.</p>
+    </li>
+    <li>
+     <p>All managed dependencies are extracted with property references resolved.</p>
+    </li>
+    <li>
+     <p>A standalone POM is written that replaces the stub for <code>install</code>/<code>deploy</code>.</p>
+    </li>
+   </ol>
+  </div>
+  <div class="paragraph">
+   <p>The BOM is entirely derived from <code>ike-parent</code>. Adding a new managed dependency to <code>ike-parent</code> automatically includes it in the next BOM build. Zero manual maintenance, zero risk of drift.</p>
+  </div>
+  <div class="paragraph">
+   <p>External consumers import the BOM for version alignment:</p>
+  </div>
+  <div class="listingblock">
+   <div class="content">
+    <pre class="CodeRay highlight" copy-to-clipboard=""><code data-lang="xml"><span class="tag">&lt;dependencyManagement&gt;</span>
+    <span class="tag">&lt;dependencies&gt;</span>
+        <span class="tag">&lt;dependency&gt;</span>
+            <span class="tag">&lt;groupId&gt;</span>network.ike<span class="tag">&lt;/groupId&gt;</span>
+            <span class="tag">&lt;artifactId&gt;</span>ike-bom<span class="tag">&lt;/artifactId&gt;</span>
+            <span class="tag">&lt;version&gt;</span>24<span class="tag">&lt;/version&gt;</span>
+            <span class="tag">&lt;type&gt;</span>pom<span class="tag">&lt;/type&gt;</span>
+            <span class="tag">&lt;scope&gt;</span>import<span class="tag">&lt;/scope&gt;</span>
+        <span class="tag">&lt;/dependency&gt;</span>
+    <span class="tag">&lt;/dependencies&gt;</span>
+<span class="tag">&lt;/dependencyManagement&gt;</span></code></pre>
+   </div>
+  </div>
+ </div>
+</div>
+<div class="sect1">
+ <h2 id="summary"><a href="#summary">Summary</a></h2>
+ <div class="sectionbody">
+  <div class="paragraph">
+   <p>The IKE Workspace convention is not a single tool or script. It is a <em>system</em> of layered defenses — directory isolation, build-time artifact isolation, version identity, and file synchronization — designed so that no single failure compromises build safety or artifact provenance.</p>
+  </div>
+  <div class="paragraph">
+   <p>It leans into Maven 4’s capabilities rather than carrying forward workarounds designed for Maven 3’s limitations. It prioritizes developer comprehension over pipeline convenience. And it keeps every checkout self-describing: the POM says what the artifact is, Git says where it came from, and the build reproduces it faithfully.</p>
+  </div>
+ </div>
+</div>
+
+							<div class="document-footer">
+<div class="keywords">
+<span class="label label-default">AsciiDoc</span>
+<span class="label label-default">documentation pipeline</span>
+<span class="label label-default">Maven</span>
+<span class="label label-default">PDF</span>
+<span class="label label-default">IKE Community</span>
+<span class="label label-default">knowledge engineering</span>
+</div>
+<div class="date">Date: <strong>2026-03-25 16:59:37 -0700</strong></div>
+						</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Search results -->
+				<div class="search-results" ng-show="siteSearch">
+
+					<h2 class="hidden-xs">
+						Search Results for <em>{{siteSearch | truncate:'50'}}</em>
+					</h2>
+
+					<div ng-show="resultArray.length">
+
+						<!-- Result count -->
+						<div class="hidden-xs">
+							{{resultArray.length}}
+							<span ng-pluralize count="resultArray.length" when="{'1': 'result', 'other': 'results'}"></span>
+						</div>
+
+						<!-- List of results (Desktop) -->
+						<div ng-if="$matchMedia.size != 'xs'" class="search-results-content hidden-xs">
+							<div class="search-results-entry" ng-repeat="result in resultArray track by result.href">
+								<div class="search-results-parents small text-muted">
+									<span class="search-results-parents-entry" ng-repeat="parent in result.parents track by parent.title">
+										<a ng-if="parent.path" ng-href="{{parent.path}}" ng-bind-html="parent.title"></a>
+										<span ng-if="!parent.path" ng-bind-html="parent.title"></span>
+									</span>
+								</div>
+								<p class="search-results-title"><a ng-href="{{result.href}}"><i class="fas fa-file-alt"></i>{{result.title}}</a></p>
+								<div class="progressbar" aria-hidden="true">
+									<div class="bar-bg"></div>
+									<div class="bar-fg" ng-style="{width: result.score * 100 + '%'}"></div>
+								</div>
+								<div class="small extract">{{result.body | truncate:'400'}}</div>
+							</div>
+						</div>
+
+						<!-- List of results (mobile) -->
+						<ul ng-if="$matchMedia.size == 'xs'" class="list-group search-results-content search-results-content-xs visible-xs">
+							<a
+								ng-repeat="result in resultArray track by result.href"
+								ng-href="{{result.href}}"
+								class="list-group-item"
+							>
+								<div class="search-results-parents small" aria-hidden="true">
+									<span class="search-results-parents-entry" ng-repeat="parent in result.parents track by parent.title" ng-bind-html="parent.title"></span>
+								</div>
+								<div class="search-results-title"><i class="fas fa-file-alt"></i>{{result.title}}</div>
+								<div class="progressbar" aria-hidden="true">
+									<div class="bar-bg"></div>
+									<div class="bar-fg" ng-style="{width: result.score * 100 + '%'}"></div>
+								</div>
+								<div class="small extract">{{result.body | truncate:'100'}}</div>
+							</a>
+						</ul>
+
+					</div>
+
+					<div ng-hide="resultArray.length">
+						<div ng-show="searchLoading" class="search-loading">
+							<i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+							<em>Searching...</em>
+						</div>
+						<em ng-hide="searchLoading">No results.</em>
+					</div>
+
+				</div>
+
+			</main>
+
+		</div>
+	</div>
+
+	<!--Footer in mobile and desktop-->
+	<footer class="footer">
+
+		<p class="footer-title" ng-class="{'text-center': $matchMedia.size == 'xs'}">
+			<strong>IKE Build Tools 34</strong>
+			<span class="hidden-xs">|</span><br class="hidden-sm hidden-md hidden-lg"/>
+			Documentation as of <strong><time datetime="2026-02-22">2026-02-22</time></strong>
+		</p>
+	<div class="visible-xs navbar navbar-inverse site-logo site-logo-xs">
+			<ul class="nav navbar-nav">
+			<li><a href="../../index.html">IKE Documentation Pipeline</a></li>
+<li><a href="..">GitHub</a></li>
+<li class="dark-toggle dark-toggle-xs">
+    <toggle
+        ng-model="$matchMedia.dark"
+        ng-change="switchColors()"
+        size="btn-md"
+        width="55px"
+        height="32px"
+        off-class="day"
+        on-class="night"
+        toggle-class="navbar-btn dark-toggle"
+        on="<i class='fa-solid fa-moon'></i>"
+        off="<i class='sun-icon'></i>"
+        title="Switch between dark and light color schemes"
+        tabindex="0"></toggle>
+		</li>
+			<li><a href="./">GitHub <i class='fa-brands fa-github'></i></a></li>
+		</ul>
+		</div>
+
+		<div class="footer-copyright" ng-class="{'text-center': $matchMedia.size == 'xs'}">
+			<span class="copyright">Copyright &copy; 2026&dash;2026</span> <a href="https://ike.network">IKE Community</a>	</div>
+	</footer>
+
+	<div ng-show="showBackToTop" class="back-to-top" ng-click="backToTop()"><i class="fa fa-angle-up" aria-hidden="true"></i></div>
+
+	<script src="./js/main-combined.js"></script>
+
+	<script src="./js/prism.js"></script>
+	<script>Prism.plugins.autoloader.languages_path = "./js/prism/";</script>
+	<script>
+angular.module("sentry.site").constant("RELATIVE_ROOT", ".");
+angular.module("sentry.site").constant("SITE_MENU", [
+{
+	path: "../index.html",
+	title: "IKE Pipeline",
+	parents: [{ title: "Parent Project" }]
+},
+{
+	path: "ike-workspace-conventions.html",
+	title: "Workspace Conventions",
+	parents: [{ title: "Overview" }]
+},
+{
+	path: "/project-info.html",
+	title: "Project Information",
+	parents: [{ title: "Reports" }]
+},
+{
+	path: "index.html",
+	title: "About",
+	parents: [
+		{
+			title: "Reports"
+		},
+		{
+			path: "project-info.html",
+			title: "Project Information"
+		}
+	]
+},
+{
+	path: "summary.html",
+	title: "Summary",
+	parents: [
+		{
+			title: "Reports"
+		},
+		{
+			path: "project-info.html",
+			title: "Project Information"
+		}
+	]
+},
+{
+	path: "licenses.html",
+	title: "Licenses",
+	parents: [
+		{
+			title: "Reports"
+		},
+		{
+			path: "project-info.html",
+			title: "Project Information"
+		}
+	]
+},
+{
+	path: "dependency-info.html",
+	title: "Maven Coordinates",
+	parents: [
+		{
+			title: "Reports"
+		},
+		{
+			path: "project-info.html",
+			title: "Project Information"
+		}
+	]
+},
+]);
+
+	</script>
+</body>
+</html>

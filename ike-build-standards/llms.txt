@@ -1,0 +1,13 @@
+# IKE Build Standards
+
+> Versioned Claude instruction files for IKE projects.
+> Modular standards (Maven, Java, IKE-specific) distributed
+> as a classified Maven artifact.
+
+## Reports
+
+- [About](https://github.com/IKE-Network/ike-pipeline/index.html.md)
+- [Project Summary](https://github.com/IKE-Network/ike-pipeline/summary.html.md)
+- [Project Licenses](https://github.com/IKE-Network/ike-pipeline/licenses.html.md)
+- [Maven Coordinates](https://github.com/IKE-Network/ike-pipeline/dependency-info.html.md)
+- [Project Information](https://github.com/IKE-Network/ike-pipeline/project-info.html.md)

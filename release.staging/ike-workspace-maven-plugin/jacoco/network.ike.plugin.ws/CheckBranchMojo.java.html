@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CheckBranchMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">CheckBranchMojo.java</span></div><h1>CheckBranchMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.plugin.ReleaseSupport;
+import network.ike.workspace.Component;
+import network.ike.workspace.WorkspaceGraph;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+
+import java.io.File;
+import java.nio.file.Path;
+
+/**
+ * Defensive git hook — warns when a branch is created or switched
+ * outside the workspace tooling.
+ *
+ * &lt;p&gt;Intended to be called from a {@code post-checkout} git hook:
+ * &lt;pre&gt;{@code
+ * #!/bin/sh
+ * mvn -q ike:check-branch -- &quot;$@&quot;
+ * }&lt;/pre&gt;
+ *
+ * &lt;p&gt;In workspace mode, compares the current branch to the expected
+ * branch in workspace.yaml and warns on mismatch. Provides
+ * copy-pasteable undo commands.
+ *
+ * &lt;p&gt;In bare mode (no workspace.yaml), silently exits — nothing to check.
+ *
+ * &lt;p&gt;Never blocks — warnings only. Always exits 0.
+ */
+@Mojo(name = &quot;check-branch&quot;, requiresProject = false, threadSafe = true)
+public class CheckBranchMojo extends AbstractWorkspaceMojo {
+
+    /** Creates this goal instance. */
+<span class="nc" id="L34">    public CheckBranchMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="nc bnc" id="L38" title="All 2 branches missed.">        if (!isWorkspaceMode()) {</span>
+<span class="nc" id="L39">            return; // Bare repo — nothing to check</span>
+        }
+
+<span class="nc" id="L42">        WorkspaceGraph graph = loadGraph();</span>
+<span class="nc" id="L43">        File wsRoot = workspaceRoot();</span>
+<span class="nc" id="L44">        File cwd = new File(System.getProperty(&quot;user.dir&quot;));</span>
+
+        // Determine which component we're in by matching CWD to workspace root + component name
+<span class="nc" id="L47">        String componentName = findComponentName(wsRoot, cwd, graph);</span>
+<span class="nc bnc" id="L48" title="All 2 branches missed.">        if (componentName == null) {</span>
+<span class="nc" id="L49">            return; // Not inside a known component directory</span>
+        }
+
+<span class="nc" id="L52">        Component component = graph.manifest().components().get(componentName);</span>
+<span class="nc bnc" id="L53" title="All 4 branches missed.">        if (component == null || component.branch() == null) {</span>
+<span class="nc" id="L54">            return; // No expected branch declared</span>
+        }
+
+<span class="nc" id="L57">        String expectedBranch = component.branch();</span>
+<span class="nc" id="L58">        String actualBranch = gitBranch(cwd);</span>
+
+<span class="nc bnc" id="L60" title="All 2 branches missed.">        if (actualBranch.equals(expectedBranch)) {</span>
+<span class="nc" id="L61">            return; // On the expected branch — all good</span>
+        }
+
+        // Determine if this was a branch creation (new branch that doesn't match expected)
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        boolean isNewBranch = !branchExistsRemotely(cwd, actualBranch);</span>
+
+<span class="nc bnc" id="L67" title="All 4 branches missed.">        if (isNewBranch &amp;&amp; actualBranch.startsWith(&quot;feature/&quot;)) {</span>
+            // Created a feature branch directly — suggest ike:feature-start
+<span class="nc" id="L69">            String featureName = actualBranch.substring(&quot;feature/&quot;.length());</span>
+<span class="nc" id="L70">            getLog().warn(&quot;&quot;);</span>
+<span class="nc" id="L71">            getLog().warn(&quot;\u26A0 You created branch '&quot; + actualBranch + &quot;' directly in &quot; + componentName + &quot;.&quot;);</span>
+<span class="nc" id="L72">            getLog().warn(&quot;&quot;);</span>
+<span class="nc" id="L73">            getLog().warn(&quot;  To fix:&quot;);</span>
+<span class="nc" id="L74">            getLog().warn(&quot;    git checkout &quot; + expectedBranch);</span>
+<span class="nc" id="L75">            getLog().warn(&quot;    git branch -D &quot; + actualBranch);</span>
+<span class="nc" id="L76">            getLog().warn(&quot;    mvn ike:feature-start -Dfeature=&quot; + featureName);</span>
+<span class="nc" id="L77">            getLog().warn(&quot;&quot;);</span>
+<span class="nc" id="L78">            getLog().warn(&quot;  ike:feature-start creates aligned branches across all workspace&quot;);</span>
+<span class="nc" id="L79">            getLog().warn(&quot;  components and sets version-qualified SNAPSHOTs.&quot;);</span>
+<span class="nc" id="L80">            getLog().warn(&quot;&quot;);</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        } else if (isNewBranch) {</span>
+            // Created a non-feature branch directly
+<span class="nc" id="L83">            getLog().warn(&quot;&quot;);</span>
+<span class="nc" id="L84">            getLog().warn(&quot;\u26A0 You created branch '&quot; + actualBranch + &quot;' directly in &quot; + componentName + &quot;.&quot;);</span>
+<span class="nc" id="L85">            getLog().warn(&quot;&quot;);</span>
+<span class="nc" id="L86">            getLog().warn(&quot;  The workspace expects branch '&quot; + expectedBranch + &quot;' for this component.&quot;);</span>
+<span class="nc" id="L87">            getLog().warn(&quot;&quot;);</span>
+<span class="nc" id="L88">            getLog().warn(&quot;  To undo:&quot;);</span>
+<span class="nc" id="L89">            getLog().warn(&quot;    git checkout &quot; + expectedBranch);</span>
+<span class="nc" id="L90">            getLog().warn(&quot;    git branch -D &quot; + actualBranch);</span>
+<span class="nc" id="L91">            getLog().warn(&quot;&quot;);</span>
+        } else {
+            // Switched to an existing branch that doesn't match workspace.yaml
+<span class="nc" id="L94">            getLog().warn(&quot;&quot;);</span>
+<span class="nc" id="L95">            getLog().warn(&quot;\u26A0 You switched to branch '&quot; + actualBranch + &quot;' in &quot; + componentName + &quot;.&quot;);</span>
+<span class="nc" id="L96">            getLog().warn(&quot;&quot;);</span>
+<span class="nc" id="L97">            getLog().warn(&quot;  The workspace expects branch '&quot; + expectedBranch + &quot;' for this component.&quot;);</span>
+<span class="nc" id="L98">            getLog().warn(&quot;  If this is intentional, update the workspace:&quot;);</span>
+<span class="nc" id="L99">            getLog().warn(&quot;    mvn ike:ws-sync&quot;);</span>
+<span class="nc" id="L100">            getLog().warn(&quot;&quot;);</span>
+<span class="nc" id="L101">            getLog().warn(&quot;  If not:&quot;);</span>
+<span class="nc" id="L102">            getLog().warn(&quot;    git checkout &quot; + expectedBranch);</span>
+<span class="nc" id="L103">            getLog().warn(&quot;&quot;);</span>
+        }
+<span class="nc" id="L105">    }</span>
+
+    /**
+     * Find which workspace component the CWD belongs to.
+     * Handles being in a subdirectory of a multi-module reactor.
+     *
+     * @param wsRoot workspace root directory
+     * @param cwd    current working directory
+     * @param graph  workspace dependency graph
+     * @return the component name, or null if CWD is not inside a known component
+     */
+    static String findComponentName(File wsRoot, File cwd, WorkspaceGraph graph) {
+        // Walk up from CWD toward wsRoot, checking each directory name
+<span class="nc" id="L118">        Path wsPath = wsRoot.toPath().toAbsolutePath().normalize();</span>
+<span class="nc" id="L119">        Path cwdPath = cwd.toPath().toAbsolutePath().normalize();</span>
+
+<span class="nc bnc" id="L121" title="All 6 branches missed.">        while (cwdPath != null &amp;&amp; cwdPath.startsWith(wsPath) &amp;&amp; !cwdPath.equals(wsPath)) {</span>
+            // The directory immediately under wsRoot is the component name
+<span class="nc" id="L123">            Path relative = wsPath.relativize(cwdPath);</span>
+<span class="nc" id="L124">            String topDir = relative.getName(0).toString();</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">            if (graph.manifest().components().containsKey(topDir)) {</span>
+<span class="nc" id="L126">                return topDir;</span>
+            }
+<span class="nc" id="L128">            cwdPath = cwdPath.getParent();</span>
+<span class="nc" id="L129">        }</span>
+<span class="nc" id="L130">        return null;</span>
+    }
+
+    /**
+     * Check if a branch exists on the remote (origin).
+     * Returns false if the check fails (no remote, offline, etc.).
+     */
+    private boolean branchExistsRemotely(File dir, String branch) {
+        try {
+<span class="nc" id="L139">            String result = ReleaseSupport.execCapture(dir,</span>
+                    &quot;git&quot;, &quot;ls-remote&quot;, &quot;--heads&quot;, &quot;origin&quot;, branch);
+<span class="nc bnc" id="L141" title="All 4 branches missed.">            return result != null &amp;&amp; !result.isEmpty();</span>
+<span class="nc" id="L142">        } catch (Exception e) {</span>
+<span class="nc" id="L143">            return false; // Assume new if we can't check</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

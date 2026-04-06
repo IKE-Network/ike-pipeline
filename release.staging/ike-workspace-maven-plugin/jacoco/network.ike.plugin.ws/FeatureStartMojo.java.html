@@ -1,0 +1,692 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="stylesheet" href="jacoco-resources/ike-theme.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FeatureStartMojo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><a href="../index.html" style="font-weight:bold;margin-right:8px">← Project Site</a> | <span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IKE Workspace Maven Plugin</a> &gt; <a href="index.source.html" class="el_package">network.ike.plugin.ws</a> &gt; <span class="el_source">FeatureStartMojo.java</span></div><h1>FeatureStartMojo.java</h1><pre class="source lang-java linenums">package network.ike.plugin.ws;
+
+import network.ike.plugin.ReleaseSupport;
+
+import network.ike.workspace.BomAnalysis;
+import network.ike.workspace.Component;
+import network.ike.workspace.ManifestWriter;
+import network.ike.workspace.PublishedArtifactSet;
+import network.ike.workspace.VersionSupport;
+import network.ike.workspace.WorkspaceGraph;
+import network.ike.plugin.ws.vcs.VcsOperations;
+import network.ike.plugin.ws.vcs.VcsState;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Start a coordinated feature branch across workspace components.
+ *
+ * &lt;p&gt;Creates a feature branch with a consistent name across the
+ * specified components (or group), optionally setting branch-qualified
+ * SNAPSHOT versions in each POM.
+ *
+ * &lt;p&gt;&lt;strong&gt;Workspace mode&lt;/strong&gt; (workspace.yaml found):&lt;/p&gt;
+ * &lt;ol&gt;
+ *   &lt;li&gt;Validates the working tree is clean&lt;/li&gt;
+ *   &lt;li&gt;Creates branch {@code feature/&lt;name&gt;} from the current HEAD&lt;/li&gt;
+ *   &lt;li&gt;If the component has a Maven version, sets a branch-qualified
+ *       version (e.g., {@code 1.2.0-my-feature-SNAPSHOT})&lt;/li&gt;
+ *   &lt;li&gt;Commits the version change&lt;/li&gt;
+ *   &lt;li&gt;Updates workspace.yaml branch fields for all branched components&lt;/li&gt;
+ *   &lt;li&gt;Commits the workspace.yaml change&lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * &lt;p&gt;&lt;strong&gt;Bare mode&lt;/strong&gt; (no workspace.yaml):&lt;/p&gt;
+ * &lt;ol&gt;
+ *   &lt;li&gt;Creates the feature branch in the current repo only&lt;/li&gt;
+ *   &lt;li&gt;Sets version-qualified SNAPSHOT in the current repo's POMs&lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * &lt;p&gt;Components are processed in topological order so that upstream
+ * dependencies get their new versions first.
+ *
+ * &lt;pre&gt;{@code
+ * mvn ike:feature-start -Dfeature=shield-terminology -Dgroup=core
+ * mvn ike:feature-start -Dfeature=kec-march-25 -Dgroup=studio
+ * mvn ike:feature-start -Dfeature=doc-refresh -Dgroup=docs -DskipVersion=true
+ * }&lt;/pre&gt;
+ */
+@Mojo(name = &quot;feature-start&quot;, requiresProject = false, threadSafe = true)
+public class FeatureStartMojo extends AbstractWorkspaceMojo {
+
+    /** Feature name. Branch will be {@code feature/&lt;name&gt;}. Prompted if omitted. */
+    @Parameter(property = &quot;feature&quot;)
+    String feature;
+
+    /** Restrict to a named group or component. Default: all cloned. */
+    @Parameter(property = &quot;group&quot;)
+    String group;
+
+    /**
+     * Skip POM version qualification. Useful for document projects
+     * that don't have versioned artifacts.
+     */
+    @Parameter(property = &quot;skipVersion&quot;, defaultValue = &quot;false&quot;)
+    boolean skipVersion;
+
+    /** Show plan without executing. */
+    @Parameter(property = &quot;dryRun&quot;, defaultValue = &quot;false&quot;)
+    boolean dryRun;
+
+    /** Creates this goal instance. */
+<span class="fc" id="L83">    public FeatureStartMojo() {}</span>
+
+    @Override
+    public void execute() throws MojoExecutionException {
+<span class="fc" id="L87">        ReportLog report = startReport();</span>
+<span class="fc" id="L88">        feature = requireParam(feature, &quot;feature&quot;, &quot;Feature name (branch will be feature/&lt;name&gt;)&quot;);</span>
+<span class="fc" id="L89">        String branchName = &quot;feature/&quot; + feature;</span>
+
+<span class="fc bfc" id="L91" title="All 2 branches covered.">        if (!isWorkspaceMode()) {</span>
+<span class="fc" id="L92">            executeBareMode(branchName);</span>
+<span class="fc" id="L93">            return;</span>
+        }
+
+        // --- Workspace mode ---
+<span class="fc" id="L97">        WorkspaceGraph graph = loadGraph();</span>
+<span class="fc" id="L98">        File root = workspaceRoot();</span>
+
+        // VCS bridge: catch-up before branching
+<span class="fc" id="L101">        VcsOperations.catchUp(root, getLog());</span>
+
+        Set&lt;String&gt; targets;
+<span class="pc bpc" id="L104" title="1 of 4 branches missed.">        if (group != null &amp;&amp; !group.isEmpty()) {</span>
+<span class="fc" id="L105">            targets = graph.expandGroup(group);</span>
+        } else {
+<span class="fc" id="L107">            targets = graph.manifest().components().keySet();</span>
+        }
+
+<span class="fc" id="L110">        List&lt;String&gt; sorted = graph.topologicalSort(new LinkedHashSet&lt;&gt;(targets));</span>
+
+<span class="fc" id="L112">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L113">        getLog().info(header(&quot;Feature Start&quot;));</span>
+<span class="fc" id="L114">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+<span class="fc" id="L115">        getLog().info(&quot;  Feature: &quot; + feature);</span>
+<span class="fc" id="L116">        getLog().info(&quot;  Branch:  &quot; + branchName);</span>
+<span class="fc bfc" id="L117" title="All 2 branches covered.">        getLog().info(&quot;  Scope:   &quot; + (group != null ? group : &quot;all&quot;)</span>
+<span class="fc" id="L118">                + &quot; (&quot; + sorted.size() + &quot; components)&quot;);</span>
+<span class="fc bfc" id="L119" title="All 2 branches covered.">        if (dryRun) {</span>
+<span class="fc" id="L120">            getLog().info(&quot;  Mode:    DRY RUN&quot;);</span>
+        }
+<span class="fc" id="L122">        getLog().info(&quot;&quot;);</span>
+
+        // Analyze BOM cascade issues and prompt for confirmation
+<span class="fc bfc" id="L125" title="All 2 branches covered.">        if (!skipVersion) {</span>
+<span class="fc" id="L126">            checkBomCascadeAndConfirm(graph, root);</span>
+        }
+
+<span class="fc" id="L129">        List&lt;String&gt; created = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L130">        List&lt;String&gt; skippedNotCloned = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L131">        List&lt;String&gt; skippedAlreadyOnBranch = new ArrayList&lt;&gt;();</span>
+
+<span class="fc bfc" id="L133" title="All 2 branches covered.">        for (String name : sorted) {</span>
+<span class="fc" id="L134">            Component component = graph.manifest().components().get(name);</span>
+<span class="fc" id="L135">            File dir = new File(root, name);</span>
+<span class="fc" id="L136">            File gitDir = new File(dir, &quot;.git&quot;);</span>
+
+<span class="pc bpc" id="L138" title="1 of 2 branches missed.">            if (!gitDir.exists()) {</span>
+<span class="nc" id="L139">                skippedNotCloned.add(name);</span>
+<span class="nc" id="L140">                getLog().info(&quot;  \u26A0 &quot; + name + &quot; \u2014 not cloned, skipping&quot;);</span>
+<span class="nc" id="L141">                continue;</span>
+            }
+
+<span class="fc" id="L144">            String currentBranch = gitBranch(dir);</span>
+<span class="pc bpc" id="L145" title="1 of 2 branches missed.">            if (currentBranch.equals(branchName)) {</span>
+<span class="nc" id="L146">                skippedAlreadyOnBranch.add(name);</span>
+<span class="nc" id="L147">                getLog().info(&quot;  \u2713 &quot; + name + &quot; \u2014 already on &quot; + branchName);</span>
+<span class="nc" id="L148">                continue;</span>
+            }
+
+<span class="fc" id="L151">            String status = gitStatus(dir);</span>
+<span class="pc bpc" id="L152" title="1 of 2 branches missed.">            if (!status.isEmpty()) {</span>
+<span class="nc" id="L153">                throw new MojoExecutionException(</span>
+                        name + &quot; has uncommitted changes. Commit or stash before starting a feature.&quot;);
+            }
+
+            // Resolve effective version: workspace.yaml first, POM fallback
+<span class="fc" id="L158">            String effectiveVersion = component.version();</span>
+<span class="pc bpc" id="L159" title="2 of 4 branches missed.">            if (effectiveVersion == null || effectiveVersion.isEmpty()) {</span>
+<span class="nc" id="L160">                File pom = new File(dir, &quot;pom.xml&quot;);</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">                if (pom.exists()) {</span>
+                    try {
+<span class="nc" id="L163">                        effectiveVersion = ReleaseSupport.readPomVersion(pom);</span>
+<span class="nc" id="L164">                    } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L165">                        getLog().debug(&quot;Could not read POM version for &quot;</span>
+<span class="nc" id="L166">                                + name + &quot;: &quot; + e.getMessage());</span>
+<span class="nc" id="L167">                    }</span>
+                }
+            }
+
+<span class="fc bfc" id="L171" title="All 2 branches covered.">            if (dryRun) {</span>
+<span class="fc" id="L172">                String versionInfo = &quot;&quot;;</span>
+<span class="pc bpc" id="L173" title="2 of 4 branches missed.">                if (!skipVersion &amp;&amp; effectiveVersion != null) {</span>
+<span class="fc" id="L174">                    String newVersion = VersionSupport.branchQualifiedVersion(</span>
+                            effectiveVersion, branchName);
+<span class="fc" id="L176">                    versionInfo = &quot; \u2192 &quot; + newVersion;</span>
+                }
+<span class="fc" id="L178">                getLog().info(&quot;  [dry-run] &quot; + name + &quot; \u2014 would create &quot;</span>
+                        + branchName + versionInfo);
+<span class="fc" id="L180">                created.add(name);</span>
+<span class="fc" id="L181">                continue;</span>
+            }
+
+<span class="fc" id="L184">            getLog().info(&quot;  \u2192 &quot; + name + &quot; \u2014 creating &quot; + branchName);</span>
+
+            // Auto-unshallow if this is a shallow clone — feature
+            // branches need full history for merge-base operations
+<span class="fc" id="L188">            ensureFullClone(dir, name);</span>
+
+<span class="fc" id="L190">            ReleaseSupport.exec(dir, getLog(),</span>
+                    &quot;git&quot;, &quot;checkout&quot;, &quot;-b&quot;, branchName);
+
+<span class="pc bpc" id="L193" title="1 of 4 branches missed.">            if (!skipVersion &amp;&amp; effectiveVersion != null</span>
+<span class="pc bpc" id="L194" title="1 of 2 branches missed.">                    &amp;&amp; !effectiveVersion.isEmpty()) {</span>
+<span class="fc" id="L195">                String newVersion = VersionSupport.branchQualifiedVersion(</span>
+                        effectiveVersion, branchName);
+<span class="fc" id="L197">                getLog().info(&quot;    version: &quot; + effectiveVersion</span>
+                        + &quot; \u2192 &quot; + newVersion);
+
+<span class="fc" id="L200">                setPomVersion(dir, effectiveVersion, newVersion);</span>
+<span class="fc" id="L201">                ReleaseSupport.exec(dir, getLog(),</span>
+                        &quot;git&quot;, &quot;add&quot;, &quot;pom.xml&quot;);
+<span class="fc" id="L203">                ReleaseSupport.exec(dir, getLog(),</span>
+                        &quot;git&quot;, &quot;commit&quot;, &quot;-m&quot;,
+                        &quot;feature: set version &quot; + newVersion
+                                + &quot; for &quot; + branchName);
+            }
+
+<span class="fc" id="L209">            created.add(name);</span>
+<span class="fc" id="L210">        }</span>
+
+        // Cascade version-property updates to downstream components
+<span class="pc bpc" id="L213" title="1 of 6 branches missed.">        if (!created.isEmpty() &amp;&amp; !dryRun &amp;&amp; !skipVersion) {</span>
+<span class="fc" id="L214">            cascadeVersionProperties(graph, root, sorted, branchName);</span>
+<span class="fc" id="L215">            cascadeBomImports(graph, root, sorted, branchName);</span>
+        }
+
+        // Auto-push each branched component with IKE_VCS_CONTEXT
+<span class="pc bpc" id="L219" title="1 of 4 branches missed.">        if (!created.isEmpty() &amp;&amp; !dryRun) {</span>
+<span class="fc bfc" id="L220" title="All 2 branches covered.">            for (String name : created) {</span>
+<span class="fc" id="L221">                File dir = new File(root, name);</span>
+                try {
+<span class="nc" id="L223">                    VcsOperations.pushWithUpstream(dir, getLog(), &quot;origin&quot;, branchName);</span>
+<span class="nc" id="L224">                    VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_START);</span>
+<span class="fc" id="L225">                } catch (MojoExecutionException e) {</span>
+<span class="fc" id="L226">                    getLog().warn(&quot;  Could not push &quot; + name + &quot;: &quot; + e.getMessage());</span>
+<span class="nc" id="L227">                }</span>
+<span class="fc" id="L228">            }</span>
+        }
+
+        // Branch the workspace repo and update workspace.yaml on the feature branch
+<span class="pc bpc" id="L232" title="1 of 4 branches missed.">        if (!created.isEmpty() &amp;&amp; !dryRun) {</span>
+<span class="fc" id="L233">            branchWorkspaceRepo(branchName, created);</span>
+        }
+
+<span class="fc" id="L236">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L237">        getLog().info(&quot;  Created: &quot; + created.size()</span>
+<span class="fc" id="L238">                + &quot; | Already on branch: &quot; + skippedAlreadyOnBranch.size()</span>
+<span class="fc" id="L239">                + &quot; | Not cloned: &quot; + skippedNotCloned.size());</span>
+<span class="fc" id="L240">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L241">        finishReport(&quot;ws:feature-start&quot;, report);</span>
+<span class="fc" id="L242">    }</span>
+
+    /**
+     * Bare-mode: create feature branch in the current repo only.
+     */
+    private void executeBareMode(String branchName) throws MojoExecutionException {
+<span class="fc" id="L248">        File dir = new File(System.getProperty(&quot;user.dir&quot;));</span>
+
+<span class="fc" id="L250">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L251">        getLog().info(&quot;IKE Feature Start (bare repo)&quot;);</span>
+<span class="fc" id="L252">        getLog().info(&quot;══════════════════════════════════════════════════════════════&quot;);</span>
+<span class="fc" id="L253">        getLog().info(&quot;  Feature: &quot; + feature);</span>
+<span class="fc" id="L254">        getLog().info(&quot;  Branch:  &quot; + branchName);</span>
+<span class="fc" id="L255">        getLog().info(&quot;  Repo:    &quot; + dir.getName());</span>
+<span class="fc bfc" id="L256" title="All 2 branches covered.">        if (dryRun) {</span>
+<span class="fc" id="L257">            getLog().info(&quot;  Mode:    DRY RUN&quot;);</span>
+        }
+<span class="fc" id="L259">        getLog().info(&quot;&quot;);</span>
+
+        // VCS bridge: catch-up before branching
+<span class="fc" id="L262">        VcsOperations.catchUp(dir, getLog());</span>
+
+        // Validate clean worktree
+<span class="fc" id="L265">        String status = gitStatus(dir);</span>
+<span class="fc bfc" id="L266" title="All 2 branches covered.">        if (!status.isEmpty()) {</span>
+<span class="fc" id="L267">            throw new MojoExecutionException(</span>
+                    &quot;Uncommitted changes. Commit or stash before starting a feature.&quot;);
+        }
+
+        // Read current version from POM
+<span class="fc" id="L272">        String currentVersion = null;</span>
+<span class="fc" id="L273">        File pom = new File(dir, &quot;pom.xml&quot;);</span>
+<span class="fc bfc" id="L274" title="All 4 branches covered.">        if (pom.exists() &amp;&amp; !skipVersion) {</span>
+            try {
+<span class="fc" id="L276">                currentVersion = ReleaseSupport.readPomVersion(pom);</span>
+<span class="nc" id="L277">            } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L278">                getLog().debug(&quot;Could not read POM version: &quot; + e.getMessage());</span>
+<span class="fc" id="L279">            }</span>
+        }
+
+<span class="fc bfc" id="L282" title="All 2 branches covered.">        if (dryRun) {</span>
+<span class="fc" id="L283">            String versionInfo = &quot;&quot;;</span>
+<span class="fc bfc" id="L284" title="All 2 branches covered.">            if (currentVersion != null) {</span>
+<span class="fc" id="L285">                versionInfo = &quot; \u2192 &quot; + VersionSupport.branchQualifiedVersion(</span>
+                        currentVersion, branchName);
+            }
+<span class="fc" id="L288">            getLog().info(&quot;  [dry-run] Would create &quot; + branchName + versionInfo);</span>
+<span class="fc" id="L289">            getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L290">            return;</span>
+        }
+
+        // Auto-unshallow if needed
+<span class="fc" id="L294">        ensureFullClone(dir, dir.getName());</span>
+
+        // Create branch
+<span class="fc" id="L297">        ReleaseSupport.exec(dir, getLog(),</span>
+                &quot;git&quot;, &quot;checkout&quot;, &quot;-b&quot;, branchName);
+<span class="fc" id="L299">        getLog().info(&quot;  Created &quot; + branchName);</span>
+
+        // Set branch-qualified version
+<span class="pc bpc" id="L302" title="1 of 4 branches missed.">        if (currentVersion != null &amp;&amp; !currentVersion.isEmpty()) {</span>
+<span class="fc" id="L303">            String newVersion = VersionSupport.branchQualifiedVersion(</span>
+                    currentVersion, branchName);
+<span class="fc" id="L305">            getLog().info(&quot;  Version: &quot; + currentVersion + &quot; \u2192 &quot; + newVersion);</span>
+<span class="fc" id="L306">            setPomVersion(dir, currentVersion, newVersion);</span>
+<span class="fc" id="L307">            ReleaseSupport.exec(dir, getLog(), &quot;git&quot;, &quot;add&quot;, &quot;pom.xml&quot;);</span>
+            // Also stage any updated submodule POMs
+            try {
+<span class="fc" id="L310">                List&lt;File&gt; allPoms = ReleaseSupport.findPomFiles(dir);</span>
+<span class="fc bfc" id="L311" title="All 2 branches covered.">                for (File subPom : allPoms) {</span>
+<span class="fc bfc" id="L312" title="All 2 branches covered.">                    if (!subPom.equals(pom)) {</span>
+<span class="fc" id="L313">                        String rel = dir.toPath().relativize(subPom.toPath()).toString();</span>
+<span class="fc" id="L314">                        ReleaseSupport.exec(dir, getLog(), &quot;git&quot;, &quot;add&quot;, rel);</span>
+                    }
+<span class="fc" id="L316">                }</span>
+<span class="nc" id="L317">            } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L318">                getLog().debug(&quot;Could not scan submodule POMs: &quot; + e.getMessage());</span>
+<span class="fc" id="L319">            }</span>
+<span class="fc" id="L320">            ReleaseSupport.exec(dir, getLog(),</span>
+                    &quot;git&quot;, &quot;commit&quot;, &quot;-m&quot;,
+                    &quot;feature: set version &quot; + newVersion + &quot; for &quot; + branchName);
+        }
+
+        // Auto-push and write state file
+        try {
+<span class="nc" id="L327">            VcsOperations.pushWithUpstream(dir, getLog(), &quot;origin&quot;, branchName);</span>
+<span class="fc" id="L328">        } catch (MojoExecutionException e) {</span>
+<span class="fc" id="L329">            getLog().warn(&quot;  Could not push: &quot; + e.getMessage());</span>
+<span class="nc" id="L330">        }</span>
+<span class="fc" id="L331">        VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_START);</span>
+
+<span class="fc" id="L333">        getLog().info(&quot;&quot;);</span>
+<span class="fc" id="L334">    }</span>
+
+    /**
+     * Branch the workspace repo, update workspace.yaml on the feature branch,
+     * and push with IKE_VCS_CONTEXT.
+     */
+    private void branchWorkspaceRepo(String branchName, List&lt;String&gt; components)
+            throws MojoExecutionException {
+        try {
+<span class="fc" id="L343">            Path manifestPath = resolveManifest();</span>
+<span class="fc" id="L344">            File wsRoot = manifestPath.getParent().toFile();</span>
+<span class="fc" id="L345">            File wsGit = new File(wsRoot, &quot;.git&quot;);</span>
+<span class="pc bpc" id="L346" title="1 of 2 branches missed.">            if (!wsGit.exists()) return;</span>
+
+            // Branch the workspace repo
+<span class="nc" id="L349">            getLog().info(&quot;  Branching workspace repo → &quot; + branchName);</span>
+<span class="nc" id="L350">            VcsOperations.checkoutNew(wsRoot, getLog(), branchName);</span>
+
+            // Update workspace.yaml on the feature branch
+<span class="nc" id="L353">            Map&lt;String, String&gt; updates = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L354" title="All 2 branches missed.">            for (String name : components) {</span>
+<span class="nc" id="L355">                updates.put(name, branchName);</span>
+<span class="nc" id="L356">            }</span>
+<span class="nc" id="L357">            ManifestWriter.updateBranches(manifestPath, updates);</span>
+<span class="nc" id="L358">            getLog().info(&quot;  Updated workspace.yaml branches for &quot;</span>
+<span class="nc" id="L359">                    + components.size() + &quot; components&quot;);</span>
+
+<span class="nc" id="L361">            ReleaseSupport.exec(wsRoot, getLog(), &quot;git&quot;, &quot;add&quot;, &quot;workspace.yaml&quot;);</span>
+<span class="nc" id="L362">            VcsOperations.commit(wsRoot, getLog(),</span>
+                    &quot;workspace: update branches for &quot; + branchName);
+
+            // Push ws feature branch (non-fatal if no remote)
+<span class="nc bnc" id="L366" title="All 2 branches missed.">            if (ReleaseSupport.hasRemote(wsRoot, &quot;origin&quot;)) {</span>
+<span class="nc" id="L367">                VcsOperations.pushWithUpstream(wsRoot, getLog(), &quot;origin&quot;, branchName);</span>
+<span class="nc" id="L368">                VcsOperations.writeVcsState(wsRoot, VcsState.ACTION_FEATURE_START);</span>
+            } else {
+<span class="nc" id="L370">                getLog().info(&quot;&quot;);</span>
+<span class="nc" id="L371">                getLog().info(&quot;  Workspace has no remote origin — changes remain local.&quot;);</span>
+<span class="nc" id="L372">                getLog().info(&quot;  To share this workspace with a team:&quot;);</span>
+<span class="nc" id="L373">                getLog().info(&quot;    gh repo create &lt;org&gt;/&quot; + wsRoot.getName()</span>
+                        + &quot; --private --source=. --push&quot;);
+            }
+
+<span class="nc" id="L377">        } catch (IOException e) {</span>
+<span class="nc" id="L378">            getLog().warn(&quot;  Could not update workspace.yaml: &quot; + e.getMessage());</span>
+<span class="nc" id="L379">        }</span>
+<span class="nc" id="L380">    }</span>
+
+    /**
+     * Set the POM version, handling both simple and multi-module projects.
+     * Uses ReleaseSupport's POM manipulation which skips the parent block.
+     */
+    private void setPomVersion(File dir, String oldVersion, String newVersion)
+            throws MojoExecutionException {
+<span class="fc" id="L388">        File pom = new File(dir, &quot;pom.xml&quot;);</span>
+<span class="pc bpc" id="L389" title="1 of 2 branches missed.">        if (!pom.exists()) {</span>
+<span class="nc" id="L390">            getLog().warn(&quot;    No pom.xml found in &quot; + dir.getName());</span>
+<span class="nc" id="L391">            return;</span>
+        }
+
+        // Set version in root POM
+<span class="fc" id="L395">        ReleaseSupport.setPomVersion(pom, oldVersion, newVersion);</span>
+
+        // Also update any submodule POMs that reference the old version
+        // in their &lt;parent&gt; block (for multi-module projects)
+        try {
+<span class="fc" id="L400">            List&lt;File&gt; allPoms = ReleaseSupport.findPomFiles(dir);</span>
+<span class="fc bfc" id="L401" title="All 2 branches covered.">            for (File subPom : allPoms) {</span>
+<span class="fc bfc" id="L402" title="All 2 branches covered.">                if (subPom.equals(pom)) continue;</span>
+                try {
+<span class="fc" id="L404">                    String content = java.nio.file.Files.readString(</span>
+<span class="fc" id="L405">                            subPom.toPath(), java.nio.charset.StandardCharsets.UTF_8);</span>
+<span class="pc bpc" id="L406" title="1 of 2 branches missed.">                    if (content.contains(&quot;&lt;version&gt;&quot; + oldVersion + &quot;&lt;/version&gt;&quot;)) {</span>
+<span class="fc" id="L407">                        String updated = content.replace(</span>
+                                &quot;&lt;version&gt;&quot; + oldVersion + &quot;&lt;/version&gt;&quot;,
+                                &quot;&lt;version&gt;&quot; + newVersion + &quot;&lt;/version&gt;&quot;);
+<span class="fc" id="L410">                        java.nio.file.Files.writeString(</span>
+<span class="fc" id="L411">                                subPom.toPath(), updated,</span>
+                                java.nio.charset.StandardCharsets.UTF_8);
+<span class="fc" id="L413">                        String rel = dir.toPath().relativize(subPom.toPath()).toString();</span>
+<span class="fc" id="L414">                        getLog().info(&quot;    updated: &quot; + rel);</span>
+<span class="fc" id="L415">                        ReleaseSupport.exec(dir, getLog(), &quot;git&quot;, &quot;add&quot;, rel);</span>
+                    }
+<span class="nc" id="L417">                } catch (java.io.IOException e) {</span>
+<span class="nc" id="L418">                    getLog().warn(&quot;    Could not update &quot; + subPom + &quot;: &quot; + e.getMessage());</span>
+<span class="fc" id="L419">                }</span>
+<span class="fc" id="L420">            }</span>
+<span class="nc" id="L421">        } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L422">            getLog().warn(&quot;    Could not scan for submodule POMs: &quot; + e.getMessage());</span>
+<span class="fc" id="L423">        }</span>
+<span class="fc" id="L424">    }</span>
+
+    /**
+     * Cascade version-property updates to downstream components.
+     *
+     * &lt;p&gt;When an upstream component's version changes (e.g., tinkar-core
+     * gets a branch-qualified version), downstream components that track
+     * that version via a POM property (declared as {@code version-property}
+     * in workspace.yaml) need their property updated too.
+     *
+     * &lt;p&gt;For example, if rocks-kb depends on tinkar-core with
+     * {@code version-property: ike-bom.version}, and tinkar-core's version
+     * changed to {@code 1.127.2-feature-foo-SNAPSHOT}, then rocks-kb's
+     * {@code &lt;ike-bom.version&gt;} property is updated to match.
+     */
+    private void cascadeVersionProperties(WorkspaceGraph graph, File root,
+                                           List&lt;String&gt; sorted, String branchName)
+            throws MojoExecutionException {
+
+        // Build map of upstream component → new branch-qualified version
+<span class="fc" id="L444">        java.util.Map&lt;String, String&gt; newVersions = new java.util.LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L445" title="All 2 branches covered.">        for (String name : sorted) {</span>
+<span class="fc" id="L446">            Component comp = graph.manifest().components().get(name);</span>
+<span class="pc bpc" id="L447" title="2 of 4 branches missed.">            if (comp.version() != null &amp;&amp; !comp.version().isEmpty()) {</span>
+<span class="fc" id="L448">                newVersions.put(name, VersionSupport.branchQualifiedVersion(</span>
+<span class="fc" id="L449">                        comp.version(), branchName));</span>
+            }
+<span class="fc" id="L451">        }</span>
+
+        // For each component in topological order, update version-properties
+        // that reference upstream components
+<span class="fc bfc" id="L455" title="All 2 branches covered.">        for (String name : sorted) {</span>
+<span class="fc" id="L456">            Component comp = graph.manifest().components().get(name);</span>
+<span class="fc" id="L457">            File dir = new File(root, name);</span>
+<span class="fc" id="L458">            File pomFile = new File(dir, &quot;pom.xml&quot;);</span>
+<span class="pc bpc" id="L459" title="1 of 2 branches missed.">            if (!pomFile.exists()) continue;</span>
+
+<span class="fc" id="L461">            boolean pomChanged = false;</span>
+            try {
+<span class="fc" id="L463">                String content = java.nio.file.Files.readString(</span>
+<span class="fc" id="L464">                        pomFile.toPath(), java.nio.charset.StandardCharsets.UTF_8);</span>
+<span class="fc" id="L465">                String original = content;</span>
+
+<span class="fc bfc" id="L467" title="All 2 branches covered.">                for (network.ike.workspace.Dependency dep : comp.dependsOn()) {</span>
+<span class="fc" id="L468">                    String upstreamName = dep.component();</span>
+<span class="pc bpc" id="L469" title="1 of 2 branches missed.">                    if (dep.versionProperty() == null) continue;</span>
+<span class="nc bnc" id="L470" title="All 2 branches missed.">                    if (!newVersions.containsKey(upstreamName)) continue;</span>
+
+<span class="nc" id="L472">                    String upstreamVersion = newVersions.get(upstreamName);</span>
+<span class="nc" id="L473">                    String before = content;</span>
+<span class="nc" id="L474">                    content = ReleaseSupport.updateVersionProperty(</span>
+<span class="nc" id="L475">                            content, dep.versionProperty(), upstreamVersion);</span>
+
+<span class="nc bnc" id="L477" title="All 2 branches missed.">                    if (!content.equals(before)) {</span>
+<span class="nc" id="L478">                        getLog().info(&quot;    &quot; + name + &quot;: &quot; + dep.versionProperty()</span>
+                                + &quot; → &quot; + upstreamVersion
+                                + &quot; (from &quot; + upstreamName + &quot;)&quot;);
+                    }
+<span class="nc" id="L482">                }</span>
+
+<span class="pc bpc" id="L484" title="1 of 2 branches missed.">                if (!content.equals(original)) {</span>
+<span class="nc" id="L485">                    java.nio.file.Files.writeString(</span>
+<span class="nc" id="L486">                            pomFile.toPath(), content,</span>
+                            java.nio.charset.StandardCharsets.UTF_8);
+<span class="nc" id="L488">                    ReleaseSupport.exec(dir, getLog(), &quot;git&quot;, &quot;add&quot;, &quot;pom.xml&quot;);</span>
+<span class="nc" id="L489">                    ReleaseSupport.exec(dir, getLog(), &quot;git&quot;, &quot;commit&quot;, &quot;-m&quot;,</span>
+                            &quot;feature: update dependency versions for &quot; + branchName);
+<span class="nc" id="L491">                    pomChanged = true;</span>
+                }
+<span class="nc" id="L493">            } catch (java.io.IOException e) {</span>
+<span class="nc" id="L494">                getLog().warn(&quot;    Could not cascade version properties in &quot;</span>
+<span class="nc" id="L495">                        + name + &quot;: &quot; + e.getMessage());</span>
+<span class="fc" id="L496">            }</span>
+<span class="fc" id="L497">        }</span>
+<span class="fc" id="L498">    }</span>
+
+    /**
+     * Check if a component is a shallow clone and fetch full history
+     * if needed. Feature branches require full history for merge-base
+     * operations during feature-finish.
+     */
+    private void ensureFullClone(File dir, String name)
+            throws MojoExecutionException {
+        try {
+<span class="fc" id="L508">            String isShallow = ReleaseSupport.execCapture(dir,</span>
+                    &quot;git&quot;, &quot;rev-parse&quot;, &quot;--is-shallow-repository&quot;);
+<span class="pc bpc" id="L510" title="1 of 2 branches missed.">            if (&quot;true&quot;.equals(isShallow.trim())) {</span>
+<span class="nc" id="L511">                getLog().info(&quot;    Fetching full history (shallow clone detected)...&quot;);</span>
+<span class="nc" id="L512">                ReleaseSupport.exec(dir, getLog(),</span>
+                        &quot;git&quot;, &quot;fetch&quot;, &quot;--unshallow&quot;);
+            }
+<span class="nc" id="L515">        } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L516">            getLog().warn(&quot;    Could not check/unshallow &quot; + name</span>
+<span class="nc" id="L517">                    + &quot;: &quot; + e.getMessage());</span>
+<span class="fc" id="L518">        }</span>
+<span class="fc" id="L519">    }</span>
+
+    /**
+     * Analyze BOM cascade issues before starting the feature.
+     * If issues are found, prompt the developer for confirmation.
+     * In headless mode (no console), log warnings and proceed.
+     */
+    private void checkBomCascadeAndConfirm(WorkspaceGraph graph, File root)
+            throws MojoExecutionException {
+        // Build published artifact sets
+        java.util.Map&lt;String, java.util.Set&lt;PublishedArtifactSet.Artifact&gt;&gt;
+<span class="fc" id="L530">                workspaceArtifacts = new java.util.LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L531" title="All 2 branches covered.">        for (String name : graph.manifest().components().keySet()) {</span>
+<span class="fc" id="L532">            java.nio.file.Path compDir = root.toPath().resolve(name);</span>
+<span class="pc bpc" id="L533" title="1 of 2 branches missed.">            if (java.nio.file.Files.exists(compDir.resolve(&quot;pom.xml&quot;))) {</span>
+                try {
+<span class="fc" id="L535">                    workspaceArtifacts.put(name,</span>
+<span class="fc" id="L536">                            PublishedArtifactSet.scan(compDir));</span>
+<span class="nc" id="L537">                } catch (java.io.IOException e) {</span>
+                    // Skip
+<span class="fc" id="L539">                }</span>
+            }
+<span class="fc" id="L541">        }</span>
+
+        java.util.List&lt;BomAnalysis.CascadeIssue&gt; issues;
+        try {
+<span class="fc" id="L545">            issues = BomAnalysis.analyzeCascadeIssues(</span>
+<span class="fc" id="L546">                    root.toPath(), graph.manifest(), workspaceArtifacts);</span>
+<span class="nc" id="L547">        } catch (java.io.IOException e) {</span>
+<span class="nc" id="L548">            getLog().warn(&quot;  BOM cascade check failed: &quot; + e.getMessage());</span>
+<span class="nc" id="L549">            return;</span>
+<span class="fc" id="L550">        }</span>
+
+<span class="pc bpc" id="L552" title="1 of 2 branches missed.">        if (issues.isEmpty()) return;</span>
+
+        // Report issues
+<span class="fc" id="L555">        getLog().warn(&quot;&quot;);</span>
+<span class="fc" id="L556">        getLog().warn(&quot;  ╔══════════════════════════════════════════════════════════╗&quot;);</span>
+<span class="fc" id="L557">        getLog().warn(&quot;  ║  BOM Cascade Gaps Detected                              ║&quot;);</span>
+<span class="fc" id="L558">        getLog().warn(&quot;  ╚══════════════════════════════════════════════════════════╝&quot;);</span>
+<span class="fc" id="L559">        getLog().warn(&quot;&quot;);</span>
+<span class="fc" id="L560">        getLog().warn(&quot;  The following dependency edges have no version-property or&quot;);</span>
+<span class="fc" id="L561">        getLog().warn(&quot;  workspace-internal BOM import. Feature-start CANNOT cascade&quot;);</span>
+<span class="fc" id="L562">        getLog().warn(&quot;  version changes for these automatically:&quot;);</span>
+<span class="fc" id="L563">        getLog().warn(&quot;&quot;);</span>
+
+<span class="fc bfc" id="L565" title="All 2 branches covered.">        for (var issue : issues) {</span>
+<span class="fc" id="L566">            getLog().warn(&quot;    &quot; + issue.componentName() + &quot; → &quot; + issue.dependsOn());</span>
+<span class="pc bpc" id="L567" title="1 of 2 branches missed.">            for (var bom : issue.externalBomPins()) {</span>
+<span class="nc" id="L568">                getLog().warn(&quot;      external BOM: &quot; + bom.groupId()</span>
+<span class="nc" id="L569">                        + &quot;:&quot; + bom.artifactId() + &quot;:&quot; + bom.version());</span>
+<span class="nc" id="L570">            }</span>
+<span class="fc" id="L571">        }</span>
+
+<span class="fc" id="L573">        getLog().warn(&quot;&quot;);</span>
+<span class="fc" id="L574">        getLog().warn(&quot;  These components may resolve stale versions from external BOMs&quot;);</span>
+<span class="fc" id="L575">        getLog().warn(&quot;  instead of the feature branch versions.&quot;);</span>
+<span class="fc" id="L576">        getLog().warn(&quot;&quot;);</span>
+
+        // Prompt for confirmation (interactive mode only).
+        // In non-interactive mode (tests, CI), warn and proceed.
+<span class="fc" id="L580">        java.io.Console console = System.console();</span>
+<span class="pc bpc" id="L581" title="1 of 2 branches missed.">        if (console != null) {</span>
+<span class="nc" id="L582">            String response = console.readLine(</span>
+                    &quot;  Proceed with feature-start? (yes/no): &quot;);
+<span class="nc bnc" id="L584" title="All 4 branches missed.">            if (response == null || !response.trim().toLowerCase().startsWith(&quot;y&quot;)) {</span>
+<span class="nc" id="L585">                throw new MojoExecutionException(</span>
+                        &quot;Feature-start aborted by user. Fix BOM cascade gaps first.&quot;);
+            }
+<span class="nc" id="L588">        } else {</span>
+<span class="fc" id="L589">            getLog().warn(&quot;  Non-interactive mode — proceeding with warnings.&quot;);</span>
+<span class="fc" id="L590">            getLog().warn(&quot;  Use ws:verify to review BOM cascade gaps.&quot;);</span>
+        }
+<span class="fc" id="L592">    }</span>
+
+    /**
+     * Cascade BOM import version updates to downstream components.
+     *
+     * &lt;p&gt;When an upstream component's version changes (e.g., tinkar-core
+     * gets a branch-qualified version), downstream components that import
+     * a BOM published by the upstream need their import version updated.
+     */
+    private void cascadeBomImports(WorkspaceGraph graph, File root,
+                                    List&lt;String&gt; sorted, String branchName)
+            throws MojoExecutionException {
+        // Build published artifact sets and new version map
+        java.util.Map&lt;String, java.util.Set&lt;PublishedArtifactSet.Artifact&gt;&gt;
+<span class="fc" id="L606">                workspaceArtifacts = new java.util.LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L607">        java.util.Map&lt;String, String&gt; newVersions = new java.util.LinkedHashMap&lt;&gt;();</span>
+
+<span class="fc bfc" id="L609" title="All 2 branches covered.">        for (String name : sorted) {</span>
+<span class="fc" id="L610">            Component comp = graph.manifest().components().get(name);</span>
+<span class="fc" id="L611">            java.nio.file.Path compDir = root.toPath().resolve(name);</span>
+
+<span class="pc bpc" id="L613" title="1 of 2 branches missed.">            if (java.nio.file.Files.exists(compDir.resolve(&quot;pom.xml&quot;))) {</span>
+                try {
+<span class="fc" id="L615">                    workspaceArtifacts.put(name,</span>
+<span class="fc" id="L616">                            PublishedArtifactSet.scan(compDir));</span>
+<span class="nc" id="L617">                } catch (java.io.IOException e) {</span>
+                    // Skip
+<span class="fc" id="L619">                }</span>
+            }
+
+            // Resolve effective version (same logic as the branching loop)
+<span class="fc" id="L623">            String effectiveVersion = comp.version();</span>
+<span class="pc bpc" id="L624" title="2 of 4 branches missed.">            if (effectiveVersion == null || effectiveVersion.isEmpty()) {</span>
+<span class="nc" id="L625">                File pom = new File(new File(root, name), &quot;pom.xml&quot;);</span>
+<span class="nc bnc" id="L626" title="All 2 branches missed.">                if (pom.exists()) {</span>
+                    try {
+<span class="nc" id="L628">                        effectiveVersion = ReleaseSupport.readPomVersion(pom);</span>
+<span class="nc" id="L629">                    } catch (MojoExecutionException e) { /* skip */ }</span>
+                }
+            }
+<span class="pc bpc" id="L632" title="2 of 4 branches missed.">            if (effectiveVersion != null &amp;&amp; !effectiveVersion.isEmpty()) {</span>
+<span class="fc" id="L633">                newVersions.put(name, VersionSupport.branchQualifiedVersion(</span>
+                        effectiveVersion, branchName));
+            }
+<span class="fc" id="L636">        }</span>
+
+        // For each component in topological order, check if it imports
+        // a BOM published by an upstream component that got a new version
+<span class="fc bfc" id="L640" title="All 2 branches covered.">        for (String name : sorted) {</span>
+<span class="fc" id="L641">            Component comp = graph.manifest().components().get(name);</span>
+<span class="fc" id="L642">            File dir = new File(root, name);</span>
+<span class="fc" id="L643">            java.nio.file.Path pomPath = dir.toPath().resolve(&quot;pom.xml&quot;);</span>
+
+<span class="pc bpc" id="L645" title="1 of 2 branches missed.">            if (!java.nio.file.Files.exists(pomPath)) continue;</span>
+
+            java.util.List&lt;BomAnalysis.BomImport&gt; bomImports;
+            try {
+<span class="fc" id="L649">                bomImports = BomAnalysis.extractBomImports(</span>
+                        pomPath, workspaceArtifacts);
+<span class="nc" id="L651">            } catch (java.io.IOException e) {</span>
+<span class="nc" id="L652">                continue;</span>
+<span class="fc" id="L653">            }</span>
+
+<span class="fc" id="L655">            boolean pomChanged = false;</span>
+<span class="pc bpc" id="L656" title="1 of 2 branches missed.">            for (BomAnalysis.BomImport bom : bomImports) {</span>
+<span class="nc bnc" id="L657" title="All 2 branches missed.">                if (!bom.isWorkspaceInternal()) continue;</span>
+
+<span class="nc" id="L659">                String upstreamName = bom.publishingComponent();</span>
+<span class="nc bnc" id="L660" title="All 2 branches missed.">                if (!newVersions.containsKey(upstreamName)) continue;</span>
+
+<span class="nc" id="L662">                String newVersion = newVersions.get(upstreamName);</span>
+                try {
+<span class="nc" id="L664">                    boolean updated = BomAnalysis.updateBomImportVersion(</span>
+<span class="nc" id="L665">                            pomPath, bom.groupId(), bom.artifactId(), newVersion);</span>
+<span class="nc bnc" id="L666" title="All 2 branches missed.">                    if (updated) {</span>
+<span class="nc" id="L667">                        getLog().info(&quot;    &quot; + name + &quot;: BOM import &quot;</span>
+<span class="nc" id="L668">                                + bom.groupId() + &quot;:&quot; + bom.artifactId()</span>
+                                + &quot; → &quot; + newVersion);
+<span class="nc" id="L670">                        pomChanged = true;</span>
+                    }
+<span class="nc" id="L672">                } catch (java.io.IOException e) {</span>
+<span class="nc" id="L673">                    getLog().warn(&quot;    Could not update BOM import in &quot;</span>
+<span class="nc" id="L674">                            + name + &quot;: &quot; + e.getMessage());</span>
+<span class="nc" id="L675">                }</span>
+<span class="nc" id="L676">            }</span>
+
+<span class="pc bpc" id="L678" title="1 of 2 branches missed.">            if (pomChanged) {</span>
+                try {
+<span class="nc" id="L680">                    ReleaseSupport.exec(dir, getLog(), &quot;git&quot;, &quot;add&quot;, &quot;pom.xml&quot;);</span>
+<span class="nc" id="L681">                    ReleaseSupport.exec(dir, getLog(),</span>
+                            &quot;git&quot;, &quot;commit&quot;, &quot;-m&quot;,
+                            &quot;feature: update BOM imports for &quot; + branchName);
+<span class="nc" id="L684">                } catch (MojoExecutionException e) {</span>
+<span class="nc" id="L685">                    getLog().warn(&quot;    Could not commit BOM update in &quot;</span>
+<span class="nc" id="L686">                            + name + &quot;: &quot; + e.getMessage());</span>
+<span class="nc" id="L687">                }</span>
+            }
+<span class="fc" id="L689">        }</span>
+<span class="fc" id="L690">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.14.202510111229</span></div></body></html>

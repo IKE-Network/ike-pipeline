@@ -1,0 +1,18 @@
+# IKE Documentation Pipeline
+
+> Reactor root and build infrastructure for the IKE Community.
+> Provides the AsciiDoc documentation pipeline (6 PDF renderers),
+> Java 25 compiler/test configuration, GPG signing, and shared
+> plugin management. External projects inherit ike-parent (build
+> conventions and centralized dependency versions).
+
+## Documentation
+
+- [About](https://github.com/IKE-Network/ike-pipeline/index.html.md)
+
+## Reports
+
+- [Project Summary](https://github.com/IKE-Network/ike-pipeline/summary.html.md)
+- [Project Licenses](https://github.com/IKE-Network/ike-pipeline/licenses.html.md)
+- [Maven Coordinates](https://github.com/IKE-Network/ike-pipeline/dependency-info.html.md)
+- [Project Information](https://github.com/IKE-Network/ike-pipeline/project-info.html.md)
