@@ -74,7 +74,7 @@ public class FeatureAbandonMojo extends AbstractWorkspaceMojo {
     /**
      * Show what would happen without making changes.
      */
-    @Parameter(property = "dryRun", defaultValue = "false")
+    @Parameter(property = "dryRun", defaultValue = "true")
     boolean dryRun;
 
     /**

@@ -61,7 +61,7 @@ public class FeatureFinishMergeMojo extends AbstractWorkspaceMojo {
     @Parameter(property = "message")
     String message;
 
-    @Parameter(property = "dryRun", defaultValue = "false")
+    @Parameter(property = "dryRun", defaultValue = "true")
     boolean dryRun;
 
     @Override

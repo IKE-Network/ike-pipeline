@@ -43,7 +43,7 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
     /**
      * Component name to remove (required).
      */
-    @Parameter(property = "component", required = true)
+    @Parameter(property = "component")
     private String component;
 
     /**
@@ -63,6 +63,9 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
+        component = requireParam(component, "component",
+                "Component name to remove");
+
         // Resolve workspace root and paths
         Path manifestPath = resolveManifest();
         Path wsDir = manifestPath.getParent();

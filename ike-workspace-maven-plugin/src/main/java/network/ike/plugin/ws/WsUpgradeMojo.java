@@ -49,8 +49,8 @@ public class WsUpgradeMojo extends AbstractWorkspaceMojo {
     /**
      * Show what would change without modifying any files.
      */
-    @Parameter(property = "dryRun", defaultValue = "false")
-    private boolean dryRun;
+    @Parameter(property = "dryRun", defaultValue = "true")
+    boolean dryRun;
 
     /** Creates this goal instance. */
     public WsUpgradeMojo() {}

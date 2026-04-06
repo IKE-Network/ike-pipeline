@@ -60,7 +60,7 @@ public class FeatureFinishRebaseMojo extends AbstractWorkspaceMojo {
     @Parameter(property = "keepBranch", defaultValue = "true")
     boolean keepBranch = true;
 
-    @Parameter(property = "dryRun", defaultValue = "false")
+    @Parameter(property = "dryRun", defaultValue = "true")
     boolean dryRun;
 
     @Override

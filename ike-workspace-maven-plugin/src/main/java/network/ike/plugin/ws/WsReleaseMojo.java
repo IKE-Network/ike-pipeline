@@ -67,7 +67,7 @@ public class WsReleaseMojo extends AbstractWorkspaceMojo {
     String component;
 
     /** Preview what would be released without executing. */
-    @Parameter(property = "dryRun", defaultValue = "false")
+    @Parameter(property = "dryRun", defaultValue = "true")
     boolean dryRun;
 
     /** Skip the pre-release checkpoint. */
@@ -190,7 +190,7 @@ public class WsReleaseMojo extends AbstractWorkspaceMojo {
                 String mvn = findMvn(rc.dir);
 
                 ReleaseSupport.exec(rc.dir, getLog(),
-                        mvn, "ike:release",
+                        mvn, "ike:release-apply",
                         "-DpushRelease=" + push,
                         "-B");
 

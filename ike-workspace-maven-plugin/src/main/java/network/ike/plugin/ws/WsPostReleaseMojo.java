@@ -41,7 +41,7 @@ public class WsPostReleaseMojo extends AbstractWorkspaceMojo {
      * The next development version to set across all components,
      * e.g., {@code "4-SNAPSHOT"}.
      */
-    @Parameter(property = "nextVersion", required = true)
+    @Parameter(property = "nextVersion")
     String nextVersion;
 
     /** Creates this goal instance. */

@@ -84,7 +84,7 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
      * files, or creating tags. Set automatically by
      * {@code ike:ws-checkpoint-dry-run}.
      */
-    @Parameter(property = "dryRun", defaultValue = "false")
+    @Parameter(property = "dryRun", defaultValue = "true")
     boolean dryRun;
 
     /**

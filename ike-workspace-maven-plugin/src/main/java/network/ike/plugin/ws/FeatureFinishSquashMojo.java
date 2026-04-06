@@ -69,7 +69,7 @@ public class FeatureFinishSquashMojo extends AbstractWorkspaceMojo {
     String message;
 
     /** Show plan without executing. */
-    @Parameter(property = "dryRun", defaultValue = "false")
+    @Parameter(property = "dryRun", defaultValue = "true")
     boolean dryRun;
 
     @Override

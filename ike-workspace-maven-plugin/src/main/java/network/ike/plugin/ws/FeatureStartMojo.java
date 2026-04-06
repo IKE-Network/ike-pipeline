@@ -76,7 +76,7 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
     boolean skipVersion;
 
     /** Show plan without executing. */
-    @Parameter(property = "dryRun", defaultValue = "false")
+    @Parameter(property = "dryRun", defaultValue = "true")
     boolean dryRun;
 
     /** Creates this goal instance. */

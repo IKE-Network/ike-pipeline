@@ -47,8 +47,8 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
     /**
      * When true, report changes without writing to POM files.
      */
-    @Parameter(property = "dryRun", defaultValue = "false")
-    private boolean dryRun;
+    @Parameter(property = "dryRun", defaultValue = "true")
+    boolean dryRun;
 
     /** Creates this goal instance. */
     public WsAlignMojo() {}
