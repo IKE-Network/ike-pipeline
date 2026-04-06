@@ -322,8 +322,8 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
         try {
             pom = PomModel.parse(pomFile.toPath());
         } catch (IOException e) {
-            getLog().warn("  " + ownerName + ": could not parse "
-                    + pomFile.getName() + " — " + e.getMessage());
+            getLog().debug("  " + ownerName + ": skipping "
+                    + pomFile.getName() + " (empty or unparseable)");
             return 0;
         }
 
