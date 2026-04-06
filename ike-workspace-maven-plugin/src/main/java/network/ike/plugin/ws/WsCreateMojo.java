@@ -172,9 +172,10 @@ public class WsCreateMojo extends AbstractMojo {
     // ── File generators (pure, testable) ─────────────────────────
 
     String generatePom() {
-        // ike-tooling.version is resolved at build time via resource filtering
+        // Both versions are resolved at build time via resource filtering
         // from the ike-pipeline root POM — single source of truth.
         String toolingVersion = loadBuildProperty("ike-tooling.version");
+        String pipelineVersion = loadBuildProperty("ike-pipeline.version");
 
         StringBuilder xml = new StringBuilder(2048);
         xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -204,13 +205,19 @@ public class WsCreateMojo extends AbstractMojo {
         xml.append("    <name>").append(description).append("</name>\n\n");
         xml.append("    <properties>\n");
         xml.append("        <ike-tooling.version>").append(toolingVersion).append("</ike-tooling.version>\n");
+        xml.append("        <ike-pipeline.version>").append(pipelineVersion).append("</ike-pipeline.version>\n");
         xml.append("    </properties>\n\n");
         xml.append("    <build>\n");
         xml.append("        <plugins>\n");
         xml.append("            <plugin>\n");
-        xml.append("                <groupId>network.ike</groupId>\n");
+        xml.append("                <groupId>network.ike.tooling</groupId>\n");
         xml.append("                <artifactId>ike-maven-plugin</artifactId>\n");
         xml.append("                <version>${ike-tooling.version}</version>\n");
+        xml.append("            </plugin>\n");
+        xml.append("            <plugin>\n");
+        xml.append("                <groupId>network.ike.pipeline</groupId>\n");
+        xml.append("                <artifactId>ike-workspace-maven-plugin</artifactId>\n");
+        xml.append("                <version>${ike-pipeline.version}</version>\n");
         xml.append("            </plugin>\n");
         xml.append("        </plugins>\n");
         xml.append("    </build>\n\n");
