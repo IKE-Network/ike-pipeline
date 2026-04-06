@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
@@ -84,6 +85,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
         int syncthing = 0;
         int skipped = 0;
         int wrappers = 0;
+        List<String[]> rows = new ArrayList<>();
 
         for (String name : sorted) {
             Component component = graph.manifest().components().get(name);
@@ -98,6 +100,8 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 }
                 ensureJvmConfig(dir);
                 skipped++;
+                rows.add(new String[]{name, "present",
+                        component.repo() != null ? component.repo() : "—", "✓"});
                 continue;
             }
 
@@ -106,6 +110,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
             if (repo == null || repo.isEmpty()) {
                 getLog().warn("  ⚠ " + name + " — no repo URL, skipping");
+                rows.add(new String[]{name, "skipped", "—", "no repo URL"});
                 continue;
             }
 
@@ -120,6 +125,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 }
                 ensureJvmConfig(dir);
                 syncthing++;
+                rows.add(new String[]{name, "syncthing-init", repo, "✓"});
             } else {
                 // Fresh clone
                 getLog().info("  ↓ " + name + " — cloning from " + repo);
@@ -131,6 +137,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 }
                 ensureJvmConfig(componentDir);
                 cloned++;
+                rows.add(new String[]{name, "cloned", repo, "✓"});
             }
         }
 
@@ -149,6 +156,33 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
         writeGoalCheatsheet(root.toPath());
 
         finishReport("ws:init", report);
+
+        // Structured markdown report
+        appendReport("ws:init", buildInitMarkdownReport(
+                rows, cloned, syncthing, skipped, wrappers));
+    }
+
+    private String buildInitMarkdownReport(List<String[]> rows,
+                                            int cloned, int syncthing,
+                                            int skipped, int wrappers) {
+        var sb = new StringBuilder();
+        sb.append(cloned).append(" cloned, ").append(syncthing)
+                .append(" Syncthing-initialized, ").append(skipped)
+                .append(" already present");
+        if (wrappers > 0) {
+            sb.append(", ").append(wrappers).append(" Maven wrappers updated");
+        }
+        sb.append(".\n\n");
+        sb.append("| Component | Action | URL | Status |\n");
+        sb.append("|-----------|--------|-----|--------|\n");
+        for (String[] row : rows) {
+            sb.append("| ").append(row[0])
+                    .append(" | ").append(row[1])
+                    .append(" | ").append(row[2])
+                    .append(" | ").append(row[3])
+                    .append(" |\n");
+        }
+        return sb.toString();
     }
 
     /**

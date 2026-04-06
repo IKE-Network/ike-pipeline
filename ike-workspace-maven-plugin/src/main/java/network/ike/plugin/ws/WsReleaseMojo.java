@@ -219,6 +219,24 @@ public class WsReleaseMojo extends AbstractWorkspaceMojo {
         }
         getLog().info("");
         finishReport("ws:release", report);
+
+        // Structured markdown report
+        appendReport("ws:release", buildReleaseMarkdownReport(releasedVersions));
+    }
+
+    private String buildReleaseMarkdownReport(
+            Map<String, String> releasedVersions) {
+        var sb = new StringBuilder();
+        sb.append(releasedVersions.size())
+                .append(" component(s) released.\n\n");
+        sb.append("| Component | Version | Status |\n");
+        sb.append("|-----------|---------|--------|\n");
+        for (var entry : releasedVersions.entrySet()) {
+            sb.append("| ").append(entry.getKey())
+                    .append(" | ").append(entry.getValue())
+                    .append(" | ✓ |\n");
+        }
+        return sb.toString();
     }
 
     // ── Helper: find latest release tag ──────────────────────────────

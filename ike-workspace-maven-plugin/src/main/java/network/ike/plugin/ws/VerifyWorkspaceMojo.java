@@ -10,6 +10,7 @@ import network.ike.workspace.DependencyTreeParser.ResolvedDependency;
 import network.ike.workspace.PublishedArtifactSet;
 import network.ike.workspace.WorkspaceGraph;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -64,6 +65,9 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
     /** Creates this goal instance. */
     public VerifyWorkspaceMojo() {}
 
+    /** Structured verification results for markdown report. */
+    private final List<String[]> verifyRows = new ArrayList<>();
+
     @Override
     public void execute() throws MojoExecutionException {
         ReportLog report = startReport();
@@ -86,6 +90,23 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
         verifyEnvironment();
         getLog().info("");
         finishReport("ws:verify", report);
+
+        // Structured markdown summary
+        if (!verifyRows.isEmpty()) {
+            appendReport("ws:verify", buildVerifyMarkdownReport());
+        }
+    }
+
+    private String buildVerifyMarkdownReport() {
+        var sb = new StringBuilder();
+        sb.append("| Check | Status |\n");
+        sb.append("|-------|--------|\n");
+        for (String[] row : verifyRows) {
+            sb.append("| ").append(row[0])
+                    .append(" | ").append(row[1])
+                    .append(" |\n");
+        }
+        return sb.toString();
     }
 
     // ── Workspace manifest verification (existing logic) ──────────
@@ -106,11 +127,14 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
         if (errors.isEmpty()) {
             getLog().info("  Manifest:    consistent  ✓");
+            verifyRows.add(new String[]{"Manifest", "consistent ✓"});
         } else {
             getLog().error("  Manifest:    " + errors.size() + " error(s)");
             for (String error : errors) {
                 getLog().error("    ✗ " + error);
             }
+            verifyRows.add(new String[]{"Manifest",
+                    errors.size() + " error(s)"});
         }
     }
 
@@ -186,12 +210,17 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
         if (checked == 0) {
             getLog().info("  Parent alignment: no components declare workspace parents");
+            verifyRows.add(new String[]{"Parent alignment", "n/a"});
         } else if (misaligned == 0) {
             getLog().info("  Parent alignment: " + checked
                     + " component(s) aligned  ✓");
+            verifyRows.add(new String[]{"Parent alignment",
+                    checked + " aligned ✓"});
         } else {
             getLog().warn("  Parent alignment: " + misaligned + "/" + checked
                     + " component(s) misaligned");
+            verifyRows.add(new String[]{"Parent alignment",
+                    misaligned + "/" + checked + " misaligned"});
         }
     }
 
@@ -223,9 +252,12 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
             if (issues.isEmpty()) {
                 getLog().info("");
                 getLog().info("  BOM cascade: all dependency edges can cascade  ✓");
+                verifyRows.add(new String[]{"BOM cascade", "all edges cascade ✓"});
             } else {
                 getLog().info("");
                 getLog().warn("  BOM cascade: " + issues.size() + " gap(s) detected");
+                verifyRows.add(new String[]{"BOM cascade",
+                        issues.size() + " gap(s)"});
                 for (var issue : issues) {
                     getLog().warn("    " + issue.componentName() + " → "
                             + issue.dependsOn()
@@ -298,8 +330,12 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
             getLog().info("");
             getLog().info("  Convergence: all shared dependencies converge across "
                     + componentTrees.size() + " components  ✓");
+            verifyRows.add(new String[]{"Convergence",
+                    "all converge ✓ (" + componentTrees.size() + " components)"});
         } else {
             getLog().info("");
+            verifyRows.add(new String[]{"Convergence",
+                    divergences.size() + " divergence(s)"});
             getLog().info("  Convergence: " + divergences.size()
                     + " artifact(s) diverge across "
                     + componentTrees.size() + " components");

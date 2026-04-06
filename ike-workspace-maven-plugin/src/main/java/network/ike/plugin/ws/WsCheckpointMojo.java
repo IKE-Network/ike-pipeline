@@ -258,6 +258,34 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
                 + " | Absent: " + absentComponents.size());
         getLog().info("");
         finishReport("ws:checkpoint", report);
+
+        // Structured markdown report
+        appendReport("ws:checkpoint",
+                buildCheckpointMarkdownReport(snapshots, absentComponents));
+    }
+
+    private String buildCheckpointMarkdownReport(
+            List<ComponentSnapshot> snapshots, List<String> absent) {
+        var sb = new StringBuilder();
+        sb.append(snapshots.size()).append(" component(s) checkpointed");
+        if (!absent.isEmpty()) {
+            sb.append(", ").append(absent.size()).append(" absent");
+        }
+        sb.append(dryRun ? " (dry run)" : "").append(".\n\n");
+        sb.append("| Component | Version | SHA | Branch | Status |\n");
+        sb.append("|-----------|---------|-----|--------|--------|\n");
+        for (var snap : snapshots) {
+            sb.append("| ").append(snap.name())
+                    .append(" | ").append(snap.version())
+                    .append(" | ").append(snap.shortSha())
+                    .append(" | ").append(snap.branch())
+                    .append(" | ✓ |\n");
+        }
+        for (String name : absent) {
+            sb.append("| ").append(name)
+                    .append(" | — | — | — | not cloned |\n");
+        }
+        return sb.toString();
     }
 
     // ── Per-component checkpoint (overridable for tests) ──────────────

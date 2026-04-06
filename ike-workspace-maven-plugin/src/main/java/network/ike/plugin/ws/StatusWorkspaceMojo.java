@@ -7,6 +7,8 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -59,6 +61,7 @@ public class StatusWorkspaceMojo extends AbstractWorkspaceMojo {
 
         int cloned = 0;
         int dirty = 0;
+        List<String[]> rows = new ArrayList<>();
 
         for (String name : targets) {
             Component component = graph.manifest().components().get(name);
@@ -67,6 +70,7 @@ public class StatusWorkspaceMojo extends AbstractWorkspaceMojo {
             if (!dir.exists()) {
                 getLog().info(String.format("  %-28s %-28s %-10s %s",
                         name, "—", "—", "not cloned"));
+                rows.add(new String[]{name, "—", "—", "not cloned"});
                 continue;
             }
 
@@ -94,6 +98,7 @@ public class StatusWorkspaceMojo extends AbstractWorkspaceMojo {
 
             getLog().info(String.format("  %-28s %-28s %-10s %s",
                     name, branchDisplay, sha, statusLabel));
+            rows.add(new String[]{name, branchDisplay, sha, statusLabel});
         }
 
         getLog().info("");
@@ -101,5 +106,26 @@ public class StatusWorkspaceMojo extends AbstractWorkspaceMojo {
                 + dirty + " dirty");
         getLog().info("");
         finishReport("ws:status", report);
+
+        // Structured markdown report
+        appendReport("ws:status", buildMarkdownReport(
+                rows, cloned, targets.size(), dirty));
+    }
+
+    private String buildMarkdownReport(List<String[]> rows,
+                                        int cloned, int total, int dirty) {
+        var sb = new StringBuilder();
+        sb.append(cloned).append('/').append(total)
+                .append(" cloned, ").append(dirty).append(" dirty.\n\n");
+        sb.append("| Component | Branch | SHA | Status |\n");
+        sb.append("|-----------|--------|-----|--------|\n");
+        for (String[] row : rows) {
+            sb.append("| ").append(row[0])
+                    .append(" | ").append(row[1])
+                    .append(" | ").append(row[2])
+                    .append(" | ").append(row[3])
+                    .append(" |\n");
+        }
+        return sb.toString();
     }
 }

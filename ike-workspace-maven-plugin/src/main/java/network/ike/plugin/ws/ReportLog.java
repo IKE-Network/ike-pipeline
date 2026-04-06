@@ -55,11 +55,22 @@ final class ReportLog implements Log {
     @Override public void debug(CharSequence content, Throwable error) { delegate.debug(content, error); }
     @Override public void debug(Throwable error) { delegate.debug(error); }
 
-    // ── Warn (pass-through) ─────────────────────────────────────────
+    // ── Warn (captured) ─────────────────────────────────────────────
 
     @Override public boolean isWarnEnabled() { return delegate.isWarnEnabled(); }
-    @Override public void warn(CharSequence content) { delegate.warn(content); }
-    @Override public void warn(CharSequence content, Throwable error) { delegate.warn(content, error); }
+
+    @Override
+    public void warn(CharSequence content) {
+        delegate.warn(content);
+        captured.append("⚠ ").append(content).append('\n');
+    }
+
+    @Override
+    public void warn(CharSequence content, Throwable error) {
+        delegate.warn(content, error);
+        captured.append("⚠ ").append(content).append('\n');
+    }
+
     @Override public void warn(Throwable error) { delegate.warn(error); }
 
     // ── Error (pass-through) ────────────────────────────────────────
