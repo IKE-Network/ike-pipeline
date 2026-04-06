@@ -172,8 +172,9 @@ public class WsCreateMojo extends AbstractMojo {
     // ── File generators (pure, testable) ─────────────────────────
 
     String generatePom() {
-        String pluginVersion = getClass().getPackage().getImplementationVersion();
-        if (pluginVersion == null) pluginVersion = "49";
+        // ike-tooling.version is resolved at build time via resource filtering
+        // from the ike-pipeline root POM — single source of truth.
+        String toolingVersion = loadBuildProperty("ike-tooling.version");
 
         StringBuilder xml = new StringBuilder(2048);
         xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -202,7 +203,7 @@ public class WsCreateMojo extends AbstractMojo {
         xml.append("    <packaging>pom</packaging>\n\n");
         xml.append("    <name>").append(description).append("</name>\n\n");
         xml.append("    <properties>\n");
-        xml.append("        <ike-tooling.version>").append(pluginVersion).append("</ike-tooling.version>\n");
+        xml.append("        <ike-tooling.version>").append(toolingVersion).append("</ike-tooling.version>\n");
         xml.append("    </properties>\n\n");
         xml.append("    <build>\n");
         xml.append("        <plugins>\n");
@@ -427,6 +428,28 @@ public class WsCreateMojo extends AbstractMojo {
                 "%MAVEN_HOME%\\bin\\mvn.cmd" %*
                 """;
         Files.writeString(mvnwCmd, cmdScript, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Load a build-time property from ws-plugin.properties (resolved
+     * by Maven resource filtering during the build).
+     */
+    private String loadBuildProperty(String key) {
+        try (var is = getClass().getResourceAsStream("ws-plugin.properties")) {
+            if (is != null) {
+                var props = new java.util.Properties();
+                props.load(is);
+                String value = props.getProperty(key);
+                if (value != null && !value.isBlank() && !value.startsWith("${")) {
+                    return value;
+                }
+            }
+        } catch (IOException e) {
+            // Fall through to fallback
+        }
+        // Fallback: use JAR manifest version
+        String jarVersion = getClass().getPackage().getImplementationVersion();
+        return jarVersion != null ? jarVersion : "66";
     }
 
     private void writeFile(Path path, String content) throws IOException {

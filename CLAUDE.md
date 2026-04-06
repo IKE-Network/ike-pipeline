@@ -45,7 +45,8 @@ versionless (parent is the aggregator).
 | `minimal-fonts` | Noto font subset for PDF rendering | JAR |
 | `docbook-xsl` | DocBook XSL 1.79.2 + IKE FO customization | JAR |
 | `koncept-asciidoc-extension` | AsciidoctorJ `k:Name[]` inline macro + glossary | JAR |
-| `ike-maven-plugin` | Maven plugin: workspace management, release orchestration, BOM generation | maven-plugin |
+| `ike-maven-plugin` | Maven plugin: release orchestration, BOM generation, site deployment, AsciiDoc utilities | maven-plugin |
+| `ike-workspace-maven-plugin` | Maven plugin: workspace management, feature branching, release orchestration | maven-plugin |
 | `ike-bom` | Auto-generated BOM (from ike-parent, zero maintenance) | POM |
 | `semantic-linebreak` | CLI tool — AsciiDoc semantic linefeed reformatter | JAR |
 | `doc-example` | Doc-only project exercising all pipeline features | JAR (empty) |
@@ -115,6 +116,9 @@ The `ike-maven-plugin` provides build goals (prefix `ike:`) for release
 orchestration, BOM generation, site deployment, and AsciiDoc utilities.
 The `ike-workspace-maven-plugin` provides workspace goals (prefix `ws:`)
 for multi-repository workspace management and gitflow branching.
+Both plugins are now modules in this reactor and co-release with
+ike-parent at `${project.version}` — no separate `ike-tooling.version`
+property is needed for `ws:` goals.
 All former bash scripts for workspace and release operations have been
 retired — use `ws:*` goals for workspace operations and `ike:*` goals
 for build/release operations.

@@ -32,6 +32,8 @@ AsciiDoc documentation pipeline.
 - Dependency versions are managed inline in `<dependencyManagement>`
 - All modules in the reactor share the unified pipeline version
 - Projects inheriting ike-parent get managed versions automatically
+- `pluginManagement` declares both `ike-maven-plugin` and
+  `ike-workspace-maven-plugin` — both co-release at `${project.version}`
 
 ## Build
 

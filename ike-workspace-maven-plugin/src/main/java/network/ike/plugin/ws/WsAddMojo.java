@@ -169,6 +169,8 @@ public class WsAddMojo extends AbstractMojo {
             cloned = true;
         }
 
+        String detectedParent = null;
+
         if (Files.exists(componentDir.resolve("pom.xml"))) {
             // Derive groupId from POM if not explicitly specified
             if (groupId == null || groupId.isBlank()) {
@@ -183,6 +185,25 @@ public class WsAddMojo extends AbstractMojo {
                 } catch (MojoExecutionException e) {
                     // Non-fatal — version will be null in manifest
                 }
+            }
+
+            // Detect parent POM — match against workspace components
+            try {
+                PomParentSupport.ParentInfo parentInfo =
+                        PomParentSupport.readParent(componentDir.resolve("pom.xml"));
+                if (parentInfo != null) {
+                    Manifest existing = ManifestReader.read(manifestPath);
+                    for (Map.Entry<String, Component> candidate :
+                            existing.components().entrySet()) {
+                        if (candidate.getValue().groupId() != null
+                                && candidate.getValue().groupId().equals(parentInfo.groupId())) {
+                            detectedParent = candidate.getKey();
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Non-fatal — parent detection is best-effort
             }
 
             // Derive dependencies by matching POM groupIds against
@@ -214,6 +235,9 @@ public class WsAddMojo extends AbstractMojo {
         if (groupId != null && !groupId.isBlank()) {
             getLog().info("  GroupId:   " + groupId);
         }
+        if (detectedParent != null) {
+            getLog().info("  Parent:    " + detectedParent + " (detected from POM)");
+        }
         if (derivedDeps != null && !derivedDeps.isEmpty()) {
             String depNames = derivedDeps.stream()
                     .map(DerivedDep::component)
@@ -237,7 +261,7 @@ public class WsAddMojo extends AbstractMojo {
                 getLog().info("  ✓ workspace.yaml updated (dependencies re-derived)");
             } else {
                 // Append new component to workspace.yaml
-                appendComponentToManifest(manifestPath, derivedDeps);
+                appendComponentToManifest(manifestPath, derivedDeps, detectedParent);
                 getLog().info("  ✓ workspace.yaml updated");
             }
 
@@ -308,7 +332,8 @@ public class WsAddMojo extends AbstractMojo {
 
     // ── YAML generation ──────────────────────────────────────────
 
-    void appendComponentToManifest(Path manifestPath, List<DerivedDep> derivedDeps)
+    void appendComponentToManifest(Path manifestPath, List<DerivedDep> derivedDeps,
+                                     String detectedParent)
             throws IOException {
         String yaml = Files.readString(manifestPath, StandardCharsets.UTF_8);
 
@@ -326,6 +351,9 @@ public class WsAddMojo extends AbstractMojo {
         }
         if (groupId != null && !groupId.isBlank()) {
             entry.append("    groupId: ").append(groupId).append("\n");
+        }
+        if (detectedParent != null) {
+            entry.append("    parent: ").append(detectedParent).append("\n");
         }
         if (derivedDeps != null && !derivedDeps.isEmpty()) {
             entry.append("    depends-on:\n");

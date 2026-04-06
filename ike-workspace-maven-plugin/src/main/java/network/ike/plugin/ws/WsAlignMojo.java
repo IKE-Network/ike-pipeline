@@ -118,10 +118,65 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
             }
         }
 
+        // --- Parent version alignment ---
+        for (Map.Entry<String, Component> entry : graph.manifest().components().entrySet()) {
+            String name = entry.getKey();
+            Component component = entry.getValue();
+            String parentComponentName = component.parent();
+            if (parentComponentName == null) continue;
+
+            Component parentComponent = graph.manifest().components().get(parentComponentName);
+            if (parentComponent == null || parentComponent.version() == null) continue;
+
+            File componentDir = new File(root, name);
+            java.nio.file.Path pomFile = componentDir.toPath().resolve("pom.xml");
+            if (!java.nio.file.Files.exists(pomFile)) continue;
+
+            try {
+                String content = java.nio.file.Files.readString(pomFile, java.nio.charset.StandardCharsets.UTF_8);
+                PomParentSupport.ParentInfo parentInfo = PomParentSupport.readParent(content);
+                if (parentInfo == null) continue;
+
+                String expectedVersion = parentComponent.version();
+                if (!expectedVersion.equals(parentInfo.version())) {
+                    if (dryRun) {
+                        getLog().info("  " + name + ": parent " + parentInfo.artifactId()
+                                + " " + parentInfo.version() + " → " + expectedVersion
+                                + " (dry run)");
+                    } else {
+                        String updated = PomParentSupport.updateParentVersion(
+                                content, parentInfo.artifactId(), expectedVersion);
+                        java.nio.file.Files.writeString(pomFile, updated, java.nio.charset.StandardCharsets.UTF_8);
+                        getLog().info("  " + name + ": parent " + parentInfo.artifactId()
+                                + " " + parentInfo.version() + " → " + expectedVersion);
+
+                        // Also update submodule POMs that reference the same parent
+                        List<File> subPoms = ReleaseSupport.findPomFiles(componentDir);
+                        for (File subPom : subPoms) {
+                            if (subPom.toPath().equals(pomFile)) continue;
+                            String subContent = java.nio.file.Files.readString(subPom.toPath(), java.nio.charset.StandardCharsets.UTF_8);
+                            String subUpdated = PomParentSupport.updateParentVersion(
+                                    subContent, parentInfo.artifactId(), expectedVersion);
+                            if (!subUpdated.equals(subContent)) {
+                                java.nio.file.Files.writeString(subPom.toPath(), subUpdated, java.nio.charset.StandardCharsets.UTF_8);
+                            }
+                        }
+                    }
+                    totalChanges++;
+                    if (!changedComponents.contains(name)) {
+                        changedComponents.add(name);
+                    }
+                }
+            } catch (java.io.IOException e) {
+                getLog().warn("  " + name + ": could not align parent version — "
+                        + e.getMessage());
+            }
+        }
+
         // --- Summary ---
         getLog().info("");
         if (totalChanges == 0) {
-            getLog().info("  All inter-component dependency versions are aligned  ✓");
+            getLog().info("  All inter-component dependency and parent versions are aligned  ✓");
         } else if (dryRun) {
             getLog().info("  " + totalChanges + " version(s) would be updated across "
                     + changedComponents.size() + " component(s)");

@@ -51,6 +51,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
         if (isWorkspaceMode()) {
             verifyWorkspaceManifest();
+            verifyParentAlignment();
             verifyBomCascade();
             verifyWorkspaceVcs();
         } else {
@@ -85,6 +86,87 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
             for (String error : errors) {
                 getLog().error("    ✗ " + error);
             }
+        }
+    }
+
+    // ── Parent version alignment ─────────────────────────────────
+
+    private void verifyParentAlignment() throws MojoExecutionException {
+        WorkspaceGraph graph = loadGraph();
+        File root = workspaceRoot();
+        int misaligned = 0;
+        int checked = 0;
+
+        getLog().info("");
+
+        for (Map.Entry<String, Component> entry :
+                graph.manifest().components().entrySet()) {
+            String name = entry.getKey();
+            Component component = entry.getValue();
+            java.nio.file.Path pomFile = root.toPath().resolve(name).resolve("pom.xml");
+
+            if (!java.nio.file.Files.exists(pomFile)) continue;
+
+            try {
+                PomParentSupport.ParentInfo parent =
+                        PomParentSupport.readParent(pomFile);
+                if (parent == null) continue;
+
+                // Check if parent matches a workspace component
+                String parentComponentName = component.parent();
+                if (parentComponentName == null) {
+                    // Try to detect: does the parent artifactId match a workspace component?
+                    for (Map.Entry<String, Component> candidate :
+                            graph.manifest().components().entrySet()) {
+                        if (candidate.getValue().groupId() != null
+                                && candidate.getValue().groupId().equals(parent.groupId())) {
+                            getLog().info("  INFO: " + name + " has parent "
+                                    + parent.groupId() + ":" + parent.artifactId()
+                                    + ":" + parent.version()
+                                    + " — consider adding 'parent: "
+                                    + candidate.getKey() + "' to workspace.yaml");
+                            break;
+                        }
+                    }
+                    continue;
+                }
+
+                // Parent is declared — check version alignment
+                checked++;
+                Component parentComponent =
+                        graph.manifest().components().get(parentComponentName);
+                if (parentComponent == null) {
+                    getLog().warn("  WARN: " + name + " declares parent '"
+                            + parentComponentName + "' but it is not a workspace component");
+                    misaligned++;
+                    continue;
+                }
+
+                String expectedVersion = parentComponent.version();
+                if (expectedVersion != null
+                        && !expectedVersion.equals(parent.version())) {
+                    getLog().warn("  WARN: " + name + " parent version "
+                            + parent.version() + " != " + parentComponentName
+                            + " workspace version " + expectedVersion);
+                    misaligned++;
+                } else {
+                    getLog().info("  " + name + ": parent " + parentComponentName
+                            + ":" + parent.version() + "  ✓");
+                }
+            } catch (java.io.IOException e) {
+                getLog().debug("  Could not read parent from " + name + ": "
+                        + e.getMessage());
+            }
+        }
+
+        if (checked == 0) {
+            getLog().info("  Parent alignment: no components declare workspace parents");
+        } else if (misaligned == 0) {
+            getLog().info("  Parent alignment: " + checked
+                    + " component(s) aligned  ✓");
+        } else {
+            getLog().warn("  Parent alignment: " + misaligned + "/" + checked
+                    + " component(s) misaligned");
         }
     }
 
