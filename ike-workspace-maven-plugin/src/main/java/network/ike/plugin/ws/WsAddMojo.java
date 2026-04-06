@@ -8,7 +8,6 @@ import network.ike.workspace.ManifestException;
 import network.ike.workspace.ManifestReader;
 import network.ike.workspace.PublishedArtifactSet;
 
-import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -63,13 +62,12 @@ import java.util.stream.Collectors;
  * @see InitWorkspaceMojo for cloning all components
  */
 @Mojo(name = "add", requiresProject = false, threadSafe = true)
-public class WsAddMojo extends AbstractMojo {
+public class WsAddMojo extends AbstractWorkspaceMojo {
 
     /**
-     * Git repository URL (required). The component name is derived
-     * from the URL unless {@code -Dcomponent} is specified.
+     * Git repository URL. Prompted interactively if omitted.
      */
-    @Parameter(property = "repo", required = true)
+    @Parameter(property = "repo")
     private String repo;
 
     /**
@@ -129,6 +127,8 @@ public class WsAddMojo extends AbstractMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
+        repo = requireParam(repo, "repo", "Git repository URL");
+
         // Resolve workspace root
         Path wsDir = findWorkspaceRoot();
         Path manifestPath = wsDir.resolve("workspace.yaml");
