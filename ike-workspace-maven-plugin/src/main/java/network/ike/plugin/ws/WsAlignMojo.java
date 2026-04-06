@@ -3,7 +3,9 @@ package network.ike.plugin.ws;
 import network.ike.plugin.ReleaseSupport;
 import network.ike.workspace.Component;
 import network.ike.workspace.Dependency;
+import network.ike.workspace.PublishedArtifactSet;
 import network.ike.workspace.WorkspaceGraph;
+import org.apache.maven.api.model.Parent;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -12,12 +14,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Set;
 
 /**
  * Align inter-component dependency versions in POM files to match the
@@ -53,7 +55,6 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
-        ReportLog report = startReport();
         getLog().info("");
         getLog().info("IKE Workspace Align — synchronize inter-component dependency versions");
         getLog().info("══════════════════════════════════════════════════════════════");
@@ -66,11 +67,12 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
-        // Build lookup: groupId → (component name, current POM version)
-        Map<String, ComponentVersion> groupIdIndex = buildGroupIdIndex(graph, root);
+        // Build lookup: groupId:artifactId → (component name, current POM version)
+        Map<String, ComponentVersion> artifactIndex = buildArtifactIndex(graph, root);
 
         int totalChanges = 0;
         List<String> changedComponents = new ArrayList<>();
+        List<AlignChange> reportChanges = new ArrayList<>();
 
         for (Map.Entry<String, Component> entry : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
@@ -108,7 +110,8 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
 
             for (File pomFile : pomFiles) {
                 int changes = alignPomDependencies(
-                        name, pomFile, groupIdIndex, versionPropertyMap, componentDir);
+                        name, pomFile, artifactIndex, versionPropertyMap,
+                        componentDir, graph, reportChanges);
                 componentChanges += changes;
             }
 
@@ -118,7 +121,7 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
             }
         }
 
-        // --- Parent version alignment ---
+        // --- Parent version alignment (via Maven 4 Model API) ---
         for (Map.Entry<String, Component> entry : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
             Component component = entry.getValue();
@@ -129,45 +132,55 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
             if (parentComponent == null || parentComponent.version() == null) continue;
 
             File componentDir = new File(root, name);
-            java.nio.file.Path pomFile = componentDir.toPath().resolve("pom.xml");
-            if (!java.nio.file.Files.exists(pomFile)) continue;
+            Path pomPath = componentDir.toPath().resolve("pom.xml");
+            if (!Files.exists(pomPath)) continue;
 
             try {
-                String content = java.nio.file.Files.readString(pomFile, java.nio.charset.StandardCharsets.UTF_8);
-                PomParentSupport.ParentInfo parentInfo = PomParentSupport.readParent(content);
+                PomModel pom = PomModel.parse(pomPath);
+                Parent parentInfo = pom.parent();
                 if (parentInfo == null) continue;
 
                 String expectedVersion = parentComponent.version();
-                if (!expectedVersion.equals(parentInfo.version())) {
-                    if (dryRun) {
-                        getLog().info("  " + name + ": parent " + parentInfo.artifactId()
-                                + " " + parentInfo.version() + " → " + expectedVersion
-                                + " (dry run)");
-                    } else {
-                        String updated = PomParentSupport.updateParentVersion(
-                                content, parentInfo.artifactId(), expectedVersion);
-                        java.nio.file.Files.writeString(pomFile, updated, java.nio.charset.StandardCharsets.UTF_8);
-                        getLog().info("  " + name + ": parent " + parentInfo.artifactId()
-                                + " " + parentInfo.version() + " → " + expectedVersion);
+                String currentVersion = parentInfo.getVersion();
+                if (currentVersion == null
+                        || expectedVersion.equals(currentVersion)) {
+                    continue;
+                }
 
-                        // Also update submodule POMs that reference the same parent
-                        List<File> subPoms = ReleaseSupport.findPomFiles(componentDir);
-                        for (File subPom : subPoms) {
-                            if (subPom.toPath().equals(pomFile)) continue;
-                            String subContent = java.nio.file.Files.readString(subPom.toPath(), java.nio.charset.StandardCharsets.UTF_8);
-                            String subUpdated = PomParentSupport.updateParentVersion(
-                                    subContent, parentInfo.artifactId(), expectedVersion);
-                            if (!subUpdated.equals(subContent)) {
-                                java.nio.file.Files.writeString(subPom.toPath(), subUpdated, java.nio.charset.StandardCharsets.UTF_8);
-                            }
+                String parentAid = parentInfo.getArtifactId();
+                if (dryRun) {
+                    getLog().info("  " + name + ": parent " + parentAid
+                            + " " + currentVersion + " → " + expectedVersion
+                            + " (dry run)");
+                } else {
+                    String updated = PomModel.updateParentVersion(
+                            pom.content(), parentAid, expectedVersion);
+                    Files.writeString(pomPath, updated, StandardCharsets.UTF_8);
+                    getLog().info("  " + name + ": parent " + parentAid
+                            + " " + currentVersion + " → " + expectedVersion);
+
+                    // Also update submodule POMs that reference the same parent
+                    List<File> subPoms = ReleaseSupport.findPomFiles(componentDir);
+                    for (File subPom : subPoms) {
+                        if (subPom.toPath().equals(pomPath)) continue;
+                        String subContent = Files.readString(
+                                subPom.toPath(), StandardCharsets.UTF_8);
+                        String subUpdated = PomModel.updateParentVersion(
+                                subContent, parentAid, expectedVersion);
+                        if (!subUpdated.equals(subContent)) {
+                            Files.writeString(subPom.toPath(), subUpdated,
+                                    StandardCharsets.UTF_8);
                         }
                     }
-                    totalChanges++;
-                    if (!changedComponents.contains(name)) {
-                        changedComponents.add(name);
-                    }
                 }
-            } catch (java.io.IOException e) {
+                reportChanges.add(new AlignChange(
+                        name, "pom.xml", "parent:" + parentAid,
+                        currentVersion, expectedVersion));
+                totalChanges++;
+                if (!changedComponents.contains(name)) {
+                    changedComponents.add(name);
+                }
+            } catch (IOException e) {
                 getLog().warn("  " + name + ": could not align parent version — "
                         + e.getMessage());
             }
@@ -186,45 +199,100 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
                     + changedComponents.size() + " component(s)");
         }
         getLog().info("");
-        finishReport("ws:align", report);
+
+        // --- Structured markdown report ---
+        appendReport("ws:align", buildMarkdownReport(
+                totalChanges, changedComponents, reportChanges));
     }
 
-    // ── GroupId index ───────────────────────────────────────────────
+    /**
+     * Build a structured markdown report from collected alignment changes.
+     */
+    private String buildMarkdownReport(int totalChanges,
+                                        List<String> changedComponents,
+                                        List<AlignChange> changes) {
+        StringBuilder md = new StringBuilder();
+
+        if (totalChanges == 0) {
+            md.append("All inter-component dependency and parent versions are aligned.\n");
+            return md.toString();
+        }
+
+        if (dryRun) {
+            md.append("**Dry run** — ").append(totalChanges)
+              .append(" version(s) would be updated across ")
+              .append(changedComponents.size()).append(" component(s).\n\n");
+        } else {
+            md.append("Updated ").append(totalChanges)
+              .append(" version(s) across ")
+              .append(changedComponents.size()).append(" component(s).\n\n");
+        }
+
+        md.append("| Component | POM | Artifact | From | To |\n");
+        md.append("|-----------|-----|----------|------|----|\n");
+        for (AlignChange c : changes) {
+            md.append("| ").append(c.component)
+              .append(" | ").append(c.pomRelPath)
+              .append(" | `").append(c.artifact).append('`')
+              .append(" | ").append(c.fromVersion)
+              .append(" | ").append(c.toVersion)
+              .append(" |\n");
+        }
+
+        return md.toString();
+    }
+
+    /** A single version alignment change for the report. */
+    private record AlignChange(String component, String pomRelPath,
+                                String artifact, String fromVersion,
+                                String toVersion) {}
+
+    // ── Artifact index ───────────────────────────────────────────────
 
     /**
-     * Build an index from Maven groupId to (component name, current
-     * POM version) for all cloned workspace components.
+     * Build an index from {@code groupId:artifactId} to (component name,
+     * current POM version) for all cloned workspace components.
+     *
+     * <p>Uses {@link PublishedArtifactSet#scan} to discover every
+     * artifact each component publishes, so components sharing a
+     * groupId (e.g., {@code dev.ikm.ike}) are correctly distinguished
+     * by artifactId.
      */
-    private Map<String, ComponentVersion> buildGroupIdIndex(
+    private Map<String, ComponentVersion> buildArtifactIndex(
             WorkspaceGraph graph, File root) throws MojoExecutionException {
         Map<String, ComponentVersion> index = new LinkedHashMap<>();
 
         for (Map.Entry<String, Component> entry : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
-            Component component = entry.getValue();
-            File pomFile = new File(root, name + "/pom.xml");
+            File componentDir = new File(root, name);
 
-            if (!pomFile.exists()) {
+            if (!new File(componentDir, "pom.xml").exists()) {
                 continue;
-            }
-
-            String groupId = component.groupId();
-            if (groupId == null || groupId.isEmpty()) {
-                // Try reading from POM
-                groupId = WsFixMojo.readPomGroupId(pomFile);
             }
 
             String pomVersion;
             try {
-                pomVersion = ReleaseSupport.readPomVersion(pomFile);
+                pomVersion = ReleaseSupport.readPomVersion(
+                        new File(componentDir, "pom.xml"));
             } catch (MojoExecutionException e) {
                 getLog().warn("  " + name + ": could not read POM version — "
                         + e.getMessage());
                 continue;
             }
 
-            if (groupId != null && !groupId.isEmpty()) {
-                index.put(groupId, new ComponentVersion(name, pomVersion));
+            Set<PublishedArtifactSet.Artifact> published;
+            try {
+                published = PublishedArtifactSet.scan(componentDir.toPath());
+            } catch (IOException e) {
+                getLog().warn("  " + name + ": could not scan published artifacts — "
+                        + e.getMessage());
+                continue;
+            }
+
+            ComponentVersion cv = new ComponentVersion(name, pomVersion);
+            for (PublishedArtifactSet.Artifact artifact : published) {
+                String key = artifact.groupId() + ":" + artifact.artifactId();
+                index.put(key, cv);
             }
         }
 
@@ -234,125 +302,124 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
     // ── POM dependency alignment ────────────────────────────────────
 
     /**
-     * Scan a single POM file for dependencies whose groupId matches a
-     * workspace component, and update mismatched versions.
+     * Scan a single POM file for dependencies whose {@code groupId:artifactId}
+     * matches a workspace component's published artifact, and update
+     * mismatched versions.
+     *
+     * <p>Uses Maven 4's {@link PomModel} for reading dependency coordinates
+     * (no regex for extraction). Writes use targeted text replacement via
+     * {@link PomModel#updateDependencyVersion} to preserve formatting.
      *
      * @return number of changes made (or that would be made in dry-run)
      */
     private int alignPomDependencies(String ownerName, File pomFile,
-                                     Map<String, ComponentVersion> groupIdIndex,
+                                     Map<String, ComponentVersion> artifactIndex,
                                      Map<String, String> versionPropertyMap,
-                                     File componentDir)
+                                     File componentDir, WorkspaceGraph graph,
+                                     List<AlignChange> reportChanges)
             throws MojoExecutionException {
-        String content;
+        PomModel pom;
         try {
-            content = Files.readString(pomFile.toPath(), StandardCharsets.UTF_8);
+            pom = PomModel.parse(pomFile.toPath());
         } catch (IOException e) {
-            throw new MojoExecutionException("Failed to read " + pomFile, e);
+            throw new MojoExecutionException("Failed to parse " + pomFile, e);
         }
 
-        String updated = content;
+        String updated = pom.content();
         int changes = 0;
 
-        for (Map.Entry<String, ComponentVersion> entry : groupIdIndex.entrySet()) {
-            String targetGroupId = entry.getKey();
-            ComponentVersion target = entry.getValue();
+        // Iterate all dependencies using the Maven 4 Model API
+        for (org.apache.maven.api.model.Dependency dep : pom.allDependencies()) {
+            String depGroupId = dep.getGroupId();
+            String depArtifactId = dep.getArtifactId();
+            String currentVersion = dep.getVersion();
 
-            // Skip self-references (same component)
-            if (target.name.equals(ownerName)) {
+            if (depGroupId == null || depArtifactId == null
+                    || currentVersion == null) {
                 continue;
             }
 
-            // Find all <dependency> blocks referencing this groupId
-            // Pattern: <dependency> ... <groupId>target</groupId> ... <version>X</version> ... </dependency>
-            Pattern depPattern = Pattern.compile(
-                    "(?s)(<dependency>\\s*" +
-                    "<groupId>" + Pattern.quote(targetGroupId) + "</groupId>\\s*" +
-                    "<artifactId>[^<]+</artifactId>\\s*" +
-                    "<version>)([^<]+)(</version>)",
-                    Pattern.MULTILINE
-            );
+            String key = depGroupId + ":" + depArtifactId;
+            ComponentVersion target = artifactIndex.get(key);
 
-            Matcher m = depPattern.matcher(updated);
-            StringBuilder sb = new StringBuilder();
-            boolean found = false;
-
-            while (m.find()) {
-                String currentVersion = m.group(2).trim();
-
-                // Check if this is a property reference like ${...}
-                if (currentVersion.startsWith("${") && currentVersion.endsWith("}")) {
-                    // Property-based version — handle via version-property update
-                    String propName = currentVersion.substring(2, currentVersion.length() - 1);
-                    String propResult = updatePropertyVersion(
-                            ownerName, pomFile, updated, propName,
-                            target, componentDir);
-                    if (propResult != null) {
-                        updated = propResult;
-                        changes++;
-                    }
-                    m.appendReplacement(sb, Matcher.quoteReplacement(m.group(0)));
-                } else if (!currentVersion.equals(target.version)) {
-                    // Direct version mismatch
-                    String relPath = componentDir.toPath().relativize(
-                            pomFile.toPath()).toString();
-                    getLog().info("  " + ownerName + " (" + relPath + "): "
-                            + targetGroupId + " " + currentVersion
-                            + " → " + target.version);
-                    m.appendReplacement(sb,
-                            Matcher.quoteReplacement(m.group(1) + target.version + m.group(3)));
-                    found = true;
-                    changes++;
-                } else {
-                    m.appendReplacement(sb, Matcher.quoteReplacement(m.group(0)));
-                }
+            // Skip if not a workspace artifact or self-reference
+            if (target == null || target.name.equals(ownerName)) {
+                continue;
             }
 
-            if (found) {
-                m.appendTail(sb);
-                updated = sb.toString();
+            if (currentVersion.startsWith("${") && currentVersion.endsWith("}")) {
+                // Property-based version — resolve via model properties
+                String propName = currentVersion.substring(2,
+                        currentVersion.length() - 1);
+                String propValue = pom.properties().get(propName);
+                if (propValue != null && !propValue.equals(target.version)) {
+                    String relPath = componentDir.toPath().relativize(
+                            pomFile.toPath()).toString();
+                    getLog().info("  " + ownerName + " (" + relPath
+                            + "): property <" + propName + "> "
+                            + propValue + " → " + target.version);
+                    reportChanges.add(new AlignChange(
+                            ownerName, relPath,
+                            "property:" + propName,
+                            propValue, target.version));
+                    updated = PomModel.updateProperty(
+                            updated, propName, target.version);
+                    changes++;
+                }
+            } else if (!currentVersion.equals(target.version)) {
+                // Direct version mismatch — targeted text replacement
+                String relPath = componentDir.toPath().relativize(
+                        pomFile.toPath()).toString();
+                getLog().info("  " + ownerName + " (" + relPath + "): "
+                        + key + " " + currentVersion
+                        + " → " + target.version);
+                reportChanges.add(new AlignChange(
+                        ownerName, relPath, key,
+                        currentVersion, target.version));
+                updated = PomModel.updateDependencyVersion(
+                        updated, depGroupId, depArtifactId, target.version);
+                changes++;
             }
         }
 
-        // Also handle version-property updates declared in depends-on
+        // Handle version-property updates declared in depends-on.
+        // Look up the target component's version by name (via the
+        // artifact index), not by groupId — avoids the collision.
         for (Map.Entry<String, String> vpEntry : versionPropertyMap.entrySet()) {
             String targetComponent = vpEntry.getKey();
             String versionProperty = vpEntry.getValue();
-            Component target = loadGraph().manifest().components().get(targetComponent);
 
-            if (target == null) continue;
-
-            ComponentVersion cv = groupIdIndex.get(target.groupId());
+            ComponentVersion cv = findComponentVersion(
+                    targetComponent, artifactIndex, workspaceRoot());
             if (cv == null) continue;
 
-            // Check if the property exists in this POM
-            Pattern propPattern = Pattern.compile(
-                    "<" + Pattern.quote(versionProperty) + ">([^<]+)</"
-                    + Pattern.quote(versionProperty) + ">"
-            );
-            Matcher pm = propPattern.matcher(updated);
-            if (pm.find()) {
-                String currentValue = pm.group(1).trim();
-                if (!currentValue.equals(cv.version)) {
-                    String relPath = componentDir.toPath().relativize(
-                            pomFile.toPath()).toString();
-                    getLog().info("  " + ownerName + " (" + relPath + "): property <"
-                            + versionProperty + "> " + currentValue
-                            + " → " + cv.version);
-                    updated = ReleaseSupport.updateVersionProperty(
-                            updated, versionProperty, cv.version);
-                    changes++;
-                }
+            // Read current property value from the model
+            String currentValue = pom.properties().get(versionProperty);
+            if (currentValue != null && !currentValue.equals(cv.version)) {
+                String relPath = componentDir.toPath().relativize(
+                        pomFile.toPath()).toString();
+                getLog().info("  " + ownerName + " (" + relPath
+                        + "): property <" + versionProperty + "> "
+                        + currentValue + " → " + cv.version);
+                reportChanges.add(new AlignChange(
+                        ownerName, relPath,
+                        "property:" + versionProperty,
+                        currentValue, cv.version));
+                updated = PomModel.updateProperty(
+                        updated, versionProperty, cv.version);
+                changes++;
             }
         }
 
         // Write if changed
-        if (changes > 0 && !dryRun && !updated.equals(content)) {
+        if (changes > 0 && !dryRun && !updated.equals(pom.content())) {
             try {
-                Files.writeString(pomFile.toPath(), updated, StandardCharsets.UTF_8);
+                Files.writeString(pomFile.toPath(), updated,
+                        StandardCharsets.UTF_8);
             } catch (IOException e) {
                 throw new MojoExecutionException(
-                        "Failed to write " + pomFile + ": " + e.getMessage(), e);
+                        "Failed to write " + pomFile + ": "
+                        + e.getMessage(), e);
             }
         }
 
@@ -360,30 +427,29 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
     }
 
     /**
-     * Update a property-based version in the POM content.
-     *
-     * @return updated content if changed, null if no change needed
+     * Find a component's version by scanning its published artifacts
+     * and looking them up in the artifact index. Matches by component
+     * name (not groupId), so it handles groupId collisions.
      */
-    private String updatePropertyVersion(String ownerName, File pomFile,
-                                         String content, String propertyName,
-                                         ComponentVersion target,
-                                         File componentDir) {
-        Pattern propPattern = Pattern.compile(
-                "<" + Pattern.quote(propertyName) + ">([^<]+)</"
-                + Pattern.quote(propertyName) + ">"
-        );
-        Matcher m = propPattern.matcher(content);
-        if (m.find()) {
-            String currentValue = m.group(1).trim();
-            if (!currentValue.equals(target.version)) {
-                String relPath = componentDir.toPath().relativize(
-                        pomFile.toPath()).toString();
-                getLog().info("  " + ownerName + " (" + relPath + "): property <"
-                        + propertyName + "> " + currentValue
-                        + " → " + target.version);
-                return ReleaseSupport.updateVersionProperty(
-                        content, propertyName, target.version);
+    private ComponentVersion findComponentVersion(
+            String componentName,
+            Map<String, ComponentVersion> artifactIndex, File root) {
+        File componentDir = new File(root, componentName);
+        if (!new File(componentDir, "pom.xml").exists()) {
+            return null;
+        }
+        try {
+            Set<PublishedArtifactSet.Artifact> published =
+                    PublishedArtifactSet.scan(componentDir.toPath());
+            for (PublishedArtifactSet.Artifact artifact : published) {
+                String key = artifact.groupId() + ":" + artifact.artifactId();
+                ComponentVersion cv = artifactIndex.get(key);
+                if (cv != null && cv.name.equals(componentName)) {
+                    return cv;
+                }
             }
+        } catch (IOException e) {
+            // Fall through
         }
         return null;
     }

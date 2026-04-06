@@ -107,15 +107,22 @@ public final class WorkspaceReport {
         }
 
         try {
-            // macOS
+            // macOS: open in IDE (renders markdown natively)
             if (System.getProperty("os.name", "").toLowerCase().contains("mac")) {
-                new ProcessBuilder("open", reportFile.toString())
-                        .start();
-                return true;
+                // Try IntelliJ IDEA first, then fall back to default app
+                try {
+                    new ProcessBuilder("open", "-a", "IntelliJ IDEA",
+                            reportFile.toString()).start();
+                    return true;
+                } catch (IOException _) {
+                    // IntelliJ not found — try default app
+                    new ProcessBuilder("open", reportFile.toString()).start();
+                    return true;
+                }
             }
             // Fallback: java.awt.Desktop
             if (java.awt.Desktop.isDesktopSupported()) {
-                java.awt.Desktop.getDesktop().browse(reportFile.toUri());
+                java.awt.Desktop.getDesktop().open(reportFile.toFile());
                 return true;
             }
         } catch (IOException e) {
