@@ -90,6 +90,21 @@ public class VcsOperations {
         }
     }
 
+    /**
+     * Check whether there are staged changes ready to commit.
+     *
+     * @param dir the repository root directory
+     * @return true if the index has staged changes
+     */
+    public static boolean hasStagedChanges(File dir) {
+        try {
+            String diff = capture(dir, "git", "diff", "--cached", "--name-only");
+            return !diff.isEmpty();
+        } catch (MojoExecutionException e) {
+            return false;
+        }
+    }
+
     // ── Git operations ───────────────────────────────────────────
 
     /**

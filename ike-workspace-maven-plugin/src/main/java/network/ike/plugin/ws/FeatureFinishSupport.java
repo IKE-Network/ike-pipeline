@@ -65,11 +65,8 @@ class FeatureFinishSupport {
      */
     static String stripBranchVersion(File dir, Component component, Log log)
             throws MojoExecutionException {
-        if (component.version() == null
-                || !VersionSupport.isBranchQualified(component.version())) {
-            return null;
-        }
-
+        // Read actual version from POM on disk — workspace.yaml may be stale
+        // if the branch update commit failed (#83).
         String currentVersion = readCurrentVersion(dir, log);
         if (currentVersion == null || !VersionSupport.isBranchQualified(currentVersion)) {
             return null;
@@ -171,7 +168,7 @@ class FeatureFinishSupport {
             File wsGit = new File(wsRoot, ".git");
             if (wsGit.exists()) {
                 ReleaseSupport.exec(wsRoot, log, "git", "add", "workspace.yaml");
-                if (!VcsOperations.isClean(wsRoot)) {
+                if (VcsOperations.hasStagedChanges(wsRoot)) {
                     ReleaseSupport.exec(wsRoot, log, "git", "commit", "-m",
                             "workspace: restore branches to " + targetBranch
                                     + " after feature/" + feature);

@@ -398,7 +398,7 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
                     + components.size() + " components");
 
             ReleaseSupport.exec(wsRoot, getLog(), "git", "add", "workspace.yaml");
-            if (!VcsOperations.isClean(wsRoot)) {
+            if (VcsOperations.hasStagedChanges(wsRoot)) {
                 VcsOperations.commit(wsRoot, getLog(),
                         "workspace: update branches for " + branchName);
             } else {
@@ -662,6 +662,27 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
             getLog().warn("  BOM cascade check failed: " + e.getMessage());
             return List.of();
         }
+
+        // Filter out gaps that cascadeBomProperties() can resolve.
+        // If any workspace component's POM has a <upstream.version> property,
+        // the cascade will update it automatically — no gap.
+        issues.removeIf(issue -> {
+            String propertyName = issue.dependsOn() + ".version";
+            for (String compName : graph.manifest().components().keySet()) {
+                java.nio.file.Path pomPath = root.toPath()
+                        .resolve(compName).resolve("pom.xml");
+                if (java.nio.file.Files.exists(pomPath)) {
+                    try {
+                        String content = java.nio.file.Files.readString(
+                                pomPath, java.nio.charset.StandardCharsets.UTF_8);
+                        if (content.contains("<" + propertyName + ">")) {
+                            return true; // This gap is handled by cascadeBomProperties
+                        }
+                    } catch (java.io.IOException _) { /* skip */ }
+                }
+            }
+            return false;
+        });
 
         if (issues.isEmpty()) return List.of();
 
