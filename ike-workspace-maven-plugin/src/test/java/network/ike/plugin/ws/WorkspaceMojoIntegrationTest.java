@@ -88,11 +88,11 @@ class WorkspaceMojoIntegrationTest {
         assertThatCode(mojo::execute).doesNotThrowAnyException();
     }
 
-    // ── StatusWorkspaceMojo ─────────────────────────────────────────
+    // ── OverviewWorkspaceMojo ─────────────────────────────────────────
 
     @Test
     void status_allClean_runsSuccessfully() {
-        StatusWorkspaceMojo mojo = new StatusWorkspaceMojo();
+        OverviewWorkspaceMojo mojo = new OverviewWorkspaceMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
 
         assertThatCode(mojo::execute).doesNotThrowAnyException();
@@ -104,7 +104,7 @@ class WorkspaceMojoIntegrationTest {
         Path untracked = tempDir.resolve("lib-a").resolve("dirty.txt");
         Files.writeString(untracked, "uncommitted", StandardCharsets.UTF_8);
 
-        StatusWorkspaceMojo mojo = new StatusWorkspaceMojo();
+        OverviewWorkspaceMojo mojo = new OverviewWorkspaceMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
 
         assertThatCode(mojo::execute).doesNotThrowAnyException();
@@ -112,18 +112,18 @@ class WorkspaceMojoIntegrationTest {
 
     @Test
     void status_groupFilter_runsSuccessfully() {
-        StatusWorkspaceMojo mojo = new StatusWorkspaceMojo();
+        OverviewWorkspaceMojo mojo = new OverviewWorkspaceMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.group = "libs";
 
         assertThatCode(mojo::execute).doesNotThrowAnyException();
     }
 
-    // ── DashboardWorkspaceMojo ─────────────────────────────────────
+    // ── OverviewWorkspaceMojo ─────────────────────────────────────
 
     @Test
     void dashboard_cleanWorkspace_succeeds() {
-        DashboardWorkspaceMojo mojo = new DashboardWorkspaceMojo();
+        OverviewWorkspaceMojo mojo = new OverviewWorkspaceMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
 
         assertThatCode(mojo::execute).doesNotThrowAnyException();
@@ -135,7 +135,7 @@ class WorkspaceMojoIntegrationTest {
         Path untracked = tempDir.resolve("lib-a").resolve("dirty.txt");
         Files.writeString(untracked, "uncommitted", StandardCharsets.UTF_8);
 
-        DashboardWorkspaceMojo mojo = new DashboardWorkspaceMojo();
+        OverviewWorkspaceMojo mojo = new OverviewWorkspaceMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
 
         assertThatCode(mojo::execute).doesNotThrowAnyException();

@@ -195,8 +195,6 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
                 continue;
             }
 
-            getLog().info("  \u2192 " + name + " \u2014 creating " + branchName);
-
             // Auto-unshallow if this is a shallow clone — feature
             // branches need full history for merge-base operations
             ensureFullClone(dir, name);
@@ -206,9 +204,6 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
 
             if (!skipVersion && effectiveVersion != null
                     && !effectiveVersion.isEmpty()) {
-                getLog().info("    version: " + effectiveVersion
-                        + " \u2192 " + newVersion);
-
                 setPomVersion(dir, effectiveVersion, newVersion);
                 ReleaseSupport.exec(dir, getLog(),
                         "git", "add", "pom.xml");
@@ -217,6 +212,10 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
                         "feature: set version " + newVersion
                                 + " for " + branchName);
             }
+
+            getLog().info(Ansi.green("  ✓ ") + String.format("%-24s %s → %s",
+                    name, effectiveVersion != null ? effectiveVersion : "—",
+                    newVersion));
 
             created.add(name);
             branchRows.add(new BranchRow(

@@ -77,6 +77,12 @@ class FeatureFinishSupport {
 
         log.info("    version: " + currentVersion + " → " + baseVersion);
         setAllVersions(dir, currentVersion, baseVersion, log);
+
+        // Also strip any other branch-qualified versions in the POM tree
+        // (BOM imports, version properties, etc. set by cascadeBomProperties
+        // and cascadeBomImports during feature-start).
+        stripAllBranchQualifiedVersions(dir, log);
+
         ReleaseSupport.exec(dir, log, "git", "add", "-A");
         ReleaseSupport.exec(dir, log, "git", "commit", "-m",
                 "merge-prep: strip branch qualifier → " + baseVersion);
@@ -108,6 +114,7 @@ class FeatureFinishSupport {
 
         log.info("  Version: " + currentVersion + " → " + baseVersion);
         setAllVersions(dir, currentVersion, baseVersion, log);
+        stripAllBranchQualifiedVersions(dir, log);
         ReleaseSupport.exec(dir, log, "git", "add", "-A");
         ReleaseSupport.exec(dir, log, "git", "commit", "-m",
                 "merge-prep: strip branch qualifier → " + baseVersion);
@@ -223,6 +230,38 @@ class FeatureFinishSupport {
             log.warn("    Could not read version from " + dir.getName()
                     + "/pom.xml: " + e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Scan all POM files in a component for any branch-qualified version
+     * strings and strip them back to base SNAPSHOT. This reverses the
+     * cascade done by feature-start (BOM properties, BOM imports,
+     * version properties).
+     *
+     * <p>Uses a regex to find version strings matching the pattern
+     * {@code X.Y.Z-branch-qualifier-SNAPSHOT} and replaces them with
+     * {@code X.Y.Z-SNAPSHOT}.
+     */
+    private static void stripAllBranchQualifiedVersions(File dir, Log log)
+            throws MojoExecutionException {
+        List<File> allPoms = ReleaseSupport.findPomFiles(dir);
+        // Pattern: digits.digits.digits-word-chars-SNAPSHOT
+        java.util.regex.Pattern branchVersionPattern = java.util.regex.Pattern.compile(
+                "(\\d+\\.\\d+\\.\\d+)-[a-zA-Z][\\w.-]+-SNAPSHOT");
+
+        for (File pom : allPoms) {
+            try {
+                String content = Files.readString(pom.toPath(), StandardCharsets.UTF_8);
+                java.util.regex.Matcher m = branchVersionPattern.matcher(content);
+                String updated = m.replaceAll("$1-SNAPSHOT");
+                if (!updated.equals(content)) {
+                    Files.writeString(pom.toPath(), updated, StandardCharsets.UTF_8);
+                }
+            } catch (IOException e) {
+                log.warn("    Could not strip versions in " + pom + ": "
+                        + e.getMessage());
+            }
         }
     }
 
