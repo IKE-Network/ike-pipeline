@@ -196,9 +196,9 @@ public class WsReleaseMojo extends AbstractWorkspaceMojo {
 
                 released.add(rc.name);
                 releasedVersions.put(rc.name, releaseVersion);
-                getLog().info("  ✓ Released " + rc.name + " " + releaseVersion);
+                getLog().info(Ansi.green("  ✓ ") + "Released " + rc.name + " " + releaseVersion);
             } catch (Exception e) {
-                getLog().error("  ✗ Failed to release " + rc.name + ": " + e.getMessage());
+                getLog().error(Ansi.red("  ✗ ") + "Failed to release " + rc.name + ": " + e.getMessage());
                 getLog().error("");
                 getLog().error("Released so far: " + released);
                 getLog().error("Failed at: " + rc.name);

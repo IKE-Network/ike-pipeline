@@ -94,7 +94,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
             if (gitDir.exists()) {
                 // Already a git repo — still ensure wrapper and jvm.config are current
-                getLog().info("  ✓ " + name + " — already initialized");
+                getLog().info(Ansi.green("  ✓ ") + name + " — already initialized");
                 if (ensureMavenWrapper(dir, component, defaults)) {
                     wrappers++;
                 }
@@ -109,14 +109,14 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
             String branch = component.branch();
 
             if (repo == null || repo.isEmpty()) {
-                getLog().warn("  ⚠ " + name + " — no repo URL, skipping");
+                getLog().warn(Ansi.yellow("  ⚠ ") + name + " — no repo URL, skipping");
                 rows.add(new String[]{name, "skipped", "—", "no repo URL"});
                 continue;
             }
 
             if (dir.exists()) {
                 // Syncthing working tree — init git in-place
-                getLog().info("  ↻ " + name
+                getLog().info(Ansi.cyan("  ↻ ") + name
                         + " — initializing git in existing directory (Syncthing)");
                 initSyncthingRepo(dir, repo, branch);
                 installHooks(dir);
@@ -128,7 +128,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 rows.add(new String[]{name, "syncthing-init", repo, "✓"});
             } else {
                 // Fresh clone
-                getLog().info("  ↓ " + name + " — cloning from " + repo);
+                getLog().info(Ansi.cyan("  ↓ ") + name + " — cloning from " + repo);
                 cloneRepo(root, name, repo, branch);
                 File componentDir = new File(root, name);
                 installHooks(componentDir);

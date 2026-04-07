@@ -92,7 +92,7 @@ public class StignoreWorkspaceMojo extends AbstractWorkspaceMojo {
         // Write workspace .stignore
         Path workspaceStignore = root.toPath().resolve(".stignore");
         writeStignore(workspaceStignore, lines);
-        getLog().info("  ✓ " + workspaceStignore);
+        getLog().info(Ansi.green("  ✓ ") + workspaceStignore);
 
         // Write per-component .stignore for components that are cloned
         int perComponent = 0;
@@ -102,7 +102,7 @@ public class StignoreWorkspaceMojo extends AbstractWorkspaceMojo {
                 Path componentStignore = dir.toPath().resolve(".stignore");
                 writeStignore(componentStignore, COMMON_IGNORES);
                 perComponent++;
-                getLog().info("  ✓ " + component.name() + "/.stignore");
+                getLog().info(Ansi.green("  ✓ ") + component.name() + "/.stignore");
             }
         }
 

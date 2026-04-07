@@ -174,7 +174,7 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
             if (dryRun) {
                 String shortSha = gitShortSha(dir);
                 String sha      = gitFullSha(dir);
-                getLog().info("  ✓ " + compName + " [" + shortSha + "] " + branch);
+                getLog().info(Ansi.green("  ✓ ") + compName + " [" + shortSha + "] " + branch);
                 getLog().info("    [DRY RUN] " + snapshot
                         + " → " + checkpointVersion);
                 CheckpointSupport.dryRun(dir, checkpointVersion,

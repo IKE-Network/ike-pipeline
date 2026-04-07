@@ -180,9 +180,7 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
             // interactive — the same mechanism the Plexus Prompter uses.
             // Use getLog().info() for the prompt so IntelliJ renders it
             // through the Maven logger (no [stdout] prefix).
-            // ANSI yellow so the prompt stands out from green input text.
-            // Maven passes -Dstyle.color=always in IntelliJ by default.
-            getLog().info("\u001B[33m" + promptLabel + ": \u001B[0m");
+            getLog().info(Ansi.yellow(promptLabel + ": "));
             try {
                 java.io.BufferedReader reader = new java.io.BufferedReader(
                         new java.io.InputStreamReader(System.in));

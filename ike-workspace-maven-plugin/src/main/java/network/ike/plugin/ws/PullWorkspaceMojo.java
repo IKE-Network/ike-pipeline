@@ -70,7 +70,7 @@ public class PullWorkspaceMojo extends AbstractWorkspaceMojo {
                 continue;
             }
 
-            getLog().info("  ↓ " + name);
+            getLog().info(Ansi.cyan("  ↓ ") + name);
             try {
                 ReleaseSupport.exec(dir, getLog(),
                         "git", "pull", "--rebase");

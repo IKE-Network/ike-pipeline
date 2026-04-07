@@ -126,7 +126,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         if (errors.isEmpty()) {
-            getLog().info("  Manifest:    consistent  ✓");
+            getLog().info(Ansi.green("  Manifest:    consistent  ✓"));
             verifyRows.add(new String[]{"Manifest", "consistent ✓"});
         } else {
             getLog().error("  Manifest:    " + errors.size() + " error(s)");
@@ -199,8 +199,8 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
                             + " workspace version " + expectedVersion);
                     misaligned++;
                 } else {
-                    getLog().info("  " + name + ": parent " + parentComponentName
-                            + ":" + parent.version() + "  ✓");
+                    getLog().info(Ansi.green("  " + name + ": parent " + parentComponentName
+                            + ":" + parent.version() + "  ✓"));
                 }
             } catch (java.io.IOException e) {
                 getLog().debug("  Could not read parent from " + name + ": "
@@ -311,7 +311,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
                     componentTrees.put(name, deps);
                 }
             } catch (MojoExecutionException e) {
-                getLog().warn("    ⚠ " + name + ": dependency:tree failed — "
+                getLog().warn(Ansi.yellow("    ⚠ ") + name + ": dependency:tree failed — "
                         + e.getMessage());
             }
         }
