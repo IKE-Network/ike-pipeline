@@ -166,20 +166,35 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
             return currentValue.trim();
         }
 
-        // Try System.console() (real terminal only — no System.in fallback).
-        // System.in hangs or returns garbage in IntelliJ's Maven tool window,
-        // so we fail fast when System.console() is null.
+        // Try System.console() first (real terminal)
         java.io.Console console = System.console();
         if (console != null) {
             String input = console.readLine("%s: ", promptLabel);
             if (input != null && !input.isBlank()) {
                 return input.trim();
             }
+        } else {
+            // IntelliJ's Maven runner spawns Maven as a child process
+            // with stdin/stdout wired to the Run console panel. System.console()
+            // is null (not a real terminal), but System.in is connected and
+            // interactive — the same mechanism the Plexus Prompter uses.
+            System.out.print(promptLabel + ": ");
+            System.out.flush();
+            try {
+                java.io.BufferedReader reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(System.in));
+                String input = reader.readLine();
+                if (input != null && !input.isBlank()) {
+                    return input.trim();
+                }
+            } catch (java.io.IOException e) {
+                // Fall through to error
+            }
         }
 
         throw new MojoExecutionException(
                 propertyName + " is required. Specify -D" + propertyName
-                        + "=<value> or run from a terminal for interactive input.");
+                        + "=<value> or run interactively.");
     }
 
     /**
