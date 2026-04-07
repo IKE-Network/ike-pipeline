@@ -121,6 +121,7 @@ public class FeatureFinishRebaseMojo extends AbstractWorkspaceMojo {
 
         int rebased = 0;
         for (String name : eligible) {
+            Component component = graph.manifest().components().get(name);
             File dir = new File(root, name);
 
             if (dryRun) {
@@ -131,6 +132,7 @@ public class FeatureFinishRebaseMojo extends AbstractWorkspaceMojo {
 
             getLog().info("  → " + name);
             VcsOperations.catchUp(dir, getLog());
+            FeatureFinishSupport.stripBranchVersion(dir, component, getLog());
 
             // Rebase feature onto target, then ff-merge
             VcsOperations.rebase(dir, getLog(), targetBranch);
@@ -181,6 +183,8 @@ public class FeatureFinishRebaseMojo extends AbstractWorkspaceMojo {
             getLog().info("  [dry-run] Would rebase → " + targetBranch);
             return;
         }
+
+        FeatureFinishSupport.stripBranchVersionBare(dir, getLog());
 
         VcsOperations.rebase(dir, getLog(), targetBranch);
         VcsOperations.checkout(dir, getLog(), targetBranch);

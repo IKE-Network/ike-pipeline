@@ -73,6 +73,7 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
         int totalChanges = 0;
         List<String> changedComponents = new ArrayList<>();
         List<AlignChange> reportChanges = new ArrayList<>();
+        List<AlignCheck> alignChecks = new ArrayList<>();
 
         for (Map.Entry<String, Component> entry : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
@@ -115,9 +116,19 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
                 componentChanges += changes;
             }
 
+            // Read POM version for the summary table
+            String pomVersion = "—";
+            try {
+                pomVersion = ReleaseSupport.readPomVersion(
+                        new File(componentDir, "pom.xml"));
+            } catch (MojoExecutionException ignored) { }
+
             if (componentChanges > 0) {
                 totalChanges += componentChanges;
                 changedComponents.add(name);
+                alignChecks.add(new AlignCheck(name, pomVersion, false));
+            } else {
+                alignChecks.add(new AlignCheck(name, pomVersion, true));
             }
         }
 
@@ -202,7 +213,7 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
 
         // --- Structured markdown report ---
         appendReport("ws:align", buildMarkdownReport(
-                totalChanges, changedComponents, reportChanges));
+                totalChanges, changedComponents, reportChanges, alignChecks));
     }
 
     /**
@@ -210,15 +221,13 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
      */
     private String buildMarkdownReport(int totalChanges,
                                         List<String> changedComponents,
-                                        List<AlignChange> changes) {
+                                        List<AlignChange> changes,
+                                        List<AlignCheck> checks) {
         StringBuilder md = new StringBuilder();
 
         if (totalChanges == 0) {
-            md.append("All inter-component dependency and parent versions are aligned.\n");
-            return md.toString();
-        }
-
-        if (dryRun) {
+            md.append("All inter-component dependency and parent versions are aligned.\n\n");
+        } else if (dryRun) {
             md.append("**Dry run** — ").append(totalChanges)
               .append(" version(s) would be updated across ")
               .append(changedComponents.size()).append(" component(s).\n\n");
@@ -228,15 +237,30 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
               .append(changedComponents.size()).append(" component(s).\n\n");
         }
 
-        md.append("| Component | POM | Artifact | From | To |\n");
-        md.append("|-----------|-----|----------|------|----|\n");
-        for (AlignChange c : changes) {
-            md.append("| ").append(c.component)
-              .append(" | ").append(c.pomRelPath)
-              .append(" | `").append(c.artifact).append('`')
-              .append(" | ").append(c.fromVersion)
-              .append(" | ").append(c.toVersion)
-              .append(" |\n");
+        if (!changes.isEmpty()) {
+            md.append("| Component | POM | Artifact | From | To |\n");
+            md.append("|-----------|-----|----------|------|----|\n");
+            for (AlignChange c : changes) {
+                md.append("| ").append(c.component)
+                  .append(" | ").append(c.pomRelPath)
+                  .append(" | `").append(c.artifact).append('`')
+                  .append(" | ").append(c.fromVersion)
+                  .append(" | ").append(c.toVersion)
+                  .append(" |\n");
+            }
+            md.append('\n');
+        }
+
+        // Always show alignment summary table
+        if (!checks.isEmpty()) {
+            md.append("| Component | Version | Status |\n");
+            md.append("|-----------|---------|--------|\n");
+            for (AlignCheck c : checks) {
+                md.append("| ").append(c.component)
+                  .append(" | ").append(c.version)
+                  .append(" | ").append(c.aligned ? "✓ aligned" : "✗ needs update")
+                  .append(" |\n");
+            }
         }
 
         return md.toString();
@@ -246,6 +270,10 @@ public class WsAlignMojo extends AbstractWorkspaceMojo {
     private record AlignChange(String component, String pomRelPath,
                                 String artifact, String fromVersion,
                                 String toVersion) {}
+
+    /** A component alignment check result for the summary table. */
+    private record AlignCheck(String component, String version,
+                               boolean aligned) {}
 
     // ── Artifact index ───────────────────────────────────────────────
 

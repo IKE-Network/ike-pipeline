@@ -29,7 +29,6 @@ public class DashboardWorkspaceMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
-        ReportLog report = startReport();
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -59,6 +58,7 @@ public class DashboardWorkspaceMojo extends AbstractWorkspaceMojo {
                 "COMPONENT", "BRANCH", "SHA", ""));
 
         List<String> dirtyComponents = new ArrayList<>();
+        List<String[]> statusRows = new ArrayList<>();
         int cloned = 0;
         int notCloned = 0;
 
@@ -71,6 +71,7 @@ public class DashboardWorkspaceMojo extends AbstractWorkspaceMojo {
                 notCloned++;
                 getLog().info(String.format("  %-24s %-24s %-8s %s",
                         name, "—", "—", "not cloned"));
+                statusRows.add(new String[]{name, "—", "—", "not cloned"});
                 continue;
             }
 
@@ -96,13 +97,15 @@ public class DashboardWorkspaceMojo extends AbstractWorkspaceMojo {
 
             getLog().info(String.format("  %-24s %-24s %-8s %s",
                     name, branchCol, sha, marker));
+            statusRows.add(new String[]{name, branchCol, sha, marker});
         }
 
         getLog().info("");
         getLog().info("  " + cloned + " cloned, " + notCloned + " not cloned, "
-                + dirtyComponents.size() + " dirty");
+                + dirtyComponents.size() + " modified");
 
         // ── Section 3: Cascade from dirty ───────────────────────────
+        List<String[]> cascadeRows = new ArrayList<>();
         if (!dirtyComponents.isEmpty()) {
             Set<String> allAffected = new LinkedHashSet<>();
             for (String dirty : dirtyComponents) {
@@ -130,13 +133,60 @@ public class DashboardWorkspaceMojo extends AbstractWorkspaceMojo {
                             }
                         }
                     }
-                    getLog().info("    " + name + " ← "
-                            + String.join(", ", triggeredBy));
+                    String triggers = String.join(", ", triggeredBy);
+                    getLog().info("    " + name + " ← " + triggers);
+                    cascadeRows.add(new String[]{name, triggers});
                 }
             }
         }
 
         getLog().info("");
-        finishReport("ws:dashboard", report);
+
+        // Structured markdown report
+        appendReport("ws:dashboard", buildMarkdownReport(
+                errors, statusRows, cascadeRows,
+                cloned, notCloned, dirtyComponents.size()));
+    }
+
+    private String buildMarkdownReport(List<String> manifestErrors,
+                                        List<String[]> statusRows,
+                                        List<String[]> cascadeRows,
+                                        int cloned, int notCloned, int dirty) {
+        var sb = new StringBuilder();
+
+        // Manifest health
+        if (manifestErrors.isEmpty()) {
+            sb.append("Manifest: consistent.\n\n");
+        } else {
+            sb.append("Manifest: ").append(manifestErrors.size())
+              .append(" error(s).\n\n");
+        }
+
+        // Status table
+        sb.append(cloned).append(" cloned, ").append(notCloned)
+          .append(" not cloned, ").append(dirty).append(" modified.\n\n");
+        sb.append("| Component | Branch | SHA | Status |\n");
+        sb.append("|-----------|--------|-----|--------|\n");
+        for (String[] row : statusRows) {
+            sb.append("| ").append(row[0])
+              .append(" | ").append(row[1])
+              .append(" | ").append(row[2])
+              .append(" | ").append(row[3])
+              .append(" |\n");
+        }
+
+        // Cascade table
+        if (!cascadeRows.isEmpty()) {
+            sb.append("\n**Cascade — components needing rebuild:**\n\n");
+            sb.append("| Component | Triggered By |\n");
+            sb.append("|-----------|-------------|\n");
+            for (String[] row : cascadeRows) {
+                sb.append("| ").append(row[0])
+                  .append(" | ").append(row[1])
+                  .append(" |\n");
+            }
+        }
+
+        return sb.toString();
     }
 }

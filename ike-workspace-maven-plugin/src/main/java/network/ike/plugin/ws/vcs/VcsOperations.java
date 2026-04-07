@@ -399,7 +399,13 @@ public class VcsOperations {
             checkout(dir, log, state.branch());
         }
 
-        resetSoft(dir, log, "origin/" + state.branch());
+        Optional<String> remoteRef = remoteSha(dir, "origin", state.branch());
+        if (remoteRef.isPresent()) {
+            resetSoft(dir, log, "origin/" + state.branch());
+        } else {
+            log.warn("  No remote tracking ref for " + state.branch()
+                    + " on origin — using local state");
+        }
 
         String newSha = headSha(dir);
         if (!newSha.equals(state.sha())) {

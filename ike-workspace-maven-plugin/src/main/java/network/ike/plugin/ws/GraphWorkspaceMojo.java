@@ -43,6 +43,9 @@ public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
         } else {
             printText(graph);
         }
+
+        // Append Mermaid graph to ws-report.md
+        appendReport("ws:graph", buildMermaidGraph(graph));
     }
 
     private void printText(WorkspaceGraph graph) {
@@ -133,6 +136,46 @@ public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
         for (String line : dot.split("\n")) {
             getLog().info(line);
         }
+    }
+
+    /**
+     * Build a Mermaid graph block for the markdown report.
+     */
+    private String buildMermaidGraph(WorkspaceGraph graph) {
+        List<String> sorted = graph.topologicalSort();
+        var sb = new StringBuilder();
+        sb.append("```mermaid\ngraph TD\n");
+
+        for (String name : sorted) {
+            Component comp = graph.manifest().components().get(name);
+            String id = mermaidId(name);
+            sb.append("    ").append(id)
+              .append("[\"").append(name).append("\"]\n");
+        }
+
+        sb.append('\n');
+
+        for (String name : sorted) {
+            Component comp = graph.manifest().components().get(name);
+            String sourceId = mermaidId(name);
+            for (Dependency dep : comp.dependsOn()) {
+                String targetId = mermaidId(dep.component());
+                if ("content".equals(dep.relationship())) {
+                    sb.append("    ").append(sourceId)
+                      .append(" -.-> ").append(targetId).append('\n');
+                } else {
+                    sb.append("    ").append(sourceId)
+                      .append(" --> ").append(targetId).append('\n');
+                }
+            }
+        }
+
+        sb.append("```\n");
+        return sb.toString();
+    }
+
+    private static String mermaidId(String name) {
+        return name.replace("-", "_");
     }
 
     // ── DOT generation (pure, static, testable) ─────────────────────

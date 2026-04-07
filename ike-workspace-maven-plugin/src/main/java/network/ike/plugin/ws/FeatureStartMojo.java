@@ -82,9 +82,16 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
     /** Creates this goal instance. */
     public FeatureStartMojo() {}
 
+    /** A row in the feature-start summary table. */
+    private record BranchRow(String component, String branch,
+                              String snapshotVersion, String status) {}
+
+    /** A row in the BOM cascade gaps table. */
+    private record CascadeGapRow(String consumer, String dependency,
+                                  String issue) {}
+
     @Override
     public void execute() throws MojoExecutionException {
-        ReportLog report = startReport();
         feature = requireParam(feature, "feature", "Feature name (branch will be feature/<name>)");
         String branchName = "feature/" + feature;
 
@@ -122,13 +129,15 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         // Analyze BOM cascade issues and prompt for confirmation
+        List<CascadeGapRow> cascadeGaps = new ArrayList<>();
         if (!skipVersion) {
-            checkBomCascadeAndConfirm(graph, root);
+            cascadeGaps = checkBomCascadeAndConfirm(graph, root);
         }
 
         List<String> created = new ArrayList<>();
         List<String> skippedNotCloned = new ArrayList<>();
         List<String> skippedAlreadyOnBranch = new ArrayList<>();
+        List<BranchRow> branchRows = new ArrayList<>();
 
         for (String name : sorted) {
             Component component = graph.manifest().components().get(name);
@@ -138,6 +147,7 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
             if (!gitDir.exists()) {
                 skippedNotCloned.add(name);
                 getLog().info("  \u26A0 " + name + " \u2014 not cloned, skipping");
+                branchRows.add(new BranchRow(name, "—", "—", "not cloned"));
                 continue;
             }
 
@@ -145,6 +155,8 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
             if (currentBranch.equals(branchName)) {
                 skippedAlreadyOnBranch.add(name);
                 getLog().info("  \u2713 " + name + " \u2014 already on " + branchName);
+                branchRows.add(new BranchRow(
+                        name, branchName, "—", "already on branch"));
                 continue;
             }
 
@@ -168,16 +180,18 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
                 }
             }
 
+            String newVersion = (!skipVersion && effectiveVersion != null)
+                    ? VersionSupport.branchQualifiedVersion(effectiveVersion, branchName)
+                    : "—";
+
             if (dryRun) {
-                String versionInfo = "";
-                if (!skipVersion && effectiveVersion != null) {
-                    String newVersion = VersionSupport.branchQualifiedVersion(
-                            effectiveVersion, branchName);
-                    versionInfo = " \u2192 " + newVersion;
-                }
+                String versionInfo = "—".equals(newVersion)
+                        ? "" : " \u2192 " + newVersion;
                 getLog().info("  [dry-run] " + name + " \u2014 would create "
                         + branchName + versionInfo);
                 created.add(name);
+                branchRows.add(new BranchRow(
+                        name, branchName, newVersion, "would create"));
                 continue;
             }
 
@@ -192,8 +206,6 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
 
             if (!skipVersion && effectiveVersion != null
                     && !effectiveVersion.isEmpty()) {
-                String newVersion = VersionSupport.branchQualifiedVersion(
-                        effectiveVersion, branchName);
                 getLog().info("    version: " + effectiveVersion
                         + " \u2192 " + newVersion);
 
@@ -207,24 +219,22 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
             }
 
             created.add(name);
+            branchRows.add(new BranchRow(
+                    name, branchName, newVersion, "✓ created"));
         }
 
         // Cascade version-property updates to downstream components
         if (!created.isEmpty() && !dryRun && !skipVersion) {
             cascadeVersionProperties(graph, root, sorted, branchName);
+            cascadeBomProperties(graph, root, sorted, branchName);
             cascadeBomImports(graph, root, sorted, branchName);
         }
 
-        // Auto-push each branched component with IKE_VCS_CONTEXT
+        // Write VCS state for each branched component (no push — branches stay local)
         if (!created.isEmpty() && !dryRun) {
             for (String name : created) {
                 File dir = new File(root, name);
-                try {
-                    VcsOperations.pushWithUpstream(dir, getLog(), "origin", branchName);
-                    VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_START);
-                } catch (MojoExecutionException e) {
-                    getLog().warn("  Could not push " + name + ": " + e.getMessage());
-                }
+                VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_START);
             }
         }
 
@@ -238,7 +248,41 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
                 + " | Already on branch: " + skippedAlreadyOnBranch.size()
                 + " | Not cloned: " + skippedNotCloned.size());
         getLog().info("");
-        finishReport("ws:feature-start", report);
+
+        // Structured markdown report
+        appendReport("ws:feature-start", buildMarkdownReport(
+                branchName, branchRows, cascadeGaps));
+    }
+
+    private String buildMarkdownReport(String branchName,
+                                        List<BranchRow> branchRows,
+                                        List<CascadeGapRow> cascadeGaps) {
+        var sb = new StringBuilder();
+        sb.append("**Branch:** `").append(branchName).append("`\n\n");
+
+        sb.append("| Component | Branch | Snapshot Version | Status |\n");
+        sb.append("|-----------|--------|-----------------|--------|\n");
+        for (BranchRow row : branchRows) {
+            sb.append("| ").append(row.component)
+              .append(" | ").append(row.branch)
+              .append(" | ").append(row.snapshotVersion)
+              .append(" | ").append(row.status)
+              .append(" |\n");
+        }
+
+        if (!cascadeGaps.isEmpty()) {
+            sb.append("\n**BOM cascade gaps:**\n\n");
+            sb.append("| Consumer | Dependency | Issue |\n");
+            sb.append("|----------|------------|-------|\n");
+            for (CascadeGapRow row : cascadeGaps) {
+                sb.append("| ").append(row.consumer)
+                  .append(" | ").append(row.dependency)
+                  .append(" | ").append(row.issue)
+                  .append(" |\n");
+            }
+        }
+
+        return sb.toString();
     }
 
     /**
@@ -322,12 +366,7 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
                     "feature: set version " + newVersion + " for " + branchName);
         }
 
-        // Auto-push and write state file
-        try {
-            VcsOperations.pushWithUpstream(dir, getLog(), "origin", branchName);
-        } catch (MojoExecutionException e) {
-            getLog().warn("  Could not push: " + e.getMessage());
-        }
+        // Write VCS state (no push — branch stays local)
         VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_START);
 
         getLog().info("");
@@ -362,17 +401,8 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
             VcsOperations.commit(wsRoot, getLog(),
                     "workspace: update branches for " + branchName);
 
-            // Push ws feature branch (non-fatal if no remote)
-            if (ReleaseSupport.hasRemote(wsRoot, "origin")) {
-                VcsOperations.pushWithUpstream(wsRoot, getLog(), "origin", branchName);
-                VcsOperations.writeVcsState(wsRoot, VcsState.ACTION_FEATURE_START);
-            } else {
-                getLog().info("");
-                getLog().info("  Workspace has no remote origin — changes remain local.");
-                getLog().info("  To share this workspace with a team:");
-                getLog().info("    gh repo create <org>/" + wsRoot.getName()
-                        + " --private --source=. --push");
-            }
+            // Write VCS state (no push — branch stays local)
+            VcsOperations.writeVcsState(wsRoot, VcsState.ACTION_FEATURE_START);
 
         } catch (IOException e) {
             getLog().warn("  Could not update workspace.yaml: " + e.getMessage());
@@ -498,6 +528,84 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
     }
 
     /**
+     * Cascade branch-qualified versions into POM properties that match
+     * workspace component names.
+     *
+     * <p>Scans each component's root POM {@code <properties>} block for
+     * entries like {@code <tinkar-core.version>1.0.0-SNAPSHOT</tinkar-core.version>}
+     * where "tinkar-core" matches a workspace component name. Updates
+     * these properties to the branch-qualified version.
+     *
+     * <p>This complements {@link #cascadeVersionProperties} which only
+     * handles properties explicitly declared via {@code version-property}
+     * in workspace.yaml dependency entries.
+     */
+    private void cascadeBomProperties(WorkspaceGraph graph, File root,
+                                       List<String> sorted, String branchName)
+            throws MojoExecutionException {
+
+        // Build map of component name → new branch-qualified version
+        java.util.Map<String, String> newVersions = new java.util.LinkedHashMap<>();
+        for (String name : sorted) {
+            Component comp = graph.manifest().components().get(name);
+            String effectiveVersion = comp.version();
+            if (effectiveVersion == null || effectiveVersion.isEmpty()) {
+                File pom = new File(new File(root, name), "pom.xml");
+                if (pom.exists()) {
+                    try {
+                        effectiveVersion = ReleaseSupport.readPomVersion(pom);
+                    } catch (MojoExecutionException e) { /* skip */ }
+                }
+            }
+            if (effectiveVersion != null && !effectiveVersion.isEmpty()) {
+                newVersions.put(name, VersionSupport.branchQualifiedVersion(
+                        effectiveVersion, branchName));
+            }
+        }
+
+        // For each component, check its POM properties for references
+        // to other workspace components (e.g., <tinkar-core.version>)
+        for (String name : sorted) {
+            File dir = new File(root, name);
+            File pomFile = new File(dir, "pom.xml");
+            if (!pomFile.exists()) continue;
+
+            try {
+                String content = java.nio.file.Files.readString(
+                        pomFile.toPath(), java.nio.charset.StandardCharsets.UTF_8);
+                String original = content;
+
+                for (java.util.Map.Entry<String, String> vEntry : newVersions.entrySet()) {
+                    String compName = vEntry.getKey();
+                    if (compName.equals(name)) continue;
+
+                    String propertyName = compName + ".version";
+                    String before = content;
+                    content = ReleaseSupport.updateVersionProperty(
+                            content, propertyName, vEntry.getValue());
+
+                    if (!content.equals(before)) {
+                        getLog().info("    " + name + ": <" + propertyName
+                                + "> → " + vEntry.getValue());
+                    }
+                }
+
+                if (!content.equals(original)) {
+                    java.nio.file.Files.writeString(
+                            pomFile.toPath(), content,
+                            java.nio.charset.StandardCharsets.UTF_8);
+                    ReleaseSupport.exec(dir, getLog(), "git", "add", "pom.xml");
+                    ReleaseSupport.exec(dir, getLog(), "git", "commit", "-m",
+                            "feature: update BOM properties for " + branchName);
+                }
+            } catch (java.io.IOException e) {
+                getLog().warn("    Could not cascade BOM properties in "
+                        + name + ": " + e.getMessage());
+            }
+        }
+    }
+
+    /**
      * Check if a component is a shallow clone and fetch full history
      * if needed. Feature branches require full history for merge-base
      * operations during feature-finish.
@@ -522,8 +630,10 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
      * Analyze BOM cascade issues before starting the feature.
      * If issues are found, prompt the developer for confirmation.
      * In headless mode (no console), log warnings and proceed.
+     *
+     * @return cascade gap rows for the markdown report
      */
-    private void checkBomCascadeAndConfirm(WorkspaceGraph graph, File root)
+    private List<CascadeGapRow> checkBomCascadeAndConfirm(WorkspaceGraph graph, File root)
             throws MojoExecutionException {
         // Build published artifact sets
         java.util.Map<String, java.util.Set<PublishedArtifactSet.Artifact>>
@@ -546,12 +656,25 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
                     root.toPath(), graph.manifest(), workspaceArtifacts);
         } catch (java.io.IOException e) {
             getLog().warn("  BOM cascade check failed: " + e.getMessage());
-            return;
+            return List.of();
         }
 
-        if (issues.isEmpty()) return;
+        if (issues.isEmpty()) return List.of();
 
-        // Report issues
+        // Collect structured gap rows for the report
+        List<CascadeGapRow> gaps = new ArrayList<>();
+        for (var issue : issues) {
+            String issueDesc = "no version-property or BOM import";
+            if (!issue.externalBomPins().isEmpty()) {
+                var bom = issue.externalBomPins().getFirst();
+                issueDesc = "pinned by " + bom.groupId()
+                        + ":" + bom.artifactId() + ":" + bom.version();
+            }
+            gaps.add(new CascadeGapRow(
+                    issue.componentName(), issue.dependsOn(), issueDesc));
+        }
+
+        // Report issues to console
         getLog().warn("");
         getLog().warn("  ╔══════════════════════════════════════════════════════════╗");
         getLog().warn("  ║  BOM Cascade Gaps Detected                              ║");
@@ -589,6 +712,8 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
             getLog().warn("  Non-interactive mode — proceeding with warnings.");
             getLog().warn("  Use ws:verify to review BOM cascade gaps.");
         }
+
+        return gaps;
     }
 
     /**

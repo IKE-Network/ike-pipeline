@@ -126,6 +126,7 @@ public class FeatureFinishMergeMojo extends AbstractWorkspaceMojo {
 
         int merged = 0;
         for (String name : eligible) {
+            Component component = graph.manifest().components().get(name);
             File dir = new File(root, name);
 
             if (dryRun) {
@@ -136,6 +137,8 @@ public class FeatureFinishMergeMojo extends AbstractWorkspaceMojo {
 
             getLog().info("  → " + name);
             VcsOperations.catchUp(dir, getLog());
+            FeatureFinishSupport.stripBranchVersion(dir, component, getLog());
+
             VcsOperations.checkout(dir, getLog(), targetBranch);
             VcsOperations.mergeNoFf(dir, getLog(), branchName, message);
             VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
@@ -149,6 +152,7 @@ public class FeatureFinishMergeMojo extends AbstractWorkspaceMojo {
         }
 
         if (merged > 0 && !dryRun) {
+            FeatureFinishSupport.cleanFeatureSites(root, eligible, branchName, getLog());
             FeatureFinishSupport.updateWorkspaceYaml(
                     manifestPath, eligible, targetBranch, feature, getLog());
             FeatureFinishSupport.mergeWorkspaceRepo(
@@ -183,6 +187,8 @@ public class FeatureFinishMergeMojo extends AbstractWorkspaceMojo {
             getLog().info("  [dry-run] Would merge → " + targetBranch);
             return;
         }
+
+        FeatureFinishSupport.stripBranchVersionBare(dir, getLog());
 
         VcsOperations.checkout(dir, getLog(), targetBranch);
         VcsOperations.mergeNoFf(dir, getLog(), branchName, message);

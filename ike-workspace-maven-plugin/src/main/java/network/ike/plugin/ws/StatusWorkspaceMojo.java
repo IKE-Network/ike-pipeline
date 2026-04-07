@@ -60,7 +60,7 @@ public class StatusWorkspaceMojo extends AbstractWorkspaceMojo {
                 "─────────", "──────", "───", "──────"));
 
         int cloned = 0;
-        int dirty = 0;
+        int modified = 0;
         List<String[]> rows = new ArrayList<>();
 
         for (String name : targets) {
@@ -83,9 +83,9 @@ public class StatusWorkspaceMojo extends AbstractWorkspaceMojo {
             if (status.isEmpty()) {
                 statusLabel = "clean";
             } else {
-                dirty++;
+                modified++;
                 long changed = status.lines().count();
-                statusLabel = "dirty (" + changed + " file"
+                statusLabel = "modified (" + changed + " file"
                         + (changed == 1 ? "" : "s") + ")";
             }
 
@@ -103,20 +103,20 @@ public class StatusWorkspaceMojo extends AbstractWorkspaceMojo {
 
         getLog().info("");
         getLog().info("  " + cloned + "/" + targets.size() + " cloned, "
-                + dirty + " dirty");
+                + modified + " modified");
         getLog().info("");
         finishReport("ws:status", report);
 
         // Structured markdown report
         appendReport("ws:status", buildMarkdownReport(
-                rows, cloned, targets.size(), dirty));
+                rows, cloned, targets.size(), modified));
     }
 
     private String buildMarkdownReport(List<String[]> rows,
-                                        int cloned, int total, int dirty) {
+                                        int cloned, int total, int modified) {
         var sb = new StringBuilder();
         sb.append(cloned).append('/').append(total)
-                .append(" cloned, ").append(dirty).append(" dirty.\n\n");
+                .append(" cloned, ").append(modified).append(" modified.\n\n");
         sb.append("| Component | Branch | SHA | Status |\n");
         sb.append("|-----------|--------|-----|--------|\n");
         for (String[] row : rows) {
