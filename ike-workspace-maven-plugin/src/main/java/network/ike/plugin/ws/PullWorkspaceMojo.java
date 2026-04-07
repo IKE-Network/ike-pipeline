@@ -65,7 +65,7 @@ public class PullWorkspaceMojo extends AbstractWorkspaceMojo {
             File gitDir = new File(dir, ".git");
 
             if (!gitDir.exists()) {
-                getLog().info("  ⚠ " + name + " — not cloned, skipping");
+                getLog().info(Ansi.yellow("  ⚠ ") + name + " — not cloned, skipping");
                 skipped++;
                 continue;
             }
@@ -76,7 +76,7 @@ public class PullWorkspaceMojo extends AbstractWorkspaceMojo {
                         "git", "pull", "--rebase");
                 pulled++;
             } catch (MojoExecutionException e) {
-                getLog().warn("  ✗ " + name + " — pull failed: " + e.getMessage());
+                getLog().warn(Ansi.red("  ✗ ") + name + " — pull failed: " + e.getMessage());
                 failed++;
             }
         }
@@ -89,5 +89,9 @@ public class PullWorkspaceMojo extends AbstractWorkspaceMojo {
         if (failed > 0) {
             getLog().warn("  Some pulls failed — check output above for details.");
         }
+
+        // Structured markdown report
+        appendReport("ws:pull", pulled + " pulled, " + skipped
+                + " skipped, " + failed + " failed.\n");
     }
 }

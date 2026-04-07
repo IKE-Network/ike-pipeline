@@ -40,11 +40,11 @@ public class DashboardWorkspaceMojo extends AbstractWorkspaceMojo {
         List<String> errors = graph.verify();
         getLog().info("");
         if (errors.isEmpty()) {
-            getLog().info("  ✓ Manifest: " + graph.manifest().components().size()
+            getLog().info(Ansi.green("  ✓ ") + "Manifest: " + graph.manifest().components().size()
                     + " components, " + graph.manifest().groups().size()
                     + " groups — consistent");
         } else {
-            getLog().warn("  ✗ Manifest: " + errors.size() + " error(s)");
+            getLog().warn(Ansi.red("  ✗ ") + "Manifest: " + errors.size() + " error(s)");
             for (String error : errors) {
                 getLog().warn("    " + error);
             }

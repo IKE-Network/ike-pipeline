@@ -55,7 +55,6 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
-        ReportLog report = startReport();
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
         Defaults defaults = graph.manifest().defaults();
@@ -155,9 +154,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
         // Generate goal cheatsheet at workspace root
         writeGoalCheatsheet(root.toPath());
 
-        finishReport("ws:init", report);
-
-        // Structured markdown report
+        // Structured markdown report (replaces console-log capture)
         appendReport("ws:init", buildInitMarkdownReport(
                 rows, cloned, syncthing, skipped, wrappers));
     }

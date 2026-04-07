@@ -70,7 +70,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
-        ReportLog report = startReport();
+        // Console output goes to Maven log; markdown report via appendReport
         getLog().info("");
         getLog().info(header("Verification"));
         getLog().info("══════════════════════════════════════════════════════════════");
@@ -89,8 +89,6 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
         verifyEnvironment();
         getLog().info("");
-        finishReport("ws:verify", report);
-
         // Structured markdown summary
         if (!verifyRows.isEmpty()) {
             appendReport("ws:verify", buildVerifyMarkdownReport());

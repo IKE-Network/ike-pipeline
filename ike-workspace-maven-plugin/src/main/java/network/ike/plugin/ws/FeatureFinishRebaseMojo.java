@@ -110,7 +110,7 @@ public class FeatureFinishRebaseMojo extends AbstractWorkspaceMojo {
                 throw new MojoExecutionException(
                         name + " has uncommitted changes. Commit or stash first.");
             } else {
-                getLog().info("  · " + name + " — " + reason + ", skipping");
+                getLog().info(Ansi.yellow("  · ") + name + " — " + reason + ", skipping");
             }
         }
 
@@ -130,7 +130,7 @@ public class FeatureFinishRebaseMojo extends AbstractWorkspaceMojo {
                 continue;
             }
 
-            getLog().info("  → " + name);
+            getLog().info(Ansi.cyan("  → ") + name);
             VcsOperations.catchUp(dir, getLog());
             FeatureFinishSupport.stripBranchVersion(dir, component, getLog());
 
@@ -159,6 +159,31 @@ public class FeatureFinishRebaseMojo extends AbstractWorkspaceMojo {
         getLog().info("  Rebased: " + rebased + " components");
         getLog().info("  Branch " + (keepBranch ? "kept" : "deleted") + ": " + branchName);
         getLog().info("");
+
+        // Structured markdown report
+        appendReport("ws:feature-finish-rebase", buildRebaseReport(
+                eligible, branchName, targetBranch, rebased, dryRun, keepBranch));
+    }
+
+    private String buildRebaseReport(List<String> components, String branch,
+                                      String target, int rebased,
+                                      boolean isDryRun, boolean kept) {
+        var sb = new StringBuilder();
+        sb.append("**Branch:** `").append(branch).append("` → `")
+          .append(target).append("`\n");
+        sb.append("**Strategy:** rebase + fast-forward\n\n");
+
+        sb.append("| Component | Status |\n");
+        sb.append("|-----------|--------|\n");
+        for (String name : components) {
+            sb.append("| ").append(name).append(" | ")
+              .append(isDryRun ? "would rebase" : "rebased").append(" |\n");
+        }
+
+        sb.append("\n**").append(rebased).append(" component(s)** ")
+          .append(isDryRun ? "would be rebased" : "rebased")
+          .append(". Branch ").append(kept ? "kept" : "deleted").append(".\n");
+        return sb.toString();
     }
 
     private void executeBareMode(String branchName) throws MojoExecutionException {

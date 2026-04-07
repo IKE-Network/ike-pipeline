@@ -171,9 +171,11 @@ class FeatureFinishSupport {
             File wsGit = new File(wsRoot, ".git");
             if (wsGit.exists()) {
                 ReleaseSupport.exec(wsRoot, log, "git", "add", "workspace.yaml");
-                ReleaseSupport.exec(wsRoot, log, "git", "commit", "-m",
-                        "workspace: restore branches to " + targetBranch
-                                + " after feature/" + feature);
+                if (!VcsOperations.isClean(wsRoot)) {
+                    ReleaseSupport.exec(wsRoot, log, "git", "commit", "-m",
+                            "workspace: restore branches to " + targetBranch
+                                    + " after feature/" + feature);
+                }
             }
         } catch (IOException | MojoExecutionException e) {
             log.warn("  Could not update workspace.yaml: " + e.getMessage());

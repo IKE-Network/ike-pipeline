@@ -115,7 +115,7 @@ public class FeatureFinishMergeMojo extends AbstractWorkspaceMojo {
                 throw new MojoExecutionException(
                         name + " has uncommitted changes. Commit or stash first.");
             } else {
-                getLog().info("  · " + name + " — " + reason + ", skipping");
+                getLog().info(Ansi.yellow("  · ") + name + " — " + reason + ", skipping");
             }
         }
 
@@ -135,7 +135,7 @@ public class FeatureFinishMergeMojo extends AbstractWorkspaceMojo {
                 continue;
             }
 
-            getLog().info("  → " + name);
+            getLog().info(Ansi.cyan("  → ") + name);
             VcsOperations.catchUp(dir, getLog());
             FeatureFinishSupport.stripBranchVersion(dir, component, getLog());
 
@@ -163,6 +163,31 @@ public class FeatureFinishMergeMojo extends AbstractWorkspaceMojo {
         getLog().info("  Merged: " + merged + " components (no-ff)");
         getLog().info("  Branch " + (keepBranch ? "kept" : "deleted") + ": " + branchName);
         getLog().info("");
+
+        // Structured markdown report
+        appendReport("ws:feature-finish-merge", buildMergeReport(
+                eligible, branchName, targetBranch, merged, dryRun, keepBranch));
+    }
+
+    private String buildMergeReport(List<String> components, String branch,
+                                     String target, int merged,
+                                     boolean isDryRun, boolean kept) {
+        var sb = new StringBuilder();
+        sb.append("**Branch:** `").append(branch).append("` → `")
+          .append(target).append("`\n");
+        sb.append("**Strategy:** no-fast-forward merge\n\n");
+
+        sb.append("| Component | Status |\n");
+        sb.append("|-----------|--------|\n");
+        for (String name : components) {
+            sb.append("| ").append(name).append(" | ")
+              .append(isDryRun ? "would merge" : "merged").append(" |\n");
+        }
+
+        sb.append("\n**").append(merged).append(" component(s)** ")
+          .append(isDryRun ? "would be merged" : "merged")
+          .append(". Branch ").append(kept ? "kept" : "deleted").append(".\n");
+        return sb.toString();
     }
 
     private void executeBareMode(String branchName) throws MojoExecutionException {

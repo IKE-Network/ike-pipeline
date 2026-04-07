@@ -250,7 +250,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
             getLog().info("  (already registered — re-validating dependencies)");
         }
         if (cloned) {
-            getLog().info("  ✓ Cloned " + component);
+            getLog().info(Ansi.green("  ✓ ") + "Cloned " + component);
         }
         getLog().info("");
 
@@ -258,16 +258,16 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
             if (alreadyRegistered) {
                 // Update existing entry's depends-on in workspace.yaml
                 updateComponentDependencies(manifestPath, component, derivedDeps);
-                getLog().info("  ✓ workspace.yaml updated (dependencies re-derived)");
+                getLog().info(Ansi.green("  ✓ ") + "workspace.yaml updated (dependencies re-derived)");
             } else {
                 // Append new component to workspace.yaml
                 appendComponentToManifest(manifestPath, derivedDeps, detectedParent);
-                getLog().info("  ✓ workspace.yaml updated");
+                getLog().info(Ansi.green("  ✓ ") + "workspace.yaml updated");
             }
 
             // Profile is idempotent — addProfileToPom already checks for existence
             addProfileToPom(pomPath);
-            getLog().info("  ✓ pom.xml updated (profile: with-" + component + ")");
+            getLog().info(Ansi.green("  ✓ ") + "pom.xml updated (profile: with-" + component + ")");
 
         } catch (IOException e) {
             throw new MojoExecutionException(
@@ -281,7 +281,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
                 int backfilled = backfillDependencies(
                         wsDir, manifestPath, component, componentDir);
                 if (backfilled > 0) {
-                    getLog().info("  ✓ Updated " + backfilled
+                    getLog().info(Ansi.green("  ✓ ") + "Updated " + backfilled
                             + " existing component(s) with dependency on "
                             + component);
                 }
@@ -295,7 +295,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
         try {
             ReleaseSupport.exec(wsDir.toFile(), getLog(), "git", "add", "workspace.yaml", "pom.xml");
             ReleaseSupport.exec(wsDir.toFile(), getLog(), "git", "commit", "-m", "workspace: add " + component);
-            getLog().info("  \u2713 committed workspace.yaml + pom.xml");
+            getLog().info(Ansi.green("  ✓ ") + "committed workspace.yaml + pom.xml");
         } catch (Exception e) {
             getLog().warn("  Auto-commit failed (non-fatal): " + e.getMessage());
         }
@@ -311,7 +311,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
                         updatedManifest);
                 if (aligned > 0) {
                     getLog().info("");
-                    getLog().info("  ⚠ " + aligned + " file(s) modified for version "
+                    getLog().info(Ansi.yellow("  ⚠ ") + aligned + " file(s) modified for version "
                             + "alignment (uncommitted)");
                     getLog().info("    Review with 'git diff' in " + component);
                 }
@@ -616,7 +616,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
 
             yaml = addDependencyEdge(yaml, existingName, newComponent, null);
             updated++;
-            getLog().info("  → " + existingName + " depends on " + newComponent);
+            getLog().info(Ansi.cyan("  → ") + existingName + " depends on " + newComponent);
         }
 
         if (updated > 0) {

@@ -226,7 +226,7 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
      * Append a section to the cumulative workspace report.
      *
      * <p>Thread-safe — uses file-level locking. The report accumulates
-     * in {@code target/ws-report.md} and is removed by {@code mvn clean}.
+     * in {@code session.md} at the workspace root (gitignored, survives mvn clean).
      *
      * @param goalName the goal that produced this output (e.g., "ws:add")
      * @param content  markdown content to append

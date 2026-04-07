@@ -113,7 +113,6 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
-        ReportLog report = startReport();
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -192,7 +191,7 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
                         "git", "rev-parse", tagName);
                 String shortTagSha = tagSha.length() >= 8
                         ? tagSha.substring(0, 8) : tagSha;
-                getLog().info("  ✓ " + compName + " ["
+                getLog().info(Ansi.green("  ✓ ") + compName + " ["
                         + shortTagSha + "] → " + tagName);
                 snapshots.add(new ComponentSnapshot(
                         compName, tagSha, shortTagSha, branch,
@@ -257,8 +256,6 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
         getLog().info("  Components: " + snapshots.size()
                 + " | Absent: " + absentComponents.size());
         getLog().info("");
-        finishReport("ws:checkpoint", report);
-
         // Structured markdown report
         appendReport("ws:checkpoint",
                 buildCheckpointMarkdownReport(snapshots, absentComponents));

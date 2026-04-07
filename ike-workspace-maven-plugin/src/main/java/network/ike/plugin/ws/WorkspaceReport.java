@@ -16,8 +16,8 @@ import java.time.format.DateTimeFormatter;
  * Thread-safe cumulative report writer for workspace goals.
  *
  * <p>Each goal appends a timestamped markdown section to
- * {@code target/ws-report.md} in the workspace root. The file
- * accumulates across a session and is removed by {@code mvn clean}.
+ * {@code session.md} in the workspace root. The file
+ * accumulates across a session and should be gitignored.
  *
  * <p>File locking via {@link FileChannel#lock()} ensures safe
  * concurrent writes, honoring the {@code @ThreadSafe} contract
@@ -25,7 +25,7 @@ import java.time.format.DateTimeFormatter;
  */
 public final class WorkspaceReport {
 
-    private static final String REPORT_FILENAME = "ws-report.md";
+    private static final String REPORT_FILENAME = "session.md";
     private static final DateTimeFormatter TIMESTAMP_FMT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -44,11 +44,9 @@ public final class WorkspaceReport {
      */
     public static void append(Path workspaceRoot, String goalName,
                                String content, Log log) {
-        Path targetDir = workspaceRoot.resolve("target");
-        Path reportFile = targetDir.resolve(REPORT_FILENAME);
+        Path reportFile = workspaceRoot.resolve(REPORT_FILENAME);
 
         try {
-            Files.createDirectories(targetDir);
 
             // File-level lock for thread safety
             try (RandomAccessFile raf = new RandomAccessFile(
@@ -87,7 +85,7 @@ public final class WorkspaceReport {
      * @return path to the report file (may not exist yet)
      */
     public static Path reportPath(Path workspaceRoot) {
-        return workspaceRoot.resolve("target").resolve(REPORT_FILENAME);
+        return workspaceRoot.resolve(REPORT_FILENAME);
     }
 
     /**

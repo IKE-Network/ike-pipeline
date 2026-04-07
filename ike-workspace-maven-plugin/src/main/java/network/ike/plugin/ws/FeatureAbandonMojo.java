@@ -144,14 +144,14 @@ public class FeatureAbandonMojo extends AbstractWorkspaceMojo {
             File gitDir = new File(dir, ".git");
 
             if (!gitDir.exists()) {
-                getLog().info("  · " + name + " — not cloned, skipping");
+                getLog().info(Ansi.yellow("  · ") + name + " — not cloned, skipping");
                 skipped.add(name);
                 continue;
             }
 
             String currentBranch = gitBranch(dir);
             if (!currentBranch.equals(branchName)) {
-                getLog().info("  · " + name + " — not on " + branchName
+                getLog().info(Ansi.yellow("  · ") + name + " — not on " + branchName
                         + " (on " + currentBranch + "), skipping");
                 skipped.add(name);
                 continue;
@@ -172,7 +172,7 @@ public class FeatureAbandonMojo extends AbstractWorkspaceMojo {
                             targetBranch + ".." + branchName);
                     if (!unmerged.isBlank()) {
                         long commitCount = unmerged.lines().count();
-                        getLog().warn("  ⚠ " + name + " has " + commitCount
+                        getLog().warn(Ansi.yellow("  ⚠ ") + name + " has " + commitCount
                                 + " unmerged commit(s) on " + branchName + ":");
                         unmerged.lines().limit(5).forEach(
                                 line -> getLog().warn("      " + line));
@@ -228,6 +228,22 @@ public class FeatureAbandonMojo extends AbstractWorkspaceMojo {
             getLog().info("  Remote branches kept. Use -DdeleteRemote=true to delete them.");
         }
         getLog().info("");
+
+        // Structured markdown report
+        var sb = new StringBuilder();
+        sb.append("**Branch:** `").append(branchName).append("`\n\n");
+        sb.append("| Component | Status |\n");
+        sb.append("|-----------|--------|\n");
+        for (String name : abandoned) {
+            sb.append("| ").append(name).append(" | ")
+              .append(dryRun ? "would abandon" : "abandoned").append(" |\n");
+        }
+        for (String name : skipped) {
+            sb.append("| ").append(name).append(" | skipped |\n");
+        }
+        sb.append("\n**").append(abandoned.size()).append("** abandoned, **")
+          .append(skipped.size()).append("** skipped.\n");
+        appendReport("ws:feature-abandon", sb.toString());
     }
 
     /**

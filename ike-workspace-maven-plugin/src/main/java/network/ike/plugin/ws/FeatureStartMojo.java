@@ -398,8 +398,12 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
                     + components.size() + " components");
 
             ReleaseSupport.exec(wsRoot, getLog(), "git", "add", "workspace.yaml");
-            VcsOperations.commit(wsRoot, getLog(),
-                    "workspace: update branches for " + branchName);
+            if (!VcsOperations.isClean(wsRoot)) {
+                VcsOperations.commit(wsRoot, getLog(),
+                        "workspace: update branches for " + branchName);
+            } else {
+                getLog().info("  workspace.yaml already up to date — nothing to commit");
+            }
 
             // Write VCS state (no push — branch stays local)
             VcsOperations.writeVcsState(wsRoot, VcsState.ACTION_FEATURE_START);

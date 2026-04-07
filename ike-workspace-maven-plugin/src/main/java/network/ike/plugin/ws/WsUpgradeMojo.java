@@ -117,7 +117,7 @@ public class WsUpgradeMojo extends AbstractWorkspaceMojo {
 
             if (!needsVcsState && !needsGitInit) {
                 skipped.add("global-gitignore");
-                getLog().info("  ✓ Global gitignore: already current");
+                getLog().info(Ansi.green("  ✓ ") + "Global gitignore: already current");
                 return;
             }
 
@@ -132,11 +132,11 @@ public class WsUpgradeMojo extends AbstractWorkspaceMojo {
             }
 
             applied.add("global-gitignore");
-            getLog().info("  ↑ Global gitignore: added "
+            getLog().info(Ansi.cyan("  ↑ ") + "Global gitignore: added "
                     + (needsVcsState ? ".ike/vcs-state " : "")
                     + (needsGitInit ? "_git-init* " : ""));
         } catch (IOException e) {
-            getLog().warn("  ⚠ Could not update global gitignore: " + e.getMessage());
+            getLog().warn(Ansi.yellow("  ⚠ ") + "Could not update global gitignore: " + e.getMessage());
         }
     }
 
@@ -166,7 +166,7 @@ public class WsUpgradeMojo extends AbstractWorkspaceMojo {
 
             if (!changed) {
                 skipped.add("workspace-gitignore");
-                getLog().info("  ✓ Workspace .gitignore: already current");
+                getLog().info(Ansi.green("  ✓ ") + "Workspace .gitignore: already current");
                 return;
             }
 
@@ -176,9 +176,9 @@ public class WsUpgradeMojo extends AbstractWorkspaceMojo {
                         StandardCharsets.UTF_8);
             }
             applied.add("workspace-gitignore");
-            getLog().info("  ↑ Workspace .gitignore: added missing whitelist entries");
+            getLog().info(Ansi.cyan("  ↑ ") + "Workspace .gitignore: added missing whitelist entries");
         } catch (IOException e) {
-            getLog().warn("  ⚠ Could not update .gitignore: " + e.getMessage());
+            getLog().warn(Ansi.yellow("  ⚠ ") + "Could not update .gitignore: " + e.getMessage());
         }
     }
 
@@ -221,7 +221,7 @@ public class WsUpgradeMojo extends AbstractWorkspaceMojo {
 
             if (!changed) {
                 skipped.add("stignore-shared");
-                getLog().info("  ✓ stignore-shared: (?d) flags already present");
+                getLog().info(Ansi.green("  ✓ ") + "stignore-shared: (?d) flags already present");
                 return;
             }
 
@@ -229,9 +229,9 @@ public class WsUpgradeMojo extends AbstractWorkspaceMojo {
                 Files.writeString(stignore, updated, StandardCharsets.UTF_8);
             }
             applied.add("stignore-shared");
-            getLog().info("  ↑ stignore-shared: added (?d) prefix to directory patterns");
+            getLog().info(Ansi.cyan("  ↑ ") + "stignore-shared: added (?d) prefix to directory patterns");
         } catch (IOException e) {
-            getLog().warn("  ⚠ Could not update stignore-shared: " + e.getMessage());
+            getLog().warn(Ansi.yellow("  ⚠ ") + "Could not update stignore-shared: " + e.getMessage());
         }
     }
 
@@ -247,7 +247,7 @@ public class WsUpgradeMojo extends AbstractWorkspaceMojo {
             String content = Files.readString(pom, StandardCharsets.UTF_8);
             if (content.contains("root=\"true\"")) {
                 skipped.add("pom-root");
-                getLog().info("  ✓ POM root attribute: already present");
+                getLog().info(Ansi.green("  ✓ ") + "POM root attribute: already present");
                 return;
             }
 
@@ -260,9 +260,9 @@ public class WsUpgradeMojo extends AbstractWorkspaceMojo {
                 Files.writeString(pom, updated, StandardCharsets.UTF_8);
             }
             applied.add("pom-root");
-            getLog().info("  ↑ POM: added root=\"true\"");
+            getLog().info(Ansi.cyan("  ↑ ") + "POM: added root=\"true\"");
         } catch (IOException e) {
-            getLog().warn("  ⚠ Could not update pom.xml: " + e.getMessage());
+            getLog().warn(Ansi.yellow("  ⚠ ") + "Could not update pom.xml: " + e.getMessage());
         }
     }
 
@@ -272,7 +272,7 @@ public class WsUpgradeMojo extends AbstractWorkspaceMojo {
         try {
             if (Files.exists(config)) {
                 skipped.add("maven-config");
-                getLog().info("  ✓ .mvn/maven.config: already present");
+                getLog().info(Ansi.green("  ✓ ") + ".mvn/maven.config: already present");
                 return;
             }
 
@@ -281,9 +281,9 @@ public class WsUpgradeMojo extends AbstractWorkspaceMojo {
                 Files.writeString(config, "-T 1C\n", StandardCharsets.UTF_8);
             }
             applied.add("maven-config");
-            getLog().info("  ↑ .mvn/maven.config: created with -T 1C");
+            getLog().info(Ansi.cyan("  ↑ ") + ".mvn/maven.config: created with -T 1C");
         } catch (IOException e) {
-            getLog().warn("  ⚠ Could not create .mvn/maven.config: " + e.getMessage());
+            getLog().warn(Ansi.yellow("  ⚠ ") + "Could not create .mvn/maven.config: " + e.getMessage());
         }
     }
 
@@ -309,7 +309,7 @@ public class WsUpgradeMojo extends AbstractWorkspaceMojo {
                 content = content.replace(
                         "${ike-maven-plugin.version}", "${ike-tooling.version}");
                 changed = true;
-                getLog().info("  ↑ Property renamed: ike-maven-plugin.version → ike-tooling.version");
+                getLog().info(Ansi.cyan("  ↑ ") + "Property renamed: ike-maven-plugin.version → ike-tooling.version");
             }
 
             // Find current ike-tooling.version property and bump
@@ -329,10 +329,10 @@ public class WsUpgradeMojo extends AbstractWorkspaceMojo {
             if (!currentVersion.equals(pluginVersion)) {
                 content = m.replaceFirst("$1" + pluginVersion + "$3");
                 changed = true;
-                getLog().info("  ↑ Plugin version: " + currentVersion + " → " + pluginVersion);
+                getLog().info(Ansi.cyan("  ↑ ") + "Plugin version: " + currentVersion + " → " + pluginVersion);
             } else if (!changed) {
                 skipped.add("plugin-version");
-                getLog().info("  ✓ Plugin version: already " + pluginVersion);
+                getLog().info(Ansi.green("  ✓ ") + "Plugin version: already " + pluginVersion);
                 return;
             }
 
@@ -341,7 +341,7 @@ public class WsUpgradeMojo extends AbstractWorkspaceMojo {
             }
             applied.add("plugin-version");
         } catch (IOException e) {
-            getLog().warn("  ⚠ Could not update plugin version: " + e.getMessage());
+            getLog().warn(Ansi.yellow("  ⚠ ") + "Could not update plugin version: " + e.getMessage());
         }
     }
 }

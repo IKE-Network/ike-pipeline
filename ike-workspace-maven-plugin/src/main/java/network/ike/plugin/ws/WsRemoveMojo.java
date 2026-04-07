@@ -122,15 +122,15 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
         try {
             // Remove from workspace.yaml
             removeComponentFromManifest(manifestPath);
-            getLog().info("  ✓ workspace.yaml updated — component entry removed");
+            getLog().info(Ansi.green("  ✓ ") + "workspace.yaml updated — component entry removed");
 
             // Remove from groups in workspace.yaml
             removeFromGroups(manifestPath);
-            getLog().info("  ✓ workspace.yaml updated — group references removed");
+            getLog().info(Ansi.green("  ✓ ") + "workspace.yaml updated — group references removed");
 
             // Remove profile from pom.xml
             removeProfileFromPom(pomPath);
-            getLog().info("  ✓ pom.xml updated — profile with-" + component + " removed");
+            getLog().info(Ansi.green("  ✓ ") + "pom.xml updated — profile with-" + component + " removed");
 
         } catch (IOException e) {
             throw new MojoExecutionException(
@@ -142,7 +142,7 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
             Path componentDir = wsDir.resolve(component);
             if (Files.isDirectory(componentDir)) {
                 deleteDirectory(componentDir);
-                getLog().info("  ✓ Deleted directory: " + componentDir);
+                getLog().info(Ansi.green("  ✓ ") + "Deleted directory: " + componentDir);
             } else {
                 getLog().info("  - Directory not present: " + componentDir);
             }

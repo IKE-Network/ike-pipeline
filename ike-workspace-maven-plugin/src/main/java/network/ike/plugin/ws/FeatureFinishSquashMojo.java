@@ -123,7 +123,7 @@ public class FeatureFinishSquashMojo extends AbstractWorkspaceMojo {
                         name + " has uncommitted changes on " + branchName
                                 + ". Commit or stash before finishing.");
             } else {
-                getLog().info("  · " + name + " — " + reason + ", skipping");
+                getLog().info(Ansi.yellow("  · ") + name + " — " + reason + ", skipping");
             }
         }
 
@@ -144,7 +144,7 @@ public class FeatureFinishSquashMojo extends AbstractWorkspaceMojo {
                 continue;
             }
 
-            getLog().info("  → " + name);
+            getLog().info(Ansi.cyan("  → ") + name);
             VcsOperations.catchUp(dir, getLog());
             FeatureFinishSupport.stripBranchVersion(dir, component, getLog());
 
@@ -176,6 +176,31 @@ public class FeatureFinishSquashMojo extends AbstractWorkspaceMojo {
             getLog().info("  Branch deleted: " + branchName);
         }
         getLog().info("");
+
+        // Structured markdown report
+        appendReport("ws:feature-finish-squash", buildSquashReport(
+                eligible, branchName, targetBranch, merged, dryRun, keepBranch));
+    }
+
+    private String buildSquashReport(List<String> components, String branch,
+                                      String target, int merged,
+                                      boolean isDryRun, boolean kept) {
+        var sb = new StringBuilder();
+        sb.append("**Branch:** `").append(branch).append("` → `")
+          .append(target).append("`\n");
+        sb.append("**Strategy:** squash-merge\n\n");
+
+        sb.append("| Component | Status |\n");
+        sb.append("|-----------|--------|\n");
+        for (String name : components) {
+            sb.append("| ").append(name).append(" | ")
+              .append(isDryRun ? "would squash" : "squashed").append(" |\n");
+        }
+
+        sb.append("\n**").append(merged).append(" component(s)** ")
+          .append(isDryRun ? "would be squash-merged" : "squash-merged")
+          .append(". Branch ").append(kept ? "kept" : "deleted").append(".\n");
+        return sb.toString();
     }
 
     private void executeBareMode(String branchName) throws MojoExecutionException {

@@ -136,12 +136,12 @@ public class WsCreateMojo extends AbstractMojo {
             writeFile(wsDir.resolve("README.adoc"), generateReadme());
             installMavenWrapper(wsDir);
 
-            getLog().info("  ✓ pom.xml");
-            getLog().info("  ✓ workspace.yaml");
-            getLog().info("  ✓ .gitignore");
-            getLog().info("  ✓ .mvn/maven.config");
-            getLog().info("  ✓ README.adoc");
-            getLog().info("  ✓ mvnw (Maven " + mavenVersion + ")");
+            getLog().info(Ansi.green("  ✓ ") + "pom.xml");
+            getLog().info(Ansi.green("  ✓ ") + "workspace.yaml");
+            getLog().info(Ansi.green("  ✓ ") + ".gitignore");
+            getLog().info(Ansi.green("  ✓ ") + ".mvn/maven.config");
+            getLog().info(Ansi.green("  ✓ ") + "README.adoc");
+            getLog().info(Ansi.green("  ✓ ") + "mvnw (Maven " + mavenVersion + ")");
 
         } catch (IOException e) {
             throw new MojoExecutionException(
@@ -159,12 +159,13 @@ public class WsCreateMojo extends AbstractMojo {
         }
 
         getLog().info("");
-        getLog().info("  Workspace created: " + wsDir);
+        getLog().info(Ansi.green("  ✓ ") + "Workspace created: " + wsDir);
         getLog().info("");
-        getLog().info("  Next steps:");
-        getLog().info("    cd " + name);
+        getLog().info(Ansi.yellow("  ⚠  You must change into the workspace directory before running ws: goals:"));
+        getLog().info("");
+        getLog().info("    " + Ansi.cyan("cd " + name));
         getLog().info("    mvn ws:add -Drepo=<git-url>    # add components");
-        getLog().info("    mvn ws:init                        # clone components");
+        getLog().info("    mvn ws:init                     # clone components");
         getLog().info("");
         WorkspaceReport.append(wsDir, "ws:create", "Created workspace: " + name + "\nDirectory: " + wsDir, null);
     }
@@ -325,13 +326,13 @@ public class WsCreateMojo extends AbstractMojo {
     private void initGit(Path wsDir) throws MojoExecutionException {
         ReleaseSupport.exec(wsDir.toFile(), getLog(),
                 "git", "init");
-        getLog().info("  ✓ git init");
+        getLog().info(Ansi.green("  ✓ ") + "git init");
 
         if (org != null && !org.isBlank()) {
             String remoteUrl = "https://github.com/" + org + "/" + name + ".git";
             ReleaseSupport.exec(wsDir.toFile(), getLog(),
                     "git", "remote", "add", "origin", remoteUrl);
-            getLog().info("  ✓ remote: " + remoteUrl);
+            getLog().info(Ansi.green("  ✓ ") + "remote: " + remoteUrl);
         }
 
         // Auto-commit scaffold so ws:add and ws:feature-start
@@ -341,7 +342,7 @@ public class WsCreateMojo extends AbstractMojo {
                     "git", "add", ".");
             ReleaseSupport.exec(wsDir.toFile(), getLog(),
                     "git", "commit", "-m", "workspace: initial scaffold");
-            getLog().info("  ✓ initial commit");
+            getLog().info(Ansi.green("  ✓ ") + "initial commit");
         } catch (MojoExecutionException e) {
             getLog().warn("  Auto-commit failed (set git user.email/user.name): "
                     + e.getMessage());
