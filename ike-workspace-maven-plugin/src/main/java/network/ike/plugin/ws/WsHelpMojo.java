@@ -26,9 +26,10 @@ public class WsHelpMojo extends AbstractMojo {
         getLog().info("  ws:add                                          Add a component to the workspace manifest");
         getLog().info("  ws:init                                         Clone/initialize repos from workspace.yaml");
         getLog().info("  ws:verify                                       Check manifest + VCS bridge state");
+        getLog().info("  ws:verify-convergence                           Full verify + transitive dependency convergence");
         getLog().info("  ws:fix                                          Auto-fix issues found by verify");
-        getLog().info("  ws:status                                       Git status across all repos");
-        getLog().info("  ws:dashboard                                    Composite overview (verify + status + cascade)");
+        getLog().info("  ws:overview                                     Workspace overview (manifest, graph, status, cascade)");
+        getLog().info("  ws:report                                       Generate workspace report");
         getLog().info("  ws:graph                                        Print dependency graph");
         getLog().info("  ws:stignore                                     Generate .stignore for Syncthing");
         getLog().info("  ws:sync                                         Sync workspace.yaml <-> actual branches");
@@ -50,11 +51,12 @@ public class WsHelpMojo extends AbstractMojo {
         getLog().info("  ws:checkpoint-dry-run                           Preview checkpoint without writing files or tags");
         getLog().info("  ws:post-release                                 Post-release cleanup (bump to next SNAPSHOT)");
         getLog().info("  ws:align                                        Align dependency versions across workspace");
+        getLog().info("  ws:release-notes                                Generate release notes from commits");
         getLog().info("");
         getLog().info("  ── VCS Bridge ───────────────────────────────────────────");
         getLog().info("  ws:vcs-sync                                     Reconcile git state after machine switch");
-        getLog().info("  ws:commit                                       Catch-up + commit");
-        getLog().info("  ws:push                                         Catch-up + push");
+        getLog().info("  ws:commit                                       Catch-up + commit across repos");
+        getLog().info("  ws:push                                         Catch-up + push across repos");
         getLog().info("  ws:check-branch                                 Warn on direct branching (git hook)");
         getLog().info("");
         getLog().info("  ── Cascade ──────────────────────────────────────────────");
@@ -92,6 +94,7 @@ public class WsHelpMojo extends AbstractMojo {
         getLog().info("  -DaddAll=true                Stage all changes before commit");
         getLog().info("  -Dpush=true                  Push after commit");
         getLog().info("  -Dremote=<name>              Remote name (default: origin)");
+        getLog().info("  -Dgroup=<name>               Restrict to group (commit, push)");
         getLog().info("");
         getLog().info("Options for ws:sync:");
         getLog().info("  -Dfrom=repos                 Update workspace.yaml from repos (default)");

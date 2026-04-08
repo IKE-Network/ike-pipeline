@@ -2,20 +2,29 @@ package network.ike.plugin.ws;
 
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
+import network.ike.workspace.WorkspaceGraph;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.File;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Commit with a VCS bridge catch-up preamble.
  *
- * <p>Syncs local git state first (if behind), then commits.
- * Sets {@code IKE_VCS_CONTEXT} so the pre-commit hook allows the
- * operation through without a state file check.
+ * <p>When run from a workspace root (where {@code workspace.yaml} exists),
+ * iterates all component repositories in topological order, staging and
+ * committing changes in each. When run from a single repository, operates
+ * on the current directory only.
  *
- * <p>Usage: {@code mvnw ws:commit -Dmessage="my commit message"}
+ * <p>Usage:
+ * <pre>{@code
+ * mvn ws:commit -Dmessage="my commit message" -DaddAll=true
+ * mvn ws:commit -Dmessage="fix" -DaddAll=true -Dgroup=core
+ * }</pre>
  */
 @Mojo(name = "commit", requiresProject = false, threadSafe = true)
 public class CommitMojo extends AbstractWorkspaceMojo {
@@ -42,10 +51,108 @@ public class CommitMojo extends AbstractWorkspaceMojo {
     @Parameter(property = "push", defaultValue = "false")
     boolean push;
 
+    /**
+     * Restrict to a named group (or single component). Default: all.
+     */
+    @Parameter(property = "group")
+    String group;
+
     @Override
     public void execute() throws MojoExecutionException {
-        File dir = new File(System.getProperty("user.dir"));
+        if (isWorkspaceMode()) {
+            executeWorkspace();
+        } else {
+            executeSingleRepo(new File(System.getProperty("user.dir")));
+        }
+    }
 
+    private void executeWorkspace() throws MojoExecutionException {
+        WorkspaceGraph graph = loadGraph();
+        File root = workspaceRoot();
+
+        Set<String> targets;
+        if (group != null && !group.isEmpty()) {
+            targets = graph.expandGroup(group);
+        } else {
+            targets = graph.manifest().components().keySet();
+        }
+
+        List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
+
+        getLog().info("");
+        getLog().info(header("Commit"));
+        getLog().info("══════════════════════════════════════════════════════════════");
+        getLog().info("");
+
+        int committed = 0;
+        int skipped = 0;
+        int failed = 0;
+
+        for (String name : sorted) {
+            File dir = new File(root, name);
+            File gitDir = new File(dir, ".git");
+
+            if (!gitDir.exists()) {
+                getLog().debug(name + " — not cloned, skipping");
+                skipped++;
+                continue;
+            }
+
+            try {
+                VcsOperations.catchUp(dir, getLog());
+
+                if (addAll) {
+                    VcsOperations.addAll(dir, getLog());
+                }
+
+                if (!VcsOperations.hasStagedChanges(dir) && VcsOperations.isClean(dir)) {
+                    getLog().debug(name + " — clean, skipping");
+                    skipped++;
+                    continue;
+                }
+
+                if (!VcsOperations.hasStagedChanges(dir)) {
+                    getLog().debug(name + " — no staged changes, skipping");
+                    skipped++;
+                    continue;
+                }
+
+                if (message != null && !message.isBlank()) {
+                    VcsOperations.commit(dir, getLog(), message);
+                } else {
+                    VcsOperations.commitStaged(dir, getLog(), null);
+                }
+
+                VcsOperations.writeVcsState(dir, VcsState.ACTION_COMMIT);
+
+                if (push) {
+                    String branch = VcsOperations.currentBranch(dir);
+                    VcsOperations.push(dir, getLog(), "origin", branch);
+                    VcsOperations.writeVcsState(dir, VcsState.ACTION_PUSH);
+                }
+
+                getLog().info(Ansi.green("  ✓ ") + name);
+                committed++;
+            } catch (MojoExecutionException e) {
+                getLog().warn(Ansi.red("  ✗ ") + name + " — " + e.getMessage());
+                failed++;
+            }
+        }
+
+        getLog().info("");
+        getLog().info("  Done: " + committed + " committed, " + skipped
+                + " skipped, " + failed + " failed");
+        getLog().info("");
+
+        if (failed > 0) {
+            getLog().warn("  Some commits failed — check output above for details.");
+        }
+
+        appendReport("ws:commit", committed + " committed, " + skipped
+                + " skipped, " + failed + " failed.\n");
+    }
+
+    private void executeSingleRepo(File dir) throws MojoExecutionException {
         getLog().info("");
         getLog().info("IKE VCS Bridge — Commit");
         getLog().info("══════════════════════════════════════════════════════════════");
@@ -61,7 +168,6 @@ public class CommitMojo extends AbstractWorkspaceMojo {
             getLog().info("  Committing...");
             VcsOperations.commit(dir, getLog(), message);
         } else {
-            // No message — open editor (prepare-commit-msg hook will generate)
             getLog().info("  Committing (editor will open for message)...");
             VcsOperations.commitStaged(dir, getLog(), null);
         }

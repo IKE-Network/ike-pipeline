@@ -190,8 +190,7 @@ public class WsCreateMojo extends AbstractMojo {
         xml.append("  Usage:\n");
         xml.append("    mvn clean install                        # All cloned repos\n");
         xml.append("    mvn ws:init                              # Clone all repos\n");
-        xml.append("    mvn ws:status                            # Git status across repos\n");
-        xml.append("    mvn ws:dashboard                         # Full workspace overview\n");
+        xml.append("    mvn ws:overview                          # Workspace overview\n");
         xml.append("-->\n");
         xml.append("<project xmlns=\"http://maven.apache.org/POM/4.1.0\"\n");
         xml.append("         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n");
@@ -313,8 +312,7 @@ public class WsCreateMojo extends AbstractMojo {
         adoc.append("(under _Plugins > ws_). Double-click any goal to run it.\n\n");
         adoc.append("[source,bash]\n");
         adoc.append("----\n");
-        adoc.append("mvn ws:status           # Git status across components\n");
-        adoc.append("mvn ws:dashboard        # Full workspace health check\n");
+        adoc.append("mvn ws:overview          # Workspace overview\n");
         adoc.append("mvn ws:add -Drepo=      # Add a component repo\n");
         adoc.append("mvn ws:upgrade          # Upgrade workspace conventions\n");
         adoc.append("----\n");

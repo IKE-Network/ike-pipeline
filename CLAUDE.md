@@ -142,11 +142,8 @@ mvn ws:init -Dgroup=core
 # Sync all repos
 mvn ws:pull
 
-# Git status across all repos
-mvn ws:status
-
-# Full dashboard (verify + status + cascade)
-mvn ws:dashboard
+# Workspace overview (manifest, graph, status, cascade)
+mvn ws:overview
 ```
 
 ### Key Gitflow Commands
@@ -156,7 +153,7 @@ mvn ws:dashboard
 mvn ws:feature-start -Dfeature=my-feature
 
 # Finish (merge to main, strip qualifier, tag, push)
-mvn ws:feature-finish -Dfeature=my-feature -Dpush=true
+mvn ws:feature-finish-merge -Dfeature=my-feature -Dpush=true
 
 # Save a multi-repo checkpoint
 mvn ws:checkpoint -Dname=progress
