@@ -66,7 +66,7 @@ public class FeatureFinishRebaseMojo extends AbstractWorkspaceMojo {
     @Override
     public void execute() throws MojoExecutionException {
         feature = requireParam(feature, "feature",
-                "Feature name (expects branch feature/<name>)");
+                "Feature to rebase (without feature/ prefix)");
         String branchName = "feature/" + feature;
 
         if (!isWorkspaceMode()) {

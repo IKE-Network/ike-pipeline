@@ -92,7 +92,7 @@ public class FeatureStartMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
-        feature = requireParam(feature, "feature", "Feature name (branch will be feature/<name>)");
+        feature = requireParam(feature, "feature", "Feature name (without feature/ prefix)");
         String branchName = "feature/" + feature;
 
         if (!isWorkspaceMode()) {

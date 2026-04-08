@@ -75,7 +75,7 @@ public class FeatureFinishSquashMojo extends AbstractWorkspaceMojo {
     @Override
     public void execute() throws MojoExecutionException {
         feature = requireParam(feature, "feature",
-                "Feature name (expects branch feature/<name>)");
+                "Feature to squash-merge (without feature/ prefix)");
         message = requireParam(message, "message", "Squash commit message");
         String branchName = "feature/" + feature;
 

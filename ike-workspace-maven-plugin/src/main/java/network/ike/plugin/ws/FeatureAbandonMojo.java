@@ -2,6 +2,7 @@ package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
 
+import network.ike.workspace.Component;
 import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
@@ -20,14 +21,15 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Abandon a feature branch across all workspace components.
  *
- * <p>Checks out the default branch (or a specified target branch) in
- * each component that is currently on the feature branch, then deletes
- * the feature branch locally. Optionally deletes the remote branches
- * as well.
+ * <p>Auto-detects the current feature branch from workspace components.
+ * Shows a preview of what will be abandoned, then prompts for
+ * confirmation before executing. No separate {@code -apply} variant
+ * is needed — the goal handles preview and confirmation itself.
  *
  * <p>Components are processed in reverse topological order (downstream
  * first) to avoid transient dependency issues.
@@ -36,9 +38,10 @@ import java.util.Set;
  * {@code -Dforce=true} to suppress the warning and force-delete.
  *
  * <pre>{@code
- * mvn ike:feature-abandon -Dfeature=my-experiment
- * mvn ike:feature-abandon -Dfeature=dead-end -DdeleteRemote=true
- * mvn ike:feature-abandon -Dfeature=stale -Dforce=true
+ * mvn ws:feature-abandon                         # auto-detect, confirm
+ * mvn ws:feature-abandon -Dfeature=my-experiment # explicit name
+ * mvn ws:feature-abandon -DdeleteRemote=true     # also delete remote branches
+ * mvn ws:feature-abandon -Dforce=true            # skip unmerged commit warning
  * }</pre>
  *
  * @see FeatureStartMojo for creating feature branches
@@ -46,40 +49,18 @@ import java.util.Set;
 @Mojo(name = "feature-abandon", requiresProject = false, threadSafe = true)
 public class FeatureAbandonMojo extends AbstractWorkspaceMojo {
 
-    /**
-     * Feature name. The branch {@code feature/<name>} will be abandoned.
-     */
     @Parameter(property = "feature")
     String feature;
 
-    /**
-     * Restrict to a named group (or single component). Default: all.
-     */
     @Parameter(property = "group")
     String group;
 
-    /**
-     * Branch to check out after abandoning. Defaults to the workspace
-     * default branch (usually {@code main}).
-     */
     @Parameter(property = "targetBranch")
     String targetBranch;
 
-    /**
-     * Also delete remote feature branches on origin.
-     */
     @Parameter(property = "deleteRemote", defaultValue = "false")
     boolean deleteRemote;
 
-    /**
-     * Show what would happen without making changes.
-     */
-    @Parameter(property = "dryRun", defaultValue = "true")
-    boolean dryRun;
-
-    /**
-     * Force-delete branches even if they have unmerged commits.
-     */
     @Parameter(property = "force", defaultValue = "false")
     boolean force;
 
@@ -88,26 +69,19 @@ public class FeatureAbandonMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
-        feature = requireParam(feature, "feature",
-                "Feature name (branch will be feature/<name>)");
-        String branchName = "feature/" + feature;
-
         if (!isWorkspaceMode()) {
-            executeBareMode(branchName);
+            executeBareMode();
             return;
         }
 
-        executeWorkspaceMode(branchName);
+        executeWorkspaceMode();
     }
 
-    private void executeWorkspaceMode(String branchName)
-            throws MojoExecutionException {
-
+    private void executeWorkspaceMode() throws MojoExecutionException {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
         Path manifestPath = resolveManifest();
 
-        // Resolve target branch from parameter or workspace defaults
         if (targetBranch == null || targetBranch.isBlank()) {
             targetBranch = graph.manifest().defaults().branch();
             if (targetBranch == null) targetBranch = "main";
@@ -120,23 +94,26 @@ public class FeatureAbandonMojo extends AbstractWorkspaceMojo {
             targets = graph.manifest().components().keySet();
         }
 
-        // Reverse topological order — downstream first
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
         List<String> reversed = new ArrayList<>(sorted);
         Collections.reverse(reversed);
 
+        // Auto-detect feature branch if not specified
+        if (feature == null || feature.isBlank()) {
+            feature = detectFeatureBranch(root, reversed);
+        }
+        String branchName = "feature/" + feature;
+
+        // Collect eligible components and show preview
         getLog().info("");
         getLog().info(header("Feature Abandon"));
         getLog().info("══════════════════════════════════════════════════════════════");
         getLog().info("  Feature:  " + feature);
         getLog().info("  Branch:   " + branchName + " → " + targetBranch);
-        getLog().info("  Scope:    " + (group != null ? group : "all")
-                + " (" + reversed.size() + " components)");
         if (deleteRemote) getLog().info("  Remote:   will delete origin/" + branchName);
-        if (dryRun) getLog().info("  Mode:     DRY RUN");
         getLog().info("");
 
-        List<String> abandoned = new ArrayList<>();
+        List<String> eligible = new ArrayList<>();
         List<String> skipped = new ArrayList<>();
 
         for (String name : reversed) {
@@ -144,15 +121,15 @@ public class FeatureAbandonMojo extends AbstractWorkspaceMojo {
             File gitDir = new File(dir, ".git");
 
             if (!gitDir.exists()) {
-                getLog().info(Ansi.yellow("  · ") + name + " — not cloned, skipping");
+                getLog().info(Ansi.yellow("  · ") + name + " — not cloned");
                 skipped.add(name);
                 continue;
             }
 
             String currentBranch = gitBranch(dir);
             if (!currentBranch.equals(branchName)) {
-                getLog().info(Ansi.yellow("  · ") + name + " — not on " + branchName
-                        + " (on " + currentBranch + "), skipping");
+                getLog().info(Ansi.yellow("  · ") + name + " — on "
+                        + currentBranch + ", not on feature");
                 skipped.add(name);
                 continue;
             }
@@ -164,67 +141,82 @@ public class FeatureAbandonMojo extends AbstractWorkspaceMojo {
                         name + " has uncommitted changes. Commit, stash, or discard before abandoning.");
             }
 
-            // Warn about unmerged commits
-            if (!force && !dryRun) {
-                try {
-                    String unmerged = ReleaseSupport.execCapture(dir,
-                            "git", "log", "--oneline",
-                            targetBranch + ".." + branchName);
-                    if (!unmerged.isBlank()) {
-                        long commitCount = unmerged.lines().count();
-                        getLog().warn(Ansi.yellow("  ⚠ ") + name + " has " + commitCount
-                                + " unmerged commit(s) on " + branchName + ":");
-                        unmerged.lines().limit(5).forEach(
-                                line -> getLog().warn("      " + line));
-                        if (commitCount > 5) {
-                            getLog().warn("      ... and " + (commitCount - 5) + " more");
-                        }
-                    }
-                } catch (MojoExecutionException e) {
-                    // Target branch may not exist locally — not fatal
-                    getLog().debug("Could not check unmerged commits: " + e.getMessage());
+            // Check for unmerged commits
+            int unmergedCount = 0;
+            try {
+                String unmerged = ReleaseSupport.execCapture(dir,
+                        "git", "log", "--oneline",
+                        targetBranch + ".." + branchName);
+                if (!unmerged.isBlank()) {
+                    unmergedCount = (int) unmerged.lines().count();
+                }
+            } catch (MojoExecutionException e) {
+                // Target branch may not exist locally
+            }
+
+            if (unmergedCount > 0) {
+                getLog().info(Ansi.yellow("  ⚠ ") + name + " — "
+                        + unmergedCount + " unmerged commit(s)");
+            } else {
+                getLog().info(Ansi.cyan("  → ") + name + " — on " + branchName);
+            }
+            eligible.add(name);
+        }
+
+        if (eligible.isEmpty()) {
+            getLog().info("  No components on " + branchName + " — nothing to abandon.");
+            getLog().info("");
+            return;
+        }
+
+        // Prompt for confirmation
+        getLog().info("");
+        getLog().info("  " + eligible.size() + " component(s) will switch to "
+                + targetBranch + " and delete " + branchName);
+        if (!force) {
+            java.io.Console console = System.console();
+            if (console != null) {
+                String response = console.readLine(
+                        Ansi.YELLOW + "  Abandon feature/%s? (yes/no): " + Ansi.RESET,
+                        feature);
+                if (response == null || !response.trim().toLowerCase().startsWith("y")) {
+                    throw new MojoExecutionException("Abandon cancelled.");
                 }
             }
+        }
 
-            if (dryRun) {
-                getLog().info("  [dry-run] " + name + " — would abandon " + branchName
-                        + " → " + targetBranch);
-                abandoned.add(name);
-                continue;
-            }
+        // Execute
+        for (String name : eligible) {
+            Component component = graph.manifest().components().get(name);
+            File dir = new File(root, name);
 
-            getLog().info("  ✕ " + name + " — abandoning " + branchName);
+            // Strip branch-qualified versions before switching
+            FeatureFinishSupport.stripBranchVersion(dir, component, getLog());
 
-            // Switch to target branch
             VcsOperations.checkout(dir, getLog(), targetBranch);
-
-            // Delete local feature branch
             VcsOperations.deleteBranch(dir, getLog(), branchName);
-            getLog().info("    deleted local branch: " + branchName);
 
-            // Optionally delete remote branch
             if (deleteRemote) {
                 try {
                     VcsOperations.deleteRemoteBranch(dir, getLog(), "origin", branchName);
-                    getLog().info("    deleted remote branch: origin/" + branchName);
                 } catch (MojoExecutionException e) {
                     getLog().warn("    could not delete remote branch: " + e.getMessage());
                 }
             }
 
             VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_FINISH);
-            abandoned.add(name);
+            getLog().info(Ansi.green("  ✓ ") + name + " → " + targetBranch);
         }
 
         // Update workspace.yaml and workspace repo
-        if (!abandoned.isEmpty() && !dryRun) {
-            abandonWorkspaceRepo(manifestPath, abandoned, branchName);
+        if (!eligible.isEmpty()) {
+            abandonWorkspaceRepo(manifestPath, eligible, branchName);
         }
 
         getLog().info("");
-        getLog().info("  Abandoned: " + abandoned.size()
+        getLog().info("  Abandoned: " + eligible.size()
                 + " | Skipped: " + skipped.size());
-        if (!deleteRemote && !abandoned.isEmpty()) {
+        if (!deleteRemote) {
             getLog().info("  Remote branches kept. Use -DdeleteRemote=true to delete them.");
         }
         getLog().info("");
@@ -234,27 +226,102 @@ public class FeatureAbandonMojo extends AbstractWorkspaceMojo {
         sb.append("**Branch:** `").append(branchName).append("`\n\n");
         sb.append("| Component | Status |\n");
         sb.append("|-----------|--------|\n");
-        for (String name : abandoned) {
-            sb.append("| ").append(name).append(" | ")
-              .append(dryRun ? "would abandon" : "abandoned").append(" |\n");
+        for (String name : eligible) {
+            sb.append("| ").append(name).append(" | abandoned |\n");
         }
         for (String name : skipped) {
             sb.append("| ").append(name).append(" | skipped |\n");
         }
-        sb.append("\n**").append(abandoned.size()).append("** abandoned, **")
+        sb.append("\n**").append(eligible.size()).append("** abandoned, **")
           .append(skipped.size()).append("** skipped.\n");
         appendReport("ws:feature-abandon", sb.toString());
     }
 
+    // ── Auto-detect ─────────────────────────────────────────────────
+
     /**
-     * Bare-mode: abandon feature branch in the current repo only.
+     * Scan workspace components for feature branches and return
+     * the feature name. If multiple features are found, prompts
+     * the user to choose.
      */
-    private void executeBareMode(String branchName) throws MojoExecutionException {
+    private String detectFeatureBranch(File root, List<String> components)
+            throws MojoExecutionException {
+        Set<String> features = new TreeSet<>();
+
+        for (String name : components) {
+            File dir = new File(root, name);
+            if (!new File(dir, ".git").exists()) continue;
+
+            String branch = gitBranch(dir);
+            if (branch.startsWith("feature/")) {
+                features.add(branch.substring("feature/".length()));
+            }
+        }
+
+        if (features.isEmpty()) {
+            throw new MojoExecutionException(
+                    "No components are on a feature branch. Nothing to abandon.");
+        }
+
+        if (features.size() == 1) {
+            String detected = features.iterator().next();
+            getLog().info("  Detected feature: " + detected);
+            return detected;
+        }
+
+        // Multiple features — list them and prompt
+        getLog().info("  Multiple feature branches detected:");
+        int i = 1;
+        List<String> featureList = new ArrayList<>(features);
+        for (String f : featureList) {
+            getLog().info("    " + i + ". " + f);
+            i++;
+        }
+
+        java.io.Console console = System.console();
+        if (console != null) {
+            String response = console.readLine(
+                    Ansi.YELLOW + "  Feature to abandon (name or number): " + Ansi.RESET);
+            if (response != null && !response.isBlank()) {
+                String trimmed = response.trim();
+                // Try as number first
+                try {
+                    int idx = Integer.parseInt(trimmed) - 1;
+                    if (idx >= 0 && idx < featureList.size()) {
+                        return featureList.get(idx);
+                    }
+                } catch (NumberFormatException _) {
+                    // Not a number — treat as name
+                }
+                return trimmed;
+            }
+        }
+
+        throw new MojoExecutionException(
+                "Multiple features found: " + features
+                        + ". Specify with -Dfeature=<name>.");
+    }
+
+    // ── Bare mode ───────────────────────────────────────────────────
+
+    private void executeBareMode() throws MojoExecutionException {
         File dir = new File(System.getProperty("user.dir"));
 
         if (targetBranch == null || targetBranch.isBlank()) {
             targetBranch = "main";
         }
+
+        String currentBranch = gitBranch(dir);
+        if (feature == null || feature.isBlank()) {
+            if (currentBranch.startsWith("feature/")) {
+                feature = currentBranch.substring("feature/".length());
+            } else {
+                throw new MojoExecutionException(
+                        "Not on a feature branch (on " + currentBranch
+                                + "). Specify with -Dfeature=<name>.");
+            }
+        }
+        String branchName = "feature/" + feature;
 
         getLog().info("");
         getLog().info("IKE Feature Abandon (bare repo)");
@@ -263,7 +330,6 @@ public class FeatureAbandonMojo extends AbstractWorkspaceMojo {
         getLog().info("  Branch:  " + branchName + " → " + targetBranch);
         getLog().info("");
 
-        String currentBranch = gitBranch(dir);
         if (!currentBranch.equals(branchName)) {
             throw new MojoExecutionException(
                     "Not on " + branchName + " (currently on " + currentBranch + ")");
@@ -273,87 +339,80 @@ public class FeatureAbandonMojo extends AbstractWorkspaceMojo {
                     "Uncommitted changes. Commit, stash, or discard first.");
         }
 
-        if (dryRun) {
-            getLog().info("  [dry-run] Would abandon " + branchName + " → " + targetBranch);
-            return;
-        }
+        FeatureFinishSupport.stripBranchVersionBare(dir, getLog());
 
         VcsOperations.checkout(dir, getLog(), targetBranch);
         VcsOperations.deleteBranch(dir, getLog(), branchName);
-        getLog().info("  Deleted local branch: " + branchName);
+        getLog().info(Ansi.green("  ✓ ") + "Switched to " + targetBranch
+                + ", deleted " + branchName);
 
         if (deleteRemote) {
             try {
                 VcsOperations.deleteRemoteBranch(dir, getLog(), "origin", branchName);
-                getLog().info("  Deleted remote branch: origin/" + branchName);
+                getLog().info(Ansi.green("  ✓ ") + "Deleted remote branch");
             } catch (MojoExecutionException e) {
                 getLog().warn("  Could not delete remote branch: " + e.getMessage());
             }
         }
 
         VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_FINISH);
-        getLog().info("  Done.");
         getLog().info("");
     }
 
-    /**
-     * Revert workspace.yaml branches back to targetBranch and clean up
-     * the workspace repo's feature branch.
-     */
+    // ── Workspace repo cleanup ──────────────────────────────────────
+
     private void abandonWorkspaceRepo(Path manifestPath,
                                        List<String> components,
                                        String branchName)
             throws MojoExecutionException {
         try {
-            // Update workspace.yaml branch fields back to target
             Map<String, String> updates = new LinkedHashMap<>();
             for (String name : components) {
                 updates.put(name, targetBranch);
             }
             ManifestWriter.updateBranches(manifestPath, updates);
-            getLog().info("  Updated workspace.yaml branches → " + targetBranch);
 
             File wsRoot = manifestPath.getParent().toFile();
             if (!new File(wsRoot, ".git").exists()) return;
 
-            // If workspace repo is on the feature branch, switch back
             String wsBranch = gitBranch(wsRoot);
             if (wsBranch.equals(branchName)) {
-                // Commit yaml changes on feature branch first, then switch
                 ReleaseSupport.exec(wsRoot, getLog(), "git", "add", "workspace.yaml");
-                VcsOperations.commit(wsRoot, getLog(),
-                        "workspace: revert branches for abandon " + branchName);
+                if (VcsOperations.hasStagedChanges(wsRoot)) {
+                    VcsOperations.commit(wsRoot, getLog(),
+                            "workspace: revert branches for abandon " + branchName);
+                }
 
                 VcsOperations.checkout(wsRoot, getLog(), targetBranch);
 
-                // Cherry-pick the workspace.yaml update to target branch
                 try {
                     ReleaseSupport.exec(wsRoot, getLog(),
                             "git", "cherry-pick", branchName);
                 } catch (MojoExecutionException e) {
-                    // If cherry-pick fails, just update directly
                     ManifestWriter.updateBranches(manifestPath, updates);
                     ReleaseSupport.exec(wsRoot, getLog(), "git", "add", "workspace.yaml");
-                    VcsOperations.commit(wsRoot, getLog(),
-                            "workspace: revert branches after abandon " + branchName);
+                    if (VcsOperations.hasStagedChanges(wsRoot)) {
+                        VcsOperations.commit(wsRoot, getLog(),
+                                "workspace: revert branches after abandon " + branchName);
+                    }
                 }
 
-                // Delete workspace feature branch
                 VcsOperations.deleteBranch(wsRoot, getLog(), branchName);
-                getLog().info("  Deleted workspace feature branch: " + branchName);
 
                 if (deleteRemote) {
                     try {
                         VcsOperations.deleteRemoteBranch(wsRoot, getLog(), "origin", branchName);
                     } catch (MojoExecutionException e) {
-                        getLog().warn("  Could not delete workspace remote branch: " + e.getMessage());
+                        getLog().warn("  Could not delete workspace remote branch: "
+                                + e.getMessage());
                     }
                 }
             } else {
-                // Already on target — just commit the yaml update
                 ReleaseSupport.exec(wsRoot, getLog(), "git", "add", "workspace.yaml");
-                VcsOperations.commit(wsRoot, getLog(),
-                        "workspace: revert branches after abandon " + branchName);
+                if (VcsOperations.hasStagedChanges(wsRoot)) {
+                    VcsOperations.commit(wsRoot, getLog(),
+                            "workspace: revert branches after abandon " + branchName);
+                }
             }
 
             VcsOperations.pushIfRemoteExists(wsRoot, getLog(), "origin", targetBranch);

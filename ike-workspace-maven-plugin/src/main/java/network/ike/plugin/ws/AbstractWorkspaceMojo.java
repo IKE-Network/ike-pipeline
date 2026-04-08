@@ -169,7 +169,7 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
         // Try System.console() first (real terminal)
         java.io.Console console = System.console();
         if (console != null) {
-            String input = console.readLine("%s: ", promptLabel);
+            String input = console.readLine(Ansi.YELLOW + "%s: " + Ansi.RESET, promptLabel);
             if (input != null && !input.isBlank()) {
                 return input.trim();
             }

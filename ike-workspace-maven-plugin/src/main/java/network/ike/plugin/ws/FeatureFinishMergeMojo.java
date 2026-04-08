@@ -67,7 +67,7 @@ public class FeatureFinishMergeMojo extends AbstractWorkspaceMojo {
     @Override
     public void execute() throws MojoExecutionException {
         feature = requireParam(feature, "feature",
-                "Feature name (expects branch feature/<name>)");
+                "Feature to merge (without feature/ prefix)");
         String branchName = "feature/" + feature;
 
         if (message == null || message.isBlank()) {
