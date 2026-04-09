@@ -84,7 +84,7 @@ public class WsHelpMojo extends AbstractMojo {
         getLog().info("  -Dcomponent=<name>           Release one specific component");
         getLog().info("  -Dgroup=<name>               Restrict to components in group");
         getLog().info("  -DdeploySite=true            Deploy site for each component");
-        getLog().info("  -DskipVerify=true            Skip tests during build");
+        getLog().info("  -Dverify=true                Run tests during checkpoint (default: skip)");
         getLog().info("  -DdryRun=true                Show what would be released");
         getLog().info("  -Dpush=true                  Push releases to origin (default: true)");
         getLog().info("  -DskipCheckpoint=true        Skip pre-release checkpoint");

@@ -75,9 +75,9 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
     @Parameter(property = "deploySite", defaultValue = "false")
     boolean deploySite;
 
-    /** Skip tests during the build ({@code -DskipTests}). */
-    @Parameter(property = "skipVerify", defaultValue = "false")
-    boolean skipVerify;
+    /** Run tests during the build. Default is false — checkpoints skip tests. */
+    @Parameter(property = "verify", defaultValue = "false")
+    boolean verify;
 
     /**
      * Show what the checkpoint would do without running builds, writing
@@ -177,7 +177,7 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
                 getLog().info("    [DRY RUN] " + snapshot
                         + " → " + checkpointVersion);
                 CheckpointSupport.dryRun(dir, checkpointVersion,
-                        deploySite, skipVerify, getLog());
+                        deploySite, !verify, getLog());
                 snapshots.add(new ComponentSnapshot(
                         compName, sha, shortSha, branch,
                         checkpointVersion, false, component.type(), composite));
@@ -327,7 +327,7 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
     protected void checkpointComponent(File dir, String checkpointLabel)
             throws MojoExecutionException {
         CheckpointSupport.checkpoint(dir, checkpointLabel,
-                deploySite, skipVerify, getLog());
+                deploySite, !verify, getLog());
     }
 
     // ── YAML generation (pure, static, testable) ──────────────────────
