@@ -86,7 +86,7 @@
         <dependency>
             <groupId>network.ike.pipeline</groupId>
             <artifactId>ike-doc-resources</artifactId>
-            <version>${project.version}</version>
+            <version>79</version>
             <scope>provided</scope>
         </dependency>
 
@@ -95,7 +95,7 @@
         <dependency>
             <groupId>network.ike.pipeline</groupId>
             <artifactId>docbook-xsl</artifactId>
-            <version>${project.version}</version>
+            <version>79</version>
             <scope>provided</scope>
         </dependency>
 
@@ -103,7 +103,7 @@
         <dependency>
             <groupId>network.ike.pipeline</groupId>
             <artifactId>minimal-fonts</artifactId>
-            <version>${project.version}</version>
+            <version>79</version>
         </dependency>
     </dependencies>
 
