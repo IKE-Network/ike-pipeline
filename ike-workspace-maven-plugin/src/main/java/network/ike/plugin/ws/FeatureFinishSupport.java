@@ -187,7 +187,9 @@ class FeatureFinishSupport {
     }
 
     /**
-     * Merge the ws repo back to target branch.
+     * Merge the workspace aggregator repo from the feature branch to the
+     * target branch. Mirrors the per-component merge: checkout target,
+     * no-ff merge, push.
      */
     static void mergeWorkspaceRepo(Path manifestPath, String branchName,
                                      String targetBranch, boolean keepBranch,
@@ -204,7 +206,11 @@ class FeatureFinishSupport {
         }
 
         if (wsBranch != null && wsBranch.equals(branchName)) {
+            log.info("  Merging workspace repo: " + branchName + " → " + targetBranch);
             VcsOperations.checkout(wsRoot, log, targetBranch);
+            VcsOperations.mergeNoFf(wsRoot, log, branchName,
+                    "Merge " + branchName + " into " + targetBranch);
+            VcsOperations.pushIfRemoteExists(wsRoot, log, "origin", targetBranch);
         }
 
         if (!keepBranch) {

@@ -4,6 +4,7 @@ import network.ike.plugin.ReleaseNotesSupport;
 import network.ike.plugin.ReleaseSupport;
 
 import network.ike.workspace.Component;
+import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
@@ -187,6 +188,18 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
             return;
         }
 
+        // ── Write component SHAs into workspace.yaml ────────────────
+        try {
+            java.util.Map<String, String> shaUpdates = new java.util.LinkedHashMap<>();
+            for (ComponentSnapshot snap : snapshots) {
+                shaUpdates.put(snap.name(), snap.sha());
+            }
+            ManifestWriter.updateShas(resolveManifest(), shaUpdates);
+            getLog().info("  Updated workspace.yaml with component SHAs");
+        } catch (IOException e) {
+            getLog().warn("  Could not update workspace.yaml SHAs: " + e.getMessage());
+        }
+
         // ── Write checkpoint file ──────────────────────────────────────
         Path checkpointsDir = root.toPath().resolve("checkpoints");
         try {
@@ -207,7 +220,8 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
         File wsGitDir = new File(root, ".git");
         if (wsGitDir.exists()) {
             ReleaseSupport.exec(root, getLog(),
-                    "git", "add", "checkpoints/" + checkpointFileName(name));
+                    "git", "add", "workspace.yaml",
+                    "checkpoints/" + checkpointFileName(name));
             ReleaseSupport.exec(root, getLog(),
                     "git", "commit", "-m",
                     "checkpoint: " + name);

@@ -100,6 +100,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 ensureJvmConfig(dir);
                 ensureClaudeNotes(dir.toPath(), name);
                 writeComponentClaudeMd(dir.toPath(), component);
+                checkoutSha(dir, component);
                 skipped++;
                 rows.add(new String[]{name, "present",
                         component.repo() != null ? component.repo() : "—", "✓"});
@@ -127,6 +128,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 ensureJvmConfig(dir);
                 ensureClaudeNotes(dir.toPath(), name);
                 writeComponentClaudeMd(dir.toPath(), component);
+                checkoutSha(dir, component);
                 syncthing++;
                 rows.add(new String[]{name, "syncthing-init", repo, "✓"});
             } else {
@@ -141,6 +143,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 ensureJvmConfig(componentDir);
                 ensureClaudeNotes(componentDir.toPath(), name);
                 writeComponentClaudeMd(componentDir.toPath(), component);
+                checkoutSha(componentDir, component);
                 cloned++;
                 rows.add(new String[]{name, "cloned", repo, "✓"});
             }
@@ -460,6 +463,26 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
      * Only applies to Maven projects (must have a {@code pom.xml}).
      * Does not overwrite an existing file.
      */
+    private void checkoutSha(File dir, Component component) {
+        if (component.sha() == null || component.sha().isBlank()) {
+            return;
+        }
+        try {
+            String currentSha = ReleaseSupport.execCapture(dir,
+                    "git", "rev-parse", "HEAD");
+            if (currentSha.startsWith(component.sha())
+                    || component.sha().startsWith(currentSha)) {
+                return; // already at the right commit
+            }
+            getLog().info("    Checking out SHA: " + component.sha().substring(0, 8));
+            ReleaseSupport.exec(dir, getLog(),
+                    "git", "checkout", component.sha());
+        } catch (MojoExecutionException e) {
+            getLog().warn("    Could not checkout SHA " + component.sha()
+                    + ": " + e.getMessage());
+        }
+    }
+
     private void ensureJvmConfig(File componentDir) {
         File pomFile = new File(componentDir, "pom.xml");
         if (!pomFile.exists()) {
