@@ -173,15 +173,16 @@ public class WsCreateMojo extends AbstractMojo {
     // ── File generators (pure, testable) ─────────────────────────
 
     String generatePom() {
-        // Both versions are resolved at build time via resource filtering
-        // from the ike-pipeline root POM — single source of truth.
-        String toolingVersion = loadBuildProperty("ike-tooling.version");
-        String pipelineVersion = loadBuildProperty("ike-pipeline.version");
+        // ike-parent version is the same as ike-pipeline version (reactor sibling).
+        String parentVersion = loadBuildProperty("ike-pipeline.version");
 
         StringBuilder xml = new StringBuilder(2048);
         xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         xml.append("<!--\n");
         xml.append("  ").append(description).append("\n");
+        xml.append("\n");
+        xml.append("  Inherits from ike-parent to get plugin version management for\n");
+        xml.append("  ike-maven-plugin and ike-workspace-maven-plugin automatically.\n");
         xml.append("\n");
         xml.append("  Every subproject is inside a file-activated profile so the reactor\n");
         xml.append("  automatically includes only the repos that are physically cloned.\n");
@@ -198,26 +199,28 @@ public class WsCreateMojo extends AbstractMojo {
         xml.append("                             https://maven.apache.org/xsd/maven-4.1.0.xsd\"\n");
         xml.append("         root=\"true\">\n");
         xml.append("    <modelVersion>4.1.0</modelVersion>\n\n");
+        xml.append("    <parent>\n");
+        xml.append("        <groupId>network.ike</groupId>\n");
+        xml.append("        <artifactId>ike-parent</artifactId>\n");
+        xml.append("        <version>").append(parentVersion).append("</version>\n");
+        xml.append("        <relativePath/>\n");
+        xml.append("    </parent>\n\n");
         xml.append("    <groupId>local.aggregate</groupId>\n");
         xml.append("    <artifactId>").append(name).append("</artifactId>\n");
         xml.append("    <version>1.0.0-SNAPSHOT</version>\n");
         xml.append("    <packaging>pom</packaging>\n\n");
         xml.append("    <name>").append(description).append("</name>\n\n");
-        xml.append("    <properties>\n");
-        xml.append("        <ike-tooling.version>").append(toolingVersion).append("</ike-tooling.version>\n");
-        xml.append("        <ike-pipeline.version>").append(pipelineVersion).append("</ike-pipeline.version>\n");
-        xml.append("    </properties>\n\n");
         xml.append("    <build>\n");
         xml.append("        <plugins>\n");
         xml.append("            <plugin>\n");
         xml.append("                <groupId>network.ike.tooling</groupId>\n");
         xml.append("                <artifactId>ike-maven-plugin</artifactId>\n");
-        xml.append("                <version>${ike-tooling.version}</version>\n");
+        xml.append("                <!-- version from ike-parent pluginManagement -->\n");
         xml.append("            </plugin>\n");
         xml.append("            <plugin>\n");
         xml.append("                <groupId>network.ike.pipeline</groupId>\n");
         xml.append("                <artifactId>ike-workspace-maven-plugin</artifactId>\n");
-        xml.append("                <version>${ike-pipeline.version}</version>\n");
+        xml.append("                <!-- version from ike-parent pluginManagement -->\n");
         xml.append("            </plugin>\n");
         xml.append("        </plugins>\n");
         xml.append("    </build>\n\n");
