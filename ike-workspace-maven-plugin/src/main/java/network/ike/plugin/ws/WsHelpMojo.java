@@ -47,8 +47,8 @@ public class WsHelpMojo extends AbstractMojo {
         getLog().info("");
         getLog().info("  ── Release & Checkpoint ─────────────────────────────────");
         getLog().info("  ws:release                                      Release all dirty components in topo order");
-        getLog().info("  ws:checkpoint                                   Record multi-repo checkpoint (SHAs + versions)");
-        getLog().info("  ws:checkpoint-dry-run                           Preview checkpoint without writing files or tags");
+        getLog().info("  ws:checkpoint                                   Preview checkpoint (tag all repos, record YAML)");
+        getLog().info("  ws:checkpoint-apply                             Execute checkpoint");
         getLog().info("  ws:post-release                                 Post-release cleanup (bump to next SNAPSHOT)");
         getLog().info("  ws:align                                        Align dependency versions across workspace");
         getLog().info("  ws:release-notes                                Generate release notes from commits");
@@ -79,12 +79,13 @@ public class WsHelpMojo extends AbstractMojo {
         getLog().info("  -Dmessage=<msg>              Squash commit message (feature-finish-squash)");
         getLog().info("  -DdryRun=true                Show plan without executing");
         getLog().info("");
-        getLog().info("Options for release & checkpoint:");
-        getLog().info("  -Dname=<name>                Checkpoint name (required for checkpoint)");
+        getLog().info("Options for checkpoint:");
+        getLog().info("  -Dname=<name>                Checkpoint name (auto-derived if omitted)");
+        getLog().info("");
+        getLog().info("Options for release:");
         getLog().info("  -Dcomponent=<name>           Release one specific component");
         getLog().info("  -Dgroup=<name>               Restrict to components in group");
         getLog().info("  -DdeploySite=true            Deploy site for each component");
-        getLog().info("  -Dverify=true                Run tests during checkpoint (default: skip)");
         getLog().info("  -DdryRun=true                Show what would be released");
         getLog().info("  -Dpush=true                  Push releases to origin (default: true)");
         getLog().info("  -DskipCheckpoint=true        Skip pre-release checkpoint");

@@ -24,37 +24,27 @@ import java.util.List;
 import java.util.LinkedHashSet;
 
 /**
- * Create a workspace checkpoint — build, tag, and deploy every component,
- * then record the resulting checkpoint coordinates in a YAML file.
+ * Create a workspace checkpoint — tag every component at its current HEAD
+ * and record the snapshot in a YAML manifest.
  *
- * <p>Each component is processed in topological order (dependencies before
- * dependents). For each component the checkpoint engine:
- * <ol>
- *   <li>Derives an immutable checkpoint version from the current SNAPSHOT</li>
- *   <li>Stamps the version, commits, and tags {@code checkpoint/<version>}</li>
- *   <li>Runs {@code mvnw clean deploy} to build and publish to Nexus</li>
- *   <li>Restores the SNAPSHOT version and commits</li>
- * </ol>
+ * <p>A checkpoint records the current state of the workspace for reproduction.
+ * It is not a build or a release — no POM version changes, no compilation,
+ * no deployment. TeamCity watches for checkpoint tags on the workspace repo
+ * and handles CI.
  *
- * <p>After all components are checkpointed, a YAML file recording the
- * checkpoint versions and tagged SHAs is written to
- * {@code checkpoints/checkpoint-<name>.yaml} in the workspace root.
- *
- * <p>The checkpoint name is derived automatically from the current
- * workspace branch and a compact UTC timestamp
- * ({@code <branch>-<yyyyMMdd>-<HHmmss>}), making each checkpoint
- * unique and intuitively linked to the branch it was created from.
- * Override with {@code -Dname=<label>} when a custom label is needed.
- *
- * <p>All components must have a clean working tree before this goal runs.
+ * <p>Each component is tagged in topological order (dependencies before
+ * dependents). After all components are tagged, a YAML file recording
+ * the SHAs, versions, and branches is committed and tagged in the
+ * workspace aggregator repo.
  *
  * <pre>{@code
- * mvn ike:ws-checkpoint                     # auto-derived name
- * mvn ike:ws-checkpoint -Dname=sprint-42    # explicit name
- * mvn ike:ws-checkpoint-dry-run             # preview
+ * mvn ws:checkpoint                          # auto-derived name
+ * mvn ws:checkpoint -Dname=sprint-42         # explicit name
+ * mvn ws:checkpoint                          # dry-run (default)
+ * mvn ws:checkpoint-apply                    # execute
  * }</pre>
  *
- * @see CheckpointSupport the per-component engine used by this goal
+ * @see CheckpointSupport the per-component tagging engine
  */
 @Mojo(name = "checkpoint", requiresProject = false, threadSafe = true)
 public class WsCheckpointMojo extends AbstractWorkspaceMojo {
@@ -63,26 +53,22 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
                     .withZone(ZoneOffset.UTC);
 
+    private static final DateTimeFormatter COMPACT_UTC =
+            DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
+                    .withZone(ZoneOffset.UTC);
+
     /**
-     * Checkpoint name. Used in the YAML filename and component tag paths.
+     * Checkpoint name. Used in the YAML filename and tag names.
      * If omitted, auto-derived from the workspace branch and a compact
      * UTC timestamp ({@code <branch>-<yyyyMMdd>-<HHmmss>}).
      */
     @Parameter(property = "name")
     String name;
 
-    /** Deploy site to the remote server for each component. Opt-in — requires SSH proxy. */
-    @Parameter(property = "deploySite", defaultValue = "false")
-    boolean deploySite;
-
-    /** Run tests during the build. Default is false — checkpoints skip tests. */
-    @Parameter(property = "verify", defaultValue = "false")
-    boolean verify;
-
     /**
-     * Show what the checkpoint would do without running builds, writing
-     * files, or creating tags. Set automatically by
-     * {@code ike:ws-checkpoint-dry-run}.
+     * Show what the checkpoint would do without creating tags or writing
+     * files. Set automatically by {@code ws:checkpoint} (bare goal is
+     * dry-run; use {@code ws:checkpoint-apply} to execute).
      */
     @Parameter(property = "dryRun", defaultValue = "true")
     boolean dryRun;
@@ -107,10 +93,6 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
     /** Creates this goal instance. */
     public WsCheckpointMojo() {}
 
-    private static final DateTimeFormatter COMPACT_UTC =
-            DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
-                    .withZone(ZoneOffset.UTC);
-
     @Override
     public void execute() throws MojoExecutionException {
         WorkspaceGraph graph = loadGraph();
@@ -120,9 +102,7 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
             name = deriveCheckpointName(root);
         }
 
-        // VCS bridge: catch-up before checkpoint
-        VcsOperations.catchUp(root, getLog());
-
+        String wsTagName = "checkpoint/" + name;
         String timestamp = ISO_UTC.format(Instant.now());
         String author = resolveAuthor(root);
 
@@ -130,19 +110,15 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
         getLog().info(header("Checkpoint"));
         getLog().info("══════════════════════════════════════════════════════════════");
         getLog().info("  Name:   " + name);
+        getLog().info("  Tag:    " + wsTagName);
         getLog().info("  Time:   " + timestamp);
         getLog().info("  Author: " + author);
         if (dryRun) {
-            getLog().info("  Mode:   DRY RUN — no builds, no tags, no files written");
+            getLog().info("  Mode:   DRY RUN — no tags, no files written");
         }
         getLog().info("");
 
-        // ── Validate all components are clean before starting ─────────
-        if (!dryRun) {
-            validateCleanWorktrees(graph, root);
-        }
-
-        // ── Checkpoint each component in dependency order ──────────────
+        // ── Tag each component in dependency order ────────────────────
         List<ComponentSnapshot> snapshots = new ArrayList<>();
         List<String> absentComponents = new ArrayList<>();
 
@@ -161,41 +137,29 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
             }
 
             String branch   = gitBranch(dir);
-            String snapshot = readVersion(dir);
-            String checkpointVersion =
-                    ReleaseSupport.deriveCheckpointVersion(snapshot, dir);
-            String tagName = "checkpoint/" + checkpointVersion;
+            String sha      = gitFullSha(dir);
+            String shortSha = gitShortSha(dir);
+            String version  = readVersion(dir);
 
             var ct = graph.manifest().componentTypes().get(component.type());
             boolean composite = ct != null
                     && "composite".equals(ct.checkpointMechanism());
 
             if (dryRun) {
-                String shortSha = gitShortSha(dir);
-                String sha      = gitFullSha(dir);
-                getLog().info(Ansi.green("  ✓ ") + compName + " [" + shortSha + "] " + branch);
-                getLog().info("    [DRY RUN] " + snapshot
-                        + " → " + checkpointVersion);
-                CheckpointSupport.dryRun(dir, checkpointVersion,
-                        deploySite, !verify, getLog());
+                getLog().info(Ansi.green("  ✓ ") + compName
+                        + " [" + shortSha + "] " + branch
+                        + " (" + version + ")");
+                CheckpointSupport.dryRun(dir, wsTagName, getLog());
                 snapshots.add(new ComponentSnapshot(
                         compName, sha, shortSha, branch,
-                        checkpointVersion, false, component.type(), composite));
+                        version, false, component.type(), composite));
             } else {
-                getLog().info("  ⚙ " + compName + ": "
-                        + snapshot + " → " + checkpointVersion);
-                checkpointComponent(dir, checkpointVersion);
-
-                // Record the SHA the tag points to, not the post-restore HEAD
-                String tagSha = ReleaseSupport.execCapture(dir,
-                        "git", "rev-parse", tagName);
-                String shortTagSha = tagSha.length() >= 8
-                        ? tagSha.substring(0, 8) : tagSha;
-                getLog().info(Ansi.green("  ✓ ") + compName + " ["
-                        + shortTagSha + "] → " + tagName);
+                CheckpointSupport.checkpoint(dir, wsTagName, getLog());
+                getLog().info(Ansi.green("  ✓ ") + compName
+                        + " [" + shortSha + "] → " + wsTagName);
                 snapshots.add(new ComponentSnapshot(
-                        compName, tagSha, shortTagSha, branch,
-                        checkpointVersion, false, component.type(), composite));
+                        compName, sha, shortSha, branch,
+                        version, false, component.type(), composite));
             }
         }
 
@@ -242,24 +206,22 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
         // ── Tag and push workspace aggregator repo ──────────────────
         File wsGitDir = new File(root, ".git");
         if (wsGitDir.exists()) {
-            String wsTagName = "checkpoint/" + name;
-            // Commit the checkpoint YAML to the workspace repo
             ReleaseSupport.exec(root, getLog(),
                     "git", "add", "checkpoints/" + checkpointFileName(name));
             ReleaseSupport.exec(root, getLog(),
                     "git", "commit", "-m",
                     "checkpoint: " + name);
-            // Tag the workspace repo
             ReleaseSupport.exec(root, getLog(),
                     "git", "tag", "-a", wsTagName,
                     "-m", "Workspace checkpoint " + name);
-            // Push tag to origin
+
             boolean hasOrigin = ReleaseSupport.hasRemote(root, "origin");
             if (hasOrigin) {
                 ReleaseSupport.exec(root, getLog(),
                         "git", "push", "origin", wsTagName);
                 ReleaseSupport.exec(root, getLog(),
-                        "git", "push", "origin", "main");
+                        "git", "push", "origin",
+                        ReleaseSupport.currentBranch(root));
                 getLog().info("  Workspace tag pushed: " + wsTagName);
             }
         }
@@ -281,10 +243,23 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
         getLog().info("  Components: " + snapshots.size()
                 + " | Absent: " + absentComponents.size());
         getLog().info("");
-        // Structured markdown report
+
         appendReport("ws:checkpoint",
                 buildCheckpointMarkdownReport(snapshots, absentComponents));
     }
+
+    // ── Per-component checkpoint (overridable for tests) ──────────────
+
+    /**
+     * Tag a single component at its current HEAD. Override in tests
+     * to substitute a lighter-weight simulation.
+     */
+    protected void checkpointComponent(File dir, String tagName)
+            throws MojoExecutionException {
+        CheckpointSupport.checkpoint(dir, tagName, getLog());
+    }
+
+    // ── Report ────────────────────────────────────────────────────────
 
     private String buildCheckpointMarkdownReport(
             List<ComponentSnapshot> snapshots, List<String> absent) {
@@ -310,41 +285,10 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
         return sb.toString();
     }
 
-    // ── Per-component checkpoint (overridable for tests) ──────────────
-
-    /**
-     * Execute the per-component checkpoint. Calls {@link CheckpointSupport}
-     * directly — no subprocess spawn.
-     *
-     * <p>Override in tests to substitute a lighter-weight simulation
-     * that creates the git tag without running a real build.
-     *
-     * @param dir             component git root
-     * @param checkpointLabel version label (e.g.,
-     *                        {@code 1.0.0-checkpoint.20260330.abc1234})
-     * @throws MojoExecutionException if the checkpoint fails
-     */
-    protected void checkpointComponent(File dir, String checkpointLabel)
-            throws MojoExecutionException {
-        CheckpointSupport.checkpoint(dir, checkpointLabel,
-                deploySite, !verify, getLog());
-    }
-
     // ── YAML generation (pure, static, testable) ──────────────────────
 
     /**
      * Build checkpoint YAML content from pre-gathered component data.
-     *
-     * <p>This is a pure function with no git or I/O dependencies,
-     * suitable for direct unit testing.
-     *
-     * @param name            checkpoint name
-     * @param timestamp       ISO-8601 UTC timestamp
-     * @param author          checkpoint author name
-     * @param schemaVersion   workspace schema version
-     * @param snapshots       component snapshots (checkpoint versions, not SNAPSHOTs)
-     * @param absentNames     names of components not checked out
-     * @return YAML checkpoint content
      */
     public static String buildCheckpointYaml(String name, String timestamp,
                                               String author, String schemaVersion,
@@ -352,7 +296,7 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
                                               List<String> absentNames) {
         List<String> yaml = new ArrayList<>();
         yaml.add("# IKE Workspace Checkpoint");
-        yaml.add("# Generated by: mvn ike:ws-checkpoint");
+        yaml.add("# Generated by: mvn ws:checkpoint-apply");
         yaml.add("#");
         yaml.add("checkpoint:");
         yaml.add("  name: \"" + name + "\"");
@@ -371,7 +315,6 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
             yaml.add("    " + snap.name() + ":");
             if (snap.version() != null) {
                 yaml.add("      version: \"" + snap.version() + "\"");
-                yaml.add("      tag: \"checkpoint/" + snap.version() + "\"");
             }
             yaml.add("      sha: \"" + snap.sha() + "\"");
             yaml.add("      short-sha: \"" + snap.shortSha() + "\"");
@@ -385,40 +328,11 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
         return String.join("\n", yaml) + "\n";
     }
 
-    /**
-     * Derive the checkpoint YAML file name.
-     *
-     * @param checkpointName the checkpoint name
-     * @return file name in the form {@code checkpoint-<name>.yaml}
-     */
     public static String checkpointFileName(String checkpointName) {
         return "checkpoint-" + checkpointName + ".yaml";
     }
 
     // ── Private helpers ────────────────────────────────────────────────
-
-    /**
-     * Validate that all present components have clean working trees.
-     * Fails fast before any component is checkpointed.
-     */
-    private void validateCleanWorktrees(WorkspaceGraph graph, File root)
-            throws MojoExecutionException {
-        List<String> dirty = new ArrayList<>();
-        for (String compName : graph.manifest().components().keySet()) {
-            File dir = new File(root, compName);
-            if (!new File(dir, ".git").exists()) continue;
-            String status = gitStatus(dir);
-            if (!status.isEmpty()) {
-                dirty.add(compName);
-            }
-        }
-        if (!dirty.isEmpty()) {
-            throw new MojoExecutionException(
-                    "Cannot checkpoint — dirty working tree in: "
-                    + String.join(", ", dirty)
-                    + ". Commit or stash changes first.");
-        }
-    }
 
     private String gitFullSha(File dir) {
         try {
@@ -440,17 +354,12 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
         }
     }
 
-    /**
-     * Query the issue tracker for the current milestone and return
-     * a YAML-formatted testing context, or null if no milestone found.
-     */
     private String snapshotTestingContext(WorkspaceGraph graph)
             throws MojoExecutionException {
         if (issueRepo == null || issueRepo.isBlank()) return null;
 
         String milestoneName = milestone;
 
-        // Auto-derive milestone name from first component if not specified
         if (milestoneName == null || milestoneName.isBlank()) {
             var components = graph.manifest().components();
             if (!components.isEmpty()) {
@@ -482,20 +391,6 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
         return context.toYaml("  ");
     }
 
-    /**
-     * Derive a checkpoint name from the workspace branch and current UTC
-     * timestamp. The branch name is sanitized for use in filenames
-     * ({@code /} replaced with {@code -}).
-     *
-     * <p>Examples:
-     * <ul>
-     *   <li>{@code main} → {@code main-20260402-143022}</li>
-     *   <li>{@code feature/my-feature} → {@code feature-my-feature-20260402-143022}</li>
-     * </ul>
-     *
-     * @param root workspace root directory (must be a git repository)
-     * @return derived checkpoint name
-     */
     private String deriveCheckpointName(File root) throws MojoExecutionException {
         String branch = gitBranch(root);
         String safeBranch = branch.replace('/', '-');

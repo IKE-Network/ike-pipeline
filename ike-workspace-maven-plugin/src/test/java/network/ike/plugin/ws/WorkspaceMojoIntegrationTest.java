@@ -294,9 +294,8 @@ class WorkspaceMojoIntegrationTest {
                 .resolve("checkpoint-test-cp2.yaml");
         String content = Files.readString(checkpointFile, StandardCharsets.UTF_8);
 
-        // YAML should have version, tag path, and SHA for each component
+        // YAML should have version, SHA, and branch for each component
         assertThat(content).contains("version: \"");
-        assertThat(content).contains("tag: \"checkpoint/");
         assertThat(content).contains("sha: \"");
         assertThat(content).contains("branch: \"");
     }

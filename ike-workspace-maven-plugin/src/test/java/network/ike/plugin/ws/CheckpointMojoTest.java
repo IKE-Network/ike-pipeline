@@ -11,22 +11,19 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Tests for {@link CheckpointSupport}.
  *
- * <p>The checkpoint workflow runs subprocesses ({@code mvn clean deploy})
- * that cannot run in unit tests. These tests exercise the dry-run paths
- * (which cover parameter derivation, audit logging, and all dry-run
- * branches) and early validation logic (clean worktree check).
+ * <p>Checkpoints only tag current HEAD — no POM changes, no builds.
+ * These tests verify tagging and dry-run behavior.
  */
 class CheckpointMojoTest {
 
     @TempDir
     Path tempDir;
 
-    // ── Dry-run: all parameter combinations ─────────────────────────
+    // ── Dry-run ────────────────────────────────────────────────────
 
     @Test
     void dryRun_completesWithoutChanges() throws Exception {
@@ -38,8 +35,8 @@ class CheckpointMojoTest {
                 StandardCharsets.UTF_8);
 
         assertThatCode(() -> CheckpointSupport.dryRun(
-                tempDir.toFile(), "2.0.0-checkpoint.20260330.abc1234",
-                false, false, new SystemStreamLog()))
+                tempDir.toFile(), "checkpoint/test-run",
+                new SystemStreamLog()))
                 .doesNotThrowAnyException();
 
         // No commits, tags, or POM changes
@@ -57,131 +54,89 @@ class CheckpointMojoTest {
         createCheckpointProject(tempDir);
 
         assertThatCode(() -> CheckpointSupport.dryRun(
-                tempDir.toFile(), "custom-label-42",
-                false, false, new SystemStreamLog()))
+                tempDir.toFile(), "checkpoint/sprint-42",
+                new SystemStreamLog()))
                 .doesNotThrowAnyException();
     }
 
+    // ── Tag creation ───────────────────────────────────────────────
+
     @Test
-    void dryRun_skipVerifyTrue() throws Exception {
+    void checkpoint_createsTag() throws Exception {
         createCheckpointProject(tempDir);
 
-        assertThatCode(() -> CheckpointSupport.dryRun(
-                tempDir.toFile(), "2.0.0-checkpoint.20260330.abc1234",
-                false, true, new SystemStreamLog()))
-                .doesNotThrowAnyException();
+        CheckpointSupport.checkpoint(
+                tempDir.toFile(), "checkpoint/test-tag",
+                new SystemStreamLog());
+
+        String tags = execCapture(tempDir, "git", "tag", "-l");
+        assertThat(tags).contains("checkpoint/test-tag");
     }
 
     @Test
-    void dryRun_deploySiteFalse() throws Exception {
+    void checkpoint_doesNotModifyPom() throws Exception {
         createCheckpointProject(tempDir);
 
-        assertThatCode(() -> CheckpointSupport.dryRun(
-                tempDir.toFile(), "2.0.0-checkpoint.20260330.abc1234",
-                false, false, new SystemStreamLog()))
-                .doesNotThrowAnyException();
-    }
-
-    @Test
-    void dryRun_deploySiteTrue() throws Exception {
-        createCheckpointProject(tempDir);
-
-        assertThatCode(() -> CheckpointSupport.dryRun(
-                tempDir.toFile(), "2.0.0-checkpoint.20260330.abc1234",
-                true, false, new SystemStreamLog()))
-                .doesNotThrowAnyException();
-    }
-
-    @Test
-    void dryRun_deploySiteTrue_skipVerifyFalse() throws Exception {
-        createCheckpointProject(tempDir);
-
-        assertThatCode(() -> CheckpointSupport.dryRun(
-                tempDir.toFile(), "2.0.0-checkpoint.20260330.abc1234",
-                true, false, new SystemStreamLog()))
-                .doesNotThrowAnyException();
-    }
-
-    @Test
-    void dryRun_deploySiteFalse_skipVerifyTrue() throws Exception {
-        createCheckpointProject(tempDir);
-
-        assertThatCode(() -> CheckpointSupport.dryRun(
-                tempDir.toFile(), "2.0.0-checkpoint.20260330.abc1234",
-                false, true, new SystemStreamLog()))
-                .doesNotThrowAnyException();
-    }
-
-    @Test
-    void dryRun_customLabel_deploySiteTrue() throws Exception {
-        createCheckpointProject(tempDir);
-
-        assertThatCode(() -> CheckpointSupport.dryRun(
-                tempDir.toFile(), "my-checkpoint",
-                true, true, new SystemStreamLog()))
-                .doesNotThrowAnyException();
-    }
-
-    // ── Non-dry-run validation ──────────────────────────────────────
-
-    @Test
-    void nonDryRun_dirtyWorktree_unstaged_throws() throws Exception {
-        createCheckpointProjectWithTrackedFile(tempDir);
-        // Modify a tracked file (untracked files are not caught by git diff)
-        Files.writeString(tempDir.resolve("README.txt"), "modified content",
+        String pomBefore = Files.readString(tempDir.resolve("pom.xml"),
                 StandardCharsets.UTF_8);
 
-        assertThatThrownBy(() -> CheckpointSupport.checkpoint(
-                tempDir.toFile(), "2.0.0-checkpoint.20260330.abc1234",
-                false, false, new SystemStreamLog()))
-                .isInstanceOf(MojoExecutionException.class)
-                .hasMessageContaining("unstaged changes");
+        CheckpointSupport.checkpoint(
+                tempDir.toFile(), "checkpoint/no-pom-change",
+                new SystemStreamLog());
+
+        assertThat(Files.readString(tempDir.resolve("pom.xml"),
+                StandardCharsets.UTF_8))
+                .isEqualTo(pomBefore);
     }
 
     @Test
-    void nonDryRun_dirtyWorktree_staged_throws() throws Exception {
+    void checkpoint_doesNotCreateCommits() throws Exception {
         createCheckpointProject(tempDir);
-        Files.writeString(tempDir.resolve("staged.txt"), "staged",
-                StandardCharsets.UTF_8);
-        exec(tempDir, "git", "add", "staged.txt");
 
-        assertThatThrownBy(() -> CheckpointSupport.checkpoint(
-                tempDir.toFile(), "2.0.0-checkpoint.20260330.abc1234",
-                false, false, new SystemStreamLog()))
-                .isInstanceOf(MojoExecutionException.class)
-                .hasMessageContaining("staged changes");
+        String headBefore = execCapture(tempDir, "git", "rev-parse", "HEAD");
+
+        CheckpointSupport.checkpoint(
+                tempDir.toFile(), "checkpoint/no-commits",
+                new SystemStreamLog());
+
+        // HEAD should not change — tag is on existing commit
+        assertThat(execCapture(tempDir, "git", "rev-parse", "HEAD"))
+                .isEqualTo(headBefore);
+    }
+
+    // ── YAML generation ────────────────────────────────────────────
+
+    @Test
+    void buildCheckpointYaml_includesComponentData() {
+        var snapshots = java.util.List.of(
+                new ComponentSnapshot(
+                        "tinkar-core", "abc123full", "abc123", "main",
+                        "1.0.0-SNAPSHOT", false, "software", false));
+
+        String yaml = WsCheckpointMojo.buildCheckpointYaml(
+                "test", "2026-04-08T00:00:00Z", "tester", "1.0",
+                snapshots, java.util.List.of());
+
+        assertThat(yaml)
+                .contains("name: \"test\"")
+                .contains("tinkar-core:")
+                .contains("sha: \"abc123full\"")
+                .contains("version: \"1.0.0-SNAPSHOT\"")
+                .contains("branch: \"main\"");
     }
 
     @Test
-    void nonDryRun_cleanWorktree_proceedsToVersionSet() throws Exception {
-        createCheckpointProject(tempDir);
+    void buildCheckpointYaml_includesAbsentComponents() {
+        String yaml = WsCheckpointMojo.buildCheckpointYaml(
+                "test", "2026-04-08T00:00:00Z", "tester", "1.0",
+                java.util.List.of(), java.util.List.of("missing-repo"));
 
-        // No Maven wrapper available, so checkpoint will fail after
-        // setting the version (when it tries to run mvnw). Verify
-        // that it got past the worktree check by observing the error
-        // is about mvn/mvnw, not about worktree state.
-        try {
-            CheckpointSupport.checkpoint(tempDir.toFile(),
-                    "2.0.0-checkpoint.20260330.abc1234",
-                    false, false, new SystemStreamLog());
-        } catch (MojoExecutionException e) {
-            // Expected — no mvn/mvnw in temp dir
-            // Should NOT be a worktree-related error
-            assertThat(e.getMessage())
-                    .doesNotContain("unstaged")
-                    .doesNotContain("staged changes");
-        }
+        assertThat(yaml)
+                .contains("missing-repo:")
+                .contains("status: absent");
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
-
-    private void createCheckpointProjectWithTrackedFile(Path dir) throws Exception {
-        createCheckpointProject(dir);
-        Files.writeString(dir.resolve("README.txt"), "readme content",
-                StandardCharsets.UTF_8);
-        exec(dir, "git", "add", "README.txt");
-        exec(dir, "git", "commit", "-m", "Add README");
-    }
 
     private void createCheckpointProject(Path dir) throws Exception {
         String pom = """
