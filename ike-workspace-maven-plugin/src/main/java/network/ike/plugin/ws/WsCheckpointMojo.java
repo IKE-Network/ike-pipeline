@@ -239,6 +239,31 @@ public class WsCheckpointMojo extends AbstractWorkspaceMojo {
                     "Failed to write " + checkpointFile, e);
         }
 
+        // ── Tag and push workspace aggregator repo ──────────────────
+        File wsGitDir = new File(root, ".git");
+        if (wsGitDir.exists()) {
+            String wsTagName = "checkpoint/" + name;
+            // Commit the checkpoint YAML to the workspace repo
+            ReleaseSupport.exec(root, getLog(),
+                    "git", "add", "checkpoints/" + checkpointFileName(name));
+            ReleaseSupport.exec(root, getLog(),
+                    "git", "commit", "-m",
+                    "checkpoint: " + name);
+            // Tag the workspace repo
+            ReleaseSupport.exec(root, getLog(),
+                    "git", "tag", "-a", wsTagName,
+                    "-m", "Workspace checkpoint " + name);
+            // Push tag to origin
+            boolean hasOrigin = ReleaseSupport.hasRemote(root, "origin");
+            if (hasOrigin) {
+                ReleaseSupport.exec(root, getLog(),
+                        "git", "push", "origin", wsTagName);
+                ReleaseSupport.exec(root, getLog(),
+                        "git", "push", "origin", "main");
+                getLog().info("  Workspace tag pushed: " + wsTagName);
+            }
+        }
+
         // VCS bridge: write state file after checkpoint
         for (var entry : graph.manifest().components().entrySet()) {
             File compDir = new File(root, entry.getKey());
