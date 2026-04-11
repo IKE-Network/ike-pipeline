@@ -74,17 +74,24 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
-        feature = requireParam(feature, "feature",
-                "Feature to squash-merge (without feature/ prefix)");
-        message = requireParam(message, "message", "Squash commit message");
-        String branchName = "feature/" + feature;
-
         if (!isWorkspaceMode()) {
-            executeBareMode(branchName);
+            if (feature == null || feature.isBlank()) {
+                feature = requireParam(feature, "feature",
+                        "Feature to squash-merge (without feature/ prefix)");
+            }
+            executeBareMode("feature/" + feature);
             return;
         }
 
-        executeWorkspaceMode(branchName);
+        // Auto-detect feature from component branches if not specified
+        if (feature == null || feature.isBlank()) {
+            WorkspaceGraph g = loadGraph();
+            List<String> all = g.topologicalSort();
+            feature = FeatureFinishSupport.detectFeature(
+                    workspaceRoot(), all, this, getLog());
+        }
+        // message is optional — auto-generated from component history
+        executeWorkspaceMode("feature/" + feature);
     }
 
     private void executeWorkspaceMode(String branchName) throws MojoExecutionException {
@@ -113,17 +120,33 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
 
         // Validate and collect eligible components
         List<String> eligible = new ArrayList<>();
+        List<String> uncommitted = new ArrayList<>();
         for (String name : reversed) {
             String reason = FeatureFinishSupport.validateComponent(
                     root, name, branchName, this);
             if (reason == null) {
                 eligible.add(name);
             } else if ("MODIFIED".equals(reason)) {
-                throw new MojoExecutionException(
-                        name + " has uncommitted changes on " + branchName
-                                + ". Commit or stash before finishing.");
+                uncommitted.add(name);
             } else {
                 getLog().info(Ansi.yellow("  · ") + name + " — " + reason + ", skipping");
+            }
+        }
+
+        if (!uncommitted.isEmpty()) {
+            var sb = new StringBuilder();
+            sb.append("Cannot finish feature — uncommitted changes in:\n");
+            for (String name : uncommitted) {
+                sb.append("  ").append(name).append("\n");
+            }
+            sb.append("Please commit these changes first (mvn ws:commit), ")
+              .append("then re-run feature-finish.");
+            if (!publish) {
+                getLog().warn("");
+                getLog().warn(sb.toString());
+                getLog().warn("");
+            } else {
+                throw new MojoExecutionException(sb.toString());
             }
         }
 

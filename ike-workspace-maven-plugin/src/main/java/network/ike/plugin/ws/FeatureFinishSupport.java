@@ -21,6 +21,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Shared logic for feature-finish goals (squash, merge, rebase).
@@ -33,6 +35,59 @@ import java.util.Optional;
 class FeatureFinishSupport {
 
     private FeatureFinishSupport() {}
+
+    /**
+     * Detect the feature branch name from component branches.
+     * If all components on a feature branch agree on the name,
+     * returns it. Also checks the workspace root branch.
+     *
+     * @param root       workspace root directory
+     * @param components component names to scan
+     * @param mojo       the calling mojo (for gitBranch access)
+     * @param log        Maven logger
+     * @return the detected feature name (without "feature/" prefix)
+     * @throws MojoExecutionException if no feature branch is detected
+     */
+    static String detectFeature(File root, List<String> components,
+                                 AbstractWorkspaceMojo mojo, Log log)
+            throws MojoExecutionException {
+        Set<String> features = new TreeSet<>();
+
+        // Check workspace root branch
+        if (new File(root, ".git").exists()) {
+            String wsBranch = mojo.gitBranch(root);
+            if (wsBranch.startsWith("feature/")) {
+                features.add(wsBranch.substring("feature/".length()));
+            }
+        }
+
+        // Check component branches
+        for (String name : components) {
+            File dir = new File(root, name);
+            if (!new File(dir, ".git").exists()) continue;
+            String branch = mojo.gitBranch(dir);
+            if (branch.startsWith("feature/")) {
+                features.add(branch.substring("feature/".length()));
+            }
+        }
+
+        if (features.isEmpty()) {
+            throw new MojoExecutionException(
+                    "No components are on a feature branch. "
+                    + "Specify -Dfeature=<name> or switch to a feature branch.");
+        }
+
+        if (features.size() == 1) {
+            String detected = features.iterator().next();
+            log.info("  Detected feature: " + detected);
+            return detected;
+        }
+
+        // Multiple features — list them for the user
+        throw new MojoExecutionException(
+                "Multiple feature branches detected: " + features
+                + ". Specify -Dfeature=<name> to disambiguate.");
+    }
 
     /**
      * Validate that a component is eligible for feature-finish.
