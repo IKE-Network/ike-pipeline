@@ -44,7 +44,7 @@ import java.util.TreeSet;
  * mvn ws:feature-abandon -Dforce=true            # skip unmerged commit warning
  * }</pre>
  *
- * @see FeatureStartMojo for creating feature branches
+ * @see FeatureStartDraftMojo for creating feature branches
  */
 @Mojo(name = "feature-abandon-draft", requiresProject = false, threadSafe = true)
 public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {

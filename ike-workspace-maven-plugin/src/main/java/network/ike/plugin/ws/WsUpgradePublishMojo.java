@@ -11,7 +11,7 @@ import org.apache.maven.plugins.annotations.Mojo;
  *
  * <p>Usage: {@code mvn ws:upgrade-apply}
  *
- * @see WsUpgradeMojo
+ * @see WsUpgradeDraftMojo
  */
 @Mojo(name = "upgrade-publish", requiresProject = false, threadSafe = true)
 public class WsUpgradePublishMojo extends WsUpgradeDraftMojo {

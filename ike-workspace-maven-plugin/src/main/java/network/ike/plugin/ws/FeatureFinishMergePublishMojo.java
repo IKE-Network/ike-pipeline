@@ -11,7 +11,7 @@ import org.apache.maven.plugins.annotations.Mojo;
  *
  * <p>Usage: {@code mvn ws:feature-finish-merge-apply -Dfeature=long-running}
  *
- * @see FeatureFinishMergeMojo
+ * @see FeatureFinishMergeDraftMojo
  */
 @Mojo(name = "feature-finish-merge-publish", requiresProject = false, threadSafe = true)
 public class FeatureFinishMergePublishMojo extends FeatureFinishMergeDraftMojo {

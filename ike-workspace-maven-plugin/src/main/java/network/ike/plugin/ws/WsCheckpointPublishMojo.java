@@ -16,7 +16,7 @@ import java.io.File;
  *
  * <p>Usage: {@code mvn ws:checkpoint-apply}
  *
- * @see WsCheckpointMojo
+ * @see WsCheckpointDraftMojo
  */
 @Mojo(name = "checkpoint-publish", requiresProject = false, threadSafe = true)
 public class WsCheckpointPublishMojo extends WsCheckpointDraftMojo {

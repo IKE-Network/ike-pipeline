@@ -35,8 +35,8 @@ import java.util.List;
  * mvn ike:feature-finish-rebase -Dfeature=cleanup -DkeepBranch=false
  * }</pre>
  *
- * @see FeatureFinishSquashMojo for clean single-commit merges (default)
- * @see FeatureFinishMergeMojo for preserving full history
+ * @see FeatureFinishSquashDraftMojo for clean single-commit merges (default)
+ * @see FeatureFinishMergeDraftMojo for preserving full history
  */
 @Mojo(name = "feature-finish-rebase-draft", requiresProject = false, threadSafe = true)
 public class FeatureFinishRebaseDraftMojo extends AbstractWorkspaceMojo {

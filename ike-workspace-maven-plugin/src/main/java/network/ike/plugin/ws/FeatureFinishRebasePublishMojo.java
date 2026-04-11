@@ -11,7 +11,7 @@ import org.apache.maven.plugins.annotations.Mojo;
  *
  * <p>Usage: {@code mvn ws:feature-finish-rebase-apply -Dfeature=small-fix}
  *
- * @see FeatureFinishRebaseMojo
+ * @see FeatureFinishRebaseDraftMojo
  */
 @Mojo(name = "feature-finish-rebase-publish", requiresProject = false, threadSafe = true)
 public class FeatureFinishRebasePublishMojo extends FeatureFinishRebaseDraftMojo {

@@ -17,7 +17,7 @@ import java.io.File;
  *
  * <p>Usage: {@code mvn ws:feature-start-apply -Dfeature=my-feature}
  *
- * @see FeatureStartMojo
+ * @see FeatureStartDraftMojo
  */
 @Mojo(name = "feature-start-publish", requiresProject = false, threadSafe = true)
 public class FeatureStartPublishMojo extends FeatureStartDraftMojo {

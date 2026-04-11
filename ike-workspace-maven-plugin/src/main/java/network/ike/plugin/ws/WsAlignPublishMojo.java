@@ -11,7 +11,7 @@ import org.apache.maven.plugins.annotations.Mojo;
  *
  * <p>Usage: {@code mvn ws:align-apply}
  *
- * @see WsAlignMojo
+ * @see WsAlignDraftMojo
  */
 @Mojo(name = "align-publish", requiresProject = false, threadSafe = true)
 public class WsAlignPublishMojo extends WsAlignDraftMojo {

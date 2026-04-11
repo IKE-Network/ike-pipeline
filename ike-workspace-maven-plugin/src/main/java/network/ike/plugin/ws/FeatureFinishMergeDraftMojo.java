@@ -32,8 +32,8 @@ import java.util.List;
  * mvn ike:feature-finish-merge -Dfeature=done-feature -DkeepBranch=false
  * }</pre>
  *
- * @see FeatureFinishSquashMojo for clean single-commit merges (default)
- * @see FeatureFinishRebaseMojo for linear history
+ * @see FeatureFinishSquashDraftMojo for clean single-commit merges (default)
+ * @see FeatureFinishRebaseDraftMojo for linear history
  */
 @Mojo(name = "feature-finish-merge-draft", requiresProject = false, threadSafe = true)
 public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {

@@ -11,7 +11,7 @@ import org.apache.maven.plugins.annotations.Mojo;
  *
  * <p>Usage: {@code mvn ws:feature-finish-squash-apply -Dfeature=done -Dmessage="Ship it"}
  *
- * @see FeatureFinishSquashMojo
+ * @see FeatureFinishSquashDraftMojo
  */
 @Mojo(name = "feature-finish-squash-publish", requiresProject = false, threadSafe = true)
 public class FeatureFinishSquashPublishMojo extends FeatureFinishSquashDraftMojo {

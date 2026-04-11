@@ -35,8 +35,8 @@ import java.util.List;
  * mvn ike:feature-finish-squash -Dfeature=kec-march-25 -Dgroup=core -Dmessage="Core updates"
  * }</pre>
  *
- * @see FeatureFinishMergeMojo for long-lived branches
- * @see FeatureFinishRebaseMojo for linear history
+ * @see FeatureFinishMergeDraftMojo for long-lived branches
+ * @see FeatureFinishRebaseDraftMojo for linear history
  */
 @Mojo(name = "feature-finish-squash-draft", requiresProject = false, threadSafe = true)
 public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
