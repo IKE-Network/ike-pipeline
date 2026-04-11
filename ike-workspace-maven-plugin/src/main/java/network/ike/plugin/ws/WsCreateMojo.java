@@ -39,7 +39,7 @@ import java.time.LocalDate;
  * }</pre>
  *
  * @see WsAddMojo for adding components to an existing workspace
- * @see WsUpgradeMojo for upgrading workspace conventions
+ * @see WsUpgradeDraftMojo for upgrading workspace conventions
  */
 @Mojo(name = "create", requiresProject = false, threadSafe = true)
 public class WsCreateMojo extends AbstractMojo {
@@ -278,6 +278,7 @@ public class WsCreateMojo extends AbstractMojo {
         gi.append("!workspace.yaml\n");
         gi.append("!README.adoc\n");
         gi.append("!GOALS.md\n");
+        gi.append("!WS-REFERENCE.md\n");
         gi.append("!mvnw\n");
         gi.append("!mvnw.cmd\n\n");
         gi.append("# ── Whitelist workspace-owned directories ────────────────────────\n");

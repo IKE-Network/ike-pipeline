@@ -78,11 +78,11 @@ class FeatureFinishBareModeTest {
 
     @Test
     void squash_mergesAndStripsVersion() throws Exception {
-        FeatureFinishSquashMojo mojo = new FeatureFinishSquashMojo();
+        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash: add test feature";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -101,11 +101,11 @@ class FeatureFinishBareModeTest {
 
     @Test
     void squash_deletesBranchByDefault() throws Exception {
-        FeatureFinishSquashMojo mojo = new FeatureFinishSquashMojo();
+        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash merge";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -116,12 +116,12 @@ class FeatureFinishBareModeTest {
 
     @Test
     void squash_keepBranch_preservesBranch() throws Exception {
-        FeatureFinishSquashMojo mojo = new FeatureFinishSquashMojo();
+        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash merge";
         mojo.keepBranch = true;
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -149,11 +149,11 @@ class FeatureFinishBareModeTest {
         exec(tempDir, "git", "add", ".");
         exec(tempDir, "git", "commit", "-m", "Add submodule");
 
-        FeatureFinishSquashMojo mojo = new FeatureFinishSquashMojo();
+        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash with submodules";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -174,10 +174,10 @@ class FeatureFinishBareModeTest {
 
     @Test
     void merge_createsMergeCommit() throws Exception {
-        FeatureFinishMergeMojo mojo = new FeatureFinishMergeMojo();
+        FeatureFinishMergeDraftMojo mojo = new FeatureFinishMergeDraftMojo();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -190,10 +190,10 @@ class FeatureFinishBareModeTest {
 
     @Test
     void merge_keepsBranchByDefault() throws Exception {
-        FeatureFinishMergeMojo mojo = new FeatureFinishMergeMojo();
+        FeatureFinishMergeDraftMojo mojo = new FeatureFinishMergeDraftMojo();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -206,10 +206,10 @@ class FeatureFinishBareModeTest {
 
     @Test
     void rebase_producesLinearHistory() throws Exception {
-        FeatureFinishRebaseMojo mojo = new FeatureFinishRebaseMojo();
+        FeatureFinishRebaseDraftMojo mojo = new FeatureFinishRebaseDraftMojo();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -224,11 +224,11 @@ class FeatureFinishBareModeTest {
 
     @Test
     void dryRun_staysOnFeatureBranch() throws Exception {
-        FeatureFinishSquashMojo mojo = new FeatureFinishSquashMojo();
+        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Should not happen";
-        mojo.dryRun = true;
+        mojo.publish = false;
 
         mojo.execute();
 
@@ -241,11 +241,11 @@ class FeatureFinishBareModeTest {
     void wrongBranch_fails() throws Exception {
         exec(tempDir, "git", "checkout", "main");
 
-        FeatureFinishSquashMojo mojo = new FeatureFinishSquashMojo();
+        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Should fail";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         assertThatThrownBy(mojo::execute)
                 .isInstanceOf(MojoExecutionException.class)
@@ -262,11 +262,11 @@ class FeatureFinishBareModeTest {
         exec(tempDir, "git", "add", ".ike");
         exec(tempDir, "git", "commit", "-m", "Add .ike marker");
 
-        FeatureFinishSquashMojo mojo = new FeatureFinishSquashMojo();
+        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash with state";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 

@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="ws:checkpoint (single)" type="MavenRunConfiguration" factoryName="Maven">
+  <configuration default="false" name="ws:upgrade-draft" type="MavenRunConfiguration" factoryName="Maven">
     <MavenSettings>
       <option name="myGeneralSettings" />
       <option name="myRunnerSettings" />
@@ -8,7 +8,7 @@
           <option name="workingDirPath" value="$PROJECT_DIR$" />
           <option name="goals">
             <list>
-              <option value="ws:checkpoint-draft" />
+              <option value="ws:upgrade-draft" />
             </list>
           </option>
           <option name="profilesMap">

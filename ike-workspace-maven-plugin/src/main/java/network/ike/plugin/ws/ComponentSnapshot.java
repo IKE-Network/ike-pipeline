@@ -11,10 +11,10 @@ package network.ike.plugin.ws;
  * @param shortSha abbreviated commit SHA
  * @param branch  current branch name
  * @param version POM version (may be null)
- * @param dirty   true if working tree has uncommitted changes
+ * @param modified   true if working tree has uncommitted changes
  * @param type    component type from workspace manifest
  * @param compositeCheckpoint true if checkpoint mechanism is "composite"
  */
 public record ComponentSnapshot(String name, String sha, String shortSha,
-                                 String branch, String version, boolean dirty,
+                                 String branch, String version, boolean modified,
                                  String type, boolean compositeCheckpoint) {}

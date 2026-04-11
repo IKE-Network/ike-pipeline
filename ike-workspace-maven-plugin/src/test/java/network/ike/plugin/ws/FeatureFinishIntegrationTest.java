@@ -67,12 +67,12 @@ class FeatureFinishIntegrationTest {
 
     @Test
     void squash_dryRun_noMerge() throws Exception {
-        FeatureFinishSquashMojo mojo = new FeatureFinishSquashMojo();
+        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Should not happen";
-        mojo.dryRun = true;
+        mojo.publish = false;
 
         mojo.execute();
 
@@ -85,12 +85,12 @@ class FeatureFinishIntegrationTest {
 
     @Test
     void squash_mergesAndStripsVersions() throws Exception {
-        FeatureFinishSquashMojo mojo = new FeatureFinishSquashMojo();
+        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash feature";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -118,11 +118,11 @@ class FeatureFinishIntegrationTest {
 
     @Test
     void merge_preservesHistory() throws Exception {
-        FeatureFinishMergeMojo mojo = new FeatureFinishMergeMojo();
+        FeatureFinishMergeDraftMojo mojo = new FeatureFinishMergeDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 

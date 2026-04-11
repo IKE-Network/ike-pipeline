@@ -245,15 +245,15 @@ class WorkspaceMojoIntegrationTest {
         }
     }
 
-    // ── WsCheckpointMojo ──────────────────────────────────────────────
+    // ── WsCheckpointDraftMojo ──────────────────────────────────────────────
 
     /**
      * Subclass that overrides {@code checkpointComponent} to simulate a
      * build without invoking a real Maven subprocess: creates the expected
      * annotated tag at the current HEAD so the mojo can read its SHA.
      */
-    private static WsCheckpointMojo checkpointMojoWithSimulatedBuild() {
-        return new WsCheckpointMojo() {
+    private static WsCheckpointDraftMojo checkpointMojoWithSimulatedBuild() {
+        return new WsCheckpointDraftMojo() {
             @Override
             protected void checkpointComponent(File dir, String checkpointLabel)
                     throws MojoExecutionException {
@@ -266,9 +266,10 @@ class WorkspaceMojoIntegrationTest {
 
     @Test
     void wsCheckpoint_writesYamlFile() throws Exception {
-        WsCheckpointMojo mojo = checkpointMojoWithSimulatedBuild();
+        WsCheckpointDraftMojo mojo = checkpointMojoWithSimulatedBuild();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.name = "test-cp";
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -284,9 +285,10 @@ class WorkspaceMojoIntegrationTest {
 
     @Test
     void wsCheckpoint_yamlContainsVersionTagAndSha() throws Exception {
-        WsCheckpointMojo mojo = checkpointMojoWithSimulatedBuild();
+        WsCheckpointDraftMojo mojo = checkpointMojoWithSimulatedBuild();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.name = "test-cp2";
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -300,7 +302,7 @@ class WorkspaceMojoIntegrationTest {
         assertThat(content).contains("branch: \"");
     }
 
-    // ── WsReleaseMojo ───────────────────────────────────────────────
+    // ── WsReleaseDraftMojo ───────────────────────────────────────────────
 
     @Test
     void wsRelease_dryRun_showsPlan() throws Exception {
@@ -309,9 +311,9 @@ class WorkspaceMojoIntegrationTest {
         TestWorkspaceHelper releaseHelper = new TestWorkspaceHelper(releaseRoot);
         releaseHelper.buildWorkspace();
 
-        WsReleaseMojo mojo = new WsReleaseMojo();
+        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
         mojo.manifest = releaseHelper.workspaceYaml().toFile();
-        mojo.dryRun = true;
+        mojo.publish = false;
 
         assertThatCode(mojo::execute).doesNotThrowAnyException();
     }
@@ -327,9 +329,9 @@ class WorkspaceMojoIntegrationTest {
             exec(releaseRoot.resolve(name), "git", "tag", "v1.0.0");
         }
 
-        WsReleaseMojo mojo = new WsReleaseMojo();
+        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
         mojo.manifest = releaseHelper.workspaceYaml().toFile();
-        mojo.dryRun = true;
+        mojo.publish = false;
 
         // Should complete without exception — reports "No components need releasing"
         assertThatCode(mojo::execute).doesNotThrowAnyException();

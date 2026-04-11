@@ -43,8 +43,8 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
     String from;
 
     /** Show plan without executing. */
-    @Parameter(property = "dryRun", defaultValue = "false")
-    boolean dryRun;
+    @Parameter(property = "publish", defaultValue = "true")
+    boolean publish;
 
     /** Creates this goal instance. */
     public WsSyncMojo() {}
@@ -59,8 +59,8 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
         getLog().info("IKE Workspace \u2014 Sync");
         getLog().info("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550");
         getLog().info("  Direction: " + ("manifest".equals(from) ? "manifest \u2192 repos" : "repos \u2192 manifest"));
-        if (dryRun) {
-            getLog().info("  Mode:      DRY RUN");
+        if (!publish) {
+            getLog().info("  Mode:      DRAFT");
         }
         getLog().info("");
 
@@ -106,7 +106,7 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
             return;
         }
 
-        if (!dryRun) {
+        if (publish) {
             try {
                 ManifestWriter.updateBranches(manifestPath, updates);
                 getLog().info("  Updated workspace.yaml (" + updates.size() + " changes)");
@@ -162,7 +162,7 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
 
             getLog().info("  " + name + ": " + actual + " \u2192 " + declared);
 
-            if (!dryRun) {
+            if (publish) {
                 ReleaseSupport.exec(dir, getLog(),
                         "git", "checkout", declared);
                 switched++;

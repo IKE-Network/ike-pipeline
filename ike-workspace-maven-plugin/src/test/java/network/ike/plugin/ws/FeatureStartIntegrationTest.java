@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
- * Integration tests for {@link FeatureStartMojo} using real temp workspaces.
+ * Integration tests for {@link FeatureStartDraftMojo} using real temp workspaces.
  *
  * <p>Each test creates a fresh workspace via {@link TestWorkspaceHelper},
  * configures the Mojo fields directly (package-private access), and
@@ -38,10 +38,10 @@ class FeatureStartIntegrationTest {
         String libBBranch = execCapture(tempDir.resolve("lib-b"), "git", "rev-parse", "--abbrev-ref", "HEAD");
         String appCBranch = execCapture(tempDir.resolve("app-c"), "git", "rev-parse", "--abbrev-ref", "HEAD");
 
-        FeatureStartMojo mojo = new FeatureStartMojo();
+        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "test-feature";
-        mojo.dryRun = true;
+        mojo.publish = false;
 
         mojo.execute();
 
@@ -62,10 +62,10 @@ class FeatureStartIntegrationTest {
 
     @Test
     void featureStart_createsBranchesAndQualifiesVersion() throws Exception {
-        FeatureStartMojo mojo = new FeatureStartMojo();
+        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "my-feature";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -95,11 +95,11 @@ class FeatureStartIntegrationTest {
         String appCPom = Files.readString(
                 tempDir.resolve("app-c").resolve("pom.xml"), StandardCharsets.UTF_8);
 
-        FeatureStartMojo mojo = new FeatureStartMojo();
+        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "skip-test";
         mojo.skipVersion = true;
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -121,11 +121,11 @@ class FeatureStartIntegrationTest {
 
     @Test
     void featureStart_groupFilter() throws Exception {
-        FeatureStartMojo mojo = new FeatureStartMojo();
+        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "libs-only";
         mojo.group = "libs";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 

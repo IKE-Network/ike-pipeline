@@ -19,10 +19,10 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Integration tests for {@link WsReleaseMojo} using real temp workspaces.
+ * Integration tests for {@link WsReleaseDraftMojo} using real temp workspaces.
  *
  * <p>Each test creates a fresh workspace with git repos, exercises the
- * release detection and planning logic, and verifies dirty detection,
+ * release detection and planning logic, and verifies modified detection,
  * topological ordering, checkpoint writing, and version property updates.
  *
  * <p>The actual {@code mvn ike:release} subprocess cannot run in tests,
@@ -45,32 +45,32 @@ class WsReleaseIntegrationTest {
         helper.buildWorkspace();
     }
 
-    // ── Dry-run / dirty detection ────────────────────────────────────
+    // ── Dry-run / modified detection ────────────────────────────────────
 
     @Test
     void dryRun_neverReleased_showsAllComponents() throws Exception {
         // No tags exist, so all components are "never released" and dirty
-        WsReleaseMojo mojo = new WsReleaseMojo();
+        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
-        mojo.dryRun = true;
+        mojo.publish = false;
 
         assertThatCode(mojo::execute).doesNotThrowAnyException();
     }
 
     @Test
-    void dryRun_dirtyComponents_showsPlan() throws Exception {
-        // Tag all components, then dirty two of them
+    void draft_modifiedComponents_showsPlan() throws Exception {
+        // Tag all components, then modify two of them
         for (String name : new String[]{"lib-a", "lib-b", "app-c"}) {
             exec(tempDir.resolve(name), "git", "tag", "v1.0.0");
         }
 
-        // Add a commit to lib-a and app-c (making them dirty)
+        // Add a commit to lib-a and app-c (making them modified)
         addCommit(tempDir.resolve("lib-a"), "new work in lib-a");
         addCommit(tempDir.resolve("app-c"), "new work in app-c");
 
-        WsReleaseMojo mojo = new WsReleaseMojo();
+        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
-        mojo.dryRun = true;
+        mojo.publish = false;
 
         // Should complete without exception — shows plan for lib-a and app-c
         assertThatCode(mojo::execute).doesNotThrowAnyException();
@@ -83,16 +83,16 @@ class WsReleaseIntegrationTest {
             exec(tempDir.resolve(name), "git", "tag", "v1.0.0");
         }
 
-        WsReleaseMojo mojo = new WsReleaseMojo();
+        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
-        mojo.dryRun = true;
+        mojo.publish = false;
 
         // Should complete without exception — "No components need releasing"
         assertThatCode(mojo::execute).doesNotThrowAnyException();
     }
 
     @Test
-    void dirtyComponent_detectedByCommitsSinceTag() throws Exception {
+    void modifiedComponent_detectedByCommitsSinceTag() throws Exception {
         // Tag lib-a at current HEAD
         exec(tempDir.resolve("lib-a"), "git", "tag", "v1.0.0");
 
@@ -107,10 +107,10 @@ class WsReleaseIntegrationTest {
 
     @Test
     void topologicalOrder_upstreamReleasedFirst() throws Exception {
-        // All components are dirty (never tagged), verify topological order
-        WsReleaseMojo mojo = new WsReleaseMojo();
+        // All components are modified (never tagged), verify topological order
+        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
-        mojo.dryRun = true;
+        mojo.publish = false;
 
         // The workspace graph has lib-a -> lib-b -> app-c
         // Topological sort should put lib-a first, then lib-b, then app-c
@@ -126,10 +126,10 @@ class WsReleaseIntegrationTest {
 
     @Test
     void groupFilter_onlyGroupComponents() throws Exception {
-        WsReleaseMojo mojo = new WsReleaseMojo();
+        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.group = "libs";
-        mojo.dryRun = true;
+        mojo.publish = false;
 
         // Should only consider lib-a and lib-b, not app-c
         assertThatCode(mojo::execute).doesNotThrowAnyException();
@@ -137,10 +137,10 @@ class WsReleaseIntegrationTest {
 
     @Test
     void componentFilter_singleComponent() throws Exception {
-        WsReleaseMojo mojo = new WsReleaseMojo();
+        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.component = "lib-a";
-        mojo.dryRun = true;
+        mojo.publish = false;
 
         assertThatCode(mojo::execute).doesNotThrowAnyException();
     }
@@ -149,9 +149,9 @@ class WsReleaseIntegrationTest {
 
     @Test
     void checkpoint_createdBeforeRelease() throws Exception {
-        // Exercise checkpoint writing via the WsCheckpointMojo using a
+        // Exercise checkpoint writing via the WsCheckpointDraftMojo using a
         // simulated build (no real Maven subprocess — just creates the tag).
-        WsCheckpointMojo cpMojo = new WsCheckpointMojo() {
+        WsCheckpointDraftMojo cpMojo = new WsCheckpointDraftMojo() {
             @Override
             protected void checkpointComponent(File dir, String checkpointLabel)
                     throws MojoExecutionException {
@@ -162,6 +162,7 @@ class WsReleaseIntegrationTest {
         };
         cpMojo.manifest = helper.workspaceYaml().toFile();
         cpMojo.name = "pre-release-test";
+        cpMojo.publish = true;
 
         cpMojo.execute();
 
@@ -189,7 +190,7 @@ class WsReleaseIntegrationTest {
                 </project>
                 """;
 
-        String updated = WsReleaseMojo.updateVersionProperty(
+        String updated = WsReleaseDraftMojo.updateVersionProperty(
                 pom, "ike-pipeline.version", "1.0.1-SNAPSHOT");
 
         assertThat(updated).contains(
@@ -207,7 +208,7 @@ class WsReleaseIntegrationTest {
                 </project>
                 """;
 
-        String updated = WsReleaseMojo.updateVersionProperty(
+        String updated = WsReleaseDraftMojo.updateVersionProperty(
                 pom, "ike-pipeline.version", "2.0.0-SNAPSHOT");
 
         // Should be unchanged
@@ -228,7 +229,7 @@ class WsReleaseIntegrationTest {
                 </project>
                 """;
 
-        String updated = WsReleaseMojo.updateParentVersion(
+        String updated = WsReleaseDraftMojo.updateParentVersion(
                 pom, "lib-a", "1.0.1-SNAPSHOT");
 
         assertThat(updated).contains(
@@ -250,7 +251,7 @@ class WsReleaseIntegrationTest {
                 </project>
                 """;
 
-        String updated = WsReleaseMojo.updateParentVersion(
+        String updated = WsReleaseDraftMojo.updateParentVersion(
                 pom, "lib-a", "1.0.1-SNAPSHOT");
 
         assertThat(updated).isEqualTo(pom);
@@ -268,15 +269,15 @@ class WsReleaseIntegrationTest {
                 </project>
                 """;
 
-        String version = WsReleaseMojo.extractVersionFromPom(pom);
+        String version = WsReleaseDraftMojo.extractVersionFromPom(pom);
         assertThat(version).isEqualTo("2.5.0-SNAPSHOT");
     }
 
     @Test
     void extractVersionFromPom_nullContent_returnsUnknown() {
-        assertThat(WsReleaseMojo.extractVersionFromPom(null)).isEqualTo("unknown");
-        assertThat(WsReleaseMojo.extractVersionFromPom("")).isEqualTo("unknown");
-        assertThat(WsReleaseMojo.extractVersionFromPom("   ")).isEqualTo("unknown");
+        assertThat(WsReleaseDraftMojo.extractVersionFromPom(null)).isEqualTo("unknown");
+        assertThat(WsReleaseDraftMojo.extractVersionFromPom("")).isEqualTo("unknown");
+        assertThat(WsReleaseDraftMojo.extractVersionFromPom("   ")).isEqualTo("unknown");
     }
 
     @Test
@@ -288,7 +289,7 @@ class WsReleaseIntegrationTest {
                 </project>
                 """;
 
-        assertThat(WsReleaseMojo.extractVersionFromPom(pom)).isEqualTo("unknown");
+        assertThat(WsReleaseDraftMojo.extractVersionFromPom(pom)).isEqualTo("unknown");
     }
 
     // ── Static helpers: resolveMvnCommand ────────────────────────────
@@ -296,7 +297,7 @@ class WsReleaseIntegrationTest {
     @Test
     void resolveMvnCommand_noWrapper_fallsBackToMvn() {
         // tempDir has no mvnw or mvnw.cmd
-        String cmd = WsReleaseMojo.resolveMvnCommand(tempDir.toFile());
+        String cmd = WsReleaseDraftMojo.resolveMvnCommand(tempDir.toFile());
         assertThat(cmd).isEqualTo("mvn");
     }
 
@@ -306,7 +307,7 @@ class WsReleaseIntegrationTest {
         Files.writeString(mvnw, "#!/bin/sh\necho mvnw", StandardCharsets.UTF_8);
         mvnw.toFile().setExecutable(true);
 
-        String cmd = WsReleaseMojo.resolveMvnCommand(tempDir.toFile());
+        String cmd = WsReleaseDraftMojo.resolveMvnCommand(tempDir.toFile());
         assertThat(cmd).isEqualTo(mvnw.toAbsolutePath().toString());
     }
 
@@ -319,7 +320,7 @@ class WsReleaseIntegrationTest {
                 new String[]{"app-c", "develop", "def5678", "3.0.0-SNAPSHOT", "false"}
         );
 
-        String yaml = WsReleaseMojo.buildPreReleaseCheckpointYaml(
+        String yaml = WsReleaseDraftMojo.buildPreReleaseCheckpointYaml(
                 "pre-release-20260322", "2026-03-22T10:00:00Z", data);
 
         assertThat(yaml).contains("checkpoint: pre-release-20260322");
@@ -327,24 +328,24 @@ class WsReleaseIntegrationTest {
         assertThat(yaml).contains("  lib-a:");
         assertThat(yaml).contains("    branch: main");
         assertThat(yaml).contains("    sha: abc1234");
-        assertThat(yaml).contains("    dirty: true");
+        assertThat(yaml).contains("    modified: true");
         assertThat(yaml).contains("  app-c:");
         assertThat(yaml).contains("    branch: develop");
-        assertThat(yaml).contains("    dirty: false");
+        assertThat(yaml).contains("    modified: false");
     }
 
-    // ── Non-dry-run: error recovery path ───────────────────────────
+    // ── Non-draft: error recovery path ───────────────────────────
 
     @Test
     void nonDryRun_noMvnw_failsWithMojoException() throws Exception {
-        // All components dirty (never tagged). Non-dry-run will try
+        // All components modified (never tagged). Non-draft will try
         // to run "mvn ike:release" — which fails because there is no
         // mvn/mvnw in the component directories. Verify that:
         //  1. The error message names the failed component
         //  2. The exception is MojoExecutionException
-        WsReleaseMojo mojo = new WsReleaseMojo();
+        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
-        mojo.dryRun = false;
+        mojo.publish = true;
         mojo.skipCheckpoint = true;
         mojo.push = false;
 
@@ -360,9 +361,9 @@ class WsReleaseIntegrationTest {
             exec(tempDir.resolve(name), "git", "tag", "v1.0.0");
         }
 
-        WsReleaseMojo mojo = new WsReleaseMojo();
+        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
-        mojo.dryRun = false;
+        mojo.publish = true;
         mojo.skipCheckpoint = true;
         mojo.push = false;
 
@@ -381,9 +382,9 @@ class WsReleaseIntegrationTest {
         exec(tempDir.resolve("lib-b"), "git", "tag", "v1.0.0");
         exec(tempDir.resolve("app-c"), "git", "tag", "v1.0.0");
 
-        WsReleaseMojo mojo = new WsReleaseMojo();
+        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
-        mojo.dryRun = false;
+        mojo.publish = true;
         mojo.skipCheckpoint = true;
         mojo.push = false;
 
@@ -399,13 +400,13 @@ class WsReleaseIntegrationTest {
         // Actually skipCheckpoint=true skips checkpoint writing
     }
 
-    // ── Pre-release checkpoint writing (non-dry-run) ────────────────
+    // ── Pre-release checkpoint writing (non-draft) ────────────────
 
     @Test
     void nonDryRun_writesCheckpointBeforeRelease() throws Exception {
-        WsReleaseMojo mojo = new WsReleaseMojo();
+        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
-        mojo.dryRun = false;
+        mojo.publish = true;
         mojo.skipCheckpoint = false;
         mojo.push = false;
 
@@ -444,7 +445,7 @@ class WsReleaseIntegrationTest {
                 """;
 
         // updateVersionProperty updates the property element
-        String updated = WsReleaseMojo.updateVersionProperty(
+        String updated = WsReleaseDraftMojo.updateVersionProperty(
                 pom, "ike-parent.version", "20-SNAPSHOT");
 
         assertThat(updated).contains(
@@ -463,7 +464,7 @@ class WsReleaseIntegrationTest {
                 </project>
                 """;
 
-        String updated = WsReleaseMojo.updateParentVersion(
+        String updated = WsReleaseDraftMojo.updateParentVersion(
                 pom, "any-parent", "2.0.0");
 
         assertThat(updated).isEqualTo(pom);

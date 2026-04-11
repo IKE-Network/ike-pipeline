@@ -160,8 +160,9 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 + (wrappers > 0 ? ", " + wrappers + " Maven wrappers installed/updated" : ""));
         getLog().info("");
 
-        // Generate goal cheatsheet and CLAUDE.md at workspace root
+        // Generate goal cheatsheet, reference, and CLAUDE.md at workspace root
         writeGoalCheatsheet(root.toPath());
+        writeWorkspaceReference(root.toPath());
         ensureClaudeNotes(root.toPath(), workspaceName());
         writeWorkspaceClaudeMd(root.toPath(), graph);
 
@@ -541,8 +542,8 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 | `ws:fix` | Sync workspace.yaml versions from actual POMs |
                 | `ws:graph` | Print dependency graph (text or DOT format) |
                 | `ws:stignore` | Generate Syncthing ignore rules |
-                | `ws:upgrade` | Preview workspace convention upgrades |
-                | `ws:upgrade-apply` | Apply convention upgrades |
+                | `ws:upgrade-draft` | Preview workspace convention upgrades |
+                | `ws:upgrade-publish` | Apply convention upgrades |
                 | `ws:remove` | Remove a component (prompts for name) |
                 | `ws:help` | List all ws: goals with descriptions |
 
@@ -559,8 +560,8 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
                 | Goal | Description |
                 |------|-------------|
-                | `ws:align` | Preview inter-component version changes |
-                | `ws:align-apply` | Apply version alignment to POMs |
+                | `ws:align-draft` | Preview inter-component version changes |
+                | `ws:align-publish` | Apply version alignment to POMs |
                 | `ws:pull` | Git pull --rebase across all components |
                 | `ws:sync` | Reconcile git state after machine switch |
 
@@ -568,25 +569,25 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
                 | Goal | Description |
                 |------|-------------|
-                | `ws:feature-start` | Preview creating a feature branch |
-                | `ws:feature-start-apply` | Create feature branch across components |
-                | `ws:feature-finish-merge` | Preview no-ff merge |
-                | `ws:feature-finish-merge-apply` | No-ff merge (preserves history) |
-                | `ws:feature-finish-squash` | Preview squash merge |
-                | `ws:feature-finish-squash-apply` | Squash merge (single commit) |
-                | `ws:feature-finish-rebase` | Preview rebase |
-                | `ws:feature-finish-rebase-apply` | Rebase + fast-forward (linear history) |
-                | `ws:feature-abandon` | Preview abandoning a feature branch |
-                | `ws:feature-abandon-apply` | Delete feature branch across components |
+                | `ws:feature-start-draft` | Preview feature branch |
+                | `ws:feature-start-publish` | Create feature branch across components |
+                | `ws:feature-finish-merge-draft` | Preview no-ff merge |
+                | `ws:feature-finish-merge-publish` | No-ff merge (preserves history) |
+                | `ws:feature-finish-squash-draft` | Preview squash merge |
+                | `ws:feature-finish-squash-publish` | Squash merge (single commit) |
+                | `ws:feature-finish-rebase-draft` | Preview rebase |
+                | `ws:feature-finish-rebase-publish` | Rebase + fast-forward (linear history) |
+                | `ws:feature-abandon-draft` | Preview abandoning a feature branch |
+                | `ws:feature-abandon-publish` | Delete feature branch across components |
 
                 ## Release & Checkpoint
 
                 | Goal | Description |
                 |------|-------------|
-                | `ws:release` | Preview what would be released |
-                | `ws:release-apply` | Execute workspace release |
-                | `ws:checkpoint` | Preview checkpoint (tag all components) |
-                | `ws:checkpoint-apply` | Execute checkpoint |
+                | `ws:release-draft` | Preview what would be released |
+                | `ws:release-publish` | Execute workspace release |
+                | `ws:checkpoint-draft` | Preview checkpoint (tag all components) |
+                | `ws:checkpoint-publish` | Execute checkpoint |
                 | `ws:post-release` | Bump to next development version |
                 | `ws:release-notes` | Generate release notes from GitHub milestone |
 
@@ -602,17 +603,140 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
                 | Goal | Description |
                 |------|-------------|
-                | `ike:release` | Preview single-repo release |
-                | `ike:release-apply` | Execute single-repo release |
+                | `ike:release-draft` | Preview single-repo release |
+                | `ike:release-publish` | Execute single-repo release |
                 | `ike:generate-bom` | Generate BOM with resolved versions |
-                | `ike:deploy-site` | Preview site deployment |
-                | `ike:deploy-site-apply` | Deploy project site |
-                | `ike:publish-site` | Preview GitHub Pages publish |
-                | `ike:publish-site-apply` | Publish site to GitHub Pages |
+                | `ike:deploy-site-draft` | Preview site deployment |
+                | `ike:deploy-site-publish` | Deploy project site |
+                | `ike:register-site-draft` | Preview org site registration |
+                | `ike:register-site-publish` | Register project on org site |
                 | `ike:help` | List all ike: goals with descriptions |
 
                 ---
                 *Generated by `ws:init`. See `ws:help` and `ike:help` for full details.*
+                """;
+    }
+
+    // ── WS-REFERENCE.md generation ────────────────────────────────
+
+    private void writeWorkspaceReference(Path wsRoot) {
+        Path refFile = wsRoot.resolve("WS-REFERENCE.md");
+        try {
+            Files.writeString(refFile, generateWorkspaceReference(),
+                    StandardCharsets.UTF_8);
+            getLog().info("  Updated WS-REFERENCE.md");
+        } catch (IOException e) {
+            getLog().debug("Could not write WS-REFERENCE.md: " + e.getMessage());
+        }
+    }
+
+    static String generateWorkspaceReference() {
+        return """
+                # Workspace Goals Reference
+
+                Complete reference for `ws:` goals. Quick overview: [GOALS.md](GOALS.md).
+
+                ## Convention: -draft / -publish
+
+                Most mutating goals come in pairs:
+                - **-draft** (default) — preview mode, no changes made
+                - **-publish** — executes the operation
+
+                Example: `mvn ws:feature-start-draft -Dfeature=X` previews,
+                `mvn ws:feature-start-publish -Dfeature=X` executes.
+
+                ---
+
+                ## Feature Branching
+
+                ### Start: `ws:feature-start-draft` / `ws:feature-start-publish`
+
+                Create a feature branch, qualify versions (e.g., `1.0.0-SNAPSHOT` becomes
+                `1.0.0-CssUtils-SNAPSHOT`), cascade through BOMs and properties.
+
+                | Parameter | Default | Description |
+                |-----------|---------|-------------|
+                | `feature` | prompted | Feature name (branch: `feature/<name>`) |
+                | `group` | all | Restrict to group or component |
+                | `targetBranch` | `main` | Source branch |
+                | `skipVersion` | `false` | Skip version qualification |
+
+                Fails if any component is on a different feature branch.
+                Branches stay local (no auto-push).
+
+                ### Finish: Three Strategies
+
+                **`ws:feature-finish-squash-publish`** (recommended) — single commit on target.
+                **`ws:feature-finish-merge-publish`** — no-ff merge, preserves history.
+                **`ws:feature-finish-rebase-publish`** — linear history, no merge commit.
+
+                All strategies:
+                - Auto-generate commit message from per-component commit history
+                - Fail-fast if any component has uncommitted changes
+                - Strip branch-qualified versions back to base SNAPSHOT
+                - Accept optional `-Dmessage="summary"` prepended to auto-generated message
+
+                | Parameter | Default | Description |
+                |-----------|---------|-------------|
+                | `feature` | prompted | Feature name |
+                | `targetBranch` | `main` | Merge target |
+                | `keepBranch` | varies | Keep branch after merge |
+                | `message` | auto | Optional human summary |
+
+                ### Abandon: `ws:feature-abandon-draft`
+
+                Delete a feature branch without merging.
+
+                ---
+
+                ## Workspace Lifecycle
+
+                | Goal | Description |
+                |------|-------------|
+                | `ws:init` | Clone/initialize components from workspace.yaml |
+                | `ws:verify` | Check manifest, BOM cascade, VCS state |
+                | `ws:verify-convergence` | Full verify + transitive convergence |
+                | `ws:overview` | Dashboard: manifest, graph, status, cascade |
+                | `ws:fix` | Auto-fix issues found by verify |
+                | `ws:upgrade-draft` / `-publish` | Convention upgrades for new plugin version |
+                | `ws:pull` | Git pull --rebase across components |
+
+                ---
+
+                ## Release & Checkpoint
+
+                | Goal | Description |
+                |------|-------------|
+                | `ws:release-draft` / `-publish` | Release modified components in topo order |
+                | `ws:checkpoint-draft` / `-publish` | Tag all components, record SHAs |
+                | `ws:post-release` | Bump to next SNAPSHOT |
+                | `ws:align-draft` / `-publish` | Align inter-component versions |
+                | `ws:release-notes` | Generate notes from GitHub milestone |
+
+                ---
+
+                ## VCS Bridge (Syncthing)
+
+                | Goal | Description |
+                |------|-------------|
+                | `ws:commit` | Commit across repos (`-Dmessage="..." -DaddAll=true -Dpush=true`) |
+                | `ws:push` | Push all components to origin |
+                | `ws:vcs-sync` | Reconcile after machine switch |
+
+                ---
+
+                ## Troubleshooting
+
+                **Maven discovers `.teamcity/pom.xml`** — Add `-pl !.teamcity` to `.mvn/maven.config`.
+
+                **Feature finish: "uncommitted changes"** — Run `mvn ws:commit -Dmessage="..." -DaddAll=true` first.
+
+                **Feature start: "already on feature branch"** — Finish/abandon the current feature first.
+
+                **Plugin version mismatch** — After upgrading `ike-parent`, run `mvn ws:init`.
+
+                ---
+                *Generated by `ws:init`. Regenerated when workspace plugin version changes.*
                 """;
     }
 
@@ -724,6 +848,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
                 """);
 
+        sb.append("See `WS-REFERENCE.md` for complete workspace goal documentation.\n");
         sb.append("See `CLAUDE-").append(wsName)
                 .append(".md` for workspace-specific information.\n");
         sb.append("See `.claude/standards/` (after `mvn validate`) for full build standards.\n");

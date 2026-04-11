@@ -7,14 +7,14 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests for pure functions in {@link WsCheckpointMojo}: YAML generation,
+ * Tests for pure functions in {@link WsCheckpointDraftMojo}: YAML generation,
  * tag name derivation, file naming, and status formatting.
  */
 class CheckpointSupportTest {
 
     @Test
     void buildCheckpointYaml_header_containsMetadata() {
-        String yaml = WsCheckpointMojo.buildCheckpointYaml(
+        String yaml = WsCheckpointDraftMojo.buildCheckpointYaml(
                 "sprint-42", "2026-03-20T10:00:00Z", "kec", "1.0",
                 List.of(), List.of());
 
@@ -33,7 +33,7 @@ class CheckpointSupportTest {
                 "main", "20-SNAPSHOT", false,
                 "infrastructure", false);
 
-        String yaml = WsCheckpointMojo.buildCheckpointYaml(
+        String yaml = WsCheckpointDraftMojo.buildCheckpointYaml(
                 "test", "2026-01-01T00:00:00Z", "ci", "1.0",
                 List.of(snap), List.of());
 
@@ -56,7 +56,7 @@ class CheckpointSupportTest {
                 "feature/docs", "1.0-SNAPSHOT", true,
                 "document", false);
 
-        String yaml = WsCheckpointMojo.buildCheckpointYaml(
+        String yaml = WsCheckpointDraftMojo.buildCheckpointYaml(
                 "test", "2026-01-01T00:00:00Z", "ci", "1.0",
                 List.of(snap), List.of());
 
@@ -73,7 +73,7 @@ class CheckpointSupportTest {
                 "main", "1.0", false,
                 "knowledge-source", true);
 
-        String yaml = WsCheckpointMojo.buildCheckpointYaml(
+        String yaml = WsCheckpointDraftMojo.buildCheckpointYaml(
                 "test", "2026-01-01T00:00:00Z", "ci", "1.0",
                 List.of(snap), List.of());
 
@@ -83,7 +83,7 @@ class CheckpointSupportTest {
 
     @Test
     void buildCheckpointYaml_absentComponent_markedAbsent() {
-        String yaml = WsCheckpointMojo.buildCheckpointYaml(
+        String yaml = WsCheckpointDraftMojo.buildCheckpointYaml(
                 "test", "2026-01-01T00:00:00Z", "ci", "1.0",
                 List.of(), List.of("missing-repo"));
 
@@ -99,7 +99,7 @@ class CheckpointSupportTest {
                 "main", null, false,
                 "software", false);
 
-        String yaml = WsCheckpointMojo.buildCheckpointYaml(
+        String yaml = WsCheckpointDraftMojo.buildCheckpointYaml(
                 "test", "2026-01-01T00:00:00Z", "ci", "1.0",
                 List.of(snap), List.of());
 
@@ -112,7 +112,7 @@ class CheckpointSupportTest {
 
     @Test
     void buildCheckpointYaml_emptyComponents_minimalOutput() {
-        String yaml = WsCheckpointMojo.buildCheckpointYaml(
+        String yaml = WsCheckpointDraftMojo.buildCheckpointYaml(
                 "empty", "2026-01-01T00:00:00Z", "ci", "1.0",
                 List.of(), List.of());
 
@@ -128,7 +128,7 @@ class CheckpointSupportTest {
                 new ComponentSnapshot("alpha", "a1", "a1", "main", "1.0", false, "software", false),
                 new ComponentSnapshot("beta", "b2", "b2", "main", "2.0", false, "document", false));
 
-        String yaml = WsCheckpointMojo.buildCheckpointYaml(
+        String yaml = WsCheckpointDraftMojo.buildCheckpointYaml(
                 "multi", "2026-01-01T00:00:00Z", "ci", "1.0",
                 snaps, List.of());
 
@@ -141,13 +141,13 @@ class CheckpointSupportTest {
 
     @Test
     void checkpointFileName_standardFormat() {
-        assertThat(WsCheckpointMojo.checkpointFileName("sprint-42"))
+        assertThat(WsCheckpointDraftMojo.checkpointFileName("sprint-42"))
                 .isEqualTo("checkpoint-sprint-42.yaml");
     }
 
     @Test
     void checkpointFileName_withTimestamp() {
-        assertThat(WsCheckpointMojo.checkpointFileName("pre-release-20260320-100000"))
+        assertThat(WsCheckpointDraftMojo.checkpointFileName("pre-release-20260320-100000"))
                 .isEqualTo("checkpoint-pre-release-20260320-100000.yaml");
     }
 

@@ -168,8 +168,8 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         List<String[]> cascadeRows = new ArrayList<>();
         if (!modifiedComponents.isEmpty()) {
             Set<String> allAffected = new LinkedHashSet<>();
-            for (String dirty : modifiedComponents) {
-                allAffected.addAll(graph.cascade(dirty));
+            for (String comp : modifiedComponents) {
+                allAffected.addAll(graph.cascade(comp));
             }
             allAffected.removeAll(modifiedComponents);
 

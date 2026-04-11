@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Integration tests for {@link FeatureStartMojo} bare-mode (no workspace.yaml).
+ * Integration tests for {@link FeatureStartDraftMojo} bare-mode (no workspace.yaml).
  *
  * <p>Each test creates a standalone git repo with a pom.xml and exercises
  * the bare-mode path where no workspace manifest is present. Uses
@@ -60,9 +60,9 @@ class FeatureStartBareModeTest {
 
     @Test
     void bareMode_createsBranchInCurrentRepo() throws Exception {
-        FeatureStartMojo mojo = new FeatureStartMojo();
+        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
         mojo.feature = "test-bare";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -85,9 +85,9 @@ class FeatureStartBareModeTest {
         String originalPom = Files.readString(
                 tempDir.resolve("pom.xml"), StandardCharsets.UTF_8);
 
-        FeatureStartMojo mojo = new FeatureStartMojo();
+        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
         mojo.feature = "dry-test";
-        mojo.dryRun = true;
+        mojo.publish = false;
 
         mojo.execute();
 
@@ -112,9 +112,9 @@ class FeatureStartBareModeTest {
         Files.writeString(tempDir.resolve("dirty.txt"),
                 "uncommitted", StandardCharsets.UTF_8);
 
-        FeatureStartMojo mojo = new FeatureStartMojo();
+        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
         mojo.feature = "dirty-test";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         assertThatThrownBy(mojo::execute)
                 .isInstanceOf(MojoExecutionException.class)
@@ -126,10 +126,10 @@ class FeatureStartBareModeTest {
         String originalPom = Files.readString(
                 tempDir.resolve("pom.xml"), StandardCharsets.UTF_8);
 
-        FeatureStartMojo mojo = new FeatureStartMojo();
+        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
         mojo.feature = "skip-ver";
         mojo.skipVersion = true;
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -164,9 +164,9 @@ class FeatureStartBareModeTest {
         exec(tempDir, "git", "add", ".");
         exec(tempDir, "git", "commit", "-m", "Add submodule");
 
-        FeatureStartMojo mojo = new FeatureStartMojo();
+        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
         mojo.feature = "multi-mod";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -185,9 +185,9 @@ class FeatureStartBareModeTest {
 
     @Test
     void bareMode_dryRun_skipVersion_noVersionInfo() throws Exception {
-        FeatureStartMojo mojo = new FeatureStartMojo();
+        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
         mojo.feature = "skip-dry";
-        mojo.dryRun = true;
+        mojo.publish = false;
         mojo.skipVersion = true;
 
         mojo.execute();
@@ -220,10 +220,10 @@ class FeatureStartBareModeTest {
         String savedDir = System.getProperty("user.dir");
         System.setProperty("user.dir", noPomDir.toAbsolutePath().toString());
         try {
-            FeatureStartMojo mojo = new FeatureStartMojo();
+            FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
             mojo.feature = "no-pom-test";
             mojo.skipVersion = true;
-            mojo.dryRun = false;
+            mojo.publish = true;
 
             mojo.execute();
 

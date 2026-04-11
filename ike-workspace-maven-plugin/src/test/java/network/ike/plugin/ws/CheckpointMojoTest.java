@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * Tests for {@link CheckpointSupport}.
  *
  * <p>Checkpoints only tag current HEAD — no POM changes, no builds.
- * These tests verify tagging and dry-run behavior.
+ * These tests verify tagging and draft behavior.
  */
 class CheckpointMojoTest {
 
@@ -34,7 +34,7 @@ class CheckpointMojoTest {
         String pomBefore = Files.readString(tempDir.resolve("pom.xml"),
                 StandardCharsets.UTF_8);
 
-        assertThatCode(() -> CheckpointSupport.dryRun(
+        assertThatCode(() -> CheckpointSupport.preview(
                 tempDir.toFile(), "checkpoint/test-run",
                 new SystemStreamLog()))
                 .doesNotThrowAnyException();
@@ -53,7 +53,7 @@ class CheckpointMojoTest {
     void dryRun_withCustomLabel() throws Exception {
         createCheckpointProject(tempDir);
 
-        assertThatCode(() -> CheckpointSupport.dryRun(
+        assertThatCode(() -> CheckpointSupport.preview(
                 tempDir.toFile(), "checkpoint/sprint-42",
                 new SystemStreamLog()))
                 .doesNotThrowAnyException();
@@ -113,7 +113,7 @@ class CheckpointMojoTest {
                         "tinkar-core", "abc123full", "abc123", "main",
                         "1.0.0-SNAPSHOT", false, "software", false));
 
-        String yaml = WsCheckpointMojo.buildCheckpointYaml(
+        String yaml = WsCheckpointDraftMojo.buildCheckpointYaml(
                 "test", "2026-04-08T00:00:00Z", "tester", "1.0",
                 snapshots, java.util.List.of());
 
@@ -127,7 +127,7 @@ class CheckpointMojoTest {
 
     @Test
     void buildCheckpointYaml_includesAbsentComponents() {
-        String yaml = WsCheckpointMojo.buildCheckpointYaml(
+        String yaml = WsCheckpointDraftMojo.buildCheckpointYaml(
                 "test", "2026-04-08T00:00:00Z", "tester", "1.0",
                 java.util.List.of(), java.util.List.of("missing-repo"));
 

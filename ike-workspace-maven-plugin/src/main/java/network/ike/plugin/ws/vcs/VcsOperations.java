@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -103,6 +104,17 @@ public class VcsOperations {
         } catch (MojoExecutionException e) {
             return false;
         }
+    }
+
+    /**
+     * Get the one-line commit log between two refs.
+     */
+    public static List<String> commitLog(File dir, String base, String head)
+            throws MojoExecutionException {
+        String output = capture(dir, "git", "log",
+                base + ".." + head, "--oneline", "--no-decorate");
+        if (output.isEmpty()) return List.of();
+        return List.of(output.split("\n"));
     }
 
     // ── Git operations ───────────────────────────────────────────

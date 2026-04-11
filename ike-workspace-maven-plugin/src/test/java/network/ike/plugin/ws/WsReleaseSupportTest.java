@@ -12,7 +12,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests for pure functions extracted from {@link WsReleaseMojo}:
+ * Tests for pure functions extracted from {@link WsReleaseDraftMojo}:
  * POM version extraction, parent version updates, and version
  * property updates.
  */
@@ -29,7 +29,7 @@ class WsReleaseSupportTest {
                     <version>1.2.3-SNAPSHOT</version>
                 </project>
                 """;
-        assertThat(WsReleaseMojo.extractVersionFromPom(pom))
+        assertThat(WsReleaseDraftMojo.extractVersionFromPom(pom))
                 .isEqualTo("1.2.3-SNAPSHOT");
     }
 
@@ -49,7 +49,7 @@ class WsReleaseSupportTest {
                     <version>5.0.0</version>
                 </project>
                 """;
-        assertThat(WsReleaseMojo.extractVersionFromPom(pom))
+        assertThat(WsReleaseDraftMojo.extractVersionFromPom(pom))
                 .isEqualTo("20-SNAPSHOT");
     }
 
@@ -61,26 +61,26 @@ class WsReleaseSupportTest {
                     <artifactId>orphan</artifactId>
                 </project>
                 """;
-        assertThat(WsReleaseMojo.extractVersionFromPom(pom))
+        assertThat(WsReleaseDraftMojo.extractVersionFromPom(pom))
                 .isEqualTo("unknown");
     }
 
     @Test
     void extractVersionFromPom_null_returnsUnknown() {
-        assertThat(WsReleaseMojo.extractVersionFromPom(null))
+        assertThat(WsReleaseDraftMojo.extractVersionFromPom(null))
                 .isEqualTo("unknown");
     }
 
     @Test
     void extractVersionFromPom_blank_returnsUnknown() {
-        assertThat(WsReleaseMojo.extractVersionFromPom("  "))
+        assertThat(WsReleaseDraftMojo.extractVersionFromPom("  "))
                 .isEqualTo("unknown");
     }
 
     @Test
     void extractVersionFromPom_integerVersion() {
         String pom = "<project><version>20</version></project>";
-        assertThat(WsReleaseMojo.extractVersionFromPom(pom))
+        assertThat(WsReleaseDraftMojo.extractVersionFromPom(pom))
                 .isEqualTo("20");
     }
 
@@ -98,7 +98,7 @@ class WsReleaseSupportTest {
                     <artifactId>ike-pipeline</artifactId>
                 </project>
                 """;
-        String result = WsReleaseMojo.updateParentVersion(pom, "ike-parent", "21-SNAPSHOT");
+        String result = WsReleaseDraftMojo.updateParentVersion(pom, "ike-parent", "21-SNAPSHOT");
 
         assertThat(result)
                 .contains("<version>21-SNAPSHOT</version>")
@@ -116,7 +116,7 @@ class WsReleaseSupportTest {
                     </parent>
                 </project>
                 """;
-        String result = WsReleaseMojo.updateParentVersion(pom, "other-parent", "21-SNAPSHOT");
+        String result = WsReleaseDraftMojo.updateParentVersion(pom, "other-parent", "21-SNAPSHOT");
 
         assertThat(result).contains("<version>19-SNAPSHOT</version>");
     }
@@ -135,7 +135,7 @@ class WsReleaseSupportTest {
                     <version>1.0.0</version>
                 </project>
                 """;
-        String result = WsReleaseMojo.updateParentVersion(pom, "ike-parent", "21-SNAPSHOT");
+        String result = WsReleaseDraftMojo.updateParentVersion(pom, "ike-parent", "21-SNAPSHOT");
 
         assertThat(result)
                 .contains("<version>21-SNAPSHOT</version>")
@@ -153,7 +153,7 @@ class WsReleaseSupportTest {
                     </parent>
                 </project>
                 """;
-        String result = WsReleaseMojo.updateParentVersion(pom, "ike-build-tools", "6-SNAPSHOT");
+        String result = WsReleaseDraftMojo.updateParentVersion(pom, "ike-build-tools", "6-SNAPSHOT");
 
         assertThat(result).contains("<version>6-SNAPSHOT</version>");
     }
@@ -167,7 +167,7 @@ class WsReleaseSupportTest {
                     <ike-pipeline.version>19-SNAPSHOT</ike-pipeline.version>
                 </properties>
                 """;
-        String result = WsReleaseMojo.updateVersionProperty(
+        String result = WsReleaseDraftMojo.updateVersionProperty(
                 pom, "ike-pipeline.version", "21-SNAPSHOT");
 
         assertThat(result)
@@ -182,7 +182,7 @@ class WsReleaseSupportTest {
                     <ike.pipeline.version>19-SNAPSHOT</ike.pipeline.version>
                 </properties>
                 """;
-        String result = WsReleaseMojo.updateVersionProperty(
+        String result = WsReleaseDraftMojo.updateVersionProperty(
                 pom, "ike.pipeline.version", "21-SNAPSHOT");
 
         assertThat(result)
@@ -196,7 +196,7 @@ class WsReleaseSupportTest {
                     <ike-pipeline.version>19-SNAPSHOT</ike-pipeline.version>
                 </properties>
                 """;
-        String result = WsReleaseMojo.updateVersionProperty(
+        String result = WsReleaseDraftMojo.updateVersionProperty(
                 pom, "other.version", "21-SNAPSHOT");
 
         assertThat(result)
@@ -218,7 +218,7 @@ class WsReleaseSupportTest {
                     </properties>
                 </profiles>
                 """;
-        String result = WsReleaseMojo.updateVersionProperty(
+        String result = WsReleaseDraftMojo.updateVersionProperty(
                 pom, "lib.version", "2.0");
 
         // Both occurrences should be updated
@@ -230,7 +230,7 @@ class WsReleaseSupportTest {
 
     @Test
     void resolveMvnCommand_noWrapper_returnsMvn(@TempDir Path tmpDir) {
-        assertThat(WsReleaseMojo.resolveMvnCommand(tmpDir.toFile()))
+        assertThat(WsReleaseDraftMojo.resolveMvnCommand(tmpDir.toFile()))
                 .isEqualTo("mvn");
     }
 
@@ -240,7 +240,7 @@ class WsReleaseSupportTest {
         File mvnwCmd = tmpDir.resolve("mvnw.cmd").toFile();
         mvnwCmd.createNewFile();
 
-        assertThat(WsReleaseMojo.resolveMvnCommand(tmpDir.toFile()))
+        assertThat(WsReleaseDraftMojo.resolveMvnCommand(tmpDir.toFile()))
                 .isEqualTo(mvnwCmd.getAbsolutePath());
     }
 
@@ -255,7 +255,7 @@ class WsReleaseSupportTest {
         mvnwCmd.createNewFile();
 
         // mvnw (executable) should be preferred over mvnw.cmd
-        assertThat(WsReleaseMojo.resolveMvnCommand(tmpDir.toFile()))
+        assertThat(WsReleaseDraftMojo.resolveMvnCommand(tmpDir.toFile()))
                 .isEqualTo(mvnw.getAbsolutePath());
     }
 
@@ -269,7 +269,7 @@ class WsReleaseSupportTest {
         File mvnwCmd = tmpDir.resolve("mvnw.cmd").toFile();
         mvnwCmd.createNewFile();
 
-        assertThat(WsReleaseMojo.resolveMvnCommand(tmpDir.toFile()))
+        assertThat(WsReleaseDraftMojo.resolveMvnCommand(tmpDir.toFile()))
                 .isEqualTo(mvnwCmd.getAbsolutePath());
     }
 
@@ -277,7 +277,7 @@ class WsReleaseSupportTest {
 
     @Test
     void buildPreReleaseCheckpointYaml_header() {
-        String yaml = WsReleaseMojo.buildPreReleaseCheckpointYaml(
+        String yaml = WsReleaseDraftMojo.buildPreReleaseCheckpointYaml(
                 "pre-release-20260320-100000",
                 "2026-03-20T10:00:00Z",
                 List.of());
@@ -295,7 +295,7 @@ class WsReleaseSupportTest {
         List<String[]> components = List.<String[]>of(
                 new String[]{"ike-pipeline", "main", "abc123d", "20-SNAPSHOT", "false"});
 
-        String yaml = WsReleaseMojo.buildPreReleaseCheckpointYaml(
+        String yaml = WsReleaseDraftMojo.buildPreReleaseCheckpointYaml(
                 "test", "2026-01-01T00:00:00Z", components);
 
         assertThat(yaml)
@@ -303,19 +303,19 @@ class WsReleaseSupportTest {
                 .contains("    branch: main")
                 .contains("    sha: abc123d")
                 .contains("    version: 20-SNAPSHOT")
-                .contains("    dirty: false");
+                .contains("    modified: false");
     }
 
     @Test
-    void buildPreReleaseCheckpointYaml_dirtyComponent() {
+    void buildPreReleaseCheckpointYaml_modifiedComponent() {
         List<String[]> components = List.<String[]>of(
                 new String[]{"ike-docs", "feature/docs", "def456", "1.0-SNAPSHOT", "true"});
 
-        String yaml = WsReleaseMojo.buildPreReleaseCheckpointYaml(
+        String yaml = WsReleaseDraftMojo.buildPreReleaseCheckpointYaml(
                 "test", "2026-01-01T00:00:00Z", components);
 
         assertThat(yaml)
-                .contains("    dirty: true");
+                .contains("    modified: true");
     }
 
     @Test
@@ -324,7 +324,7 @@ class WsReleaseSupportTest {
                 new String[]{"alpha", "main", "aaa", "1.0", "false"},
                 new String[]{"beta", "develop", "bbb", "2.0-SNAPSHOT", "true"});
 
-        String yaml = WsReleaseMojo.buildPreReleaseCheckpointYaml(
+        String yaml = WsReleaseDraftMojo.buildPreReleaseCheckpointYaml(
                 "multi", "2026-01-01T00:00:00Z", components);
 
         assertThat(yaml)
@@ -334,7 +334,7 @@ class WsReleaseSupportTest {
 
     @Test
     void buildPreReleaseCheckpointYaml_emptyComponents() {
-        String yaml = WsReleaseMojo.buildPreReleaseCheckpointYaml(
+        String yaml = WsReleaseDraftMojo.buildPreReleaseCheckpointYaml(
                 "empty", "2026-01-01T00:00:00Z", List.of());
 
         assertThat(yaml)
@@ -347,7 +347,7 @@ class WsReleaseSupportTest {
     @Test
     void extractVersionFromPom_versionWithQualifier() {
         String pom = "<project><version>3.0.0-my-feature-SNAPSHOT</version></project>";
-        assertThat(WsReleaseMojo.extractVersionFromPom(pom))
+        assertThat(WsReleaseDraftMojo.extractVersionFromPom(pom))
                 .isEqualTo("3.0.0-my-feature-SNAPSHOT");
     }
 
@@ -364,7 +364,7 @@ class WsReleaseSupportTest {
                     </dependencies>
                 </project>
                 """;
-        assertThat(WsReleaseMojo.extractVersionFromPom(pom))
+        assertThat(WsReleaseDraftMojo.extractVersionFromPom(pom))
                 .isEqualTo("1.0.0");
     }
 
@@ -378,7 +378,7 @@ class WsReleaseSupportTest {
                     <version>1.0.0</version>
                 </project>
                 """;
-        assertThat(WsReleaseMojo.extractVersionFromPom(pom))
+        assertThat(WsReleaseDraftMojo.extractVersionFromPom(pom))
                 .isEqualTo("1.0.0");
     }
 
@@ -393,7 +393,7 @@ class WsReleaseSupportTest {
                     <version>1.0</version>
                 </project>
                 """;
-        String result = WsReleaseMojo.updateParentVersion(pom, "ike-parent", "21-SNAPSHOT");
+        String result = WsReleaseDraftMojo.updateParentVersion(pom, "ike-parent", "21-SNAPSHOT");
 
         // No parent block → no change
         assertThat(result).isEqualTo(pom);
@@ -417,7 +417,7 @@ class WsReleaseSupportTest {
                     </dependencies>
                 </project>
                 """;
-        String result = WsReleaseMojo.updateParentVersion(pom, "ike-parent", "21");
+        String result = WsReleaseDraftMojo.updateParentVersion(pom, "ike-parent", "21");
 
         // Parent version should be updated, but the dependency version should not
         // (updateParentVersion only modifies the parent block)
@@ -433,7 +433,7 @@ class WsReleaseSupportTest {
                     <java.version>21</java.version>
                 </properties>
                 """;
-        String result = WsReleaseMojo.updateVersionProperty(
+        String result = WsReleaseDraftMojo.updateVersionProperty(
                 pom, "ike-pipeline.version", "21-SNAPSHOT");
 
         assertThat(result).isEqualTo(pom);

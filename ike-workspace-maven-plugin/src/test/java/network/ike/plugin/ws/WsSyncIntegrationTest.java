@@ -52,7 +52,7 @@ class WsSyncIntegrationTest {
         WsSyncMojo mojo = new WsSyncMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.from = "repos";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -71,7 +71,7 @@ class WsSyncIntegrationTest {
         WsSyncMojo mojo = new WsSyncMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.from = "repos";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -92,11 +92,11 @@ class WsSyncIntegrationTest {
         WsSyncMojo mojo = new WsSyncMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.from = "repos";
-        mojo.dryRun = true;
+        mojo.publish = false;
 
         mojo.execute();
 
-        // Verify workspace.yaml is NOT updated in dry-run mode
+        // Verify workspace.yaml is NOT updated in draft mode
         String yamlAfter = Files.readString(
                 helper.workspaceYaml(), StandardCharsets.UTF_8);
         assertThat(yamlAfter).isEqualTo(yamlBefore);
@@ -110,7 +110,7 @@ class WsSyncIntegrationTest {
         WsSyncMojo mojo = new WsSyncMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.from = "repos";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -140,7 +140,7 @@ class WsSyncIntegrationTest {
         WsSyncMojo mojo = new WsSyncMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.from = "manifest";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -178,7 +178,7 @@ class WsSyncIntegrationTest {
         WsSyncMojo mojo = new WsSyncMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.from = "manifest";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         mojo.execute();
 
@@ -194,7 +194,7 @@ class WsSyncIntegrationTest {
         WsSyncMojo mojo = new WsSyncMojo();
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.from = "manifest";
-        mojo.dryRun = false;
+        mojo.publish = true;
 
         // Should complete without exception — nothing to switch
         assertThatCode(mojo::execute).doesNotThrowAnyException();

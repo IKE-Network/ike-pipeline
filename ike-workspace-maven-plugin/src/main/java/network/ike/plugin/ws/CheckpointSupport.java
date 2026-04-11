@@ -10,7 +10,7 @@ import java.io.File;
 /**
  * Per-component checkpoint engine — tag a single repo at its current HEAD.
  *
- * <p>This is the internal engine invoked by {@link WsCheckpointMojo}
+ * <p>This is the internal engine invoked by {@link WsCheckpointDraftMojo}
  * for each workspace component. It is not exposed as a standalone Maven goal.
  *
  * <p>A checkpoint records the current state for reproduction — it is not
@@ -55,18 +55,18 @@ class CheckpointSupport {
     }
 
     /**
-     * Log a dry-run summary for a single component.
+     * Log a draft summary for a single component.
      *
      * @param dir     component git root directory
      * @param tagName the tag that would be created
      * @param log     Maven logger
      */
-    static void dryRun(File dir, String tagName, Log log)
+    static void preview(File dir, String tagName, Log log)
             throws MojoExecutionException {
         File gitRoot = ReleaseSupport.gitRoot(dir);
         String shortSha = ReleaseSupport.execCapture(gitRoot,
                 "git", "rev-parse", "--short", "HEAD");
-        log.info("    [DRY RUN] Would tag " + shortSha + " as " + tagName);
-        log.info("    [DRY RUN] Would push tag to origin");
+        log.info("    [DRAFT] Would tag " + shortSha + " as " + tagName);
+        log.info("    [DRAFT] Would push tag to origin");
     }
 }

@@ -38,19 +38,19 @@ public class WsHelpMojo extends AbstractMojo {
         getLog().info("  ws:remove                                       Remove a component from the workspace");
         getLog().info("");
         getLog().info("  ── Feature Branching ────────────────────────────────────");
-        getLog().info("  ws:feature-start                                Create feature branch across repos");
-        getLog().info("  ws:feature-start-dry-run                        Preview feature branch creation");
-        getLog().info("  ws:feature-abandon                              Abandon feature branch across repos");
-        getLog().info("  ws:feature-finish-merge                         No-ff merge, keeps branch alive");
-        getLog().info("  ws:feature-finish-rebase                        Rebase onto target, linear history");
-        getLog().info("  ws:feature-finish-squash                        Squash-merge (default, deletes branch)");
+        getLog().info("  ws:feature-start-draft                          Preview feature branch creation feature branch across repos");
+        getLog().info("  ws:feature-start-publish                        Create feature branch across repos");
+        getLog().info("  ws:feature-abandon-draft                        Preview abandoning feature branch");
+        getLog().info("  ws:feature-finish-merge-draft                   Preview no-ff merge");
+        getLog().info("  ws:feature-finish-rebase-draft                  Preview rebase");
+        getLog().info("  ws:feature-finish-squash-draft                  Preview squash-merge (default)");
         getLog().info("");
         getLog().info("  ── Release & Checkpoint ─────────────────────────────────");
-        getLog().info("  ws:release                                      Release all dirty components in topo order");
-        getLog().info("  ws:checkpoint                                   Preview checkpoint (tag all repos, record YAML)");
-        getLog().info("  ws:checkpoint-apply                             Execute checkpoint");
+        getLog().info("  ws:release-draft                                Preview workspace release components in topo order");
+        getLog().info("  ws:checkpoint-draft                             Preview checkpoint (tag all repos, record YAML)");
+        getLog().info("  ws:checkpoint-publish                           Execute checkpoint");
         getLog().info("  ws:post-release                                 Post-release cleanup (bump to next SNAPSHOT)");
-        getLog().info("  ws:align                                        Align dependency versions across workspace");
+        getLog().info("  ws:align-draft                                  Preview dependency alignment across workspace");
         getLog().info("  ws:release-notes                                Generate release notes from commits");
         getLog().info("");
         getLog().info("  ── VCS Bridge ───────────────────────────────────────────");
@@ -77,7 +77,7 @@ public class WsHelpMojo extends AbstractMojo {
         getLog().info("  -DtargetBranch=<name>        Merge target (default: main)");
         getLog().info("  -DkeepBranch=true            Keep branch after merge (feature-finish)");
         getLog().info("  -Dmessage=<msg>              Squash commit message (feature-finish-squash)");
-        getLog().info("  -DdryRun=true                Show plan without executing");
+        getLog().info("  -Dpublish=true               Execute (default is draft)");
         getLog().info("");
         getLog().info("Options for checkpoint:");
         getLog().info("  -Dname=<name>                Checkpoint name (auto-derived if omitted)");
@@ -86,7 +86,7 @@ public class WsHelpMojo extends AbstractMojo {
         getLog().info("  -Dcomponent=<name>           Release one specific component");
         getLog().info("  -Dgroup=<name>               Restrict to components in group");
         getLog().info("  -DdeploySite=true            Deploy site for each component");
-        getLog().info("  -DdryRun=true                Show what would be released");
+        getLog().info("  -Dpublish=true               Execute release");
         getLog().info("  -Dpush=true                  Push releases to origin (default: true)");
         getLog().info("  -DskipCheckpoint=true        Skip pre-release checkpoint");
         getLog().info("");
@@ -100,7 +100,7 @@ public class WsHelpMojo extends AbstractMojo {
         getLog().info("Options for ws:sync:");
         getLog().info("  -Dfrom=repos                 Update workspace.yaml from repos (default)");
         getLog().info("  -Dfrom=manifest              Switch repos to match workspace.yaml");
-        getLog().info("  -DdryRun=true                Show plan without executing");
+        getLog().info("  -Dpublish=true               Execute (default is draft)");
         getLog().info("");
     }
 }

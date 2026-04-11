@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Shared logic for feature-finish goals (squash, merge, rebase).
@@ -53,7 +54,7 @@ class FeatureFinishSupport {
 
         String status = mojo.gitStatus(dir);
         if (!status.isEmpty()) {
-            return "DIRTY";  // Caller should throw
+            return "MODIFIED";  // Caller should throw
         }
 
         return null;
@@ -130,11 +131,13 @@ class FeatureFinishSupport {
         VcsOperations.deleteBranch(dir, log, branchName);
         log.info("    deleted local branch: " + branchName);
 
-        try {
+        Optional<String> remoteSha = VcsOperations.remoteSha(dir, "origin", branchName);
+        if (remoteSha.isPresent()) {
             VcsOperations.deleteRemoteBranch(dir, log, "origin", branchName);
             log.info("    deleted remote branch: origin/" + branchName);
-        } catch (MojoExecutionException e) {
-            log.warn("    could not delete remote branch: " + e.getMessage());
+        } else {
+            log.info("    remote branch origin/" + branchName
+                    + " does not exist (never pushed) — skipping");
         }
     }
 
