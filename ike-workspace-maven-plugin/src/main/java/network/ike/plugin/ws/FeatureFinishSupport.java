@@ -304,7 +304,7 @@ class FeatureFinishSupport {
      */
     static void mergeWorkspaceRepo(Path manifestPath, String branchName,
                                      String targetBranch, boolean keepBranch,
-                                     Log log)
+                                     boolean push, Log log)
             throws MojoExecutionException {
         File wsRoot = manifestPath.getParent().toFile();
         if (!new File(wsRoot, ".git").exists()) return;
@@ -321,7 +321,9 @@ class FeatureFinishSupport {
             VcsOperations.checkout(wsRoot, log, targetBranch);
             VcsOperations.mergeNoFf(wsRoot, log, branchName,
                     "Merge " + branchName + " into " + targetBranch);
-            VcsOperations.pushIfRemoteExists(wsRoot, log, "origin", targetBranch);
+            if (push) {
+                VcsOperations.pushIfRemoteExists(wsRoot, log, "origin", targetBranch);
+            }
         }
 
         if (!keepBranch) {

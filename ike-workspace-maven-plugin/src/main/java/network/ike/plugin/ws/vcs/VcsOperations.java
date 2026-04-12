@@ -358,6 +358,22 @@ public class VcsOperations {
         run(dir, log, null, "git", "merge", "--ff-only", branch);
     }
 
+    /**
+     * Check whether a local branch exists.
+     *
+     * @param dir    the repository root directory
+     * @param branch the branch name to check
+     * @return true if the branch exists locally
+     */
+    public static boolean localBranchExists(File dir, String branch) {
+        try {
+            String output = capture(dir, "git", "branch", "--list", branch);
+            return !output.trim().isEmpty();
+        } catch (MojoExecutionException e) {
+            return false;
+        }
+    }
+
     // ── VCS state operations ─────────────────────────────────────
 
     /**
@@ -422,16 +438,34 @@ public class VcsOperations {
 
         String localBranch = currentBranch(dir);
         if (!state.branch().equals(localBranch)) {
-            log.info("  Switching branch: " + localBranch + " → " + state.branch());
-            checkout(dir, log, state.branch());
+            if (!localBranchExists(dir, state.branch())) {
+                // Branch doesn't exist locally — check remote
+                Optional<String> remoteCheck = remoteSha(dir, "origin", state.branch());
+                if (remoteCheck.isEmpty()) {
+                    log.warn("  Branch " + state.branch()
+                            + " does not exist locally or on origin.");
+                    log.warn("  The branch may not have been pushed from "
+                            + state.machine() + " yet.");
+                    log.warn("  Push from " + state.machine()
+                            + " first, then retry sync.");
+                    return headSha(dir);
+                }
+                // Create local tracking branch from remote
+                log.info("  Creating local branch from origin: " + state.branch());
+                run(dir, log, null, "git", "checkout", "-b",
+                        state.branch(), "origin/" + state.branch());
+            } else {
+                log.info("  Switching branch: " + localBranch + " → " + state.branch());
+                checkout(dir, log, state.branch());
+            }
         }
 
         Optional<String> remoteRef = remoteSha(dir, "origin", state.branch());
         if (remoteRef.isPresent()) {
             resetSoft(dir, log, "origin/" + state.branch());
         } else {
-            log.warn("  No remote tracking ref for " + state.branch()
-                    + " on origin — using local state");
+            log.info("  No remote ref for " + state.branch()
+                    + " on origin — branch is local-only, using local state.");
         }
 
         String newSha = headSha(dir);

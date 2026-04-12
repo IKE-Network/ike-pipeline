@@ -61,6 +61,13 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
     @Parameter(property = "message")
     String message;
 
+    /**
+     * Push merged target branch to origin after merge. Default is false
+     * because checkpoint is the natural CI handoff point, not feature-finish.
+     */
+    @Parameter(property = "push", defaultValue = "false")
+    boolean push;
+
     @Parameter(property = "publish", defaultValue = "false")
     boolean publish;
 
@@ -125,6 +132,11 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
             }
         }
 
+        // Check workspace root for uncommitted changes (#102)
+        if (new File(root, ".git").exists() && !gitStatus(root).isEmpty()) {
+            uncommitted.add("workspace root");
+        }
+
         if (!uncommitted.isEmpty()) {
             var sb = new StringBuilder();
             sb.append("Cannot finish feature — uncommitted changes in:\n");
@@ -173,7 +185,9 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
 
             VcsOperations.checkout(dir, getLog(), targetBranch);
             VcsOperations.mergeNoFf(dir, getLog(), branchName, generatedMessage);
-            VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
+            if (push) {
+                VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
+            }
 
             if (!keepBranch) {
                 FeatureFinishSupport.deleteBranch(dir, getLog(), branchName);
@@ -188,7 +202,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
             FeatureFinishSupport.updateWorkspaceYaml(
                     manifestPath, eligible, targetBranch, feature, getLog());
             FeatureFinishSupport.mergeWorkspaceRepo(
-                    manifestPath, branchName, targetBranch, keepBranch, getLog());
+                    manifestPath, branchName, targetBranch, keepBranch, push, getLog());
         }
 
         getLog().info("");
@@ -254,7 +268,9 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
 
         VcsOperations.checkout(dir, getLog(), targetBranch);
         VcsOperations.mergeNoFf(dir, getLog(), branchName, bareMessage);
-        VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
+        if (push) {
+            VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
+        }
 
         if (!keepBranch) {
             FeatureFinishSupport.deleteBranch(dir, getLog(), branchName);

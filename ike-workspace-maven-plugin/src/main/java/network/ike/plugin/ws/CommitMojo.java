@@ -88,6 +88,40 @@ public class CommitMojo extends AbstractWorkspaceMojo {
         int skipped = 0;
         int failed = 0;
 
+        // Include workspace root in commit scan (#102)
+        if (new File(root, ".git").exists()) {
+            try {
+                VcsOperations.catchUp(root, getLog());
+                if (addAll) {
+                    VcsOperations.addAll(root, getLog());
+                }
+                if (VcsOperations.hasStagedChanges(root)) {
+                    if (message != null && !message.isBlank()) {
+                        VcsOperations.commit(root, getLog(), message);
+                    } else {
+                        VcsOperations.commitStaged(root, getLog(), null);
+                    }
+                    VcsOperations.writeVcsState(root, VcsState.ACTION_COMMIT);
+                    if (push) {
+                        String branch = VcsOperations.currentBranch(root);
+                        VcsOperations.push(root, getLog(), "origin", branch);
+                        VcsOperations.writeVcsState(root, VcsState.ACTION_PUSH);
+                    }
+                    getLog().info(Ansi.green("  ✓ ") + "workspace root");
+                    committed++;
+                } else if (!VcsOperations.isClean(root)) {
+                    getLog().debug("workspace root — unstaged changes, skipping");
+                    skipped++;
+                } else {
+                    getLog().debug("workspace root — clean, skipping");
+                    skipped++;
+                }
+            } catch (MojoExecutionException e) {
+                getLog().warn(Ansi.red("  ✗ ") + "workspace root — " + e.getMessage());
+                failed++;
+            }
+        }
+
         for (String name : sorted) {
             File dir = new File(root, name);
             File gitDir = new File(dir, ".git");
