@@ -137,10 +137,8 @@ class VcsBridgeIntegrationTest {
         Files.copy(machineADir.resolve(".ike/vcs-state"),
                 machineBDir.resolve(".ike/vcs-state"));
 
-        // Run SyncMojo on machine B
-        System.setProperty("user.dir", machineBDir.toAbsolutePath().toString());
-        SyncMojo mojo = new SyncMojo();
-        mojo.execute();
+        // Run VCS bridge sync on machine B (direct API — ws:vcs-sync removed)
+        VcsOperations.sync(machineBDir.toFile(), new org.apache.maven.plugin.logging.SystemStreamLog());
 
         assertThat(VcsOperations.headSha(machineBDir.toFile())).isEqualTo(expectedSha);
     }

@@ -595,9 +595,16 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
                 | Goal | Description |
                 |------|-------------|
-                | `ws:vcs-sync` | Reconcile state after machine switch |
+                | `ws:sync` | Reconcile state after machine switch |
                 | `ws:commit` | Commit with VCS bridge context |
                 | `ws:push` | Push with VCS bridge context |
+
+                ## Branch Cleanup
+
+                | Goal | Description |
+                |------|-------------|
+                | `ws:cleanup-draft` | List merged/stale feature branches |
+                | `ws:cleanup-publish` | Delete merged feature branches |
 
                 ## Build Goals (ike:)
 
@@ -721,7 +728,8 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 |------|-------------|
                 | `ws:commit` | Commit across repos (`-Dmessage="..." -DaddAll=true -Dpush=true`) |
                 | `ws:push` | Push all components to origin |
-                | `ws:vcs-sync` | Reconcile after machine switch |
+                | `ws:sync` | Reconcile after machine switch |
+                | `ws:cleanup-draft` / `-publish` | List/delete merged feature branches |
 
                 ---
 

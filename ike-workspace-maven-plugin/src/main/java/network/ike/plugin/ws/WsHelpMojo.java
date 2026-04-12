@@ -54,10 +54,14 @@ public class WsHelpMojo extends AbstractMojo {
         getLog().info("  ws:release-notes                                Generate release notes from commits");
         getLog().info("");
         getLog().info("  ── VCS Bridge ───────────────────────────────────────────");
-        getLog().info("  ws:vcs-sync                                     Reconcile git state after machine switch");
+        getLog().info("  ws:sync                                         Reconcile git state after machine switch");
         getLog().info("  ws:commit                                       Catch-up + commit across repos");
         getLog().info("  ws:push                                         Catch-up + push across repos");
         getLog().info("  ws:check-branch                                 Warn on direct branching (git hook)");
+        getLog().info("");
+        getLog().info("  ── Branch Cleanup ───────────────────────────────────────");
+        getLog().info("  ws:cleanup-draft                                List merged/stale feature branches");
+        getLog().info("  ws:cleanup-publish                              Delete merged feature branches");
         getLog().info("");
         getLog().info("  ── Cascade ──────────────────────────────────────────────");
         getLog().info("  ws:cascade                                      Show downstream impact of a change");

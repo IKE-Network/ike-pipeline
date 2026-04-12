@@ -1,53 +1,36 @@
 package network.ike.plugin.ws;
 
+import org.apache.maven.api.model.Parent;
+
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;  // retained for readParent()
 
 /**
  * Utilities for reading and updating {@code <parent>} blocks in POM files.
  *
- * <p>Uses regex-based extraction for lightweight POM inspection without
- * requiring a full DOM parse. Thread-safe — all methods are stateless.
+ * <p>Reading uses the Maven 4 model API via {@link PomModel}.
+ * Writing uses the OpenRewrite LST via {@link PomRewriter}.
+ * Thread-safe — all methods are stateless.
  */
 final class PomParentSupport {
 
     private PomParentSupport() {}
 
-    private static final Pattern PARENT_BLOCK = Pattern.compile(
-            "(?s)<parent>\\s*" +
-            "<groupId>([^<]+)</groupId>\\s*" +
-            "<artifactId>([^<]+)</artifactId>\\s*" +
-            "<version>([^<]*)</version>" +
-            ".*?</parent>");
-
     /**
-     * Read the parent block from a POM file.
+     * Read the parent block from a POM file using the Maven 4 model API.
      *
      * @param pomFile path to pom.xml
      * @return the parent info, or null if no parent block
-     * @throws IOException if the file cannot be read
+     * @throws IOException if the file cannot be read or parsed
      */
     static ParentInfo readParent(Path pomFile) throws IOException {
-        String content = Files.readString(pomFile, StandardCharsets.UTF_8);
-        return readParent(content);
-    }
-
-    /**
-     * Read the parent block from POM content.
-     *
-     * @param pomContent POM XML as a string
-     * @return the parent info, or null if no parent block
-     */
-    static ParentInfo readParent(String pomContent) {
-        Matcher m = PARENT_BLOCK.matcher(pomContent);
-        if (m.find()) {
-            return new ParentInfo(m.group(1), m.group(2), m.group(3));
-        }
-        return null;
+        PomModel model = PomModel.parse(pomFile);
+        Parent parent = model.parent();
+        if (parent == null) return null;
+        return new ParentInfo(
+                parent.getGroupId(),
+                parent.getArtifactId(),
+                parent.getVersion());
     }
 
     /**
