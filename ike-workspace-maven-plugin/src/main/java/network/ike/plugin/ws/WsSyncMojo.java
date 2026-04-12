@@ -54,12 +54,13 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
         Path manifestPath = resolveManifest();
+        boolean draft = !publish;
 
         getLog().info("");
         getLog().info("IKE Workspace \u2014 Sync");
         getLog().info("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550");
         getLog().info("  Direction: " + ("manifest".equals(from) ? "manifest \u2192 repos" : "repos \u2192 manifest"));
-        if (!publish) {
+        if (draft) {
             getLog().info("  Mode:      DRAFT");
         }
         getLog().info("");

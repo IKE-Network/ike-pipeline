@@ -96,6 +96,8 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
             candidates = graph.topologicalSort();
         }
 
+        boolean draft = !publish;
+
         // ── 2. Filter to checked-out and modified ────────────────────────
         Map<String, ReleaseCandidate> releasable = new LinkedHashMap<>();
         for (String name : graph.topologicalSort()) {
@@ -140,7 +142,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
         // ── 4. Report plan ────────────────────────────────────────────
         getLog().info("════════════════════════════════════════════════════");
-        getLog().info(!publish ? "  WORKSPACE RELEASE — DRAFT" : "  WORKSPACE RELEASE");
+        getLog().info(draft ? "  WORKSPACE RELEASE — DRAFT" : "  WORKSPACE RELEASE");
         getLog().info("════════════════════════════════════════════════════");
         getLog().info("");
         getLog().info("Components to release (" + releaseOrder.size() + "):");
@@ -152,7 +154,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
         }
         getLog().info("");
 
-        if (!publish) {
+        if (draft) {
             getLog().info("[DRAFT] No releases executed (draft mode).");
             return;
         }

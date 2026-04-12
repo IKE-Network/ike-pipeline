@@ -60,6 +60,7 @@ public class WsUpgradeDraftMojo extends AbstractWorkspaceMojo {
         File root = workspaceRoot();
         Path rootPath = root.toPath();
 
+        boolean draft = !publish;
         String pluginVersion = getClass().getPackage().getImplementationVersion();
         if (pluginVersion == null) pluginVersion = "49";
 
@@ -68,7 +69,7 @@ public class WsUpgradeDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("══════════════════════════════════════════════════════════════");
         getLog().info("  Workspace: " + root.getName());
         getLog().info("  Plugin:    " + pluginVersion);
-        if (!publish) {
+        if (draft) {
             getLog().info("  Mode:      DRAFT");
         }
         getLog().info("");
@@ -98,7 +99,7 @@ public class WsUpgradeDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("");
         getLog().info("  " + applied.size() + " upgrade(s) applied, "
                 + skipped.size() + " already current.");
-        if (!publish && !applied.isEmpty()) {
+        if (draft && !applied.isEmpty()) {
             getLog().info("  (DRAFT — no files modified)");
         }
         getLog().info("");

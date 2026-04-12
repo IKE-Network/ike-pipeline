@@ -102,6 +102,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
     }
 
     private void executeWorkspaceMode(String branchName) throws MojoExecutionException {
+        boolean draft = !publish;
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
         Path manifestPath = resolveManifest();
@@ -119,7 +120,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("  Feature:  " + feature);
         getLog().info("  Branch:   " + branchName + " → " + targetBranch);
         getLog().info("  Strategy: squash-merge");
-        if (!publish) getLog().info("  Mode:     DRAFT");
+        if (draft) getLog().info("  Mode:     DRAFT");
         getLog().info("");
 
         // Catch-up
@@ -153,7 +154,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
             }
             sb.append("Please commit these changes first (mvn ws:commit), ")
               .append("then re-run feature-finish.");
-            if (!publish) {
+            if (draft) {
                 getLog().warn("");
                 getLog().warn(sb.toString());
                 getLog().warn("");
@@ -173,7 +174,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
             Component component = graph.manifest().components().get(name);
             File dir = new File(root, name);
 
-            if (!publish) {
+            if (draft) {
                 getLog().info("  [draft] " + name + " — would squash-merge → " + targetBranch);
                 merged++;
                 continue;
@@ -222,7 +223,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
 
         // Structured markdown report
         appendReport("ws:feature-finish-squash", buildSquashReport(
-                eligible, branchName, targetBranch, merged, !publish, keepBranch));
+                eligible, branchName, targetBranch, merged, draft, keepBranch));
     }
 
     private String buildSquashReport(List<String> components, String branch,
@@ -247,6 +248,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
     }
 
     private void executeBareMode(String branchName) throws MojoExecutionException {
+        boolean draft = !publish;
         File dir = new File(System.getProperty("user.dir"));
 
         getLog().info("");
@@ -254,7 +256,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("══════════════════════════════════════════════════════════════");
         getLog().info("  Feature:  " + feature);
         getLog().info("  Branch:   " + branchName + " → " + targetBranch);
-        if (!publish) getLog().info("  Mode:     DRAFT");
+        if (draft) getLog().info("  Mode:     DRAFT");
         getLog().info("");
 
         VcsOperations.catchUp(dir, getLog());
@@ -268,7 +270,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
             throw new MojoExecutionException("Uncommitted changes. Commit or stash first.");
         }
 
-        if (!publish) {
+        if (draft) {
             getLog().info("  [draft] Would squash-merge → " + targetBranch);
             return;
         }

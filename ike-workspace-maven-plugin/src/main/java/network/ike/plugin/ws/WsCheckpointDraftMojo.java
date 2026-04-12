@@ -99,6 +99,8 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
+        boolean draft = !publish;
+
         if (name == null || name.isBlank()) {
             name = deriveCheckpointName(root);
         }
@@ -114,7 +116,7 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("  Tag:    " + wsTagName);
         getLog().info("  Time:   " + timestamp);
         getLog().info("  Author: " + author);
-        if (!publish) {
+        if (draft) {
             getLog().info("  Mode:   DRAFT — no tags, no files written");
         }
         getLog().info("");
@@ -146,7 +148,7 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
             boolean composite = ct != null
                     && "composite".equals(ct.checkpointMechanism());
 
-            if (!publish) {
+            if (draft) {
                 getLog().info(Ansi.green("  ✓ ") + compName
                         + " [" + shortSha + "] " + branch
                         + " (" + version + ")");
@@ -176,7 +178,7 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
             yamlContent = yamlContent + "\n" + testingContextYaml;
         }
 
-        if (!publish) {
+        if (draft) {
             getLog().info("");
             getLog().info("[DRAFT] Checkpoint file would be written to:");
             getLog().info("[DRAFT]   checkpoints/" + checkpointFileName(name));

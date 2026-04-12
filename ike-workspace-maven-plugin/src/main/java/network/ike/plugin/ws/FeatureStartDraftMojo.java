@@ -101,6 +101,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         }
 
         // --- Workspace mode ---
+        boolean draft = !publish;
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -123,7 +124,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("  Branch:  " + branchName);
         getLog().info("  Scope:   " + (group != null ? group : "all")
                 + " (" + sorted.size() + " components)");
-        if (!publish) {
+        if (draft) {
             getLog().info("  Mode:    DRAFT");
         }
         getLog().info("");
@@ -191,7 +192,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                     ? VersionSupport.branchQualifiedVersion(effectiveVersion, branchName)
                     : "—";
 
-            if (!publish) {
+            if (draft) {
                 String versionInfo = "—".equals(newVersion)
                         ? "" : " \u2192 " + newVersion;
                 getLog().info("  [draft] " + name + " \u2014 would create "
@@ -295,6 +296,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
      * Bare-mode: create feature branch in the current repo only.
      */
     private void executeBareMode(String branchName) throws MojoExecutionException {
+        boolean draft = !publish;
         File dir = new File(System.getProperty("user.dir"));
 
         getLog().info("");
@@ -303,7 +305,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("  Feature: " + feature);
         getLog().info("  Branch:  " + branchName);
         getLog().info("  Repo:    " + dir.getName());
-        if (!publish) {
+        if (draft) {
             getLog().info("  Mode:    DRAFT");
         }
         getLog().info("");
@@ -329,7 +331,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
             }
         }
 
-        if (!publish) {
+        if (draft) {
             String versionInfo = "";
             if (currentVersion != null) {
                 versionInfo = " \u2192 " + VersionSupport.branchQualifiedVersion(

@@ -92,6 +92,7 @@ public class FeatureFinishRebaseDraftMojo extends AbstractWorkspaceMojo {
     }
 
     private void executeWorkspaceMode(String branchName) throws MojoExecutionException {
+        boolean draft = !publish;
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
         Path manifestPath = resolveManifest();
@@ -109,7 +110,7 @@ public class FeatureFinishRebaseDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("  Feature:  " + feature);
         getLog().info("  Branch:   " + branchName + " → " + targetBranch);
         getLog().info("  Strategy: rebase + fast-forward");
-        if (!publish) getLog().info("  Mode:     DRAFT");
+        if (draft) getLog().info("  Mode:     DRAFT");
         getLog().info("");
 
         VcsOperations.catchUp(root, getLog());
@@ -141,7 +142,7 @@ public class FeatureFinishRebaseDraftMojo extends AbstractWorkspaceMojo {
             }
             sb.append("Please commit these changes first (mvn ws:commit), ")
               .append("then re-run feature-finish.");
-            if (!publish) {
+            if (draft) {
                 getLog().warn("");
                 getLog().warn(sb.toString());
                 getLog().warn("");
@@ -160,7 +161,7 @@ public class FeatureFinishRebaseDraftMojo extends AbstractWorkspaceMojo {
             Component component = graph.manifest().components().get(name);
             File dir = new File(root, name);
 
-            if (!publish) {
+            if (draft) {
                 getLog().info("  [draft] " + name + " — would rebase → " + targetBranch);
                 rebased++;
                 continue;
@@ -206,7 +207,7 @@ public class FeatureFinishRebaseDraftMojo extends AbstractWorkspaceMojo {
 
         // Structured markdown report
         appendReport("ws:feature-finish-rebase", buildRebaseReport(
-                eligible, branchName, targetBranch, rebased, !publish, keepBranch));
+                eligible, branchName, targetBranch, rebased, draft, keepBranch));
     }
 
     private String buildRebaseReport(List<String> components, String branch,
@@ -231,6 +232,7 @@ public class FeatureFinishRebaseDraftMojo extends AbstractWorkspaceMojo {
     }
 
     private void executeBareMode(String branchName) throws MojoExecutionException {
+        boolean draft = !publish;
         File dir = new File(System.getProperty("user.dir"));
 
         getLog().info("");
@@ -248,7 +250,7 @@ public class FeatureFinishRebaseDraftMojo extends AbstractWorkspaceMojo {
             throw new MojoExecutionException("Uncommitted changes. Commit or stash first.");
         }
 
-        if (!publish) {
+        if (draft) {
             getLog().info("  [draft] Would rebase → " + targetBranch);
             return;
         }

@@ -49,6 +49,7 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
+        boolean draft = !publish;
         List<String> sorted = graph.topologicalSort(
                 new LinkedHashSet<>(graph.manifest().components().keySet()));
 
@@ -56,7 +57,7 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
         getLog().info(header("Cleanup"));
         getLog().info("══════════════════════════════════════════════════════════════");
         getLog().info("  Target: " + targetBranch);
-        if (!publish) getLog().info("  Mode:   DRAFT — listing only");
+        if (draft) getLog().info("  Mode:   DRAFT — listing only");
         getLog().info("");
 
         // Collect merged and active feature branches per component

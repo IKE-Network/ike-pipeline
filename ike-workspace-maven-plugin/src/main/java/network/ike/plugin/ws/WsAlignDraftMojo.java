@@ -55,11 +55,12 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
+        boolean draft = !publish;
         getLog().info("");
         getLog().info("IKE Workspace Align — synchronize inter-component dependency versions");
         getLog().info("══════════════════════════════════════════════════════════════");
 
-        if (!publish) {
+        if (draft) {
             getLog().info("  (draft — no files will be modified)");
             getLog().info("");
         }
@@ -159,7 +160,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
                 }
 
                 String parentAid = parentInfo.getArtifactId();
-                if (!publish) {
+                if (draft) {
                     getLog().info("  " + name + ": parent " + parentAid
                             + " " + currentVersion + " → " + expectedVersion
                             + " (draft)");
@@ -201,7 +202,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("");
         if (totalChanges == 0) {
             getLog().info("  All inter-component dependency and parent versions are aligned  ✓");
-        } else if (!publish) {
+        } else if (draft) {
             getLog().info("  " + totalChanges + " version(s) would be updated across "
                     + changedComponents.size() + " component(s)");
             getLog().info("  Use ws:align-publish to apply changes.");

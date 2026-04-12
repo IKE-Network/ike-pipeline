@@ -96,6 +96,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
     }
 
     private void executeWorkspaceMode(String branchName) throws MojoExecutionException {
+        boolean draft = !publish;
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
         Path manifestPath = resolveManifest();
@@ -113,7 +114,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("  Feature:  " + feature);
         getLog().info("  Branch:   " + branchName + " → " + targetBranch);
         getLog().info("  Strategy: no-fast-forward merge");
-        if (!publish) getLog().info("  Mode:     DRAFT");
+        if (draft) getLog().info("  Mode:     DRAFT");
         getLog().info("");
 
         VcsOperations.catchUp(root, getLog());
@@ -145,7 +146,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
             }
             sb.append("Please commit these changes first (mvn ws:commit), ")
               .append("then re-run feature-finish.");
-            if (!publish) {
+            if (draft) {
                 getLog().warn("");
                 getLog().warn(sb.toString());
                 getLog().warn("");
@@ -173,7 +174,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
             Component component = graph.manifest().components().get(name);
             File dir = new File(root, name);
 
-            if (!publish) {
+            if (draft) {
                 getLog().info("  [draft] " + name + " — would merge → " + targetBranch);
                 merged++;
                 continue;
@@ -218,7 +219,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
 
         // Structured markdown report
         appendReport("ws:feature-finish-merge", buildMergeReport(
-                eligible, branchName, targetBranch, merged, !publish, keepBranch));
+                eligible, branchName, targetBranch, merged, draft, keepBranch));
     }
 
     private String buildMergeReport(List<String> components, String branch,
@@ -243,6 +244,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
     }
 
     private void executeBareMode(String branchName) throws MojoExecutionException {
+        boolean draft = !publish;
         File dir = new File(System.getProperty("user.dir"));
 
         getLog().info("");
@@ -260,7 +262,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
             throw new MojoExecutionException("Uncommitted changes. Commit or stash first.");
         }
 
-        if (!publish) {
+        if (draft) {
             getLog().info("  [draft] Would merge → " + targetBranch);
             return;
         }
