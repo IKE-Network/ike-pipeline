@@ -193,6 +193,12 @@ public class FeatureFinishRebaseDraftMojo extends AbstractWorkspaceMojo {
                     manifestPath, branchName, targetBranch, keepBranch, push, getLog());
         }
 
+        // Offer stale branch cleanup (#100)
+        if (publish && rebased > 0) {
+            FeatureFinishSupport.promptStaleBranchCleanup(
+                    root, eligible, branchName, targetBranch, getLog());
+        }
+
         getLog().info("");
         getLog().info("  Rebased: " + rebased + " components");
         getLog().info("  Branch " + (keepBranch ? "kept" : "deleted") + ": " + branchName);

@@ -340,6 +340,122 @@ class FeatureFinishSupport {
         }
     }
 
+    /**
+     * Scan for stale feature branches across all components and offer
+     * interactive cleanup after a successful feature-finish.
+     *
+     * <p>Stale branches are feature branches that are fully merged into the
+     * target branch and are not the branch just finished. A 30-second
+     * interactive timeout defaults to "no" (safe for unattended runs).
+     *
+     * @param root         workspace root directory
+     * @param components   component names to scan
+     * @param finishedBranch the branch that was just finished (excluded from stale list)
+     * @param targetBranch the merge target (e.g., "main")
+     * @param log          Maven logger
+     */
+    static void promptStaleBranchCleanup(File root, List<String> components,
+                                           String finishedBranch, String targetBranch,
+                                           Log log) {
+        // Collect stale branches across all components
+        Map<String, List<String>> staleBranches = new LinkedHashMap<>();
+        for (String name : components) {
+            File dir = new File(root, name);
+            if (!new File(dir, ".git").exists()) continue;
+
+            List<String> merged = VcsOperations.mergedBranches(
+                    dir, targetBranch, "feature/");
+            List<String> stale = merged.stream()
+                    .filter(b -> !b.equals(finishedBranch))
+                    .toList();
+            if (!stale.isEmpty()) {
+                staleBranches.put(name, stale);
+            }
+        }
+
+        if (staleBranches.isEmpty()) return;
+
+        // Collect unique branch names with last-commit dates
+        Set<String> uniqueBranches = new TreeSet<>();
+        staleBranches.values().forEach(uniqueBranches::addAll);
+
+        log.info("");
+        log.info("  Stale feature branches (merged into " + targetBranch + "):");
+        for (String branch : uniqueBranches) {
+            // Get date from first component that has it
+            String date = "unknown";
+            for (var entry : staleBranches.entrySet()) {
+                if (entry.getValue().contains(branch)) {
+                    date = VcsOperations.branchLastCommitDate(
+                            new File(root, entry.getKey()), branch);
+                    break;
+                }
+            }
+            int componentCount = (int) staleBranches.values().stream()
+                    .filter(list -> list.contains(branch))
+                    .count();
+            log.info("    " + branch + " (" + componentCount
+                    + " component" + (componentCount == 1 ? "" : "s")
+                    + ", last commit: " + date + ")");
+        }
+
+        // Prompt for deletion with 30-second timeout
+        log.info("");
+        String prompt = "  Delete " + uniqueBranches.size() + " stale branch"
+                + (uniqueBranches.size() == 1 ? "" : "es")
+                + "? [y/N] (30s timeout → No): ";
+
+        boolean delete = promptWithTimeout(prompt, false, 30, log);
+
+        if (delete) {
+            for (var entry : staleBranches.entrySet()) {
+                File dir = new File(root, entry.getKey());
+                for (String branch : entry.getValue()) {
+                    try {
+                        VcsOperations.deleteBranch(dir, log, branch);
+                        log.info("    deleted: " + entry.getKey() + "/" + branch);
+                    } catch (MojoExecutionException e) {
+                        log.warn("    could not delete " + entry.getKey()
+                                + "/" + branch + ": " + e.getMessage());
+                    }
+                }
+            }
+            log.info("  Stale branches cleaned up.");
+        } else {
+            log.info("  Skipping stale branch cleanup.");
+        }
+    }
+
+    /**
+     * Prompt with a timeout that returns the default if no input arrives.
+     */
+    private static boolean promptWithTimeout(String prompt, boolean defaultValue,
+                                               int timeoutSeconds, Log log) {
+        java.io.Console console = System.console();
+        if (console == null) {
+            // Non-interactive — use default
+            return defaultValue;
+        }
+
+        var future = new java.util.concurrent.FutureTask<>(() -> {
+            String input = console.readLine(prompt);
+            return input != null && (input.trim().equalsIgnoreCase("y")
+                    || input.trim().equalsIgnoreCase("yes"));
+        });
+
+        Thread inputThread = Thread.ofVirtual().start(future);
+        try {
+            return future.get(timeoutSeconds, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (java.util.concurrent.TimeoutException e) {
+            log.info("  (timeout — using default: "
+                    + (defaultValue ? "Yes" : "No") + ")");
+            future.cancel(true);
+            return defaultValue;
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
+
     // ── Internal helpers ─────────────────────────────────────────
 
     private static String readCurrentVersion(File dir, Log log) {

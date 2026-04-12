@@ -374,6 +374,64 @@ public class VcsOperations {
         }
     }
 
+    /**
+     * List local branches matching a prefix that are fully merged into
+     * the given target branch.
+     *
+     * @param dir    the repository root directory
+     * @param target the branch to check merge status against (e.g., "main")
+     * @param prefix the branch name prefix to filter (e.g., "feature/")
+     * @return list of merged branch names (trimmed, without leading {@code * })
+     */
+    public static List<String> mergedBranches(File dir, String target, String prefix) {
+        try {
+            String output = capture(dir, "git", "branch", "--merged", target);
+            if (output.isEmpty()) return List.of();
+            return output.lines()
+                    .map(line -> line.replaceFirst("^[* ] +", ""))
+                    .filter(b -> b.startsWith(prefix))
+                    .filter(b -> !b.equals(target))
+                    .toList();
+        } catch (MojoExecutionException e) {
+            return List.of();
+        }
+    }
+
+    /**
+     * List all local branches matching a prefix.
+     *
+     * @param dir    the repository root directory
+     * @param prefix the branch name prefix to filter (e.g., "feature/")
+     * @return list of branch names
+     */
+    public static List<String> localBranches(File dir, String prefix) {
+        try {
+            String output = capture(dir, "git", "branch");
+            if (output.isEmpty()) return List.of();
+            return output.lines()
+                    .map(line -> line.replaceFirst("^[* ] +", ""))
+                    .filter(b -> b.startsWith(prefix))
+                    .toList();
+        } catch (MojoExecutionException e) {
+            return List.of();
+        }
+    }
+
+    /**
+     * Get the date of the last commit on a branch (ISO format).
+     *
+     * @param dir    the repository root directory
+     * @param branch the branch name
+     * @return the commit date string, or "unknown" on failure
+     */
+    public static String branchLastCommitDate(File dir, String branch) {
+        try {
+            return capture(dir, "git", "log", "-1", "--format=%ci", branch);
+        } catch (MojoExecutionException e) {
+            return "unknown";
+        }
+    }
+
     // ── VCS state operations ─────────────────────────────────────
 
     /**

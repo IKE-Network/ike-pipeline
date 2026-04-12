@@ -44,13 +44,16 @@ class CheckpointSupport {
                 "git", "tag", "-a", tagName,
                 "-m", "Checkpoint " + tagName);
 
-        // Push tag to origin
+        // Push tag and current branch to origin (#96)
         boolean hasOrigin = ReleaseSupport.hasRemote(gitRoot, "origin");
         if (hasOrigin) {
+            String branch = ReleaseSupport.currentBranch(gitRoot);
+            ReleaseSupport.exec(gitRoot, log,
+                    "git", "push", "origin", branch);
             ReleaseSupport.exec(gitRoot, log,
                     "git", "push", "origin", tagName);
         } else {
-            log.info("    No 'origin' remote — skipping tag push");
+            log.info("    No 'origin' remote — skipping push");
         }
     }
 
@@ -67,6 +70,6 @@ class CheckpointSupport {
         String shortSha = ReleaseSupport.execCapture(gitRoot,
                 "git", "rev-parse", "--short", "HEAD");
         log.info("    [DRAFT] Would tag " + shortSha + " as " + tagName);
-        log.info("    [DRAFT] Would push tag to origin");
+        log.info("    [DRAFT] Would push branch and tag to origin");
     }
 }

@@ -205,6 +205,12 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
                     manifestPath, branchName, targetBranch, keepBranch, push, getLog());
         }
 
+        // Offer stale branch cleanup (#100)
+        if (publish && merged > 0) {
+            FeatureFinishSupport.promptStaleBranchCleanup(
+                    root, eligible, branchName, targetBranch, getLog());
+        }
+
         getLog().info("");
         getLog().info("  Merged: " + merged + " components (no-ff)");
         getLog().info("  Branch " + (keepBranch ? "kept" : "deleted") + ": " + branchName);

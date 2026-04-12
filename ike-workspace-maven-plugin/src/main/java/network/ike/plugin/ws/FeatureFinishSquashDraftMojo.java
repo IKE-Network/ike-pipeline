@@ -207,6 +207,12 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
                     manifestPath, branchName, targetBranch, keepBranch, push, getLog());
         }
 
+        // Offer stale branch cleanup (#100)
+        if (publish && merged > 0) {
+            FeatureFinishSupport.promptStaleBranchCleanup(
+                    root, eligible, branchName, targetBranch, getLog());
+        }
+
         getLog().info("");
         getLog().info("  Squash-merged: " + merged + " components");
         if (!keepBranch) {
