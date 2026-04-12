@@ -53,6 +53,9 @@ import java.util.regex.Pattern;
  */
 public class SemanticLineBreaker {
 
+    /** Creates a semantic line breaker instance. */
+    public SemanticLineBreaker() {}
+
     // ── Abbreviations that end with a period but do NOT end a sentence ──────────
 
     private static final Set<String> ABBREVIATIONS = Set.of(
