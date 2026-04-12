@@ -125,6 +125,13 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- OpenRewrite XML — AST-aware POM manipulation (#103) -->
+        <dependency>
+            <groupId>org.openrewrite</groupId>
+            <artifactId>rewrite-xml</artifactId>
+            <version>8.79.2</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

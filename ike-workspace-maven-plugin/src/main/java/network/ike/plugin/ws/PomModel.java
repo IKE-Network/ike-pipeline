@@ -1,6 +1,5 @@
 package network.ike.plugin.ws;
 
-import network.ike.plugin.ReleaseSupport;
 import org.apache.maven.api.model.Dependency;
 import org.apache.maven.api.model.DependencyManagement;
 import org.apache.maven.api.model.Model;
@@ -17,8 +16,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Read-only POM model backed by Maven 4's {@code maven-api-model}.
@@ -157,18 +154,9 @@ final class PomModel {
     // ── Writing (targeted text replacement) ────────────────────────
 
     /**
-     * Element-order-tolerant pattern for a dependency block.
-     * Matches a {@code <dependency>} containing the given
-     * groupId and artifactId in any order, capturing the
-     * version element's value for replacement.
-     */
-    private static final String DEP_ELEMENT =
-            "(?:(?!</dependency>).)*?";
-
-    /**
      * Update the version of a specific dependency identified by
-     * {@code groupId:artifactId}. Handles any element ordering
-     * within the dependency block.
+     * {@code groupId:artifactId}. Uses OpenRewrite LST for
+     * element-order-tolerant matching within dependency blocks.
      *
      * @param pomContent the raw POM text
      * @param groupId    dependency groupId to match
@@ -180,48 +168,13 @@ final class PomModel {
                                            String groupId,
                                            String artifactId,
                                            String newVersion) {
-        // Match a <dependency> block containing both groupId and artifactId,
-        // with a <version> element anywhere inside. Element order is not
-        // assumed — groupId, artifactId, type, scope, version can be in
-        // any position.
-        Pattern p = Pattern.compile(
-                "(?s)(<dependency>" + DEP_ELEMENT +
-                "<groupId>\\s*" + Pattern.quote(groupId) + "\\s*</groupId>" +
-                DEP_ELEMENT +
-                "<artifactId>\\s*" + Pattern.quote(artifactId) +
-                "\\s*</artifactId>" +
-                DEP_ELEMENT +
-                "<version>)([^<]*)(</version>)");
-        Matcher m = p.matcher(pomContent);
-        if (m.find()) {
-            return m.replaceFirst(
-                    Matcher.quoteReplacement(m.group(1))
-                    + Matcher.quoteReplacement(newVersion)
-                    + Matcher.quoteReplacement(m.group(3)));
-        }
-
-        // Try reversed order: artifactId before groupId
-        Pattern p2 = Pattern.compile(
-                "(?s)(<dependency>" + DEP_ELEMENT +
-                "<artifactId>\\s*" + Pattern.quote(artifactId) +
-                "\\s*</artifactId>" + DEP_ELEMENT +
-                "<groupId>\\s*" + Pattern.quote(groupId) + "\\s*</groupId>" +
-                DEP_ELEMENT +
-                "<version>)([^<]*)(</version>)");
-        Matcher m2 = p2.matcher(pomContent);
-        if (m2.find()) {
-            return m2.replaceFirst(
-                    Matcher.quoteReplacement(m2.group(1))
-                    + Matcher.quoteReplacement(newVersion)
-                    + Matcher.quoteReplacement(m2.group(3)));
-        }
-
-        return pomContent;
+        return PomRewriter.updateDependencyVersion(
+                pomContent, groupId, artifactId, newVersion);
     }
 
     /**
      * Update a version property value in the POM content.
-     * Delegates to {@link ReleaseSupport#updateVersionProperty}.
+     * Uses OpenRewrite LST for precise property matching.
      *
      * @param pomContent   the raw POM text
      * @param propertyName the property name (e.g., "tinkar-core.version")
@@ -231,12 +184,13 @@ final class PomModel {
     static String updateProperty(String pomContent,
                                   String propertyName,
                                   String newValue) {
-        return ReleaseSupport.updateVersionProperty(
+        return PomRewriter.updateProperty(
                 pomContent, propertyName, newValue);
     }
 
     /**
      * Update the parent version in a POM's {@code <parent>} block.
+     * Uses OpenRewrite LST for element-order-tolerant matching.
      *
      * @param pomContent      the raw POM text
      * @param parentArtifactId the parent artifactId to match
@@ -246,22 +200,7 @@ final class PomModel {
     static String updateParentVersion(String pomContent,
                                        String parentArtifactId,
                                        String newVersion) {
-        // Element-order-tolerant: match parent block with the given
-        // artifactId anywhere inside, then replace the version value.
-        Pattern p = Pattern.compile(
-                "(?s)(<parent>\\s*" +
-                "(?:(?!</parent>).)*?" +
-                "<artifactId>\\s*" + Pattern.quote(parentArtifactId) +
-                "\\s*</artifactId>" +
-                "(?:(?!</parent>).)*?" +
-                "<version>)([^<]*)(</version>)");
-        Matcher m = p.matcher(pomContent);
-        if (m.find()) {
-            return m.replaceFirst(
-                    Matcher.quoteReplacement(m.group(1))
-                    + Matcher.quoteReplacement(newVersion)
-                    + Matcher.quoteReplacement(m.group(3)));
-        }
-        return pomContent;
+        return PomRewriter.updateParentVersion(
+                pomContent, parentArtifactId, newVersion);
     }
 }

@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.regex.Pattern;  // retained for readParent()
 
 /**
  * Utilities for reading and updating {@code <parent>} blocks in POM files.
@@ -52,6 +52,7 @@ final class PomParentSupport {
 
     /**
      * Update the parent version for a matching artifactId.
+     * Delegates to {@link PomRewriter} for AST-aware manipulation.
      *
      * @param pomContent      POM XML as a string
      * @param parentArtifactId the artifactId to match in the parent block
@@ -61,16 +62,8 @@ final class PomParentSupport {
     static String updateParentVersion(String pomContent,
                                        String parentArtifactId,
                                        String newVersion) {
-        Pattern p = Pattern.compile(
-                "(?s)(<parent>\\s*" +
-                "<groupId>[^<]+</groupId>\\s*" +
-                "<artifactId>" + Pattern.quote(parentArtifactId) + "</artifactId>\\s*" +
-                "<version>)[^<]*(</version>)");
-        Matcher m = p.matcher(pomContent);
-        if (m.find()) {
-            return m.replaceFirst("$1" + Matcher.quoteReplacement(newVersion) + "$2");
-        }
-        return pomContent;
+        return PomRewriter.updateParentVersion(
+                pomContent, parentArtifactId, newVersion);
     }
 
     /**
