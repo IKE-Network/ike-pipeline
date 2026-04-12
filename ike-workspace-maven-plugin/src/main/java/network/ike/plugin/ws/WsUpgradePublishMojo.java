@@ -16,6 +16,9 @@ import org.apache.maven.plugins.annotations.Mojo;
 @Mojo(name = "upgrade-publish", requiresProject = false, threadSafe = true)
 public class WsUpgradePublishMojo extends WsUpgradeDraftMojo {
 
+    /** Creates this goal instance. */
+    public WsUpgradePublishMojo() {}
+
     @Override
     public void execute() throws MojoExecutionException {
         publish = true;

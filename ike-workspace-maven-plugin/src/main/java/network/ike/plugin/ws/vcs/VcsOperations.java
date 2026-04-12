@@ -108,6 +108,12 @@ public class VcsOperations {
 
     /**
      * Get the one-line commit log between two refs.
+     *
+     * @param dir  the repository root directory
+     * @param base the starting ref (exclusive)
+     * @param head the ending ref (inclusive)
+     * @return list of one-line commit summaries between the two refs
+     * @throws MojoExecutionException if the git command fails
      */
     public static List<String> commitLog(File dir, String base, String head)
             throws MojoExecutionException {

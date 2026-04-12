@@ -21,6 +21,9 @@ import java.io.File;
 @Mojo(name = "checkpoint-publish", requiresProject = false, threadSafe = true)
 public class WsCheckpointPublishMojo extends WsCheckpointDraftMojo {
 
+    /** Creates this goal instance. */
+    public WsCheckpointPublishMojo() {}
+
     @Override
     public void execute() throws MojoExecutionException {
         publish = true;

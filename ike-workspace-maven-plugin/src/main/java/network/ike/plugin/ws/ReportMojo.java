@@ -18,6 +18,9 @@ import java.nio.file.Path;
 @Mojo(name = "report", requiresProject = false, aggregator = true)
 public class ReportMojo extends AbstractWorkspaceMojo {
 
+    /** Creates this goal instance. */
+    public ReportMojo() {}
+
     /**
      * Skip opening the browser; just print the report path.
      */

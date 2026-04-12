@@ -22,6 +22,9 @@ import java.io.File;
 @Mojo(name = "release-publish", requiresProject = false, threadSafe = true)
 public class WsReleasePublishMojo extends WsReleaseDraftMojo {
 
+    /** Creates this goal instance. */
+    public WsReleasePublishMojo() {}
+
     @Override
     public void execute() throws MojoExecutionException {
         publish = true;

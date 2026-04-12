@@ -269,6 +269,10 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
     /**
      * Tag a single component at its current HEAD. Override in tests
      * to substitute a lighter-weight simulation.
+     *
+     * @param dir     the component directory to checkpoint
+     * @param tagName the tag name to apply
+     * @throws MojoExecutionException if the tagging operation fails
      */
     protected void checkpointComponent(File dir, String tagName)
             throws MojoExecutionException {
@@ -305,6 +309,14 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
 
     /**
      * Build checkpoint YAML content from pre-gathered component data.
+     *
+     * @param name          the checkpoint name
+     * @param timestamp     the ISO-UTC creation timestamp
+     * @param author        the author who created the checkpoint
+     * @param schemaVersion the workspace manifest schema version
+     * @param snapshots     the per-component snapshot records
+     * @param absentNames   names of components not present on disk
+     * @return the checkpoint YAML content as a string
      */
     public static String buildCheckpointYaml(String name, String timestamp,
                                               String author, String schemaVersion,
@@ -344,6 +356,12 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
         return String.join("\n", yaml) + "\n";
     }
 
+    /**
+     * Derive the checkpoint file name from the checkpoint name.
+     *
+     * @param checkpointName the checkpoint name
+     * @return the filename in the form {@code checkpoint-<name>.yaml}
+     */
     public static String checkpointFileName(String checkpointName) {
         return "checkpoint-" + checkpointName + ".yaml";
     }

@@ -16,6 +16,9 @@ import org.apache.maven.plugins.annotations.Mojo;
 @Mojo(name = "feature-finish-rebase-publish", requiresProject = false, threadSafe = true)
 public class FeatureFinishRebasePublishMojo extends FeatureFinishRebaseDraftMojo {
 
+    /** Creates this goal instance. */
+    public FeatureFinishRebasePublishMojo() {}
+
     @Override
     public void execute() throws MojoExecutionException {
         publish = true;

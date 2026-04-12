@@ -16,6 +16,9 @@ import org.apache.maven.plugins.annotations.Mojo;
 @Mojo(name = "cleanup-publish", requiresProject = false, threadSafe = true)
 public class CleanupWorkspacePublishMojo extends CleanupWorkspaceMojo {
 
+    /** Creates this goal instance. */
+    public CleanupWorkspacePublishMojo() {}
+
     @Override
     public void execute() throws MojoExecutionException {
         publish = true;

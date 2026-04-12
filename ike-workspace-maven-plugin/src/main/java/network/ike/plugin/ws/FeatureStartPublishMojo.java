@@ -22,6 +22,9 @@ import java.io.File;
 @Mojo(name = "feature-start-publish", requiresProject = false, threadSafe = true)
 public class FeatureStartPublishMojo extends FeatureStartDraftMojo {
 
+    /** Creates this goal instance. */
+    public FeatureStartPublishMojo() {}
+
     @Override
     public void execute() throws MojoExecutionException {
         publish = true;

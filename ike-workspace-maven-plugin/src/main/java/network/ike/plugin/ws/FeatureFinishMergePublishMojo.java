@@ -16,6 +16,9 @@ import org.apache.maven.plugins.annotations.Mojo;
 @Mojo(name = "feature-finish-merge-publish", requiresProject = false, threadSafe = true)
 public class FeatureFinishMergePublishMojo extends FeatureFinishMergeDraftMojo {
 
+    /** Creates this goal instance. */
+    public FeatureFinishMergePublishMojo() {}
+
     @Override
     public void execute() throws MojoExecutionException {
         publish = true;

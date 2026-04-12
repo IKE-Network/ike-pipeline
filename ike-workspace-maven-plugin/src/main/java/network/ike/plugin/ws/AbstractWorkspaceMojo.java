@@ -201,6 +201,8 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
     /**
      * Read the workspace name from the root POM's artifactId.
      * Falls back to "Workspace" if the POM cannot be read.
+     *
+     * @return the workspace name derived from the root POM artifactId
      */
     protected String workspaceName() {
         try {
@@ -217,6 +219,9 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
     /**
      * Format a goal header line using the workspace name.
      * Example: "komet-ws — Status"
+     *
+     * @param goalName the goal name to display in the header
+     * @return the formatted header string
      */
     protected String header(String goalName) {
         return workspaceName() + " — " + goalName;

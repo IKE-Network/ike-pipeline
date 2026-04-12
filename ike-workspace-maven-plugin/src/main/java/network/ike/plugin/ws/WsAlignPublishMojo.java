@@ -16,6 +16,9 @@ import org.apache.maven.plugins.annotations.Mojo;
 @Mojo(name = "align-publish", requiresProject = false, threadSafe = true)
 public class WsAlignPublishMojo extends WsAlignDraftMojo {
 
+    /** Creates this goal instance. */
+    public WsAlignPublishMojo() {}
+
     @Override
     public void execute() throws MojoExecutionException {
         publish = true;
