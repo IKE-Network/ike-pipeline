@@ -565,7 +565,8 @@
                     <configuration>
                         <source>${java.version}</source>
                         <detectJavaApiLink>true</detectJavaApiLink>
-                        <doclint>all,-missing</doclint>
+                        <doclint>all</doclint>
+                        <failOnWarnings>true</failOnWarnings>
                         <quiet>true</quiet>
                         <show>protected</show>
                         <additionalOptions>
