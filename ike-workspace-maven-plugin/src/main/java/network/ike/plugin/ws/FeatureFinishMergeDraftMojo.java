@@ -147,6 +147,15 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
             return;
         }
 
+        // Auto-generate commit message from per-component history
+        String generatedMessage = FeatureFinishSupport.generateFeatureMessage(
+                root, eligible, branchName, targetBranch, message, getLog());
+        getLog().info("  Commit message:");
+        for (String line : generatedMessage.split("\n")) {
+            getLog().info("    " + line);
+        }
+        getLog().info("");
+
         int merged = 0;
         for (String name : eligible) {
             Component component = graph.manifest().components().get(name);
@@ -163,7 +172,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
             FeatureFinishSupport.stripBranchVersion(dir, component, getLog());
 
             VcsOperations.checkout(dir, getLog(), targetBranch);
-            VcsOperations.mergeNoFf(dir, getLog(), branchName, message);
+            VcsOperations.mergeNoFf(dir, getLog(), branchName, generatedMessage);
             VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
 
             if (!keepBranch) {
@@ -236,10 +245,15 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
             return;
         }
 
+        // Auto-generate message for bare mode
+        String bareMessage = (message != null && !message.isBlank())
+                ? message
+                : "Merge " + branchName + " into " + targetBranch;
+
         FeatureFinishSupport.stripBranchVersionBare(dir, getLog());
 
         VcsOperations.checkout(dir, getLog(), targetBranch);
-        VcsOperations.mergeNoFf(dir, getLog(), branchName, message);
+        VcsOperations.mergeNoFf(dir, getLog(), branchName, bareMessage);
         VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
 
         if (!keepBranch) {

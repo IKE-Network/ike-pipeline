@@ -116,6 +116,59 @@ class FeatureFinishSupport {
     }
 
     /**
+     * Generate a structured commit message by aggregating per-component
+     * commit history from the feature branch.
+     */
+    static String generateFeatureMessage(File root, List<String> components,
+                                          String branchName, String targetBranch,
+                                          String userMessage, Log log) {
+        var sb = new StringBuilder();
+        if (userMessage != null && !userMessage.isBlank()) {
+            sb.append(userMessage).append("\n\n");
+        }
+        sb.append(branchName).append("\n");
+
+        for (String name : components) {
+            File dir = new File(root, name);
+            try {
+                List<String> commits = VcsOperations.commitLog(
+                        dir, targetBranch, branchName);
+                if (commits.isEmpty()) continue;
+                sb.append("\n## ").append(name)
+                  .append(" (").append(commits.size()).append(" commit")
+                  .append(commits.size() == 1 ? "" : "s").append(")\n");
+                for (String line : commits) {
+                    String msg = line.contains(" ")
+                            ? line.substring(line.indexOf(' ') + 1) : line;
+                    sb.append("- ").append(msg).append("\n");
+                }
+            } catch (MojoExecutionException e) {
+                log.debug("Could not get log for " + name + ": " + e.getMessage());
+            }
+        }
+
+        // Workspace repo changes
+        try {
+            List<String> wsCommits = VcsOperations.commitLog(
+                    root, targetBranch, branchName);
+            if (!wsCommits.isEmpty()) {
+                sb.append("\n## workspace (").append(wsCommits.size())
+                  .append(" commit").append(wsCommits.size() == 1 ? "" : "s")
+                  .append(")\n");
+                for (String line : wsCommits) {
+                    String msg = line.contains(" ")
+                            ? line.substring(line.indexOf(' ') + 1) : line;
+                    sb.append("- ").append(msg).append("\n");
+                }
+            }
+        } catch (MojoExecutionException e) {
+            log.debug("Could not get workspace log: " + e.getMessage());
+        }
+
+        return sb.toString().stripTrailing();
+    }
+
+    /**
      * Strip branch-qualified version back to base SNAPSHOT.
      * Returns the base version, or null if no stripping was needed.
      */

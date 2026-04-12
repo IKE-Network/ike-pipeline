@@ -136,7 +136,7 @@ class FeatureFinishIntegrationTest {
         for (String name : new String[]{"lib-a", "lib-b", "app-c"}) {
             String log = execCapture(tempDir.resolve(name),
                     "git", "log", "--oneline", "-5");
-            assertThat(log).contains("Merge " + BRANCH_NAME);
+            assertThat(log).contains(BRANCH_NAME);
         }
     }
 
