@@ -120,6 +120,40 @@ final class PomModel {
         return model.getModules();
     }
 
+    /**
+     * BOM imports from {@code <dependencyManagement>} — dependencies
+     * with {@code <type>pom</type>} and {@code <scope>import</scope>}.
+     *
+     * <p>Uses the Maven 4 model API for precise detection instead of
+     * regex parsing (#47). Property references (e.g., {@code ${foo.version}})
+     * are resolved against the POM's {@code <properties>} block.
+     *
+     * @return list of BOM import dependencies (unmodifiable)
+     */
+    List<Dependency> bomImports() {
+        DependencyManagement mgmt = model.getDependencyManagement();
+        if (mgmt == null) return List.of();
+
+        Map<String, String> props = model.getProperties();
+        return mgmt.getDependencies().stream()
+                .filter(d -> "pom".equals(d.getType())
+                        && "import".equals(d.getScope()))
+                .map(d -> {
+                    // Resolve ${property} in version
+                    String version = d.getVersion();
+                    if (version != null && version.startsWith("${")
+                            && version.endsWith("}")) {
+                        String propName = version.substring(2, version.length() - 1);
+                        String resolved = props.get(propName);
+                        if (resolved != null) {
+                            return d.withVersion(resolved);
+                        }
+                    }
+                    return d;
+                })
+                .toList();
+    }
+
     // ── Writing (targeted text replacement) ────────────────────────
 
     /**

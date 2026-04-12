@@ -671,20 +671,42 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
             return List.of();
         }
 
-        // Filter out gaps that cascadeBomProperties() can resolve.
-        // If any workspace component's POM has a <upstream.version> property,
-        // the cascade will update it automatically — no gap.
+        // Filter out gaps that cascadeBomProperties() can resolve (#82).
+        // Check if the affected component's own POM (or any POM in its
+        // module tree) has a <upstream.version> property — if so, the
+        // cascade will update it automatically and the gap is handled.
         issues.removeIf(issue -> {
             String propertyName = issue.dependsOn() + ".version";
-            for (String compName : graph.manifest().components().keySet()) {
-                java.nio.file.Path pomPath = root.toPath()
-                        .resolve(compName).resolve("pom.xml");
-                if (java.nio.file.Files.exists(pomPath)) {
+            // Check the affected component's POM tree
+            java.nio.file.Path compDir = root.toPath().resolve(issue.componentName());
+            if (java.nio.file.Files.exists(compDir.resolve("pom.xml"))) {
+                try {
+                    java.util.List<java.io.File> poms = network.ike.plugin.ReleaseSupport
+                            .findPomFiles(compDir.toFile());
+                    for (java.io.File pom : poms) {
+                        String content = java.nio.file.Files.readString(
+                                pom.toPath(), java.nio.charset.StandardCharsets.UTF_8);
+                        if (content.contains("<" + propertyName + ">")) {
+                            return true; // Gap handled by cascadeBomProperties
+                        }
+                    }
+                } catch (Exception _) { /* skip */ }
+            }
+            // Also check workspace-internal BOMs that manage the upstream's
+            // artifacts — if a BOM component has the property, the cascade
+            // path exists through the BOM import chain.
+            for (String bomName : graph.manifest().components().keySet()) {
+                Component bomComp = graph.manifest().components().get(bomName);
+                if (!"bom".equals(bomComp.type())
+                        && !"infrastructure".equals(bomComp.type())) continue;
+                java.nio.file.Path bomPom = root.toPath()
+                        .resolve(bomName).resolve("pom.xml");
+                if (java.nio.file.Files.exists(bomPom)) {
                     try {
                         String content = java.nio.file.Files.readString(
-                                pomPath, java.nio.charset.StandardCharsets.UTF_8);
+                                bomPom, java.nio.charset.StandardCharsets.UTF_8);
                         if (content.contains("<" + propertyName + ">")) {
-                            return true; // This gap is handled by cascadeBomProperties
+                            return true; // BOM has the convention property
                         }
                     } catch (java.io.IOException _) { /* skip */ }
                 }
