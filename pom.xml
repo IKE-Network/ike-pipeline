@@ -284,7 +284,7 @@
                                 <useSubDirectoryPerArtifact>true</useSubDirectoryPerArtifact>
                                 <stripVersion>true</stripVersion>
                                 <stripType>true</stripType>
-                                <includeGroupIds>network.ike</includeGroupIds>
+                                <includeGroupIds>network.ike.pipeline</includeGroupIds>
                             </configuration>
                         </execution>
                         <execution>
@@ -768,6 +768,25 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <goals><goal>report</goal></goals>
                         </execution>
                     </executions>
+                </plugin>
+
+                <!-- OpenRewrite — AST-aware refactoring engine.
+                     Invoked standalone: mvn rewrite:run / rewrite:dryRun.
+                     No lifecycle binding — recipes activated per-invocation. -->
+                <plugin>
+                    <groupId>org.openrewrite.maven</groupId>
+                    <artifactId>rewrite-maven-plugin</artifactId>
+                    <version>6.36.0</version>
+                    <configuration>
+                        <activeRecipes/>
+                    </configuration>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.openrewrite.recipe</groupId>
+                            <artifactId>rewrite-java-dependencies</artifactId>
+                            <version>1.28.0</version>
+                        </dependency>
+                    </dependencies>
                 </plugin>
             </plugins>
         </pluginManagement>

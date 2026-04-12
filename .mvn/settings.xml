@@ -14,7 +14,8 @@
          Maven only searches org.apache.maven.plugins and
          org.codehaus.mojo by default. -->
     <pluginGroups>
-        <pluginGroup>network.ike</pluginGroup>
+        <pluginGroup>network.ike.tooling</pluginGroup>
+        <pluginGroup>network.ike.pipeline</pluginGroup>
     </pluginGroups>
 
     <mirrors>

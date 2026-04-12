@@ -78,6 +78,22 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
     @Parameter(property = "push", defaultValue = "true")
     boolean push;
 
+    /**
+     * GitHub repository for release creation (e.g., "IKE-Network/komet").
+     * If set, creates a GitHub Release for each released component and
+     * attaches any platform installers found in the component's
+     * {@code target/installers/} directory.
+     */
+    @Parameter(property = "githubRepo")
+    String githubRepo;
+
+    /**
+     * Glob pattern for installer artifacts to attach to the GitHub Release.
+     * Matched relative to each component's {@code target/} directory.
+     */
+    @Parameter(property = "installerGlob", defaultValue = "installers/*.{pkg,dmg,msi,deb,rpm}")
+    String installerGlob;
+
     /** Creates this goal instance. */
     public WsReleaseDraftMojo() {}
 
@@ -219,8 +235,87 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
             getLog().info("  " + entry.getKey() + " → " + entry.getValue());
         }
         getLog().info("");
+
+        // ── 8. GitHub Release (optional) ──────────────────────────────
+        if (githubRepo != null && !githubRepo.isBlank()) {
+            createGitHubReleases(root, releasedVersions);
+        }
+
         // Structured markdown report
         appendReport("ws:release", buildReleaseMarkdownReport(releasedVersions));
+    }
+
+    /**
+     * Create GitHub Releases for released components and attach
+     * platform installers. Uses {@code gh} CLI. Each component gets
+     * a release tagged {@code v<version>}. If the release already
+     * exists, uploads are appended with {@code --clobber}.
+     */
+    private void createGitHubReleases(File root,
+                                        Map<String, String> releasedVersions)
+            throws MojoExecutionException {
+        for (var entry : releasedVersions.entrySet()) {
+            String name = entry.getKey();
+            String version = entry.getValue();
+            String tag = "v" + version;
+            File compDir = new File(root, name);
+
+            // Collect installer artifacts
+            java.nio.file.Path targetDir = compDir.toPath().resolve("target");
+            List<String> artifacts = new ArrayList<>();
+            if (java.nio.file.Files.exists(targetDir)) {
+                try {
+                    java.nio.file.PathMatcher matcher =
+                            targetDir.getFileSystem().getPathMatcher(
+                                    "glob:" + installerGlob);
+                    try (var walk = java.nio.file.Files.walk(targetDir, 3)) {
+                        walk.filter(java.nio.file.Files::isRegularFile)
+                            .filter(p -> matcher.matches(
+                                    targetDir.relativize(p)))
+                            .forEach(p -> artifacts.add(p.toString()));
+                    }
+                } catch (java.io.IOException e) {
+                    getLog().debug("Could not scan installers for " + name
+                            + ": " + e.getMessage());
+                }
+            }
+
+            getLog().info("  Creating GitHub Release: " + tag
+                    + (artifacts.isEmpty() ? ""
+                        : " (" + artifacts.size() + " installer"
+                          + (artifacts.size() == 1 ? "" : "s") + ")"));
+
+            try {
+                // Try create first; fall back to upload if release exists
+                List<String> cmd = new ArrayList<>(List.of(
+                        "gh", "release", "create", tag,
+                        "--repo", githubRepo,
+                        "--title", name + " " + version,
+                        "--generate-notes"));
+                cmd.addAll(artifacts);
+
+                ReleaseSupport.exec(compDir, getLog(),
+                        cmd.toArray(String[]::new));
+            } catch (MojoExecutionException e) {
+                // Release may already exist — append assets
+                if (!artifacts.isEmpty()) {
+                    try {
+                        List<String> uploadCmd = new ArrayList<>(List.of(
+                                "gh", "release", "upload", tag,
+                                "--repo", githubRepo, "--clobber"));
+                        uploadCmd.addAll(artifacts);
+                        ReleaseSupport.exec(compDir, getLog(),
+                                uploadCmd.toArray(String[]::new));
+                    } catch (MojoExecutionException uploadErr) {
+                        getLog().warn("  Could not upload to release " + tag
+                                + ": " + uploadErr.getMessage());
+                    }
+                } else {
+                    getLog().warn("  GitHub Release creation failed for "
+                            + tag + ": " + e.getMessage());
+                }
+            }
+        }
     }
 
     private String buildReleaseMarkdownReport(
