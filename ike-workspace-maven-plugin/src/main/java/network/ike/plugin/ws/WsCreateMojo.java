@@ -52,9 +52,6 @@ public class WsCreateMojo extends AbstractMojo {
     private String name;
 
     /**
-     * Short description of the workspace purpose.
-     */
-    /**
      * Short description of the workspace purpose. Defaults to the
      * workspace name, which is also used as the Maven POM {@code <name>}
      * element (shown in Maven build output).

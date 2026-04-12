@@ -111,6 +111,7 @@ final class PomModel {
     }
 
     /** Subprojects (Maven 4.1.0) or modules (Maven 4.0.0). */
+    @SuppressWarnings("deprecation") // getModules() fallback for POM 4.0.0
     List<String> subprojects() {
         List<String> subs = model.getSubprojects();
         if (subs != null && !subs.isEmpty()) return subs;

@@ -52,7 +52,7 @@ public final class WorkspaceReport {
             try (RandomAccessFile raf = new RandomAccessFile(
                          reportFile.toFile(), "rw");
                  FileChannel channel = raf.getChannel();
-                 FileLock ignored = channel.lock()) {
+                 FileLock _ = channel.lock()) {
 
                 // Seek to end for append
                 long length = raf.length();

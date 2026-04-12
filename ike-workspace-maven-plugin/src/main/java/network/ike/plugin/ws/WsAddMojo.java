@@ -479,15 +479,6 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
     // ── POM-based dependency derivation ────────────────────────
 
     /**
-     * Scan the new component's POM for dependency and parent groupIds,
-     * then match against groupIds of already-registered workspace
-     * components to derive the depends-on list.
-     *
-     * @param manifestPath path to workspace.yaml
-     * @param componentDir the cloned component directory
-     * @return list of derived dependencies, or null if none found
-     */
-    /**
      * Derive dependencies by scanning the new component's POMs for
      * referenced {@code groupId:artifactId} pairs and matching them
      * against the published artifact sets of already-registered
@@ -556,14 +547,6 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
         return matched.isEmpty() ? null : matched;
     }
 
-    /**
-     * Backward resolution: for each existing cloned component, scan
-     * its POM and check whether it references the newly added
-     * component's groupId. If so, and it doesn't already have a
-     * depends-on edge, add one to workspace.yaml.
-     *
-     * @return the number of existing components updated
-     */
     /**
      * Backward resolution: for each existing cloned component, check
      * whether its POMs reference any artifact published by the newly
