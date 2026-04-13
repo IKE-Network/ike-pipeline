@@ -81,7 +81,7 @@
         <deploy.staging.url>https://nexus.tinkar.org/repository/ike-staging/</deploy.staging.url>
 
         <!-- IKE Tooling (ike-maven-plugin, ike-workspace-maven-plugin, ike-build-standards) -->
-        <ike-tooling.version>98</ike-tooling.version>
+        <ike-tooling.version>99</ike-tooling.version>
 
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -95,6 +95,12 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <maven.compiler.enablePreview>false</maven.compiler.enablePreview>
+
+        <!-- ── Javadoc Strictness ─────────────────────────────────────── -->
+        <!-- Default: lenient. Projects opt into strict by overriding
+             these properties. Use -Pstrict-javadoc for ad-hoc strict builds. -->
+        <ike.javadoc.doclint>none</ike.javadoc.doclint>
+        <ike.javadoc.failOnWarnings>false</ike.javadoc.failOnWarnings>
 
         <!-- ── Maven Plugin Versions ──────────────────────────────────── -->
         <maven-dependency-plugin.version>3.9.0</maven-dependency-plugin.version>
@@ -565,8 +571,8 @@
                     <configuration>
                         <source>${java.version}</source>
                         <detectJavaApiLink>true</detectJavaApiLink>
-                        <doclint>all</doclint>
-                        <failOnWarnings>true</failOnWarnings>
+                        <doclint>${ike.javadoc.doclint}</doclint>
+                        <failOnWarnings>${ike.javadoc.failOnWarnings}</failOnWarnings>
                         <quiet>true</quiet>
                         <show>protected</show>
                         <additionalOptions>
@@ -1834,6 +1840,16 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+
+        <!-- ── Strict Javadoc ───────────────────────────────────────────── -->
+        <!-- Activate with -Pstrict-javadoc to fail on javadoc warnings. -->
+        <profile>
+            <id>strict-javadoc</id>
+            <properties>
+                <ike.javadoc.doclint>all</ike.javadoc.doclint>
+                <ike.javadoc.failOnWarnings>true</ike.javadoc.failOnWarnings>
+            </properties>
         </profile>
 
         <!-- ── Release (from java-parent) ─────────────────────────────── -->

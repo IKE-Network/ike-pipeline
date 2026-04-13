@@ -229,8 +229,8 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-javadoc-plugin</artifactId>
                     <configuration>
-                        <doclint>all</doclint>
-                        <failOnWarnings>true</failOnWarnings>
+                        <doclint>${ike.javadoc.doclint}</doclint>
+                        <failOnWarnings>${ike.javadoc.failOnWarnings}</failOnWarnings>
                     </configuration>
                 </plugin>
                 <plugin>
