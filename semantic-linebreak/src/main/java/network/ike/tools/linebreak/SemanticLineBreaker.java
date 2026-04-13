@@ -110,6 +110,12 @@ public class SemanticLineBreaker {
 
     // ── Entry point ─────────────────────────────────────────────────────────────
 
+    /**
+     * Command-line entry point for the semantic linebreak reformatter.
+     *
+     * @param args command-line arguments specifying input files and options
+     * @throws IOException if an I/O error occurs while reading or writing files
+     */
     public static void main(String[] args) throws IOException {
         var tool = new SemanticLineBreaker();
         tool.run(args);

@@ -42,6 +42,10 @@ import java.util.ArrayList;
  */
 public class KonceptGlossaryProcessor extends Postprocessor {
 
+    /** Creates a new glossary processor instance. */
+    public KonceptGlossaryProcessor() {
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(KonceptGlossaryProcessor.class);
 
     private static final String DEFAULT_CLASSPATH_RESOURCE = "/koncepts.yml";

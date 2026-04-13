@@ -48,7 +48,10 @@ public class YamlKonceptDefinitionSource implements KonceptDefinitionSource {
     }
 
     /**
-     * Load definitions from a classpath resource.
+     * Loads definitions from a classpath resource.
+     *
+     * @param resource the classpath resource path (e.g., {@code /koncepts.yml})
+     * @return a definition source backed by the parsed YAML, or an empty source if not found
      */
     public static YamlKonceptDefinitionSource fromClasspath(String resource) {
         InputStream is = YamlKonceptDefinitionSource.class.getResourceAsStream(resource);
@@ -65,7 +68,10 @@ public class YamlKonceptDefinitionSource implements KonceptDefinitionSource {
     }
 
     /**
-     * Load definitions from a filesystem path.
+     * Loads definitions from a filesystem path.
+     *
+     * @param filePath the absolute or relative path to the YAML file
+     * @return a definition source backed by the parsed YAML, or an empty source if not found
      */
     public static YamlKonceptDefinitionSource fromFile(String filePath) {
         Path path = Path.of(filePath);

@@ -26,6 +26,11 @@ package org.ike.example;
  *   <li>Definition</li>
  * </ul>
  * 
+ * @param conceptId              the SNOMED CT concept identifier
+ * @param fullySpecifiedName     the fully specified name including semantic tag
+ * @param preferredTerm          the preferred display term
+ * @param definition             the natural language definition text
+ *
  * @author IKE Community
  * @version 1.0.0
  */

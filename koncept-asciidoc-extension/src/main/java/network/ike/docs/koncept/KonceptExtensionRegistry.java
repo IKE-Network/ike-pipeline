@@ -13,6 +13,10 @@ import org.asciidoctor.jruby.extension.spi.ExtensionRegistry;
  */
 public class KonceptExtensionRegistry implements ExtensionRegistry {
 
+    /** Creates a new extension registry instance. */
+    public KonceptExtensionRegistry() {
+    }
+
     @Override
     public void register(Asciidoctor asciidoctor) {
         // Always register the inline macro — works with all backends

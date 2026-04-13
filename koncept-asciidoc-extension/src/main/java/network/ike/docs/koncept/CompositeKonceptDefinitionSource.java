@@ -14,6 +14,11 @@ public class CompositeKonceptDefinitionSource implements KonceptDefinitionSource
 
     private final List<KonceptDefinitionSource> sources;
 
+    /**
+     * Creates a composite source that queries the given sources in order.
+     *
+     * @param sources ordered list of definition sources (earlier entries take priority)
+     */
     public CompositeKonceptDefinitionSource(List<KonceptDefinitionSource> sources) {
         this.sources = List.copyOf(sources);
     }

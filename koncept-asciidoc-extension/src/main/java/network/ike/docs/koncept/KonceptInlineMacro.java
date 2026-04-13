@@ -32,6 +32,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Name("k")
 public class KonceptInlineMacro extends InlineMacroProcessor {
 
+    /** Creates a new inline macro processor instance. */
+    public KonceptInlineMacro() {
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(KonceptInlineMacro.class);
 
     /**

@@ -32,36 +32,82 @@ public record KonceptDefinition(
         private String sctid;
         private String iri;
 
+        /** Creates a new empty builder. */
+        public Builder() {
+        }
+
+        /**
+         * Sets the CamelCase identifier.
+         *
+         * @param identifier the identifier to set
+         * @return this builder
+         */
         public Builder identifier(String identifier) {
             this.identifier = identifier;
             return this;
         }
 
+        /**
+         * Sets the human-readable label.
+         *
+         * @param label the label to set
+         * @return this builder
+         */
         public Builder label(String label) {
             this.label = label;
             return this;
         }
 
+        /**
+         * Sets the natural language definition text.
+         *
+         * @param definition the definition to set
+         * @return this builder
+         */
         public Builder definition(String definition) {
             this.definition = definition;
             return this;
         }
 
+        /**
+         * Sets the description logic axiom string.
+         *
+         * @param axiom the axiom to set
+         * @return this builder
+         */
         public Builder axiom(String axiom) {
             this.axiom = axiom;
             return this;
         }
 
+        /**
+         * Sets the SNOMED CT concept identifier.
+         *
+         * @param sctid the SNOMED CT identifier to set
+         * @return this builder
+         */
         public Builder sctid(String sctid) {
             this.sctid = sctid;
             return this;
         }
 
+        /**
+         * Sets the OWL IRI for the concept.
+         *
+         * @param iri the IRI to set
+         * @return this builder
+         */
         public Builder iri(String iri) {
             this.iri = iri;
             return this;
         }
 
+        /**
+         * Builds an immutable {@link KonceptDefinition} from this builder's state.
+         *
+         * @return the constructed definition
+         * @throws IllegalStateException if identifier is null or blank
+         */
         public KonceptDefinition build() {
             if (identifier == null || identifier.isBlank()) {
                 throw new IllegalStateException("KonceptDefinition requires an identifier");
@@ -74,6 +120,11 @@ public record KonceptDefinition(
         }
     }
 
+    /**
+     * Creates a new builder for constructing {@link KonceptDefinition} instances.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
