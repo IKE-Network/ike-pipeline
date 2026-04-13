@@ -194,7 +194,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
                 FeatureFinishSupport.deleteBranch(dir, getLog(), branchName);
             }
 
-            VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_FINISH);
+            VcsOperations.writeVcsState(dir, VcsState.Action.FEATURE_FINISH);
             merged++;
         }
 
@@ -284,7 +284,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
             FeatureFinishSupport.deleteBranch(dir, getLog(), branchName);
         }
 
-        VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_FINISH);
+        VcsOperations.writeVcsState(dir, VcsState.Action.FEATURE_FINISH);
 
         getLog().info("  Done.");
         getLog().info("");

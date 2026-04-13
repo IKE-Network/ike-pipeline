@@ -336,7 +336,7 @@ class FeatureFinishSupport {
 
         // Write state file for ws
         if (VcsState.isIkeManaged(wsRoot.toPath())) {
-            VcsOperations.writeVcsState(wsRoot, VcsState.ACTION_FEATURE_FINISH);
+            VcsOperations.writeVcsState(wsRoot, VcsState.Action.FEATURE_FINISH);
         }
     }
 

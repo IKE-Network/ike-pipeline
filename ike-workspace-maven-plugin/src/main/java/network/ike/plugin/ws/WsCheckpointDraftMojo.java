@@ -247,11 +247,11 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
             File compDir = new File(root, entry.getKey());
             if (new File(compDir, ".git").exists()
                     && VcsState.isIkeManaged(compDir.toPath())) {
-                VcsOperations.writeVcsState(compDir, VcsState.ACTION_CHECKPOINT);
+                VcsOperations.writeVcsState(compDir, VcsState.Action.CHECKPOINT);
             }
         }
         if (VcsState.isIkeManaged(root.toPath())) {
-            VcsOperations.writeVcsState(root, VcsState.ACTION_CHECKPOINT);
+            VcsOperations.writeVcsState(root, VcsState.Action.CHECKPOINT);
         }
 
         getLog().info("");

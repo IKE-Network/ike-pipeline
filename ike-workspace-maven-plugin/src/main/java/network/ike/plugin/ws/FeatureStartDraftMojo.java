@@ -161,17 +161,22 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                 continue;
             }
 
-            // Fail if component is on a different feature branch
-            if (currentBranch.startsWith("feature/") && !currentBranch.equals(branchName)) {
-                throw new MojoExecutionException(
-                        name + " is on " + currentBranch
-                        + " — finish or abandon it before starting feature/" + feature);
-            }
-
             String status = gitStatus(dir);
             if (!status.isEmpty()) {
                 throw new MojoExecutionException(
-                        name + " has uncommitted changes. Commit or stash before starting a feature.");
+                        name + " has uncommitted changes — commit or stash, then try again.");
+            }
+
+            // If on a different feature branch, switch to main first.
+            // New features always derive from main.
+            if (currentBranch.startsWith("feature/") && !currentBranch.equals(branchName)) {
+                if (draft) {
+                    getLog().info("  [draft] " + name + " — would switch "
+                            + currentBranch + " → main → " + branchName);
+                } else {
+                    getLog().info("  " + name + ": switching " + currentBranch + " → main");
+                    VcsOperations.checkout(dir, getLog(), "main");
+                }
             }
 
             // Resolve effective version: workspace.yaml first, POM fallback
@@ -241,7 +246,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         if (!created.isEmpty() && publish) {
             for (String name : created) {
                 File dir = new File(root, name);
-                VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_START);
+                VcsOperations.writeVcsState(dir, VcsState.Action.FEATURE_START);
             }
         }
 
@@ -375,7 +380,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         }
 
         // Write VCS state (no push — branch stays local)
-        VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_START);
+        VcsOperations.writeVcsState(dir, VcsState.Action.FEATURE_START);
 
         getLog().info("");
     }
@@ -391,6 +396,13 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
             File wsRoot = manifestPath.getParent().toFile();
             File wsGit = new File(wsRoot, ".git");
             if (!wsGit.exists()) return;
+
+            // If workspace repo is on a different feature branch, switch to main first
+            String wsBranch = VcsOperations.currentBranch(wsRoot);
+            if (wsBranch.startsWith("feature/") && !wsBranch.equals(branchName)) {
+                getLog().info("  Workspace repo: switching " + wsBranch + " → main");
+                VcsOperations.checkout(wsRoot, getLog(), "main");
+            }
 
             // Branch the workspace repo
             getLog().info("  Branching workspace repo → " + branchName);
@@ -414,7 +426,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
             }
 
             // Write VCS state (no push — branch stays local)
-            VcsOperations.writeVcsState(wsRoot, VcsState.ACTION_FEATURE_START);
+            VcsOperations.writeVcsState(wsRoot, VcsState.Action.FEATURE_START);
 
         } catch (IOException e) {
             getLog().warn("  Could not update workspace.yaml: " + e.getMessage());

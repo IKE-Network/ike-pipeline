@@ -444,10 +444,10 @@ public class VcsOperations {
      * Write the VCS state file for the given directory.
      *
      * @param dir    the repository root directory
-     * @param action the action constant (e.g., {@link VcsState#ACTION_COMMIT})
+     * @param action the action being performed
      * @throws MojoExecutionException if writing the state file fails
      */
-    public static void writeVcsState(File dir, String action)
+    public static void writeVcsState(File dir, VcsState.Action action)
             throws MojoExecutionException {
         try {
             String branch = currentBranch(dir);
@@ -495,7 +495,7 @@ public class VcsOperations {
         }
 
         VcsState state = stateOpt.get();
-        log.info("  Syncing to: " + state.action() + " by " + state.machine()
+        log.info("  Syncing to: " + state.action().label() + " by " + state.machine()
                 + " at " + state.timestamp());
 
         fetch(dir, log);

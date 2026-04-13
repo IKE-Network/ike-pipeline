@@ -51,7 +51,7 @@ class VcsStateTest {
                 "mac-studio",
                 "feature/x",
                 "a1b2c3d4",
-                VcsState.ACTION_COMMIT
+                VcsState.Action.COMMIT
         );
 
         VcsState.writeTo(dir, original);
@@ -62,13 +62,13 @@ class VcsStateTest {
         assertThat(read.get().machine()).isEqualTo("mac-studio");
         assertThat(read.get().branch()).isEqualTo("feature/x");
         assertThat(read.get().sha()).isEqualTo("a1b2c3d4");
-        assertThat(read.get().action()).isEqualTo("commit");
+        assertThat(read.get().action()).isEqualTo(VcsState.Action.COMMIT);
     }
 
     @Test
     void writeTo_createsIkeDirectory(@TempDir Path dir) throws IOException {
         VcsState state = new VcsState(
-                "2026-03-31T14:22:00Z", "test", "main", "abcd1234", "push");
+                "2026-03-31T14:22:00Z", "test", "main", "abcd1234", VcsState.Action.PUSH);
 
         VcsState.writeTo(dir, state);
 
@@ -81,7 +81,7 @@ class VcsStateTest {
         Files.createDirectories(dir.resolve(".ike"));
 
         VcsState state = new VcsState(
-                "2026-03-31T14:22:00Z", "mac-studio", "main", "a1b2c3d4", "commit");
+                "2026-03-31T14:22:00Z", "mac-studio", "main", "a1b2c3d4", VcsState.Action.COMMIT);
 
         VcsState.writeTo(dir, state);
 
@@ -96,11 +96,11 @@ class VcsStateTest {
 
     @Test
     void create_setsTimestampAndMachine() {
-        VcsState state = VcsState.create("main", "abcd1234", VcsState.ACTION_PUSH);
+        VcsState state = VcsState.create("main", "abcd1234", VcsState.Action.PUSH);
 
         assertThat(state.branch()).isEqualTo("main");
         assertThat(state.sha()).isEqualTo("abcd1234");
-        assertThat(state.action()).isEqualTo("push");
+        assertThat(state.action()).isEqualTo(VcsState.Action.PUSH);
         assertThat(state.timestamp()).isNotEmpty();
         assertThat(state.machine()).isNotEmpty();
     }
@@ -117,10 +117,7 @@ class VcsStateTest {
     void readFrom_allActions(@TempDir Path dir) throws IOException {
         Files.createDirectories(dir.resolve(".ike"));
 
-        for (String action : new String[]{
-                VcsState.ACTION_COMMIT, VcsState.ACTION_PUSH,
-                VcsState.ACTION_FEATURE_START, VcsState.ACTION_FEATURE_FINISH,
-                VcsState.ACTION_RELEASE, VcsState.ACTION_CHECKPOINT}) {
+        for (VcsState.Action action : VcsState.Action.values()) {
             VcsState state = new VcsState(
                     "2026-03-31T14:22:00Z", "test", "main", "12345678", action);
             VcsState.writeTo(dir, state);

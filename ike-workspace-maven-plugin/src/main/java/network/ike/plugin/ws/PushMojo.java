@@ -89,7 +89,7 @@ public class PushMojo extends AbstractWorkspaceMojo {
 
                 String branch = VcsOperations.currentBranch(dir);
                 VcsOperations.push(dir, getLog(), remote, branch);
-                VcsOperations.writeVcsState(dir, VcsState.ACTION_PUSH);
+                VcsOperations.writeVcsState(dir, VcsState.Action.PUSH);
 
                 getLog().info(Ansi.green("  ✓ ") + name + " → " + remote + "/" + branch);
                 pushed++;
@@ -123,7 +123,7 @@ public class PushMojo extends AbstractWorkspaceMojo {
         getLog().info("  Pushing to " + remote + "/" + branch + "...");
         VcsOperations.push(dir, getLog(), remote, branch);
 
-        VcsOperations.writeVcsState(dir, VcsState.ACTION_PUSH);
+        VcsOperations.writeVcsState(dir, VcsState.Action.PUSH);
 
         getLog().info("");
         getLog().info("  Done.");

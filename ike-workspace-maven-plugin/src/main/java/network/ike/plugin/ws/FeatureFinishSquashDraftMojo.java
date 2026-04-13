@@ -195,7 +195,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
                 FeatureFinishSupport.deleteBranch(dir, getLog(), branchName);
             }
 
-            VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_FINISH);
+            VcsOperations.writeVcsState(dir, VcsState.Action.FEATURE_FINISH);
             merged++;
         }
 
@@ -288,7 +288,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
             FeatureFinishSupport.deleteBranch(dir, getLog(), branchName);
         }
 
-        VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_FINISH);
+        VcsOperations.writeVcsState(dir, VcsState.Action.FEATURE_FINISH);
 
         getLog().info("");
         getLog().info("  Done.");

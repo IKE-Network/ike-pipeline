@@ -79,11 +79,11 @@ class VcsOperationsTest {
     @Test
     void writeVcsState_createsFile() throws Exception {
         Files.createDirectories(tempDir.resolve(".ike"));
-        VcsOperations.writeVcsState(repoDir, VcsState.ACTION_COMMIT);
+        VcsOperations.writeVcsState(repoDir, VcsState.Action.COMMIT);
 
         Optional<VcsState> state = VcsState.readFrom(tempDir);
         assertThat(state).isPresent();
-        assertThat(state.get().action()).isEqualTo("commit");
+        assertThat(state.get().action()).isEqualTo(VcsState.Action.COMMIT);
         assertThat(state.get().branch()).isEqualTo("main");
         assertThat(state.get().sha()).hasSize(8);
     }
@@ -91,7 +91,7 @@ class VcsOperationsTest {
     @Test
     void needsSync_falseWhenInSync() throws Exception {
         Files.createDirectories(tempDir.resolve(".ike"));
-        VcsOperations.writeVcsState(repoDir, VcsState.ACTION_COMMIT);
+        VcsOperations.writeVcsState(repoDir, VcsState.Action.COMMIT);
 
         assertThat(VcsOperations.needsSync(repoDir)).isFalse();
     }
@@ -100,7 +100,7 @@ class VcsOperationsTest {
     void needsSync_trueWhenShaMismatch() throws Exception {
         Files.createDirectories(tempDir.resolve(".ike"));
         VcsState stale = new VcsState("2026-01-01T00:00:00Z", "other",
-                "main", "deadbeef", "commit");
+                "main", "deadbeef", VcsState.Action.COMMIT);
         VcsState.writeTo(tempDir, stale);
 
         assertThat(VcsOperations.needsSync(repoDir)).isTrue();
@@ -111,7 +111,7 @@ class VcsOperationsTest {
         Files.createDirectories(tempDir.resolve(".ike"));
         String sha = VcsOperations.headSha(repoDir);
         VcsState state = new VcsState("2026-01-01T00:00:00Z", "other",
-                "feature/x", sha, "feature-start");
+                "feature/x", sha, VcsState.Action.FEATURE_START);
         VcsState.writeTo(tempDir, state);
 
         assertThat(VcsOperations.needsSync(repoDir)).isTrue();

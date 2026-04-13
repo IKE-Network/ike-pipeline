@@ -101,11 +101,11 @@ public class CommitMojo extends AbstractWorkspaceMojo {
                     } else {
                         VcsOperations.commitStaged(root, getLog(), null);
                     }
-                    VcsOperations.writeVcsState(root, VcsState.ACTION_COMMIT);
+                    VcsOperations.writeVcsState(root, VcsState.Action.COMMIT);
                     if (push) {
                         String branch = VcsOperations.currentBranch(root);
                         VcsOperations.push(root, getLog(), "origin", branch);
-                        VcsOperations.writeVcsState(root, VcsState.ACTION_PUSH);
+                        VcsOperations.writeVcsState(root, VcsState.Action.PUSH);
                     }
                     getLog().info(Ansi.green("  ✓ ") + "workspace root");
                     committed++;
@@ -157,12 +157,12 @@ public class CommitMojo extends AbstractWorkspaceMojo {
                     VcsOperations.commitStaged(dir, getLog(), null);
                 }
 
-                VcsOperations.writeVcsState(dir, VcsState.ACTION_COMMIT);
+                VcsOperations.writeVcsState(dir, VcsState.Action.COMMIT);
 
                 if (push) {
                     String branch = VcsOperations.currentBranch(dir);
                     VcsOperations.push(dir, getLog(), "origin", branch);
-                    VcsOperations.writeVcsState(dir, VcsState.ACTION_PUSH);
+                    VcsOperations.writeVcsState(dir, VcsState.Action.PUSH);
                 }
 
                 getLog().info(Ansi.green("  ✓ ") + name);
@@ -206,13 +206,13 @@ public class CommitMojo extends AbstractWorkspaceMojo {
             VcsOperations.commitStaged(dir, getLog(), null);
         }
 
-        VcsOperations.writeVcsState(dir, VcsState.ACTION_COMMIT);
+        VcsOperations.writeVcsState(dir, VcsState.Action.COMMIT);
 
         if (push) {
             String branch = VcsOperations.currentBranch(dir);
             getLog().info("  Pushing to origin/" + branch + "...");
             VcsOperations.push(dir, getLog(), "origin", branch);
-            VcsOperations.writeVcsState(dir, VcsState.ACTION_PUSH);
+            VcsOperations.writeVcsState(dir, VcsState.Action.PUSH);
         }
 
         getLog().info("");

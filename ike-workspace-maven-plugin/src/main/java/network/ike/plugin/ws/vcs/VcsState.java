@@ -23,23 +23,61 @@ import java.io.StringReader;
  * @param machine   short hostname of the machine that performed the action
  * @param branch    the branch name at the time of the action
  * @param sha       the 8-character short SHA at the time of the action
- * @param action    the action performed (e.g., {@link #ACTION_COMMIT})
+ * @param action    the action performed (e.g., {@link Action#COMMIT})
  */
 public record VcsState(
         String timestamp,
         String machine,
         String branch,
         String sha,
-        String action
+        Action action
 ) {
 
-    /** Actions written to the state file by hooks and plugin goals. */
-    public static final String ACTION_COMMIT = "commit";
-    public static final String ACTION_PUSH = "push";
-    public static final String ACTION_FEATURE_START = "feature-start";
-    public static final String ACTION_FEATURE_FINISH = "feature-finish";
-    public static final String ACTION_RELEASE = "release";
-    public static final String ACTION_CHECKPOINT = "checkpoint";
+    /**
+     * Actions written to the state file by hooks and plugin goals.
+     *
+     * <p>Each constant maps to a lowercase label written to the
+     * {@code .ike/vcs-state} properties file. Parsing from the file
+     * is case-insensitive via {@link #fromString(String)}.
+     */
+    public enum Action {
+        COMMIT("commit"),
+        PUSH("push"),
+        FEATURE_START("feature-start"),
+        FEATURE_FINISH("feature-finish"),
+        SWITCH("switch"),
+        RELEASE("release"),
+        CHECKPOINT("checkpoint");
+
+        private final String label;
+
+        Action(String label) {
+            this.label = label;
+        }
+
+        /**
+         * The lowercase label written to the state file.
+         *
+         * @return the action label (e.g., "commit", "feature-start")
+         */
+        public String label() {
+            return label;
+        }
+
+        /**
+         * Parse an action string case-insensitively.
+         *
+         * <p>Normalizes the input (uppercase, hyphens to underscores) and
+         * delegates to {@link #valueOf(String)}.
+         *
+         * @param value the action string from the state file (e.g., "commit", "feature-start")
+         * @return the matching Action
+         * @throws IllegalArgumentException if no match is found
+         */
+        public static Action fromString(String value) {
+            return valueOf(value.toUpperCase().replace('-', '_'));
+        }
+    }
 
     private static final String STATE_FILE = ".ike/vcs-state";
     private static final DateTimeFormatter UTC_FORMAT =
@@ -66,11 +104,20 @@ public record VcsState(
             String machine = props.getProperty("machine", "");
             String branch = props.getProperty("branch", "");
             String sha = props.getProperty("sha", "");
-            String action = props.getProperty("action", "");
+            String actionStr = props.getProperty("action", "");
 
             if (sha.isEmpty()) {
                 return Optional.empty();
             }
+
+            Action action;
+            try {
+                action = Action.fromString(actionStr);
+            } catch (IllegalArgumentException e) {
+                // Unknown action in state file — treat as unreadable
+                return Optional.empty();
+            }
+
             return Optional.of(new VcsState(timestamp, machine, branch, sha, action));
         } catch (IOException e) {
             return Optional.empty();
@@ -91,7 +138,7 @@ public record VcsState(
                 + "machine=" + state.machine() + "\n"
                 + "branch=" + state.branch() + "\n"
                 + "sha=" + state.sha() + "\n"
-                + "action=" + state.action() + "\n";
+                + "action=" + state.action().label() + "\n";
         Files.writeString(stateFile, content, StandardCharsets.UTF_8);
     }
 
@@ -103,7 +150,7 @@ public record VcsState(
      * @param action the action being performed
      * @return a new VcsState
      */
-    public static VcsState create(String branch, String sha, String action) {
+    public static VcsState create(String branch, String sha, Action action) {
         String timestamp = UTC_FORMAT.format(Instant.now());
         String machine = hostname();
         return new VcsState(timestamp, machine, branch, sha, action);

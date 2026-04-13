@@ -204,7 +204,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
                 }
             }
 
-            VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_FINISH);
+            VcsOperations.writeVcsState(dir, VcsState.Action.FEATURE_FINISH);
             getLog().info(Ansi.green("  ✓ ") + name + " → " + targetBranch);
         }
 
@@ -355,7 +355,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
             }
         }
 
-        VcsOperations.writeVcsState(dir, VcsState.ACTION_FEATURE_FINISH);
+        VcsOperations.writeVcsState(dir, VcsState.Action.FEATURE_FINISH);
         getLog().info("");
     }
 

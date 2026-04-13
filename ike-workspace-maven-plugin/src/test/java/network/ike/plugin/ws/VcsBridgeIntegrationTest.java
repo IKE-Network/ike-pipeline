@@ -67,11 +67,11 @@ class VcsBridgeIntegrationTest {
 
     @Test
     void stateFile_writtenAfterCommit() throws Exception {
-        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.ACTION_COMMIT);
+        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.Action.COMMIT);
 
         Optional<VcsState> state = VcsState.readFrom(machineADir);
         assertThat(state).isPresent();
-        assertThat(state.get().action()).isEqualTo("commit");
+        assertThat(state.get().action()).isEqualTo(VcsState.Action.COMMIT);
         assertThat(state.get().branch()).isEqualTo("main");
         assertThat(state.get().sha()).hasSize(8);
         assertThat(state.get().machine()).isNotEmpty();
@@ -85,7 +85,7 @@ class VcsBridgeIntegrationTest {
         exec(machineADir, "git", "add", ".");
         exec(machineADir, "git", "commit", "-m", "Update from A");
         exec(machineADir, "git", "push", "origin", "main");
-        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.ACTION_COMMIT);
+        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.Action.COMMIT);
 
         // Simulate Syncthing delivering state file to machine B
         Files.createDirectories(machineBDir.resolve(".ike"));
@@ -103,7 +103,7 @@ class VcsBridgeIntegrationTest {
         exec(machineADir, "git", "add", ".");
         exec(machineADir, "git", "commit", "-m", "Update from A");
         exec(machineADir, "git", "push", "origin", "main");
-        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.ACTION_COMMIT);
+        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.Action.COMMIT);
 
         String expectedSha = VcsOperations.headSha(machineADir.toFile());
 
@@ -128,7 +128,7 @@ class VcsBridgeIntegrationTest {
         exec(machineADir, "git", "add", ".");
         exec(machineADir, "git", "commit", "-m", "A update");
         exec(machineADir, "git", "push", "origin", "main");
-        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.ACTION_COMMIT);
+        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.Action.COMMIT);
 
         String expectedSha = VcsOperations.headSha(machineADir.toFile());
 
@@ -147,7 +147,7 @@ class VcsBridgeIntegrationTest {
     void verifyMojo_reportsInSync() throws Exception {
         // Both machines on same commit
         Files.createDirectories(machineBDir.resolve(".ike"));
-        VcsOperations.writeVcsState(machineBDir.toFile(), VcsState.ACTION_COMMIT);
+        VcsOperations.writeVcsState(machineBDir.toFile(), VcsState.Action.COMMIT);
 
         System.setProperty("user.dir", machineBDir.toAbsolutePath().toString());
         VerifyWorkspaceMojo mojo = new VerifyWorkspaceMojo();
@@ -162,7 +162,7 @@ class VcsBridgeIntegrationTest {
         exec(machineADir, "git", "add", ".");
         exec(machineADir, "git", "commit", "-m", "Ahead");
         exec(machineADir, "git", "push", "origin", "main");
-        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.ACTION_COMMIT);
+        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.Action.COMMIT);
 
         Files.createDirectories(machineBDir.resolve(".ike"));
         Files.copy(machineADir.resolve(".ike/vcs-state"),
@@ -182,7 +182,7 @@ class VcsBridgeIntegrationTest {
         exec(machineADir, "git", "add", ".");
         exec(machineADir, "git", "commit", "-m", "Feature work");
         exec(machineADir, "git", "push", "-u", "origin", "feature/test");
-        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.ACTION_FEATURE_START);
+        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.Action.FEATURE_START);
 
         // Deliver state file to machine B (still on main)
         Files.createDirectories(machineBDir.resolve(".ike"));
@@ -202,7 +202,7 @@ class VcsBridgeIntegrationTest {
     void commitMojo_setsIkeVcsContext() throws Exception {
         // Create .ike directory
         Files.createDirectories(machineADir.resolve(".ike"));
-        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.ACTION_COMMIT);
+        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.Action.COMMIT);
 
         // Make a change
         Files.writeString(machineADir.resolve("new.txt"), "new file", StandardCharsets.UTF_8);
@@ -221,7 +221,7 @@ class VcsBridgeIntegrationTest {
         // State file updated
         Optional<VcsState> state = VcsState.readFrom(machineADir);
         assertThat(state).isPresent();
-        assertThat(state.get().action()).isEqualTo("commit");
+        assertThat(state.get().action()).isEqualTo(VcsState.Action.COMMIT);
     }
 
     @Test
@@ -231,13 +231,22 @@ class VcsBridgeIntegrationTest {
     }
 
     @Test
-    void stateFile_actionConstants() {
-        assertThat(VcsState.ACTION_COMMIT).isEqualTo("commit");
-        assertThat(VcsState.ACTION_PUSH).isEqualTo("push");
-        assertThat(VcsState.ACTION_FEATURE_START).isEqualTo("feature-start");
-        assertThat(VcsState.ACTION_FEATURE_FINISH).isEqualTo("feature-finish");
-        assertThat(VcsState.ACTION_RELEASE).isEqualTo("release");
-        assertThat(VcsState.ACTION_CHECKPOINT).isEqualTo("checkpoint");
+    void stateFile_actionLabels() {
+        assertThat(VcsState.Action.COMMIT.label()).isEqualTo("commit");
+        assertThat(VcsState.Action.PUSH.label()).isEqualTo("push");
+        assertThat(VcsState.Action.FEATURE_START.label()).isEqualTo("feature-start");
+        assertThat(VcsState.Action.FEATURE_FINISH.label()).isEqualTo("feature-finish");
+        assertThat(VcsState.Action.SWITCH.label()).isEqualTo("switch");
+        assertThat(VcsState.Action.RELEASE.label()).isEqualTo("release");
+        assertThat(VcsState.Action.CHECKPOINT.label()).isEqualTo("checkpoint");
+    }
+
+    @Test
+    void stateFile_actionFromString_caseInsensitive() {
+        assertThat(VcsState.Action.fromString("commit")).isEqualTo(VcsState.Action.COMMIT);
+        assertThat(VcsState.Action.fromString("COMMIT")).isEqualTo(VcsState.Action.COMMIT);
+        assertThat(VcsState.Action.fromString("Commit")).isEqualTo(VcsState.Action.COMMIT);
+        assertThat(VcsState.Action.fromString("Feature-Start")).isEqualTo(VcsState.Action.FEATURE_START);
     }
 
     // ── Helpers ──────────────────────────────────────────────────

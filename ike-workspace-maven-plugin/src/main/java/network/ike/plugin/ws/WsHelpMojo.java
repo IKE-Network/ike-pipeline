@@ -44,6 +44,8 @@ public class WsHelpMojo extends AbstractMojo {
         getLog().info("  ws:feature-finish-merge-draft                   Preview no-ff merge");
         getLog().info("  ws:feature-finish-rebase-draft                  Preview rebase");
         getLog().info("  ws:feature-finish-squash-draft                  Preview squash-merge (default)");
+        getLog().info("  ws:switch-draft                                Preview switching all components to a branch");
+        getLog().info("  ws:switch-publish                              Switch all components to a branch");
         getLog().info("");
         getLog().info("  ── Release & Checkpoint ─────────────────────────────────");
         getLog().info("  ws:release-draft                                Preview workspace release components in topo order");

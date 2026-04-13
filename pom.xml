@@ -22,7 +22,7 @@
 
     <groupId>network.ike.pipeline</groupId>
     <artifactId>ike-pipeline</artifactId>
-    <version>89-SNAPSHOT</version>
+    <version>89</version>
     <packaging>pom</packaging>
 
     <name>IKE Pipeline</name>
@@ -80,14 +80,14 @@
              ike-public group aggregates both for resolution. -->
         <deploy.staging.url>https://nexus.tinkar.org/repository/ike-staging/</deploy.staging.url>
 
-        <!-- IKE Tooling (ike-maven-plugin, ike-workspace-maven-plugin, ike-build-standards) -->
-        <ike-tooling.version>100</ike-tooling.version>
+        <!-- IKE Tooling (ike-maven-plugin, ike-build-standards) -->
+        <ike-tooling.version>101</ike-tooling.version>
 
         <!-- Build Configuration -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- Reproducible builds — maven-release-plugin updates automatically -->
-        <project.build.outputTimestamp>2026-04-13T14:44:52Z</project.build.outputTimestamp>
+        <project.build.outputTimestamp>2026-04-13T17:52:02Z</project.build.outputTimestamp>
 
         <!-- ── Java Configuration (from java-parent) ─────────────────── -->
         <java.version>25</java.version>
@@ -114,7 +114,6 @@
         <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
         <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
         <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
-        <exec-maven-plugin.version>3.5.0</exec-maven-plugin.version>
         <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
         <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
 
@@ -237,11 +236,11 @@
                         </execution>
                     </executions>
                 </plugin>
-                <!-- IKE Workspace Maven Plugin — ws: prefix goals -->
+                <!-- IKE Workspace Maven Plugin — ws: prefix goals (reactor module, uses reactor version) -->
                 <plugin>
                     <groupId>network.ike.pipeline</groupId>
                     <artifactId>ike-workspace-maven-plugin</artifactId>
-                    <version>${ike-tooling.version}</version>
+                    <version>${project.version}</version>
                 </plugin>
 
                 <!-- Maven Clean Plugin -->
@@ -599,11 +598,11 @@
                     </executions>
                 </plugin>
 
-                <!-- Exec Maven Plugin — CLI-only (exec:java for semantic-linebreak) -->
+                <!-- Semantic Linebreak Plugin — slb:reformat goal -->
                 <plugin>
-                    <groupId>org.codehaus.mojo</groupId>
-                    <artifactId>exec-maven-plugin</artifactId>
-                    <version>${exec-maven-plugin.version}</version>
+                    <groupId>network.ike.pipeline</groupId>
+                    <artifactId>semantic-linebreak</artifactId>
+                    <version>${project.version}</version>
                 </plugin>
 
                 <!-- Build Helper Plugin — attach classified PDF artifacts -->
@@ -716,7 +715,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         <dependency>
                             <groupId>network.ike.pipeline</groupId>
                             <artifactId>koncept-asciidoc-extension</artifactId>
-                            <version>${project.version}</version>
+                            <version>89</version>
                         </dependency>
                     </dependencies>
                     <configuration>
@@ -726,7 +725,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                             <require>asciidoctor-diagram</require>
                         </requires>
                         <attributes>
-                            <project-version>${project.version}</project-version>
+                            <project-version>89</project-version>
                             <project-name>${project.name}</project-name>
                             <generated>${asciidoc.generated.directory}</generated>
                             <resources>${project.basedir}/src/docs/resources</resources>
@@ -1456,6 +1455,7 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                 <goals><goal>copy-default-pdf</goal></goals>
                                 <configuration>
                                     <skip>${ike.skip.pdf-default}</skip>
+                                    <outputDirectory>${asciidoc.output.directory}</outputDirectory>
                                 </configuration>
                             </execution>
 
