@@ -101,8 +101,6 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <docbook-xsl.version>1.79.2</docbook-xsl.version>
-        <download-maven-plugin.version>1.13.0</download-maven-plugin.version>
-
         <!-- Staging directory: unzip creates docbook-xsl-{version}/ under target/ -->
         <staging.directory>${project.build.directory}/docbook-xsl-${docbook-xsl.version}</staging.directory>
 
@@ -170,65 +168,30 @@
                 </executions>
             </plugin>
 
-            <!-- 1. Download DocBook XSL 1.79.2 zip from GitHub releases.     -->
-            <!--    Cached in ~/.m2/repository/.cache/download-maven-plugin/ -->
-            <!--    after first download.  We download only (no unpack) to   -->
-            <!--    avoid 1800+ Plexus Archiver case-sensitivity warnings    -->
-            <!--    on macOS.                                                -->
+            <!-- 1. Download and unpack DocBook XSL 1.79.2 from GitHub.  -->
+            <!--    Uses java.util.zip.ZipInputStream — no Plexus          -->
+            <!--    Archiver, no macOS case-sensitivity warnings.           -->
+            <!-- 2. Patch stock XSL to suppress Saxon warnings.            -->
             <plugin>
-                <groupId>com.googlecode.maven-download-plugin</groupId>
-                <artifactId>download-maven-plugin</artifactId>
-                <version>${download-maven-plugin.version}</version>
+                <groupId>network.ike.tooling</groupId>
+                <artifactId>ike-maven-plugin</artifactId>
+                <version>${ike-tooling.version}</version>
                 <executions>
                     <execution>
-                        <id>download-docbook-xsl</id>
+                        <id>download-and-unpack-docbook-xsl</id>
                         <phase>generate-resources</phase>
-                        <goals><goal>wget</goal></goals>
+                        <goals><goal>unpack-zip</goal></goals>
                         <configuration>
                             <url>https://github.com/docbook/xslt10-stylesheets/releases/download/release/${docbook-xsl.version}/docbook-xsl-${docbook-xsl.version}.zip</url>
-                            <unpack>false</unpack>
                             <outputDirectory>${project.build.directory}</outputDirectory>
                         </configuration>
                     </execution>
-                </executions>
-            </plugin>
-
-            <!-- 2. Unzip with system unzip (silent on macOS case collisions) -->
-            <!--    then patch stock XSL to suppress Saxon warnings.         -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.5.0</version>
-                <executions>
-                    <execution>
-                        <id>unzip-docbook-xsl</id>
-                        <phase>generate-resources</phase>
-                        <goals><goal>exec</goal></goals>
-                        <configuration>
-                            <executable>unzip</executable>
-                            <arguments>
-                                <argument>-o</argument>
-                                <argument>-q</argument>
-                                <argument>${project.build.directory}/docbook-xsl-${docbook-xsl.version}.zip</argument>
-                                <argument>-d</argument>
-                                <argument>${project.build.directory}</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <!-- Patch DocBook XSL to suppress Saxon warnings.
-                         Inline shell because ike-maven-plugin is a reactor
-                         sibling and cannot be a build plugin here.
-                         Downstream projects: use ike:patch-docbook instead. -->
                     <execution>
                         <id>patch-docbook-xsl</id>
                         <phase>generate-resources</phase>
-                        <goals><goal>exec</goal></goals>
+                        <goals><goal>patch-docbook</goal></goals>
                         <configuration>
-                            <executable>sh</executable>
-                            <arguments>
-                                <argument>-c</argument>
-                                <argument>perl -pi -e 's/&lt;xsl:include href="\.\.\/common\/utility\.xsl"\/&gt;//' "${staging.directory}/fo/docbook.xsl" &amp;&amp; perl -0777 -pi -e 's/&lt;xsl:variable name="output\.delims"&gt;.*?&lt;\/xsl:variable&gt;//s' "${staging.directory}/fo/math.xsl"</argument>
-                            </arguments>
+                            <docbookDir>${staging.directory}</docbookDir>
                         </configuration>
                     </execution>
                 </executions>

@@ -26,9 +26,10 @@
     </parent>
 
     <artifactId>semantic-linebreak</artifactId>
+    <packaging>maven-plugin</packaging>
 
     <name>Semantic Linebreak</name>
-    <description>CLI tool that reformats AsciiDoc prose to one-sentence-per-line using AsciidoctorJ AST parsing</description>
+    <description>Maven plugin that reformats AsciiDoc prose to one-sentence-per-line using AsciidoctorJ AST parsing</description>
     <url>https://github.com/IKE-Network/ike-pipeline</url>
     <inceptionYear>2026</inceptionYear>
 
@@ -52,7 +53,28 @@
         </site>
     </distributionManagement>
 
+    <properties>
+        <!-- Maven plugin build dependencies -->
+        <maven-plugin-api.version>3.9.9</maven-plugin-api.version>
+        <maven-plugin-annotations.version>3.15.1</maven-plugin-annotations.version>
+        <maven-plugin-plugin.version>3.15.1</maven-plugin-plugin.version>
+    </properties>
+
     <dependencies>
+        <!-- Maven plugin API -->
+        <dependency>
+            <groupId>org.apache.maven</groupId>
+            <artifactId>maven-plugin-api</artifactId>
+            <version>${maven-plugin-api.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.maven.plugin-tools</groupId>
+            <artifactId>maven-plugin-annotations</artifactId>
+            <version>${maven-plugin-annotations.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- AsciidoctorJ — version from root POM properties -->
         <dependency>
             <groupId>org.asciidoctor</groupId>
@@ -115,11 +137,30 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-plugin-plugin</artifactId>
+                <version>${maven-plugin-plugin.version}</version>
                 <configuration>
-                    <mainClass>network.ike.tools.linebreak.SemanticLineBreaker</mainClass>
+                    <requiredJavaVersion>${java.version}</requiredJavaVersion>
+                    <goalPrefix>slb</goalPrefix>
                 </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.ow2.asm</groupId>
+                        <artifactId>asm</artifactId>
+                        <version>${asm.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.ow2.asm</groupId>
+                        <artifactId>asm-tree</artifactId>
+                        <version>${asm.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.ow2.asm</groupId>
+                        <artifactId>asm-commons</artifactId>
+                        <version>${asm.version}</version>
+                    </dependency>
+                </dependencies>
             </plugin>
         </plugins>
     </build>

@@ -599,7 +599,7 @@
                     </executions>
                 </plugin>
 
-                <!-- Exec Maven Plugin — invokes external PDF renderers -->
+                <!-- Exec Maven Plugin — CLI-only (exec:java for semantic-linebreak) -->
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>exec-maven-plugin</artifactId>
@@ -1317,69 +1317,6 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                         </executions>
                     </plugin>
 
-                    <!-- ── exec-maven-plugin (rename/copy utilities only) ──── -->
-                    <!-- Renderer invocations moved to ike:render-pdf below.   -->
-                    <!-- These remaining exec calls handle file naming that     -->
-                    <!-- predates multi-document support.                       -->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>rename-html-single</id>
-                                <phase>verify</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.skip.html-single}</skip>
-                                    <executable>mv</executable>
-                                    <arguments>
-                                        <argument>${asciidoc.output.directory}/html-single/${pdf.source.document}.html</argument>
-                                        <argument>${asciidoc.output.directory}/html-single/${ike.document.name}.html</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>rename-prawn-pdf</id>
-                                <phase>verify</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.skip.prawn}</skip>
-                                    <executable>mv</executable>
-                                    <arguments>
-                                        <argument>${asciidoc.output.directory}/pdf-prawn/${pdf.source.document}.pdf</argument>
-                                        <argument>${asciidoc.output.directory}/pdf-prawn/${ike.document.name}.pdf</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>mkdir-pdf-default</id>
-                                <phase>verify</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.skip.pdf-default}</skip>
-                                    <executable>mkdir</executable>
-                                    <arguments>
-                                        <argument>-p</argument>
-                                        <argument>${asciidoc.output.directory}/pdf</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>copy-default-pdf</id>
-                                <phase>verify</phase>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <skip>${ike.skip.pdf-default}</skip>
-                                    <executable>bash</executable>
-                                    <arguments>
-                                        <argument>-c</argument>
-                                        <argument>cp ${asciidoc.output.directory}/pdf-${ike.pdf.default}/*.pdf ${asciidoc.output.directory}/pdf/ 2>/dev/null || true</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
                     <!-- ── IKE build-time goals ──────────────────────────────── -->
                     <plugin>
                         <groupId>network.ike.tooling</groupId>
@@ -1487,6 +1424,38 @@ IKE projects require Java 21+ (JRuby 10 baseline).
                                     <configFile>${project.build.directory}/fop-config/fop-ike.xconf</configFile>
                                     <classpath>${java.class.path}</classpath>
                                     <logFile>${project.build.directory}/logs/renderer-fop.log</logFile>
+                                </configuration>
+                            </execution>
+
+                            <!-- ── rename + copy-default-pdf (verify) ────────── -->
+                            <!-- Replaces exec-maven-plugin calls to mv, mkdir,  -->
+                            <!-- and bash cp with cross-platform Java goals.     -->
+                            <execution>
+                                <id>rename-html-single</id>
+                                <phase>verify</phase>
+                                <goals><goal>rename</goal></goals>
+                                <configuration>
+                                    <skip>${ike.skip.html-single}</skip>
+                                    <source>${asciidoc.output.directory}/html-single/${pdf.source.document}.html</source>
+                                    <target>${asciidoc.output.directory}/html-single/${ike.document.name}.html</target>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>rename-prawn-pdf</id>
+                                <phase>verify</phase>
+                                <goals><goal>rename</goal></goals>
+                                <configuration>
+                                    <skip>${ike.skip.prawn}</skip>
+                                    <source>${asciidoc.output.directory}/pdf-prawn/${pdf.source.document}.pdf</source>
+                                    <target>${asciidoc.output.directory}/pdf-prawn/${ike.document.name}.pdf</target>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>copy-default-pdf</id>
+                                <phase>verify</phase>
+                                <goals><goal>copy-default-pdf</goal></goals>
+                                <configuration>
+                                    <skip>${ike.skip.pdf-default}</skip>
                                 </configuration>
                             </execution>
 

@@ -108,6 +108,64 @@ public class SemanticLineBreaker {
     private boolean dryRun = false;
     private boolean verbose = false;
 
+    // ── Configuration setters (package-private, for Mojo use) ───────────────
+
+    /**
+     * Restrict breaking to sentence boundaries only.
+     *
+     * @param sentencesOnly true to break only at sentence ends
+     */
+    void setSentencesOnly(boolean sentencesOnly) { this.sentencesOnly = sentencesOnly; }
+
+    /**
+     * Enable comma clause breaks.
+     *
+     * @param clauseBreak true to break at comma clauses
+     */
+    void setClauseBreak(boolean clauseBreak) { this.clauseBreak = clauseBreak; }
+
+    /**
+     * Set the minimum line length before comma breaks are applied.
+     *
+     * @param clauseBreakThreshold minimum characters before a comma break
+     */
+    void setClauseBreakThreshold(int clauseBreakThreshold) { this.clauseBreakThreshold = clauseBreakThreshold; }
+
+    /**
+     * Set the soft-wrap line length limit.
+     *
+     * @param maxLineLength maximum characters per line (use {@code Integer.MAX_VALUE} to disable)
+     */
+    void setMaxLineLength(int maxLineLength) { this.maxLineLength = maxLineLength; }
+
+    /**
+     * Set the minimum remainder after a soft wrap break.
+     *
+     * @param minRemainder minimum characters after a wrap break point
+     */
+    void setMinRemainder(int minRemainder) { this.minRemainder = minRemainder; }
+
+    /**
+     * Set the merge threshold for short lines.
+     *
+     * @param minLineLength lines shorter than this are merged with the next line
+     */
+    void setMinLineLength(int minLineLength) { this.minLineLength = minLineLength; }
+
+    /**
+     * Enable dry-run mode (print to stdout, don't modify files).
+     *
+     * @param dryRun true for dry-run mode
+     */
+    void setDryRun(boolean dryRun) { this.dryRun = dryRun; }
+
+    /**
+     * Enable verbose output showing which paragraphs are reformatted.
+     *
+     * @param verbose true for verbose output
+     */
+    void setVerbose(boolean verbose) { this.verbose = verbose; }
+
     // ── Entry point ─────────────────────────────────────────────────────────────
 
     /**
@@ -216,9 +274,15 @@ public class SemanticLineBreaker {
     /**
      * Process a single AsciiDoc file. Returns 1 if any paragraphs were
      * reformatted, 0 otherwise.
+     *
+     * @param asciidoctor the AsciidoctorJ instance for AST parsing
+     * @param inPath the input file path
+     * @param outputPath the output file path (null for stdout in dry-run)
+     * @return 1 if paragraphs were reformatted, 0 otherwise
+     * @throws IOException if an I/O error occurs
      */
-    private int processFile(Asciidoctor asciidoctor, Path inPath,
-                            String outputPath) throws IOException {
+    int processFile(Asciidoctor asciidoctor, Path inPath,
+                    String outputPath) throws IOException {
         List<String> sourceLines = Files.readAllLines(inPath);
         String source = String.join("\n", sourceLines);
 
@@ -321,8 +385,12 @@ public class SemanticLineBreaker {
     /**
      * Recursively collect all {@code *.adoc} files under a directory,
      * skipping {@code target/} directories.
+     *
+     * @param dir the directory to search
+     * @param result list to accumulate found files into
+     * @throws IOException if an I/O error occurs during traversal
      */
-    private static void collectAdocFiles(Path dir, List<Path> result) throws IOException {
+    static void collectAdocFiles(Path dir, List<Path> result) throws IOException {
         PathMatcher matcher = dir.getFileSystem().getPathMatcher("glob:*.adoc");
         Files.walkFileTree(dir, new SimpleFileVisitor<>() {
             @Override
