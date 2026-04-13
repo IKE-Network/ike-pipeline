@@ -42,8 +42,9 @@ public class WsHelpMojo extends AbstractMojo {
         getLog().info("  ws:feature-start-publish                        Create feature branch across repos");
         getLog().info("  ws:feature-abandon-draft                        Preview abandoning feature branch");
         getLog().info("  ws:feature-finish-merge-draft                   Preview no-ff merge");
-        getLog().info("  ws:feature-finish-rebase-draft                  Preview rebase");
         getLog().info("  ws:feature-finish-squash-draft                  Preview squash-merge (default)");
+        getLog().info("  ws:update-feature-draft                        Preview rebasing/merging main into feature branch");
+        getLog().info("  ws:update-feature-publish                      Rebase or merge main into feature branch");
         getLog().info("  ws:switch-draft                                Preview switching all components to a branch");
         getLog().info("  ws:switch-publish                              Switch all components to a branch");
         getLog().info("");

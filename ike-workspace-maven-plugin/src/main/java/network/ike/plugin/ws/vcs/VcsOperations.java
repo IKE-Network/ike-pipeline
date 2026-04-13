@@ -107,7 +107,75 @@ public class VcsOperations {
     }
 
     /**
-     * Get the one-line commit log between two refs.
+     * List files with unresolved merge conflicts.
+     *
+     * @param dir the repository root directory
+     * @return list of conflicting file paths, empty if none
+     */
+    public static List<String> conflictingFiles(File dir) {
+        try {
+            String output = capture(dir, "git", "diff", "--name-only", "--diff-filter=U");
+            if (output.isEmpty()) return List.of();
+            return List.of(output.split("\n"));
+        } catch (MojoExecutionException e) {
+            return List.of();
+        }
+    }
+
+    /**
+     * Predict merge conflicts without touching the index or working tree.
+     *
+     * <p>Uses {@code git merge-tree --write-tree} (git 2.38+) to perform
+     * a trial merge in memory. Returns the list of conflicting file paths,
+     * or an empty list if the merge would be clean.
+     *
+     * <p>Falls back gracefully on older git versions — returns an empty
+     * list (conflict prediction unavailable).
+     *
+     * @param dir    the repository root directory
+     * @param branch the branch to merge into (e.g., current feature branch)
+     * @param other  the branch to merge from (e.g., "main")
+     * @return list of file paths that would conflict, empty if clean or unknown
+     */
+    public static List<String> predictConflicts(File dir, String branch, String other) {
+        try {
+            // git merge-tree --write-tree exits 0 if clean, 1 if conflicts
+            // With --name-only, conflicting file names appear after a blank line
+            ProcessBuilder pb = new ProcessBuilder(
+                    "git", "merge-tree", "--write-tree", "--name-only",
+                    branch, other)
+                    .directory(dir)
+                    .redirectErrorStream(false);
+            Process proc = pb.start();
+
+            String stdout = new String(
+                    proc.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            String stderr = new String(
+                    proc.getErrorStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            int exit = proc.waitFor();
+
+            if (exit == 0) {
+                return List.of(); // clean merge
+            }
+
+            if (exit == 1 && !stdout.isEmpty()) {
+                // Output format: tree SHA on first line, then blank line,
+                // then conflicting file names (one per line)
+                String[] sections = stdout.split("\n\n", 2);
+                if (sections.length == 2 && !sections[1].isBlank()) {
+                    return List.of(sections[1].trim().split("\n"));
+                }
+            }
+
+            // Unexpected exit or format — can't predict
+            return List.of();
+        } catch (Exception e) {
+            // git merge-tree not available or failed — can't predict
+            return List.of();
+        }
+    }
+
+    /**
      *
      * @param dir  the repository root directory
      * @param base the starting ref (exclusive)
@@ -340,32 +408,6 @@ public class VcsOperations {
     public static void mergeNoFf(File dir, Log log, String branch, String message)
             throws MojoExecutionException {
         runWithContext(dir, log, "git", "merge", "--no-ff", branch, "-m", message);
-    }
-
-    /**
-     * Rebase current branch onto the given base.
-     *
-     * @param dir  the repository root directory
-     * @param log  Maven logger
-     * @param onto the branch or ref to rebase onto
-     * @throws MojoExecutionException if the git command fails
-     */
-    public static void rebase(File dir, Log log, String onto)
-            throws MojoExecutionException {
-        run(dir, log, null, "git", "rebase", onto);
-    }
-
-    /**
-     * Fast-forward-only merge.
-     *
-     * @param dir    the repository root directory
-     * @param log    Maven logger
-     * @param branch the branch to merge
-     * @throws MojoExecutionException if the git command fails
-     */
-    public static void mergeFfOnly(File dir, Log log, String branch)
-            throws MojoExecutionException {
-        run(dir, log, null, "git", "merge", "--ff-only", branch);
     }
 
     /**

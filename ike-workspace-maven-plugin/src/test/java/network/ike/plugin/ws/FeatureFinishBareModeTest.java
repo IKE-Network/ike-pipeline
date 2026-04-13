@@ -202,24 +202,6 @@ class FeatureFinishBareModeTest {
         assertThat(branches).contains("feature/test-finish");
     }
 
-    // ── Rebase strategy tests ────────────────────────────────────
-
-    @Test
-    void rebase_producesLinearHistory() throws Exception {
-        FeatureFinishRebaseDraftMojo mojo = new FeatureFinishRebaseDraftMojo();
-        mojo.feature = FEATURE_NAME;
-        mojo.targetBranch = "main";
-        mojo.publish = true;
-
-        mojo.execute();
-
-        assertThat(currentBranch()).isEqualTo("main");
-
-        // No merge commits — linear history
-        String log = execCapture(tempDir, "git", "log", "--oneline", "-5");
-        assertThat(log).doesNotContain("Merge ");
-    }
-
     // ── Common tests ─────────────────────────────────────────────
 
     @Test

@@ -33,7 +33,6 @@ import java.util.List;
  * }</pre>
  *
  * @see FeatureFinishSquashDraftMojo for clean single-commit merges (default)
- * @see FeatureFinishRebaseDraftMojo for linear history
  */
 @Mojo(name = "feature-finish-merge-draft", requiresProject = false, threadSafe = true)
 public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {

@@ -36,7 +36,6 @@ import java.util.List;
  * }</pre>
  *
  * @see FeatureFinishMergeDraftMojo for long-lived branches
- * @see FeatureFinishRebaseDraftMojo for linear history
  */
 @Mojo(name = "feature-finish-squash-draft", requiresProject = false, threadSafe = true)
 public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {

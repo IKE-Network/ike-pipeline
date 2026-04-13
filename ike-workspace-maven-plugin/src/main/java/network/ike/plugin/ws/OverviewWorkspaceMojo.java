@@ -3,6 +3,7 @@ package network.ike.plugin.ws;
 import network.ike.workspace.Component;
 import network.ike.workspace.Dependency;
 import network.ike.workspace.WorkspaceGraph;
+import network.ike.plugin.ws.vcs.VcsOperations;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -164,7 +165,86 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         getLog().info("  " + cloned + " cloned, " + notCloned + " not cloned, "
                 + modifiedComponents.size() + " modified");
 
-        // ── Section 4: Cascade ──────────────────────────────────────
+        // ── Section 4: Feature Branch Divergence ────────────────────
+        // If any component is on a feature branch, show how far it has
+        // diverged from main — helps developers keep long-lived branches
+        // up to date.
+        List<String[]> divergenceRows = new ArrayList<>();
+        boolean anyOnFeature = false;
+        int warnThreshold = 20;
+
+        for (String name : targets) {
+            File dir = new File(root, name);
+            if (!dir.exists() || !new File(dir, ".git").exists()) continue;
+
+            String branch = gitBranch(dir);
+            if (!branch.startsWith("feature/")) continue;
+
+            anyOnFeature = true;
+            try {
+                List<String> behind = VcsOperations.commitLog(dir, branch, "main");
+                List<String> ahead = VcsOperations.commitLog(dir, "main", branch);
+
+                String divergence;
+                String marker;
+                if (behind.isEmpty()) {
+                    divergence = "up to date";
+                    marker = Ansi.green("✓");
+                } else if (behind.size() >= warnThreshold) {
+                    divergence = behind.size() + " behind, "
+                            + ahead.size() + " ahead";
+                    marker = Ansi.red("⚠") + " consider ws:update-feature";
+                } else {
+                    divergence = behind.size() + " behind, "
+                            + ahead.size() + " ahead";
+                    marker = Ansi.yellow("·");
+                }
+
+                divergenceRows.add(new String[]{name, branch,
+                        String.valueOf(behind.size()),
+                        String.valueOf(ahead.size()), divergence});
+
+                if (!anyOnFeature) continue; // skip printing header until first
+            } catch (MojoExecutionException e) {
+                // Can't determine divergence (no main branch, etc.) — skip
+                divergenceRows.add(new String[]{name, branch,
+                        "?", "?", "unknown"});
+            }
+        }
+
+        if (anyOnFeature) {
+            getLog().info("");
+            getLog().info("  Feature Branch Divergence (from main)");
+            getLog().info("  ──────────────────────────────────────────────────────");
+
+            for (String[] row : divergenceRows) {
+                String name = row[0];
+                int behind = "?".equals(row[2]) ? -1 : Integer.parseInt(row[2]);
+                int ahead = "?".equals(row[3]) ? -1 : Integer.parseInt(row[3]);
+
+                String marker;
+                String detail;
+                if (behind == 0) {
+                    marker = Ansi.green("✓");
+                    detail = "up to date";
+                } else if (behind < 0) {
+                    marker = "?";
+                    detail = "unknown";
+                } else if (behind >= warnThreshold) {
+                    marker = Ansi.red("⚠");
+                    detail = behind + " commit(s) behind main, "
+                            + ahead + " ahead — consider ws:update-feature";
+                } else {
+                    marker = Ansi.yellow("·");
+                    detail = behind + " commit(s) behind main, " + ahead + " ahead";
+                }
+
+                getLog().info(String.format("  %-24s %s %s",
+                        name, marker, detail));
+            }
+        }
+
+        // ── Section 5: Cascade ──────────────────────────────────────
         List<String[]> cascadeRows = new ArrayList<>();
         if (!modifiedComponents.isEmpty()) {
             Set<String> allAffected = new LinkedHashSet<>();
@@ -202,7 +282,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
 
         // Structured markdown report
         appendReport("ws:overview", buildMarkdownReport(
-                errors, graphRows, statusRows, cascadeRows,
+                errors, graphRows, statusRows, divergenceRows, cascadeRows,
                 cloned, notCloned, modifiedComponents.size(), graph));
     }
 
@@ -211,6 +291,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
     private String buildMarkdownReport(List<String> manifestErrors,
                                         List<String[]> graphRows,
                                         List<String[]> statusRows,
+                                        List<String[]> divergenceRows,
                                         List<String[]> cascadeRows,
                                         int cloned, int notCloned,
                                         int modified,
@@ -253,6 +334,21 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
               .append(" | ").append(row[2])
               .append(" | ").append(row[3])
               .append(" |\n");
+        }
+
+        // Divergence
+        if (!divergenceRows.isEmpty()) {
+            sb.append("\n### Feature Branch Divergence\n\n");
+            sb.append("| Component | Branch | Behind | Ahead | Status |\n");
+            sb.append("|-----------|--------|--------|-------|--------|\n");
+            for (String[] row : divergenceRows) {
+                sb.append("| ").append(row[0])
+                  .append(" | ").append(row[1])
+                  .append(" | ").append(row[2])
+                  .append(" | ").append(row[3])
+                  .append(" | ").append(row[4])
+                  .append(" |\n");
+            }
         }
 
         // Cascade
