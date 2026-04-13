@@ -133,21 +133,21 @@
             <dependency>
                 <groupId>network.ike.pipeline</groupId>
                 <artifactId>ike-doc-resources</artifactId>
-                <version>89</version>
+                <version>${project.version}</version>
             </dependency>
 
             <!-- Noto fonts for PDF generation (minimal subset) -->
             <dependency>
                 <groupId>network.ike.pipeline</groupId>
                 <artifactId>minimal-fonts</artifactId>
-                <version>89</version>
+                <version>${project.version}</version>
             </dependency>
 
             <!-- DocBook XSL 1.79.2 + IKE FO customization layer -->
             <dependency>
                 <groupId>network.ike.pipeline</groupId>
                 <artifactId>docbook-xsl</artifactId>
-                <version>89</version>
+                <version>${project.version}</version>
             </dependency>
 
             <!-- ── AsciiDoc Toolchain ─────────────────────────────────── -->
@@ -293,7 +293,7 @@
             <plugin>
                 <groupId>network.ike.pipeline</groupId>
                 <artifactId>ike-workspace-maven-plugin</artifactId>
-                <version>89</version>
+                <version>${project.version}</version>
             </plugin>
         </plugins>
     </build>
