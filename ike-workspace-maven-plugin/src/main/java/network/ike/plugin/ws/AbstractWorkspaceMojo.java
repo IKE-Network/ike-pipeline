@@ -228,17 +228,17 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
     }
 
     /**
-     * Append a section to the cumulative workspace report.
+     * Write a goal's report to its per-goal file in the {@code session/} directory.
      *
-     * <p>Thread-safe — uses file-level locking. The report accumulates
-     * in {@code session.md} at the workspace root (gitignored, survives mvn clean).
+     * <p>Overwrites any previous content for this goal. Filenames use
+     * {@code ꞉} (U+A789) to cluster as {@code ws꞉goal-name.md} in IDE file browsers.
      *
-     * @param goalName the goal that produced this output (e.g., "ws:add")
-     * @param content  markdown content to append
+     * @param goalName the goal name including variant (e.g., "ws:feature-start-draft")
+     * @param content  markdown content to write
      */
-    protected void appendReport(String goalName, String content) {
+    protected void writeReport(String goalName, String content) {
         try {
-            WorkspaceReport.append(
+            WorkspaceReport.write(
                     workspaceRoot().toPath(), goalName, content, getLog());
         } catch (MojoExecutionException e) {
             getLog().debug("Could not resolve workspace root for report: "
@@ -269,7 +269,7 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
     protected void finishReport(String goalName, ReportLog reportLog) {
         String content = reportLog.captured();
         if (!content.isBlank()) {
-            appendReport(goalName, content);
+            writeReport(goalName, content);
         }
     }
 }

@@ -45,7 +45,7 @@ public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
         }
 
         // Append Mermaid graph to ws-report.md
-        appendReport("ws:graph", buildMermaidGraph(graph));
+        writeReport("ws:graph", buildMermaidGraph(graph));
     }
 
     private void printText(WorkspaceGraph graph) {

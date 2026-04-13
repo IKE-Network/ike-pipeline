@@ -3,9 +3,6 @@ package network.ike.plugin.ws;
 import org.apache.maven.plugin.logging.Log;
 
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,121 +10,125 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Thread-safe cumulative report writer for workspace goals.
+ * Per-goal report writer for workspace goals.
  *
- * <p>Each goal appends a timestamped markdown section to
- * {@code session.md} in the workspace root. The file
- * accumulates across a session and should be gitignored.
+ * <p>Each goal writes its own file in the {@code session/} directory
+ * at the workspace root. Files are <b>overwritten</b> on each run
+ * (not appended), so the content always reflects the latest execution.
  *
- * <p>File locking via {@link FileChannel#lock()} ensures safe
- * concurrent writes, honoring the {@code @ThreadSafe} contract
- * of Maven plugins.
+ * <p>Filenames use {@code ꞉} (U+A789 MODIFIER LETTER COLON) to
+ * cluster visually as {@code ws꞉goal-name.md} in IDE file browsers.
+ * For draft/publish goals, the filename includes the variant:
+ * {@code ws꞉feature-start-draft.md}, {@code ws꞉feature-start-publish.md}.
+ *
+ * <p>The {@code session/} directory is gitignored and survives {@code mvn clean}.
  */
 public final class WorkspaceReport {
 
-    private static final String REPORT_FILENAME = "session.md";
+    /** U+A789 MODIFIER LETTER COLON — filesystem-safe visual colon. */
+    private static final char COLON = '\uA789';
+
+    private static final String SESSION_DIR = "session";
     private static final DateTimeFormatter TIMESTAMP_FMT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private WorkspaceReport() {}
 
     /**
-     * Append a goal's output to the workspace report file.
+     * Write a goal's report to its per-goal file, overwriting any previous content.
      *
-     * <p>Creates the {@code target/} directory and report file if they
-     * don't exist. Uses file-level locking for thread safety.
+     * <p>Creates the {@code session/} directory if it doesn't exist.
      *
      * @param workspaceRoot the workspace root directory
-     * @param goalName      the goal that produced this output (e.g., "ws:add")
-     * @param content       the markdown content to append
+     * @param goalName      the goal name including variant (e.g., "ws:feature-start-draft")
+     * @param content       the markdown content to write
      * @param log           Maven logger (warnings only; null-safe)
      */
-    public static void append(Path workspaceRoot, String goalName,
-                               String content, Log log) {
-        Path reportFile = workspaceRoot.resolve(REPORT_FILENAME);
+    public static void write(Path workspaceRoot, String goalName,
+                              String content, Log log) {
+        Path sessionDir = workspaceRoot.resolve(SESSION_DIR);
+        String filename = "ws" + COLON + stripPrefix(goalName) + ".md";
+        Path reportFile = sessionDir.resolve(filename);
 
         try {
+            Files.createDirectories(sessionDir);
 
-            // File-level lock for thread safety
-            try (RandomAccessFile raf = new RandomAccessFile(
-                         reportFile.toFile(), "rw");
-                 FileChannel channel = raf.getChannel();
-                 FileLock _ = channel.lock()) {
+            String timestamp = LocalDateTime.now().format(TIMESTAMP_FMT);
+            String fullContent = "# " + goalName + "\n"
+                    + "_" + timestamp + "_\n\n"
+                    + content.stripTrailing() + "\n";
 
-                // Seek to end for append
-                long length = raf.length();
-                raf.seek(length);
-
-                // Write header on first section
-                if (length == 0) {
-                    String header = "# Workspace Report\n\n";
-                    raf.write(header.getBytes(StandardCharsets.UTF_8));
-                }
-
-                // Timestamp + goal header + content
-                String timestamp = LocalDateTime.now().format(TIMESTAMP_FMT);
-                String section = "## " + goalName + "\n"
-                        + "_" + timestamp + "_\n\n"
-                        + content.stripTrailing() + "\n\n---\n\n";
-                raf.write(section.getBytes(StandardCharsets.UTF_8));
-            }
+            Files.writeString(reportFile, fullContent, StandardCharsets.UTF_8);
         } catch (IOException e) {
             if (log != null) {
-                log.debug("Could not write workspace report: " + e.getMessage());
+                log.debug("Could not write report " + filename + ": " + e.getMessage());
             }
         }
     }
 
     /**
-     * Resolve the report file path for the given workspace root.
+     * Resolve the session directory path for the given workspace root.
      *
      * @param workspaceRoot the workspace root directory
-     * @return path to the report file (may not exist yet)
+     * @return path to the session directory (may not exist yet)
      */
-    public static Path reportPath(Path workspaceRoot) {
-        return workspaceRoot.resolve(REPORT_FILENAME);
+    public static Path sessionDir(Path workspaceRoot) {
+        return workspaceRoot.resolve(SESSION_DIR);
     }
 
     /**
-     * Open the report file in the default browser.
+     * Resolve the report file path for a specific goal.
+     *
+     * @param workspaceRoot the workspace root directory
+     * @param goalName      the goal name (e.g., "ws:overview")
+     * @return path to the report file (may not exist yet)
+     */
+    public static Path reportPath(Path workspaceRoot, String goalName) {
+        String filename = "ws" + COLON + stripPrefix(goalName) + ".md";
+        return workspaceRoot.resolve(SESSION_DIR).resolve(filename);
+    }
+
+    /**
+     * Open the session directory in the default file manager or IDE.
      *
      * @param workspaceRoot the workspace root directory
      * @param log           Maven logger
-     * @return true if the file was opened, false if it doesn't exist or open failed
+     * @return true if opened successfully
      */
     public static boolean openInBrowser(Path workspaceRoot, Log log) {
-        Path reportFile = reportPath(workspaceRoot);
-        if (!Files.exists(reportFile)) {
+        Path sessionPath = sessionDir(workspaceRoot);
+        if (!Files.isDirectory(sessionPath)) {
             if (log != null) {
-                log.warn("No report file found at " + reportFile);
+                log.warn("No session directory found at " + sessionPath);
             }
             return false;
         }
 
         try {
-            // macOS: open in IDE (renders markdown natively)
             if (System.getProperty("os.name", "").toLowerCase().contains("mac")) {
-                // Try IntelliJ IDEA first, then fall back to default app
-                try {
-                    new ProcessBuilder("open", "-a", "IntelliJ IDEA",
-                            reportFile.toString()).start();
-                    return true;
-                } catch (IOException _) {
-                    // IntelliJ not found — try default app
-                    new ProcessBuilder("open", reportFile.toString()).start();
-                    return true;
-                }
+                new ProcessBuilder("open", sessionPath.toString()).start();
+                return true;
             }
-            // Fallback: java.awt.Desktop
             if (java.awt.Desktop.isDesktopSupported()) {
-                java.awt.Desktop.getDesktop().open(reportFile.toFile());
+                java.awt.Desktop.getDesktop().open(sessionPath.toFile());
                 return true;
             }
         } catch (IOException e) {
             if (log != null) {
-                log.warn("Could not open report in browser: " + e.getMessage());
+                log.warn("Could not open session directory: " + e.getMessage());
             }
         }
         return false;
+    }
+
+    /**
+     * Strip the "ws:" prefix from a goal name for use in filenames.
+     * "ws:overview" → "overview", "ws:feature-start-draft" → "feature-start-draft"
+     */
+    private static String stripPrefix(String goalName) {
+        if (goalName.startsWith("ws:")) {
+            return goalName.substring(3);
+        }
+        return goalName;
     }
 }

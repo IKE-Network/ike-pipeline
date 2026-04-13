@@ -164,7 +164,8 @@ public class WsCreateMojo extends AbstractMojo {
         getLog().info("    mvn ws:add -Drepo=<git-url>    # add components");
         getLog().info("    mvn ws:init                     # clone components");
         getLog().info("");
-        WorkspaceReport.append(wsDir, "ws:create", "Created workspace: " + name + "\nDirectory: " + wsDir, null);
+        WorkspaceReport.write(wsDir, "ws:create",
+                "Created workspace **" + name + "**\n\nDirectory: `" + wsDir + "`\n", null);
     }
 
     // ── File generators (pure, testable) ─────────────────────────

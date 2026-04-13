@@ -121,8 +121,9 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
         List<String> eligible = new ArrayList<>();
         List<String> uncommitted = new ArrayList<>();
         for (String name : reversed) {
+            Component component = graph.manifest().components().get(name);
             String reason = FeatureFinishSupport.validateComponent(
-                    root, name, branchName, this);
+                    root, name, branchName, component, this);
             if (reason == null) {
                 eligible.add(name);
             } else if ("MODIFIED".equals(reason)) {
@@ -181,7 +182,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
 
             getLog().info(Ansi.cyan("  → ") + name);
             VcsOperations.catchUp(dir, getLog());
-            FeatureFinishSupport.stripBranchVersion(dir, component, getLog());
+            FeatureFinishSupport.stripBranchVersion(dir, component, branchName, getLog());
 
             VcsOperations.checkout(dir, getLog(), targetBranch);
             VcsOperations.mergeNoFf(dir, getLog(), branchName, generatedMessage);
@@ -217,7 +218,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         // Structured markdown report
-        appendReport("ws:feature-finish-merge", buildMergeReport(
+        writeReport("ws:feature-finish-merge" + (publish ? "-publish" : "-draft"), buildMergeReport(
                 eligible, branchName, targetBranch, merged, draft, keepBranch));
     }
 
@@ -271,7 +272,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
                 ? message
                 : "Merge " + branchName + " into " + targetBranch;
 
-        FeatureFinishSupport.stripBranchVersionBare(dir, getLog());
+        FeatureFinishSupport.stripBranchVersionBare(dir, branchName, getLog());
 
         VcsOperations.checkout(dir, getLog(), targetBranch);
         VcsOperations.mergeNoFf(dir, getLog(), branchName, bareMessage);

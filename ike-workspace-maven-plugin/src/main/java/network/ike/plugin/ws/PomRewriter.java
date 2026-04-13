@@ -127,6 +127,46 @@ final class PomRewriter {
     }
 
     /**
+     * Remove the {@code <version>} child from a dependency matched by
+     * {@code groupId:artifactId}. Used to eliminate intra-reactor
+     * version pins where the reactor resolves the version automatically.
+     *
+     * @param pomContent the raw POM text
+     * @param groupId    dependency groupId to match
+     * @param artifactId dependency artifactId to match
+     * @return updated POM text with version tag removed, or unchanged if no match
+     */
+    static String removeDependencyVersion(String pomContent,
+                                           String groupId,
+                                           String artifactId) {
+        Xml.Document doc = parse(pomContent);
+        if (doc == null) return pomContent;
+
+        Xml.Document updated = (Xml.Document) new XmlVisitor<Integer>() {
+            @Override
+            public Xml.Tag visitTag(Xml.Tag tag, Integer ctx) {
+                Xml.Tag t = (Xml.Tag) super.visitTag(tag, ctx);
+                if (!"dependency".equals(t.getName())) return t;
+
+                String gid = t.getChildValue("groupId").orElse(null);
+                String aid = t.getChildValue("artifactId").orElse(null);
+                if (groupId.equals(gid) && artifactId.equals(aid)
+                        && t.getChild("version").isPresent()) {
+                    // Filter out the <version> element from content
+                    var filtered = t.getContent().stream()
+                            .filter(c -> !(c instanceof Xml.Tag child
+                                    && "version".equals(child.getName())))
+                            .toList();
+                    return t.withContent(filtered);
+                }
+                return t;
+            }
+        }.visitNonNull(doc, 0);
+
+        return print(updated);
+    }
+
+    /**
      * Parse POM content into an OpenRewrite XML document.
      */
     private static Xml.Document parse(String pomContent) {

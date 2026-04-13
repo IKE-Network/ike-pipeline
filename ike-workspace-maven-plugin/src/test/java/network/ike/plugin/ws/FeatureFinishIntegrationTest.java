@@ -62,6 +62,8 @@ class FeatureFinishIntegrationTest {
                             "version: \"2.0.0-test-finish-SNAPSHOT\"");
         yaml = yaml.replace("version: \"3.0.0-SNAPSHOT\"",
                             "version: \"3.0.0-test-finish-SNAPSHOT\"");
+        // Update branch fields to match git — simulating what ws:feature-start does
+        yaml = yaml.replace("branch: main", "branch: " + BRANCH_NAME);
         Files.writeString(wsYaml, yaml, StandardCharsets.UTF_8);
     }
 
@@ -137,6 +139,32 @@ class FeatureFinishIntegrationTest {
             String log = execCapture(tempDir.resolve(name),
                     "git", "log", "--oneline", "-5");
             assertThat(log).contains(BRANCH_NAME);
+        }
+    }
+
+    @Test
+    void inconsistentYamlBranch_skipsComponent() throws Exception {
+        // Set workspace.yaml branches back to "main" while git is on feature
+        Path wsYaml = helper.workspaceYaml();
+        String yaml = Files.readString(wsYaml, StandardCharsets.UTF_8);
+        yaml = yaml.replace("branch: " + BRANCH_NAME, "branch: main");
+        Files.writeString(wsYaml, yaml, StandardCharsets.UTF_8);
+
+        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        mojo.manifest = helper.workspaceYaml().toFile();
+        mojo.feature = FEATURE_NAME;
+        mojo.targetBranch = "main";
+        mojo.message = "Should skip all";
+        mojo.publish = true;
+
+        mojo.execute();
+
+        // All components should still be on the feature branch — the
+        // consistency check should have skipped them all.
+        for (String name : new String[]{"lib-a", "lib-b", "app-c"}) {
+            String branch = execCapture(tempDir.resolve(name),
+                    "git", "rev-parse", "--abbrev-ref", "HEAD");
+            assertThat(branch).isEqualTo(BRANCH_NAME);
         }
     }
 

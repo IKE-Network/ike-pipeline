@@ -108,7 +108,7 @@ public class PushMojo extends AbstractWorkspaceMojo {
             getLog().warn("  Some pushes failed — check output above for details.");
         }
 
-        appendReport("ws:push", pushed + " pushed, " + skipped
+        writeReport("ws:push", pushed + " pushed, " + skipped
                 + " skipped, " + failed + " failed.\n");
     }
 

@@ -8,10 +8,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Open the cumulative workspace report in the default browser.
+ * Open the session report directory in the file manager or IDE.
  *
- * <p>The report file ({@code target/ws-report.md}) accumulates output
- * from all ws: goals run in this session. This goal opens it for review.
+ * <p>Each ws: goal writes its latest output to a per-goal file
+ * in the {@code session/} directory (e.g., {@code ws꞉overview.md}).
+ * This goal opens that directory for browsing.
  *
  * <p>Usage: {@code mvn ws:report}
  */
@@ -22,29 +23,30 @@ public class ReportMojo extends AbstractWorkspaceMojo {
     public ReportMojo() {}
 
     /**
-     * Skip opening the browser; just print the report path.
+     * Skip opening the file manager; just print the path.
      */
     @Parameter(property = "ws.report.printOnly", defaultValue = "false")
     private boolean printOnly;
 
     @Override
     public void execute() throws MojoExecutionException {
-        Path reportFile = WorkspaceReport.reportPath(workspaceRoot().toPath());
+        Path sessionDir = WorkspaceReport.sessionDir(workspaceRoot().toPath());
 
-        if (!Files.exists(reportFile)) {
-            getLog().info("No report found. Run a ws: goal first.");
+        if (!Files.isDirectory(sessionDir)) {
+            getLog().info("No session reports found. Run a ws: goal first.");
             return;
         }
 
-        getLog().info("Report: " + reportFile);
+        getLog().info("Session reports: " + sessionDir);
 
         if (!printOnly) {
             boolean opened = WorkspaceReport.openInBrowser(
                     workspaceRoot().toPath(), getLog());
             if (opened) {
-                getLog().info("Opened in browser.");
+                getLog().info("Opened session directory.");
             } else {
-                getLog().info("Could not open browser — view the file directly.");
+                getLog().info("Could not open file manager — browse directly: "
+                        + sessionDir);
             }
         }
     }

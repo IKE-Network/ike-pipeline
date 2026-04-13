@@ -213,7 +213,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         // --- Structured markdown report ---
-        appendReport("ws:align", buildMarkdownReport(
+        writeReport("ws:align" + (publish ? "-publish" : "-draft"), buildMarkdownReport(
                 totalChanges, changedComponents, reportChanges, alignChecks));
     }
 

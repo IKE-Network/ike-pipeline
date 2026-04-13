@@ -187,5 +187,8 @@ public class WsPostReleaseMojo extends AbstractWorkspaceMojo {
         getLog().info("");
         getLog().info("  Bumped: " + bumped + " | Skipped: " + skipped);
         getLog().info("");
+
+        writeReport("ws:post-release", "**" + bumped + "** bumped, **"
+                + skipped + "** skipped.\n");
     }
 }

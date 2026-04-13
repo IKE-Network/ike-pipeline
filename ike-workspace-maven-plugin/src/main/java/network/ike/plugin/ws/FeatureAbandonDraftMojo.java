@@ -26,22 +26,18 @@ import java.util.TreeSet;
 /**
  * Abandon a feature branch across all workspace components.
  *
- * <p>Auto-detects the current feature branch from workspace components.
- * Shows a preview of what will be abandoned, then prompts for
- * confirmation before executing. No separate {@code -apply} variant
- * is needed — the goal handles preview and confirmation itself.
+ * <p>The draft variant previews what would be abandoned — which components,
+ * how many unmerged commits, what would be lost. The publish variant
+ * prompts for confirmation then executes the deletion.
  *
  * <p>Components are processed in reverse topological order (downstream
  * first) to avoid transient dependency issues.
  *
- * <p>Safety: warns about unmerged commits before deleting. Use
- * {@code -Dforce=true} to suppress the warning and force-delete.
- *
  * <pre>{@code
- * mvn ws:feature-abandon                         # auto-detect, confirm
- * mvn ws:feature-abandon -Dfeature=my-experiment # explicit name
- * mvn ws:feature-abandon -DdeleteRemote=true     # also delete remote branches
- * mvn ws:feature-abandon -Dforce=true            # skip unmerged commit warning
+ * mvn ws:feature-abandon-draft                       # preview
+ * mvn ws:feature-abandon-publish                     # execute (with confirmation)
+ * mvn ws:feature-abandon-publish -Dforce=true        # skip confirmation
+ * mvn ws:feature-abandon-publish -DdeleteRemote=true # also delete remote branches
  * }</pre>
  *
  * @see FeatureStartDraftMojo for creating feature branches
@@ -64,6 +60,10 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
     @Parameter(property = "force", defaultValue = "false")
     boolean force;
 
+    /** Execute the abandon. Default is draft (preview only). */
+    @Parameter(property = "publish", defaultValue = "false")
+    boolean publish;
+
     /** Creates this goal instance. */
     public FeatureAbandonDraftMojo() {}
 
@@ -78,6 +78,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
     }
 
     private void executeWorkspaceMode() throws MojoExecutionException {
+        boolean draft = !publish;
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
         Path manifestPath = resolveManifest();
@@ -111,10 +112,13 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("  Feature:  " + feature);
         getLog().info("  Branch:   " + branchName + " → " + targetBranch);
         if (deleteRemote) getLog().info("  Remote:   will delete origin/" + branchName);
+        if (draft) getLog().info("  Mode:     DRAFT");
         getLog().info("");
 
         List<String> eligible = new ArrayList<>();
         List<String> skipped = new ArrayList<>();
+        List<String[]> reportRows = new ArrayList<>();
+        int totalUnmerged = 0;
 
         for (String name : reversed) {
             File dir = new File(root, name);
@@ -123,6 +127,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
             if (!gitDir.exists()) {
                 getLog().info(Ansi.yellow("  · ") + name + " — not cloned");
                 skipped.add(name);
+                reportRows.add(new String[]{name, "not cloned", "0"});
                 continue;
             }
 
@@ -131,6 +136,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
                 getLog().info(Ansi.yellow("  · ") + name + " — on "
                         + currentBranch + ", not on feature");
                 skipped.add(name);
+                reportRows.add(new String[]{name, "not on feature", "0"});
                 continue;
             }
 
@@ -154,13 +160,20 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
                 // Target branch may not exist locally
             }
 
+            totalUnmerged += unmergedCount;
+
             if (unmergedCount > 0) {
+                String label = draft ? "would abandon" : "abandon";
                 getLog().info(Ansi.yellow("  ⚠ ") + name + " — "
-                        + unmergedCount + " unmerged commit(s)");
+                        + unmergedCount + " unmerged commit(s) — " + label);
             } else {
-                getLog().info(Ansi.cyan("  → ") + name + " — on " + branchName);
+                String label = draft ? "would abandon (clean)" : "abandon";
+                getLog().info(Ansi.cyan("  → ") + name + " — " + label);
             }
             eligible.add(name);
+            reportRows.add(new String[]{name,
+                    draft ? "would abandon" : "abandoned",
+                    String.valueOf(unmergedCount)});
         }
 
         if (eligible.isEmpty()) {
@@ -169,10 +182,22 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
             return;
         }
 
-        // Prompt for confirmation
         getLog().info("");
-        getLog().info("  " + eligible.size() + " component(s) will switch to "
-                + targetBranch + " and delete " + branchName);
+        getLog().info("  " + eligible.size() + " component(s) on " + branchName);
+        if (totalUnmerged > 0) {
+            getLog().warn("  " + totalUnmerged + " total unmerged commit(s) will be lost");
+        }
+
+        if (draft) {
+            getLog().info("");
+            getLog().info("  Next: mvn ws:feature-abandon-publish"
+                    + (force ? "" : " (will prompt for confirmation)"));
+            getLog().info("");
+            writeAbandonReport(branchName, reportRows, eligible, skipped, draft);
+            return;
+        }
+
+        // Publish mode — prompt for confirmation
         if (!force) {
             java.io.Console console = System.console();
             if (console != null) {
@@ -182,6 +207,9 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
                 if (response == null || !response.trim().toLowerCase().startsWith("y")) {
                     throw new MojoExecutionException("Abandon cancelled.");
                 }
+            } else {
+                throw new MojoExecutionException(
+                        "No interactive console for confirmation. Use -Dforce=true to skip.");
             }
         }
 
@@ -191,7 +219,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
             File dir = new File(root, name);
 
             // Strip branch-qualified versions before switching
-            FeatureFinishSupport.stripBranchVersion(dir, component, getLog());
+            FeatureFinishSupport.stripBranchVersion(dir, component, branchName, getLog());
 
             VcsOperations.checkout(dir, getLog(), targetBranch);
             VcsOperations.deleteBranch(dir, getLog(), branchName);
@@ -221,20 +249,27 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
         }
         getLog().info("");
 
-        // Structured markdown report
+        writeAbandonReport(branchName, reportRows, eligible, skipped, draft);
+    }
+
+    private void writeAbandonReport(String branchName, List<String[]> rows,
+                                     List<String> eligible, List<String> skipped,
+                                     boolean isDraft) {
         var sb = new StringBuilder();
         sb.append("**Branch:** `").append(branchName).append("`\n\n");
-        sb.append("| Component | Status |\n");
-        sb.append("|-----------|--------|\n");
-        for (String name : eligible) {
-            sb.append("| ").append(name).append(" | abandoned |\n");
+        sb.append("| Component | Status | Unmerged Commits |\n");
+        sb.append("|-----------|--------|------------------|\n");
+        for (String[] row : rows) {
+            sb.append("| ").append(row[0])
+              .append(" | ").append(row[1])
+              .append(" | ").append(row[2])
+              .append(" |\n");
         }
-        for (String name : skipped) {
-            sb.append("| ").append(name).append(" | skipped |\n");
-        }
-        sb.append("\n**").append(eligible.size()).append("** abandoned, **")
-          .append(skipped.size()).append("** skipped.\n");
-        appendReport("ws:feature-abandon", sb.toString());
+        sb.append("\n**").append(eligible.size()).append("** ")
+          .append(isDraft ? "would be abandoned" : "abandoned")
+          .append(", **").append(skipped.size()).append("** skipped.\n");
+        writeReport("ws:feature-abandon" + (publish ? "-publish" : "-draft"),
+                sb.toString());
     }
 
     // ── Auto-detect ─────────────────────────────────────────────────
@@ -284,7 +319,6 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
                     Ansi.YELLOW + "  Feature to abandon (name or number): " + Ansi.RESET);
             if (response != null && !response.isBlank()) {
                 String trimmed = response.trim();
-                // Try as number first
                 try {
                     int idx = Integer.parseInt(trimmed) - 1;
                     if (idx >= 0 && idx < featureList.size()) {
@@ -305,6 +339,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
     // ── Bare mode ───────────────────────────────────────────────────
 
     private void executeBareMode() throws MojoExecutionException {
+        boolean draft = !publish;
         File dir = new File(System.getProperty("user.dir"));
 
         if (targetBranch == null || targetBranch.isBlank()) {
@@ -328,6 +363,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("══════════════════════════════════════════════════════════════");
         getLog().info("  Feature: " + feature);
         getLog().info("  Branch:  " + branchName + " → " + targetBranch);
+        if (draft) getLog().info("  Mode:    DRAFT");
         getLog().info("");
 
         if (!currentBranch.equals(branchName)) {
@@ -339,7 +375,32 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
                     "Uncommitted changes. Commit, stash, or discard first.");
         }
 
-        FeatureFinishSupport.stripBranchVersionBare(dir, getLog());
+        if (draft) {
+            getLog().info("  [draft] Would abandon " + branchName
+                    + " and switch to " + targetBranch);
+            getLog().info("");
+            getLog().info("  Next: mvn ws:feature-abandon-publish");
+            getLog().info("");
+            return;
+        }
+
+        // Publish mode — prompt for confirmation
+        if (!force) {
+            java.io.Console console = System.console();
+            if (console != null) {
+                String response = console.readLine(
+                        Ansi.YELLOW + "  Abandon feature/%s? (yes/no): " + Ansi.RESET,
+                        feature);
+                if (response == null || !response.trim().toLowerCase().startsWith("y")) {
+                    throw new MojoExecutionException("Abandon cancelled.");
+                }
+            } else {
+                throw new MojoExecutionException(
+                        "No interactive console for confirmation. Use -Dforce=true to skip.");
+            }
+        }
+
+        FeatureFinishSupport.stripBranchVersionBare(dir, branchName, getLog());
 
         VcsOperations.checkout(dir, getLog(), targetBranch);
         VcsOperations.deleteBranch(dir, getLog(), branchName);

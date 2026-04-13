@@ -204,4 +204,21 @@ final class PomModel {
         return PomRewriter.updateParentVersion(
                 pomContent, parentArtifactId, newVersion);
     }
+
+    /**
+     * Remove the {@code <version>} tag from a dependency matched by
+     * {@code groupId:artifactId}. Used to eliminate intra-reactor
+     * version pins where the reactor resolves the version automatically.
+     *
+     * @param pomContent the raw POM text
+     * @param groupId    dependency groupId to match
+     * @param artifactId dependency artifactId to match
+     * @return updated POM text with version removed, or unchanged if no match
+     */
+    static String removeDependencyVersion(String pomContent,
+                                           String groupId,
+                                           String artifactId) {
+        return PomRewriter.removeDependencyVersion(
+                pomContent, groupId, artifactId);
+    }
 }

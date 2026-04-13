@@ -80,5 +80,22 @@ public class CascadeWorkspaceMojo extends AbstractWorkspaceMojo {
         }
 
         getLog().info("");
+
+        // Report
+        var sb = new StringBuilder();
+        sb.append("**Component:** `").append(component).append("`\n\n");
+        if (affected.isEmpty()) {
+            sb.append("No downstream dependencies — leaf component.\n");
+        } else {
+            sb.append("| # | Affected Component |\n");
+            sb.append("|---|--------------------|\n");
+            List<String> buildOrder = graph.topologicalSort(
+                    new java.util.LinkedHashSet<>(affected));
+            for (int i = 0; i < buildOrder.size(); i++) {
+                sb.append("| ").append(i + 1)
+                  .append(" | ").append(buildOrder.get(i)).append(" |\n");
+            }
+        }
+        writeReport("ws:cascade", sb.toString());
     }
 }

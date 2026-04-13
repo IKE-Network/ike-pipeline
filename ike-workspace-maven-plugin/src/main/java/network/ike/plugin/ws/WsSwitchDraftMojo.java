@@ -219,6 +219,15 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("  Switched: " + switched
                 + " | Skipped: " + skipped);
         getLog().info("");
+
+        // Write report
+        var sb = new StringBuilder();
+        sb.append("**From:** `").append(currentBranch)
+          .append("` **To:** `").append(branch).append("`\n\n");
+        sb.append("**").append(switched).append("** switched, **")
+          .append(skipped).append("** skipped.\n");
+        writeReport("ws:switch" + (publish ? "-publish" : "-draft"),
+                sb.toString());
     }
 
     /**

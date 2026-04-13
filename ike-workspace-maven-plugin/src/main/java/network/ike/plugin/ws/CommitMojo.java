@@ -182,7 +182,7 @@ public class CommitMojo extends AbstractWorkspaceMojo {
             getLog().warn("  Some commits failed — check output above for details.");
         }
 
-        appendReport("ws:commit", committed + " committed, " + skipped
+        writeReport("ws:commit", committed + " committed, " + skipped
                 + " skipped, " + failed + " failed.\n");
     }
 

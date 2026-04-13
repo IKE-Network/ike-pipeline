@@ -260,7 +260,7 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
                 + " | Absent: " + absentComponents.size());
         getLog().info("");
 
-        appendReport("ws:checkpoint",
+        writeReport("ws:checkpoint" + (publish ? "-publish" : "-draft"),
                 buildCheckpointMarkdownReport(snapshots, absentComponents));
     }
 

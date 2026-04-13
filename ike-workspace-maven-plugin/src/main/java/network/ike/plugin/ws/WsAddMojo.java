@@ -327,7 +327,11 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
             getLog().info("  Component added. Run 'mvn ws:init' to clone.");
         }
         getLog().info("");
-        WorkspaceReport.append(wsDir, "ws:add", "Added component: " + component + "\nRepo: " + repo + (cloned ? "\nCloned: yes" : "\nCloned: no (run ws:init)"), null);
+        writeReport("ws:add", "Added component **" + component + "**\n\n"
+                + "| Field | Value |\n|-------|-------|\n"
+                + "| Repo | " + repo + " |\n"
+                + "| Type | " + type + " |\n"
+                + "| Cloned | " + (cloned ? "yes" : "no — run ws:init") + " |\n");
     }
 
     // ── YAML generation ──────────────────────────────────────────

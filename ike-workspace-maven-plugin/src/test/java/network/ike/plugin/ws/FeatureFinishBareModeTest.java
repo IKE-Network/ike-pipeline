@@ -170,6 +170,158 @@ class FeatureFinishBareModeTest {
         assertThat(subPom).contains("3.0.0-SNAPSHOT");
     }
 
+    @Test
+    void squash_stripsVersionProperties() throws Exception {
+        // Replace root POM with one that has branch-qualified properties
+        Files.writeString(tempDir.resolve("pom.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.test</groupId>
+                    <artifactId>bare-finish</artifactId>
+                    <version>3.0.0-test-finish-SNAPSHOT</version>
+                    <properties>
+                        <tinkar-core.version>1.127.2-test-finish-SNAPSHOT</tinkar-core.version>
+                        <komet.version>1.59.0-test-finish-SNAPSHOT</komet.version>
+                        <unrelated.prop>hello</unrelated.prop>
+                    </properties>
+                </project>
+                """, StandardCharsets.UTF_8);
+
+        exec(tempDir, "git", "add", "pom.xml");
+        exec(tempDir, "git", "commit", "-m", "Add version properties");
+
+        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        mojo.feature = FEATURE_NAME;
+        mojo.targetBranch = "main";
+        mojo.message = "Squash with properties";
+        mojo.publish = true;
+
+        mojo.execute();
+
+        String pomContent = Files.readString(tempDir.resolve("pom.xml"),
+                StandardCharsets.UTF_8);
+        assertThat(pomContent).doesNotContain("test-finish");
+        assertThat(pomContent).contains(
+                "<tinkar-core.version>1.127.2-SNAPSHOT</tinkar-core.version>");
+        assertThat(pomContent).contains(
+                "<komet.version>1.59.0-SNAPSHOT</komet.version>");
+        assertThat(pomContent).contains(
+                "<unrelated.prop>hello</unrelated.prop>");
+    }
+
+    @Test
+    void squash_stripsBomImportVersions() throws Exception {
+        // Replace root POM with one that has a branch-qualified BOM import
+        Files.writeString(tempDir.resolve("pom.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.test</groupId>
+                    <artifactId>bare-finish</artifactId>
+                    <version>3.0.0-test-finish-SNAPSHOT</version>
+                    <dependencyManagement>
+                        <dependencies>
+                            <dependency>
+                                <groupId>dev.ikm.komet</groupId>
+                                <artifactId>komet-bom</artifactId>
+                                <version>3.0.7-test-finish-SNAPSHOT</version>
+                                <type>pom</type>
+                                <scope>import</scope>
+                            </dependency>
+                        </dependencies>
+                    </dependencyManagement>
+                </project>
+                """, StandardCharsets.UTF_8);
+
+        exec(tempDir, "git", "add", "pom.xml");
+        exec(tempDir, "git", "commit", "-m", "Add BOM import");
+
+        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        mojo.feature = FEATURE_NAME;
+        mojo.targetBranch = "main";
+        mojo.message = "Squash with BOM import";
+        mojo.publish = true;
+
+        mojo.execute();
+
+        String pomContent = Files.readString(tempDir.resolve("pom.xml"),
+                StandardCharsets.UTF_8);
+        assertThat(pomContent).doesNotContain("test-finish");
+        assertThat(pomContent).contains(
+                "<version>3.0.7-SNAPSHOT</version>");
+    }
+
+    @Test
+    void squash_stripsNonSemverVersions() throws Exception {
+        // Replace root POM with single-segment version (like ike-parent: 92)
+        Files.writeString(tempDir.resolve("pom.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.test</groupId>
+                    <artifactId>bare-finish</artifactId>
+                    <version>92-test-finish-SNAPSHOT</version>
+                    <properties>
+                        <ike-parent.version>92-test-finish-SNAPSHOT</ike-parent.version>
+                    </properties>
+                </project>
+                """, StandardCharsets.UTF_8);
+
+        exec(tempDir, "git", "add", "pom.xml");
+        exec(tempDir, "git", "commit", "-m", "Non-semver version");
+
+        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        mojo.feature = FEATURE_NAME;
+        mojo.targetBranch = "main";
+        mojo.message = "Squash non-semver";
+        mojo.publish = true;
+
+        mojo.execute();
+
+        String pomContent = Files.readString(tempDir.resolve("pom.xml"),
+                StandardCharsets.UTF_8);
+        assertThat(pomContent).doesNotContain("test-finish");
+        assertThat(pomContent).contains("<version>92-SNAPSHOT</version>");
+        assertThat(pomContent).contains(
+                "<ike-parent.version>92-SNAPSHOT</ike-parent.version>");
+    }
+
+    @Test
+    void squash_stripsDateBasedVersions() throws Exception {
+        // Replace root POM with date-based version (SNOMED-style YYYYMMDD)
+        Files.writeString(tempDir.resolve("pom.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.test</groupId>
+                    <artifactId>bare-finish</artifactId>
+                    <version>20240315-test-finish-SNAPSHOT</version>
+                    <properties>
+                        <snomed.version>20240315-test-finish-SNAPSHOT</snomed.version>
+                    </properties>
+                </project>
+                """, StandardCharsets.UTF_8);
+
+        exec(tempDir, "git", "add", "pom.xml");
+        exec(tempDir, "git", "commit", "-m", "Date-based version");
+
+        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        mojo.feature = FEATURE_NAME;
+        mojo.targetBranch = "main";
+        mojo.message = "Squash date-based";
+        mojo.publish = true;
+
+        mojo.execute();
+
+        String pomContent = Files.readString(tempDir.resolve("pom.xml"),
+                StandardCharsets.UTF_8);
+        assertThat(pomContent).doesNotContain("test-finish");
+        assertThat(pomContent).contains("<version>20240315-SNAPSHOT</version>");
+        assertThat(pomContent).contains(
+                "<snomed.version>20240315-SNAPSHOT</snomed.version>");
+    }
+
     // ── Merge strategy tests ─────────────────────────────────────
 
     @Test

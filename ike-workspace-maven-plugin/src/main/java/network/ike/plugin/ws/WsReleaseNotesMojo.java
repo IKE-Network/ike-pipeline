@@ -75,5 +75,10 @@ public class WsReleaseNotesMojo extends AbstractWorkspaceMojo {
                 getLog().info(line);
             }
         }
+
+        long issueCount = notes.lines().filter(l -> l.startsWith("- ")).count();
+        writeReport("ws:release-notes", "**Milestone:** " + milestone
+                + " | **Repo:** " + repo
+                + " | **Issues:** " + issueCount + "\n");
     }
 }

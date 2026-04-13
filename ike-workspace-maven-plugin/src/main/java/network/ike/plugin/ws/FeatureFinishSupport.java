@@ -91,9 +91,29 @@ class FeatureFinishSupport {
 
     /**
      * Validate that a component is eligible for feature-finish.
-     * Returns null if eligible, or a skip reason string.
+     *
+     * <p>Checks three consistency requirements:
+     * <ol>
+     *   <li>The git working tree must be on the expected feature branch</li>
+     *   <li>The workspace.yaml branch field must agree with git</li>
+     *   <li>The working tree must have no uncommitted changes</li>
+     * </ol>
+     *
+     * <p>A mismatch between git and workspace.yaml indicates that
+     * branches were switched outside the {@code ws:} workflow, which
+     * is not supported. The build fails with a diagnostic rather than
+     * silently proceeding with inconsistent state.
+     *
+     * @param root       workspace root directory
+     * @param name       component name
+     * @param branchName expected git branch (e.g., "feature/my-work")
+     * @param component  the workspace.yaml component record
+     * @param mojo       the calling mojo (for git operations)
+     * @return null if eligible, "MODIFIED" for uncommitted changes,
+     *         or a descriptive skip/error reason string
      */
     static String validateComponent(File root, String name, String branchName,
+                                     Component component,
                                      AbstractWorkspaceMojo mojo) {
         File dir = new File(root, name);
         File gitDir = new File(dir, ".git");
@@ -105,6 +125,15 @@ class FeatureFinishSupport {
         String currentBranch = mojo.gitBranch(dir);
         if (!currentBranch.equals(branchName)) {
             return "on " + currentBranch + ", not " + branchName;
+        }
+
+        // Verify workspace.yaml agrees with git — a mismatch means
+        // branches were switched outside the ws: workflow.
+        String yamlBranch = component.branch();
+        if (yamlBranch != null && !yamlBranch.equals(currentBranch)) {
+            return "INCONSISTENT: git is on " + currentBranch
+                    + " but workspace.yaml says " + yamlBranch
+                    + " — resolve with ws:feature-start or update workspace.yaml";
         }
 
         String status = mojo.gitStatus(dir);
@@ -172,17 +201,19 @@ class FeatureFinishSupport {
      * Strip branch-qualified version back to base SNAPSHOT.
      * Returns the base version, or null if no stripping was needed.
      */
-    static String stripBranchVersion(File dir, Component component, Log log)
+    static String stripBranchVersion(File dir, Component component,
+                                      String branchName, Log log)
             throws MojoExecutionException {
         // Read actual version from POM on disk — workspace.yaml may be stale
         // if the branch update commit failed (#83).
         String currentVersion = readCurrentVersion(dir, log);
-        if (currentVersion == null || !VersionSupport.isBranchQualified(currentVersion)) {
+        String qualifier = qualifierFromBranch(branchName);
+        if (currentVersion == null
+                || !containsBranchQualifier(currentVersion, qualifier)) {
             return null;
         }
 
-        String baseVersion = VersionSupport.extractNumericBase(
-                VersionSupport.stripSnapshot(currentVersion)) + "-SNAPSHOT";
+        String baseVersion = stripQualifier(currentVersion, qualifier);
 
         log.info("    version: " + currentVersion + " → " + baseVersion);
         setAllVersions(dir, currentVersion, baseVersion, log);
@@ -190,7 +221,7 @@ class FeatureFinishSupport {
         // Also strip any other branch-qualified versions in the POM tree
         // (BOM imports, version properties, etc. set by cascadeBomProperties
         // and cascadeBomImports during feature-start).
-        stripAllBranchQualifiedVersions(dir, log);
+        stripAllBranchQualifiedVersions(dir, qualifier, log);
 
         ReleaseSupport.exec(dir, log, "git", "add", "-A");
         ReleaseSupport.exec(dir, log, "git", "commit", "-m",
@@ -202,7 +233,7 @@ class FeatureFinishSupport {
     /**
      * Strip branch-qualified version in bare mode.
      */
-    static String stripBranchVersionBare(File dir, Log log)
+    static String stripBranchVersionBare(File dir, String branchName, Log log)
             throws MojoExecutionException {
         File pom = new File(dir, "pom.xml");
         if (!pom.exists()) return null;
@@ -214,16 +245,17 @@ class FeatureFinishSupport {
             return null;
         }
 
-        if (currentVersion == null || !VersionSupport.isBranchQualified(currentVersion)) {
+        String qualifier = qualifierFromBranch(branchName);
+        if (currentVersion == null
+                || !containsBranchQualifier(currentVersion, qualifier)) {
             return null;
         }
 
-        String baseVersion = VersionSupport.extractNumericBase(
-                VersionSupport.stripSnapshot(currentVersion)) + "-SNAPSHOT";
+        String baseVersion = stripQualifier(currentVersion, qualifier);
 
         log.info("  Version: " + currentVersion + " → " + baseVersion);
         setAllVersions(dir, currentVersion, baseVersion, log);
-        stripAllBranchQualifiedVersions(dir, log);
+        stripAllBranchQualifiedVersions(dir, qualifier, log);
         ReleaseSupport.exec(dir, log, "git", "add", "-A");
         ReleaseSupport.exec(dir, log, "git", "commit", "-m",
                 "merge-prep: strip branch qualifier → " + baseVersion);
@@ -469,27 +501,126 @@ class FeatureFinishSupport {
     }
 
     /**
-     * Scan all POM files in a component for any branch-qualified version
-     * strings and strip them back to base SNAPSHOT. This reverses the
-     * cascade done by feature-start (BOM properties, BOM imports,
-     * version properties).
+     * Derive the version qualifier from a feature branch name.
+     * For example, {@code "feature/search-provider-diagnostics"}
+     * yields {@code "search-provider-diagnostics"} via
+     * {@link VersionSupport#safeBranchName(String)}.
      *
-     * <p>Uses a regex to find version strings matching the pattern
-     * {@code X.Y.Z-branch-qualifier-SNAPSHOT} and replaces them with
-     * {@code X.Y.Z-SNAPSHOT}.
+     * <p>This is intentionally derived from the branch name rather
+     * than parsed from the version string, because version strings
+     * may use non-semver schemes (date-based, single-segment, etc.)
+     * where structural parsing of the numeric/qualifier boundary
+     * is ambiguous.
+     *
+     * @param branchName the full branch name (e.g., "feature/my-work")
+     * @return the qualifier as it appears in version strings
      */
-    private static void stripAllBranchQualifiedVersions(File dir, Log log)
+    private static String qualifierFromBranch(String branchName) {
+        return VersionSupport.safeBranchName(branchName);
+    }
+
+    /**
+     * Check whether a version string contains the given branch qualifier.
+     * Matches versions of any numeric depth (single-segment, semver,
+     * or otherwise) — never assumes a specific version scheme.
+     *
+     * @param version   version string to test
+     * @param qualifier the branch qualifier to look for
+     * @return true if the version is a SNAPSHOT containing the qualifier
+     */
+    private static boolean containsBranchQualifier(String version, String qualifier) {
+        return version != null
+                && version.endsWith("-SNAPSHOT")
+                && version.contains("-" + qualifier + "-");
+    }
+
+    /**
+     * Strip the branch qualifier from a version, returning the base SNAPSHOT.
+     *
+     * @param version   branch-qualified version
+     * @param qualifier the qualifier to strip
+     * @return base SNAPSHOT version
+     */
+    private static String stripQualifier(String version, String qualifier) {
+        return version.replace("-" + qualifier + "-SNAPSHOT", "-SNAPSHOT");
+    }
+
+    /**
+     * Scan all POM files in a component for version strings containing
+     * the given branch qualifier and strip them back to base SNAPSHOT.
+     * This reverses the cascade done by feature-start (BOM properties,
+     * BOM imports, version properties).
+     *
+     * <p>Uses {@link PomModel} (Maven 4 model API) to identify
+     * qualified versions in properties, dependencies, and parent
+     * blocks, then applies corrections via {@link PomRewriter}
+     * (OpenRewrite LST) for lossless edits. Only versions containing
+     * the specific branch qualifier are modified — other non-numeric
+     * suffixes (e.g., {@code rc1}, {@code beta}) are left untouched.
+     *
+     * <p>No assumption is made about the numeric version scheme:
+     * single-segment ({@code 92}), two-segment ({@code 1.0}), semver
+     * ({@code 3.0.7}), and deeper schemes all work identically.
+     *
+     * @param dir       the component directory containing POM files
+     * @param qualifier the branch qualifier to strip (e.g., "search-provider-diagnostics")
+     * @param log       Maven logger
+     * @throws MojoExecutionException if POM files cannot be located
+     */
+    private static void stripAllBranchQualifiedVersions(File dir,
+                                                         String qualifier,
+                                                         Log log)
             throws MojoExecutionException {
+        if (qualifier == null) return;
+
         List<File> allPoms = ReleaseSupport.findPomFiles(dir);
-        // Pattern: digits.digits.digits-word-chars-SNAPSHOT
-        java.util.regex.Pattern branchVersionPattern = java.util.regex.Pattern.compile(
-                "(\\d+\\.\\d+\\.\\d+)-[a-zA-Z][\\w.-]+-SNAPSHOT");
 
         for (File pom : allPoms) {
             try {
-                String content = Files.readString(pom.toPath(), StandardCharsets.UTF_8);
-                java.util.regex.Matcher m = branchVersionPattern.matcher(content);
-                String updated = m.replaceAll("$1-SNAPSHOT");
+                PomModel model = PomModel.parse(pom.toPath());
+                String content = model.content();
+                String updated = content;
+
+                // Strip qualified properties
+                for (var entry : model.properties().entrySet()) {
+                    String value = entry.getValue();
+                    if (containsBranchQualifier(value, qualifier)) {
+                        String base = stripQualifier(value, qualifier);
+                        updated = PomModel.updateProperty(
+                                updated, entry.getKey(), base);
+                        log.debug("    property " + entry.getKey()
+                                + ": " + value + " → " + base
+                                + " in " + pom.getName());
+                    }
+                }
+
+                // Strip qualified dependencies (including BOM imports)
+                for (var dep : model.allDependencies()) {
+                    String version = dep.getVersion();
+                    if (containsBranchQualifier(version, qualifier)) {
+                        String base = stripQualifier(version, qualifier);
+                        updated = PomModel.updateDependencyVersion(
+                                updated, dep.getGroupId(),
+                                dep.getArtifactId(), base);
+                        log.debug("    dependency " + dep.getGroupId()
+                                + ":" + dep.getArtifactId()
+                                + ": " + version + " → " + base
+                                + " in " + pom.getName());
+                    }
+                }
+
+                // Strip qualified parent version
+                var parent = model.parent();
+                if (parent != null
+                        && containsBranchQualifier(parent.getVersion(), qualifier)) {
+                    String base = stripQualifier(parent.getVersion(), qualifier);
+                    updated = PomModel.updateParentVersion(
+                            updated, parent.getArtifactId(), base);
+                    log.debug("    parent " + parent.getArtifactId()
+                            + ": " + parent.getVersion() + " → " + base
+                            + " in " + pom.getName());
+                }
+
                 if (!updated.equals(content)) {
                     Files.writeString(pom.toPath(), updated, StandardCharsets.UTF_8);
                 }

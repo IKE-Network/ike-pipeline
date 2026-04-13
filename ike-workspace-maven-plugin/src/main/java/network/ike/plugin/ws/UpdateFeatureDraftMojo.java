@@ -156,7 +156,8 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
             return;
         }
 
-        // Show how far behind each component is
+        // Show how far behind each component is + collect report data
+        List<String[]> reportRows = new ArrayList<>();
         for (String name : eligible) {
             File dir = new File(root, name);
             try {
@@ -173,6 +174,7 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
                 if (behind.isEmpty()) {
                     getLog().info("  " + Ansi.green("✓ ") + name
                             + " — up to date with " + targetBranch);
+                    reportRows.add(new String[]{name, "0", "0", "", "up to date"});
                 } else if (draft) {
                     // Predict conflicts without touching working tree
                     List<String> predicted = VcsOperations.predictConflicts(
@@ -183,6 +185,9 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
                                 + behind.size() + " commit(s) behind "
                                 + targetBranch + ", " + ahead.size()
                                 + " ahead — clean update expected");
+                        reportRows.add(new String[]{name,
+                                String.valueOf(behind.size()),
+                                String.valueOf(ahead.size()), "", "clean"});
                     } else {
                         getLog().warn("  " + Ansi.red("⚠ ") + name + " — "
                                 + behind.size() + " commit(s) behind "
@@ -194,6 +199,11 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
                         }
                         getLog().warn("      Resolve in IntelliJ after running"
                                 + " ws:update-feature-publish");
+                        reportRows.add(new String[]{name,
+                                String.valueOf(behind.size()),
+                                String.valueOf(ahead.size()),
+                                String.join(", ", predicted),
+                                predicted.size() + " conflict(s)"});
                     }
                 } else {
                     getLog().info("  " + Ansi.cyan("→ ") + name + " — "
@@ -205,6 +215,9 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
                                     + " into " + branchName);
 
                     getLog().info("    " + Ansi.green("✓ ") + "updated");
+                    reportRows.add(new String[]{name,
+                            String.valueOf(behind.size()),
+                            String.valueOf(ahead.size()), "", "merged"});
                 }
             } catch (MojoExecutionException e) {
                 List<String> conflicts = VcsOperations.conflictingFiles(dir);
@@ -250,5 +263,25 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
                     + " | Skipped: " + skipped.size());
         }
         getLog().info("");
+
+        // Write report
+        var sb = new StringBuilder();
+        sb.append("**Branch:** `").append(branchName)
+          .append("` ← `").append(targetBranch).append("`\n\n");
+        sb.append("| Component | Behind | Ahead | Conflicts | Status |\n");
+        sb.append("|-----------|--------|-------|-----------|--------|\n");
+        for (String[] row : reportRows) {
+            sb.append("| ").append(row[0])
+              .append(" | ").append(row[1])
+              .append(" | ").append(row[2])
+              .append(" | ").append(row[3])
+              .append(" | ").append(row[4])
+              .append(" |\n");
+        }
+        sb.append("\n**").append(eligible.size()).append("** component(s)")
+          .append(draft ? " to update" : " updated")
+          .append(", **").append(skipped.size()).append("** skipped.\n");
+        writeReport("ws:update-feature" + (publish ? "-publish" : "-draft"),
+                sb.toString());
     }
 }

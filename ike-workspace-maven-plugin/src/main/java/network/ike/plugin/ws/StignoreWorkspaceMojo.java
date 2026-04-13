@@ -110,6 +110,9 @@ public class StignoreWorkspaceMojo extends AbstractWorkspaceMojo {
         getLog().info("  Generated: 1 workspace + " + perComponent
                 + " component .stignore files");
         getLog().info("");
+
+        writeReport("ws:stignore", "Generated **1** workspace + **"
+                + perComponent + "** component .stignore files.\n");
     }
 
     private void writeStignore(Path path, List<String> lines)

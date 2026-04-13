@@ -143,6 +143,163 @@ class FeatureStartIntegrationTest {
                 .isEqualTo("main");
     }
 
+    @Test
+    void featureStart_removesIntraReactorPins() throws Exception {
+        // Add submodules to lib-a to create an intra-reactor scenario:
+        // lib-a (reactor root)
+        //   ├── sub-core (leaf)
+        //   └── sub-integration (depends on sub-core with explicit version pin)
+        Path libA = tempDir.resolve("lib-a");
+
+        // Rewrite lib-a as an aggregator with submodules
+        Files.writeString(libA.resolve("pom.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.test</groupId>
+                    <artifactId>lib-a</artifactId>
+                    <version>1.0.0-SNAPSHOT</version>
+                    <packaging>pom</packaging>
+                    <subprojects>
+                        <subproject>sub-core</subproject>
+                        <subproject>sub-integration</subproject>
+                    </subprojects>
+                </project>
+                """, StandardCharsets.UTF_8);
+
+        Path subCore = libA.resolve("sub-core");
+        Files.createDirectories(subCore);
+        Files.writeString(subCore.resolve("pom.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <parent>
+                        <groupId>com.test</groupId>
+                        <artifactId>lib-a</artifactId>
+                        <version>1.0.0-SNAPSHOT</version>
+                    </parent>
+                    <artifactId>sub-core</artifactId>
+                </project>
+                """, StandardCharsets.UTF_8);
+
+        Path subInteg = libA.resolve("sub-integration");
+        Files.createDirectories(subInteg);
+        Files.writeString(subInteg.resolve("pom.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <parent>
+                        <groupId>com.test</groupId>
+                        <artifactId>lib-a</artifactId>
+                        <version>1.0.0-SNAPSHOT</version>
+                    </parent>
+                    <artifactId>sub-integration</artifactId>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.test</groupId>
+                            <artifactId>sub-core</artifactId>
+                            <version>1.0.0-SNAPSHOT</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """, StandardCharsets.UTF_8);
+
+        exec(libA, "git", "add", ".");
+        exec(libA, "git", "commit", "-m", "Add submodules with intra-reactor pin");
+
+        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        mojo.manifest = helper.workspaceYaml().toFile();
+        mojo.feature = "pin-test";
+        mojo.publish = true;
+
+        mojo.execute();
+
+        // The intra-reactor pin should be removed:
+        // sub-integration should no longer have <version> on sub-core
+        String integPom = Files.readString(
+                subInteg.resolve("pom.xml"), StandardCharsets.UTF_8);
+        assertThat(integPom).contains("<artifactId>sub-core</artifactId>");
+        assertThat(integPom).doesNotContain(
+                "<version>1.0.0-SNAPSHOT</version>\n            <scope>test</scope>");
+        // The dependency should still exist, just without explicit version
+        assertThat(integPom).contains("<scope>test</scope>");
+    }
+
+    @Test
+    void featureStart_removesPropertyBasedIntraReactorPins() throws Exception {
+        // Same scenario but pin uses ${project.version} instead of literal
+        Path libA = tempDir.resolve("lib-a");
+
+        Files.writeString(libA.resolve("pom.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.test</groupId>
+                    <artifactId>lib-a</artifactId>
+                    <version>1.0.0-SNAPSHOT</version>
+                    <packaging>pom</packaging>
+                    <subprojects>
+                        <subproject>sub-core</subproject>
+                        <subproject>sub-integration</subproject>
+                    </subprojects>
+                </project>
+                """, StandardCharsets.UTF_8);
+
+        Path subCore = libA.resolve("sub-core");
+        Files.createDirectories(subCore);
+        Files.writeString(subCore.resolve("pom.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <parent>
+                        <groupId>com.test</groupId>
+                        <artifactId>lib-a</artifactId>
+                        <version>1.0.0-SNAPSHOT</version>
+                    </parent>
+                    <artifactId>sub-core</artifactId>
+                </project>
+                """, StandardCharsets.UTF_8);
+
+        Path subInteg = libA.resolve("sub-integration");
+        Files.createDirectories(subInteg);
+        Files.writeString(subInteg.resolve("pom.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <parent>
+                        <groupId>com.test</groupId>
+                        <artifactId>lib-a</artifactId>
+                        <version>1.0.0-SNAPSHOT</version>
+                    </parent>
+                    <artifactId>sub-integration</artifactId>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.test</groupId>
+                            <artifactId>sub-core</artifactId>
+                            <version>${project.version}</version>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """, StandardCharsets.UTF_8);
+
+        exec(libA, "git", "add", ".");
+        exec(libA, "git", "commit", "-m", "Add submodules with property pin");
+
+        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        mojo.manifest = helper.workspaceYaml().toFile();
+        mojo.feature = "prop-pin-test";
+        mojo.publish = true;
+
+        mojo.execute();
+
+        // ${project.version} pin should also be removed from the dependency,
+        // but the parent block's <version> is unrelated and stays.
+        String integPom = Files.readString(
+                subInteg.resolve("pom.xml"), StandardCharsets.UTF_8);
+        assertThat(integPom).contains("<artifactId>sub-core</artifactId>");
+        assertThat(integPom).doesNotContain("${project.version}");
+        // dependency itself preserved
+        assertThat(integPom).contains("<scope>test</scope>");
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────
 
     private void exec(Path workDir, String... command) throws Exception {

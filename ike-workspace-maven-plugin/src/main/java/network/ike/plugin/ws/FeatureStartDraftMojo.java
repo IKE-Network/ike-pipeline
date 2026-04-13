@@ -235,6 +235,11 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                     name, branchName, newVersion, "✓ created"));
         }
 
+        // Remove intra-reactor version pins (draft reports, publish removes)
+        if (!created.isEmpty()) {
+            removeIntraReactorPins(root, created, publish);
+        }
+
         // Cascade version-property updates to downstream components
         if (!created.isEmpty() && publish && !skipVersion) {
             cascadeVersionProperties(graph, root, sorted, branchName);
@@ -262,7 +267,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         // Structured markdown report
-        appendReport("ws:feature-start", buildMarkdownReport(
+        writeReport("ws:feature-start" + (publish ? "-publish" : "-draft"), buildMarkdownReport(
                 branchName, branchRows, cascadeGaps));
     }
 
@@ -877,6 +882,124 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                     getLog().warn("    Could not commit BOM update in "
                             + name + ": " + e.getMessage());
                 }
+            }
+        }
+    }
+
+    // ── Intra-reactor version pin removal ───────────────────────
+
+    /**
+     * Detect and remove intra-reactor version pins across all
+     * components. A "pin" is a {@code <version>} tag on a dependency
+     * whose {@code groupId:artifactId} matches another module within
+     * the same reactor — the reactor resolves versions automatically,
+     * so explicit pins are redundant and cause cascade issues.
+     *
+     * <p>In draft mode, reports what would be removed. In publish mode,
+     * removes the pins and commits the changes.
+     *
+     * @param root      workspace root directory
+     * @param components component names to scan
+     * @param publish   true to actually remove; false to report only
+     */
+    private void removeIntraReactorPins(File root, List<String> components,
+                                         boolean publish)
+            throws MojoExecutionException {
+        for (String name : components) {
+            File compDir = new File(root, name);
+            File rootPom = new File(compDir, "pom.xml");
+            if (!rootPom.exists()) continue;
+
+            try {
+                // Build the set of all reactor artifactIds by walking
+                // the subproject tree from the component root POM.
+                PomModel rootModel = PomModel.parse(rootPom.toPath());
+                String reactorGroupId = rootModel.groupId();
+                Set<String> reactorArtifacts = new java.util.LinkedHashSet<>();
+                collectReactorArtifacts(compDir.toPath(), rootModel,
+                        reactorArtifacts);
+
+                if (reactorArtifacts.size() <= 1) continue;  // no submodules
+
+                // Scan all POMs for pinned intra-reactor dependencies
+                List<java.io.File> allPoms = ReleaseSupport.findPomFiles(compDir);
+                boolean anyChanged = false;
+
+                for (java.io.File pom : allPoms) {
+                    PomModel model = PomModel.parse(pom.toPath());
+                    String content = model.content();
+                    String updated = content;
+
+                    for (var dep : model.allDependencies()) {
+                        String version = dep.getVersion();
+                        if (version == null) continue;
+
+                        // Check if this dependency is a reactor sibling
+                        // — any explicit <version> is redundant, whether
+                        // literal ("1.0.0-SNAPSHOT") or property-based
+                        // ("${project.version}")
+                        String depGroupId = dep.getGroupId();
+                        if (depGroupId == null) depGroupId = reactorGroupId;
+                        if (!reactorArtifacts.contains(dep.getArtifactId())) continue;
+
+                        // Found an intra-reactor pin
+                        String relPath = compDir.toPath()
+                                .relativize(pom.toPath()).toString();
+
+                        if (publish) {
+                            updated = PomModel.removeDependencyVersion(
+                                    updated, depGroupId, dep.getArtifactId());
+                            getLog().info("    removed intra-reactor pin "
+                                    + dep.getArtifactId() + " " + version
+                                    + " from " + relPath);
+                        } else {
+                            getLog().info("  [draft] " + name + "/" + relPath
+                                    + ": intra-reactor pin " + dep.getArtifactId()
+                                    + " " + version
+                                    + " would be removed (reactor resolves version)");
+                        }
+                    }
+
+                    if (publish && !updated.equals(content)) {
+                        java.nio.file.Files.writeString(pom.toPath(), updated,
+                                java.nio.charset.StandardCharsets.UTF_8);
+                        anyChanged = true;
+                    }
+                }
+
+                if (anyChanged) {
+                    ReleaseSupport.exec(compDir, getLog(), "git", "add", "-A");
+                    ReleaseSupport.exec(compDir, getLog(),
+                            "git", "commit", "-m",
+                            "build: remove intra-reactor version pins");
+                }
+            } catch (java.io.IOException e) {
+                getLog().warn("    Could not scan " + name
+                        + " for intra-reactor pins: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Recursively collect all artifactIds in a reactor tree by walking
+     * the {@code <subprojects>} (or {@code <modules>}) declarations.
+     *
+     * @param baseDir           directory of the POM being scanned
+     * @param model             parsed POM model
+     * @param reactorArtifacts  accumulator for discovered artifactIds
+     */
+    private void collectReactorArtifacts(java.nio.file.Path baseDir,
+                                          PomModel model,
+                                          Set<String> reactorArtifacts)
+            throws java.io.IOException {
+        reactorArtifacts.add(model.artifactId());
+
+        for (String sub : model.subprojects()) {
+            java.nio.file.Path subDir = baseDir.resolve(sub);
+            java.nio.file.Path subPom = subDir.resolve("pom.xml");
+            if (java.nio.file.Files.exists(subPom)) {
+                PomModel subModel = PomModel.parse(subPom);
+                collectReactorArtifacts(subDir, subModel, reactorArtifacts);
             }
         }
     }

@@ -71,6 +71,10 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
             syncFromRepos(graph, root, manifestPath);
         }
 
+        writeReport("ws:sync", "**Direction:** "
+                + ("manifest".equals(from) ? "manifest → repos" : "repos → manifest")
+                + "\n");
+
         getLog().info("");
     }
 

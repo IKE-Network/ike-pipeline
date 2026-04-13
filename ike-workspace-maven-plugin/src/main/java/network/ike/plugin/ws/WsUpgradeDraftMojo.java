@@ -103,6 +103,11 @@ public class WsUpgradeDraftMojo extends AbstractWorkspaceMojo {
             getLog().info("  (DRAFT — no files modified)");
         }
         getLog().info("");
+
+        writeReport("ws:upgrade" + (publish ? "-publish" : "-draft"),
+                "**" + applied.size() + "** upgrade(s) applied, **"
+                        + skipped.size() + "** already current."
+                        + (draft && !applied.isEmpty() ? " (DRAFT)" : "") + "\n");
     }
 
     // ── Upgrade steps ────────────────────────────────────────────

@@ -281,7 +281,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         // Structured markdown report
-        appendReport("ws:overview", buildMarkdownReport(
+        writeReport("ws:overview", buildMarkdownReport(
                 errors, graphRows, statusRows, divergenceRows, cascadeRows,
                 cloned, notCloned, modifiedComponents.size(), graph));
     }
