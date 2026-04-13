@@ -186,9 +186,14 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
 
             VcsOperations.checkout(dir, getLog(), targetBranch);
             VcsOperations.mergeSquash(dir, getLog(), branchName);
-            VcsOperations.commit(dir, getLog(), message);
-            if (push) {
-                VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
+
+            if (VcsOperations.hasStagedChanges(dir)) {
+                VcsOperations.commit(dir, getLog(), message);
+                if (push) {
+                    VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
+                }
+            } else {
+                getLog().info("    no changes after squash (version-only branch) — skipping commit");
             }
 
             if (!keepBranch) {
@@ -279,9 +284,14 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
 
         VcsOperations.checkout(dir, getLog(), targetBranch);
         VcsOperations.mergeSquash(dir, getLog(), branchName);
-        VcsOperations.commit(dir, getLog(), message);
-        if (push) {
-            VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
+
+        if (VcsOperations.hasStagedChanges(dir)) {
+            VcsOperations.commit(dir, getLog(), message);
+            if (push) {
+                VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
+            }
+        } else {
+            getLog().info("  No changes after squash — skipping commit");
         }
 
         if (!keepBranch) {

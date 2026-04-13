@@ -186,7 +186,7 @@ public class VcsOperations {
      */
     public static void commit(File dir, Log log, String message)
             throws MojoExecutionException {
-        runWithContext(dir, log, "git", "commit", "-m", message);
+        commitWithStdin(dir, log, message, "git", "commit", "-F", "-");
     }
 
     /**
@@ -200,7 +200,11 @@ public class VcsOperations {
      */
     public static void commitStaged(File dir, Log log, String message)
             throws MojoExecutionException {
-        runWithContext(dir, log, "git", "commit", "-m", message);
+        if (message == null) {
+            runWithContext(dir, log, "git", "commit");
+        } else {
+            commitWithStdin(dir, log, message, "git", "commit", "-F", "-");
+        }
     }
 
     /**
@@ -606,6 +610,59 @@ public class VcsOperations {
     private static void runWithContext(File workDir, Log log, String... command)
             throws MojoExecutionException {
         run(workDir, log, Map.of(IKE_VCS_CONTEXT, CONTEXT_VALUE), command);
+    }
+
+    /**
+     * Run a git command that reads its message from stdin via {@code -F -}.
+     *
+     * <p>This supports multi-line messages reliably — no shell quoting
+     * issues, no argument-length limits. The command array should include
+     * {@code "-F", "-"} where the message would normally follow {@code -m}.
+     *
+     * <p>Sets {@code IKE_VCS_CONTEXT} to bypass the pre-commit hook.
+     *
+     * @param workDir the repository root directory
+     * @param log     Maven logger
+     * @param message the message to write to stdin
+     * @param command the git command (including {@code -F -})
+     * @throws MojoExecutionException if the command fails
+     */
+    private static void commitWithStdin(File workDir, Log log,
+                                         String message, String... command)
+            throws MojoExecutionException {
+        log.debug("» " + String.join(" ", command) + " <<< (message via stdin)");
+        try {
+            ProcessBuilder pb = new ProcessBuilder(command)
+                    .directory(workDir)
+                    .redirectErrorStream(true);
+            pb.environment().put(IKE_VCS_CONTEXT, CONTEXT_VALUE);
+            Process proc = pb.start();
+
+            // Write message to stdin, then close to signal EOF
+            try (var out = proc.getOutputStream()) {
+                out.write(message.getBytes(StandardCharsets.UTF_8));
+                out.flush();
+            }
+
+            // Consume stdout/stderr
+            String output;
+            try (var reader = new BufferedReader(
+                    new InputStreamReader(proc.getInputStream(),
+                            StandardCharsets.UTF_8))) {
+                output = reader.lines().collect(Collectors.joining("\n"));
+            }
+
+            int exit = proc.waitFor();
+            if (exit != 0) {
+                throw new MojoExecutionException(
+                        "Command failed (exit " + exit + "): "
+                                + String.join(" ", command)
+                                + (output.isEmpty() ? "" : "\n" + output));
+            }
+        } catch (IOException | InterruptedException e) {
+            throw new MojoExecutionException(
+                    "Failed to execute: " + String.join(" ", command), e);
+        }
     }
 
     /**
