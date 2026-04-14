@@ -8,9 +8,9 @@ import network.ike.workspace.ManifestException;
 import network.ike.workspace.ManifestReader;
 import network.ike.workspace.PublishedArtifactSet;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -61,7 +61,7 @@ import java.util.stream.Collectors;
  * @see WsCreateMojo for creating a new workspace
  * @see InitWorkspaceMojo for cloning all components
  */
-@Mojo(name = "add", requiresProject = false, threadSafe = true)
+@Mojo(name = "add", projectRequired = false)
 public class WsAddMojo extends AbstractWorkspaceMojo {
 
     /**
@@ -126,7 +126,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
     public WsAddMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         repo = requireParam(repo, "repo", "Git repository URL");
 
         // Resolve workspace root
@@ -135,7 +135,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
         Path pomPath = wsDir.resolve("pom.xml");
 
         if (!Files.exists(manifestPath)) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "No workspace.yaml found in " + wsDir
                     + ". Run ws:create first.");
         }
@@ -182,7 +182,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
                 try {
                     version = ReleaseSupport.readPomVersion(
                             componentDir.resolve("pom.xml").toFile());
-                } catch (MojoExecutionException e) {
+                } catch (MojoException e) {
                     // Non-fatal — version will be null in manifest
                 }
             }
@@ -270,7 +270,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
             getLog().info(Ansi.green("  ✓ ") + "pom.xml updated (profile: with-" + component + ")");
 
         } catch (IOException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Failed to update workspace files: " + e.getMessage(), e);
         }
 
@@ -465,7 +465,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
 
     // ── Clone ────────────────────────────────────────────────────
 
-    private void cloneComponent(Path wsDir) throws MojoExecutionException {
+    private void cloneComponent(Path wsDir) throws MojoException {
         List<String> cmd = new ArrayList<>();
         cmd.add("git");
         cmd.add("clone");
@@ -1063,12 +1063,12 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
     private String readWorkspaceName(Path wsDir) {
         try {
             return ReleaseSupport.readPomArtifactId(wsDir.resolve("pom.xml").toFile());
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return "Workspace";
         }
     }
 
-    private Path findWorkspaceRoot() throws MojoExecutionException {
+    private Path findWorkspaceRoot() throws MojoException {
         Path dir = Path.of(System.getProperty("user.dir"));
         while (dir != null) {
             if (Files.exists(dir.resolve("workspace.yaml"))) {
@@ -1076,7 +1076,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
             }
             dir = dir.getParent();
         }
-        throw new MojoExecutionException(
+        throw new MojoException(
                 "Cannot find workspace.yaml. Run from within a workspace "
                 + "directory or use ws:create first.");
     }

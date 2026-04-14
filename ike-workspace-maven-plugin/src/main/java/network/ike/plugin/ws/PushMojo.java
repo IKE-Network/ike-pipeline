@@ -3,9 +3,9 @@ package network.ike.plugin.ws;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
 import network.ike.workspace.WorkspaceGraph;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.util.LinkedHashSet;
@@ -25,7 +25,7 @@ import java.util.Set;
  * mvn ws:push -Dgroup=core
  * }</pre>
  */
-@Mojo(name = "push", requiresProject = false, threadSafe = true)
+@Mojo(name = "push", projectRequired = false)
 public class PushMojo extends AbstractWorkspaceMojo {
 
     /** Creates this goal instance. */
@@ -44,7 +44,7 @@ public class PushMojo extends AbstractWorkspaceMojo {
     String group;
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         if (isWorkspaceMode()) {
             executeWorkspace();
         } else {
@@ -52,7 +52,7 @@ public class PushMojo extends AbstractWorkspaceMojo {
         }
     }
 
-    private void executeWorkspace() throws MojoExecutionException {
+    private void executeWorkspace() throws MojoException {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -93,7 +93,7 @@ public class PushMojo extends AbstractWorkspaceMojo {
 
                 getLog().info(Ansi.green("  ✓ ") + name + " → " + remote + "/" + branch);
                 pushed++;
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().warn(Ansi.red("  ✗ ") + name + " — " + e.getMessage());
                 failed++;
             }
@@ -112,7 +112,7 @@ public class PushMojo extends AbstractWorkspaceMojo {
                 + " skipped, " + failed + " failed.\n");
     }
 
-    private void executeSingleRepo(File dir) throws MojoExecutionException {
+    private void executeSingleRepo(File dir) throws MojoException {
         getLog().info("");
         getLog().info("IKE VCS Bridge — Push");
         getLog().info("══════════════════════════════════════════════════════════════");

@@ -8,9 +8,9 @@ import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,7 +47,7 @@ import java.util.LinkedHashSet;
  *
  * @see CheckpointSupport the per-component tagging engine
  */
-@Mojo(name = "checkpoint-draft", requiresProject = false, threadSafe = true)
+@Mojo(name = "checkpoint-draft", projectRequired = false)
 public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
 
     private static final DateTimeFormatter ISO_UTC =
@@ -95,7 +95,7 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
     public WsCheckpointDraftMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -207,14 +207,14 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
         try {
             Files.createDirectories(checkpointsDir);
         } catch (IOException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Cannot create checkpoints directory", e);
         }
         Path checkpointFile = checkpointsDir.resolve(checkpointFileName(name));
         try {
             Files.writeString(checkpointFile, yamlContent, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Failed to write " + checkpointFile, e);
         }
 
@@ -272,10 +272,10 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
      *
      * @param dir     the component directory to checkpoint
      * @param tagName the tag name to apply
-     * @throws MojoExecutionException if the tagging operation fails
+     * @throws MojoException if the tagging operation fails
      */
     protected void checkpointComponent(File dir, String tagName)
-            throws MojoExecutionException {
+            throws MojoException {
         CheckpointSupport.checkpoint(dir, tagName, getLog());
     }
 
@@ -371,25 +371,25 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
     private String gitFullSha(File dir) {
         try {
             return ReleaseSupport.execCapture(dir, "git", "rev-parse", "HEAD");
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return "unknown";
         }
     }
 
-    private String readVersion(File dir) throws MojoExecutionException {
+    private String readVersion(File dir) throws MojoException {
         return ReleaseSupport.readPomVersion(new File(dir, "pom.xml"));
     }
 
     private String resolveAuthor(File root) {
         try {
             return ReleaseSupport.execCapture(root, "git", "config", "user.name");
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return System.getProperty("user.name", "unknown");
         }
     }
 
     private String snapshotTestingContext(WorkspaceGraph graph)
-            throws MojoExecutionException {
+            throws MojoException {
         if (issueRepo == null || issueRepo.isBlank()) return null;
 
         String milestoneName = milestone;
@@ -425,7 +425,7 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
         return context.toYaml("  ");
     }
 
-    private String deriveCheckpointName(File root) throws MojoExecutionException {
+    private String deriveCheckpointName(File root) throws MojoException {
         String branch = gitBranch(root);
         String safeBranch = branch.replace('/', '-');
         String compactTime = COMPACT_UTC.format(Instant.now());

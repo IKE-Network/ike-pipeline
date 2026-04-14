@@ -4,8 +4,8 @@ import network.ike.plugin.ReleaseSupport;
 import network.ike.workspace.Component;
 import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.WorkspaceGraph;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
  *
  * <pre>{@code mvn ws:fix}</pre>
  */
-@Mojo(name = "fix", requiresProject = false, threadSafe = true)
+@Mojo(name = "fix", projectRequired = false)
 public class WsFixMojo extends AbstractWorkspaceMojo {
 
     private static final Pattern GROUP_ID_PATTERN =
@@ -42,7 +42,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
     public WsFixMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         getLog().info("");
         getLog().info("IKE Workspace Fix — sync YAML from POM truth");
         getLog().info("══════════════════════════════════════════════════════════════");
@@ -80,7 +80,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
                     getLog().info("  " + name + ": version (null) → " + pomVersion);
                     versionUpdates.put(name, pomVersion);
                 }
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().warn("  " + name + ": could not read POM version — "
                         + e.getMessage());
             }
@@ -100,7 +100,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
                         groupIdUpdates.put(name, pomGroupId);
                     }
                 }
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().warn("  " + name + ": could not read POM groupId — "
                         + e.getMessage());
             }
@@ -129,7 +129,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
                 updateGroupIdFields(manifestPath, groupIdUpdates);
             }
         } catch (IOException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Failed to update workspace.yaml: " + e.getMessage(), e);
         }
 
@@ -158,9 +158,9 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
      *
      * @param pomFile the POM file to read
      * @return the groupId, or null if not found
-     * @throws MojoExecutionException if the file cannot be read
+     * @throws MojoException if the file cannot be read
      */
-    static String readPomGroupId(File pomFile) throws MojoExecutionException {
+    static String readPomGroupId(File pomFile) throws MojoException {
         try {
             String content = Files.readString(pomFile.toPath(), StandardCharsets.UTF_8);
 
@@ -182,7 +182,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
 
             return null;
         } catch (IOException e) {
-            throw new MojoExecutionException("Failed to read " + pomFile, e);
+            throw new MojoException("Failed to read " + pomFile, e);
         }
     }
 

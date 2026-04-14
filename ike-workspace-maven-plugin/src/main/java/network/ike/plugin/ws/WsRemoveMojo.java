@@ -2,9 +2,9 @@ package network.ike.plugin.ws;
 
 import network.ike.workspace.WorkspaceGraph;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,7 +37,7 @@ import java.util.regex.Pattern;
  *
  * @see WsAddMojo for adding a component
  */
-@Mojo(name = "remove", requiresProject = false, threadSafe = true)
+@Mojo(name = "remove", projectRequired = false)
 public class WsRemoveMojo extends AbstractWorkspaceMojo {
 
     /**
@@ -62,7 +62,7 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
     public WsRemoveMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         component = requireParam(component, "component",
                 "Component name to remove");
 
@@ -78,7 +78,7 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
         if (new File(compDir, ".git").exists()) {
             String currentBranch = gitBranch(compDir);
             if (!currentBranch.equals("main")) {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "Cannot remove a component from a feature branch ('"
                         + currentBranch + "'). Switch to 'main' first. "
                         + "Workspace composition changes belong on main.");
@@ -87,7 +87,7 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
             // Verify clean working tree — no uncommitted changes
             String status = gitStatus(compDir);
             if (!status.isEmpty()) {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "Cannot remove '" + component + "' — working tree has "
                         + "uncommitted changes. Commit or stash first.");
             }
@@ -97,14 +97,14 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
         WorkspaceGraph graph = loadGraph();
 
         if (!graph.manifest().components().containsKey(component)) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Component '" + component + "' not found in workspace.yaml.");
         }
 
         // Check for downstream dependents
         List<String> dependents = graph.cascade(component);
         if (!dependents.isEmpty() && !force) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Cannot remove '" + component + "' — the following components "
                     + "depend on it: " + dependents + "\n"
                     + "Use -Dforce=true to remove anyway.");
@@ -133,7 +133,7 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
             getLog().info(Ansi.green("  ✓ ") + "pom.xml updated — profile with-" + component + " removed");
 
         } catch (IOException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Failed to update workspace files: " + e.getMessage(), e);
         }
 
@@ -262,7 +262,7 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
     /**
      * Recursively delete a directory tree.
      */
-    private void deleteDirectory(Path dir) throws MojoExecutionException {
+    private void deleteDirectory(Path dir) throws MojoException {
         try {
             // Walk the tree bottom-up and delete
             Files.walk(dir)
@@ -276,7 +276,7 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
                         }
                     });
         } catch (IOException | RuntimeException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Failed to delete directory " + dir + ": " + e.getMessage(), e);
         }
     }

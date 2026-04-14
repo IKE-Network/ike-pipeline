@@ -2,9 +2,9 @@ package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseNotesSupport;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -26,7 +26,7 @@ import java.nio.file.Path;
  * mvn ws:release-notes -Dmilestone="ike-tooling v57" -Doutput=release-notes.md
  * }</pre>
  */
-@Mojo(name = "release-notes", requiresProject = false, threadSafe = true)
+@Mojo(name = "release-notes", projectRequired = false)
 public class WsReleaseNotesMojo extends AbstractWorkspaceMojo {
 
     /**
@@ -51,13 +51,13 @@ public class WsReleaseNotesMojo extends AbstractWorkspaceMojo {
     public WsReleaseNotesMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         milestone = requireParam(milestone, "milestone", "Milestone name");
 
         String notes = ReleaseNotesSupport.generate(repo, milestone, getLog());
 
         if (notes == null) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Milestone not found: \"" + milestone + "\" in " + repo);
         }
 
@@ -67,7 +67,7 @@ public class WsReleaseNotesMojo extends AbstractWorkspaceMojo {
                 Files.writeString(outPath, notes, StandardCharsets.UTF_8);
                 getLog().info("Release notes written to " + outPath.toAbsolutePath());
             } catch (IOException e) {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "Failed to write release notes: " + e.getMessage(), e);
             }
         } else {

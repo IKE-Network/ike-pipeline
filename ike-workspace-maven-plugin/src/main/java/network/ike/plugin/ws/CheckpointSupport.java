@@ -2,8 +2,8 @@ package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.Log;
 
 import java.io.File;
 
@@ -33,10 +33,10 @@ class CheckpointSupport {
      * @param dir     component git root directory
      * @param tagName the tag to create (e.g., {@code checkpoint/post-migration})
      * @param log     Maven logger
-     * @throws MojoExecutionException if tagging or pushing fails
+     * @throws MojoException if tagging or pushing fails
      */
     static void checkpoint(File dir, String tagName, Log log)
-            throws MojoExecutionException {
+            throws MojoException {
         File gitRoot = ReleaseSupport.gitRoot(dir);
 
         // Tag current HEAD
@@ -65,7 +65,7 @@ class CheckpointSupport {
      * @param log     Maven logger
      */
     static void preview(File dir, String tagName, Log log)
-            throws MojoExecutionException {
+            throws MojoException {
         File gitRoot = ReleaseSupport.gitRoot(dir);
         String shortSha = ReleaseSupport.execCapture(gitRoot,
                 "git", "rev-parse", "--short", "HEAD");

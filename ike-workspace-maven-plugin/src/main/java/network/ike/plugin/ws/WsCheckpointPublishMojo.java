@@ -2,8 +2,8 @@ package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
 
 import java.io.File;
 
@@ -18,26 +18,26 @@ import java.io.File;
  *
  * @see WsCheckpointDraftMojo
  */
-@Mojo(name = "checkpoint-publish", requiresProject = false, threadSafe = true)
+@Mojo(name = "checkpoint-publish", projectRequired = false)
 public class WsCheckpointPublishMojo extends WsCheckpointDraftMojo {
 
     /** Creates this goal instance. */
     public WsCheckpointPublishMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         publish = true;
         autoAlign();
         super.execute();
     }
 
-    private void autoAlign() throws MojoExecutionException {
+    private void autoAlign() throws MojoException {
         File root = workspaceRoot();
         String mvn = WsReleaseDraftMojo.resolveMvnCommand(root);
         getLog().info("Auto-aligning workspace versions...");
         try {
             ReleaseSupport.exec(root, getLog(), mvn, "ws:align-apply", "-B");
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             getLog().warn("Auto-alignment completed with warnings: "
                     + e.getMessage());
         }

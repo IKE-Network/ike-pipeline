@@ -4,9 +4,9 @@ import network.ike.plugin.ReleaseSupport;
 
 import network.ike.workspace.Component;
 import network.ike.workspace.WorkspaceGraph;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.util.LinkedHashSet;
@@ -25,7 +25,7 @@ import java.util.Set;
  * mvn ike:pull -Dgroup=studio
  * }</pre>
  */
-@Mojo(name = "pull", requiresProject = false, threadSafe = true)
+@Mojo(name = "pull", projectRequired = false)
 public class PullWorkspaceMojo extends AbstractWorkspaceMojo {
 
     /**
@@ -38,7 +38,7 @@ public class PullWorkspaceMojo extends AbstractWorkspaceMojo {
     public PullWorkspaceMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -75,7 +75,7 @@ public class PullWorkspaceMojo extends AbstractWorkspaceMojo {
                 ReleaseSupport.exec(dir, getLog(),
                         "git", "pull", "--rebase");
                 pulled++;
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().warn(Ansi.red("  ✗ ") + name + " — pull failed: " + e.getMessage());
                 failed++;
             }

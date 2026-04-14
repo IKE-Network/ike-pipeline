@@ -3,8 +3,8 @@ package network.ike.plugin.ws;
 import network.ike.plugin.ReleaseSupport;
 import network.ike.workspace.Component;
 import network.ike.workspace.WorkspaceGraph;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -27,14 +27,14 @@ import java.nio.file.Path;
  *
  * <p>Never blocks — warnings only. Always exits 0.
  */
-@Mojo(name = "check-branch", requiresProject = false, threadSafe = true)
+@Mojo(name = "check-branch", projectRequired = false)
 public class CheckBranchMojo extends AbstractWorkspaceMojo {
 
     /** Creates this goal instance. */
     public CheckBranchMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         if (!isWorkspaceMode()) {
             return; // Bare repo — nothing to check
         }

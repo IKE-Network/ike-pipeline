@@ -4,9 +4,9 @@ import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,7 +44,7 @@ import java.util.TreeSet;
  *
  * @see FeatureStartDraftMojo for creating feature branches
  */
-@Mojo(name = "switch-draft", requiresProject = false, threadSafe = true)
+@Mojo(name = "switch-draft", projectRequired = false)
 public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
 
     /** Creates this goal instance. */
@@ -66,9 +66,9 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
     boolean publish;
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         if (!isWorkspaceMode()) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "ws:switch requires a workspace (workspace.yaml). "
                     + "Use 'git checkout <branch>' for single-repo switching.");
         }
@@ -129,7 +129,7 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
 
         // Validate the target branch exists somewhere (or is main)
         if (!branch.equals("main") && !branchComponents.containsKey(branch)) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Branch '" + branch + "' does not exist in any component. "
                     + "Available: " + branchComponents.keySet());
         }
@@ -166,7 +166,7 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
                 sb.append("  ").append(name).append("\n");
             }
             sb.append("Commit or stash, then try again.");
-            throw new MojoExecutionException(sb.toString());
+            throw new MojoException(sb.toString());
         }
 
         // ── Switch components ────────────────────────────────────
@@ -236,14 +236,14 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
      * @param branchComponents map of branch name to components that have it
      * @param currentBranch    the current majority branch
      * @return the selected branch name
-     * @throws MojoExecutionException if no console or invalid selection
+     * @throws MojoException if no console or invalid selection
      */
     private String promptForBranch(Map<String, Set<String>> branchComponents,
                                     String currentBranch)
-            throws MojoExecutionException {
+            throws MojoException {
         java.io.Console console = System.console();
         if (console == null) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "No interactive console available. Use -Dbranch=<name> to specify target.");
         }
 
@@ -267,13 +267,13 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
 
         String input = console.readLine("  Select branch [1-" + branches.size() + "]: ");
         if (input == null || input.isBlank()) {
-            throw new MojoExecutionException("No selection made.");
+            throw new MojoException("No selection made.");
         }
 
         try {
             int idx = Integer.parseInt(input.trim()) - 1;
             if (idx < 0 || idx >= branches.size()) {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "Invalid selection: " + input + ". Expected 1-" + branches.size());
             }
             return branches.get(idx);
@@ -283,7 +283,7 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
             if (branchComponents.containsKey(typed) || "main".equals(typed)) {
                 return typed;
             }
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Unknown branch: " + typed + ". Available: " + branchComponents.keySet());
         }
     }
@@ -292,7 +292,7 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
      * Update workspace.yaml branch fields and commit the change.
      */
     private void updateWorkspaceYaml(List<String> components, String targetBranch)
-            throws MojoExecutionException {
+            throws MojoException {
         try {
             Path manifestPath = resolveManifest();
             Map<String, String> updates = new LinkedHashMap<>();
@@ -310,7 +310,7 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
      * Switch the workspace repo itself to the target branch and commit
      * the workspace.yaml update.
      */
-    private void switchWorkspaceRepo(String targetBranch) throws MojoExecutionException {
+    private void switchWorkspaceRepo(String targetBranch) throws MojoException {
         try {
             Path manifestPath = resolveManifest();
             File wsRoot = manifestPath.getParent().toFile();
@@ -335,7 +335,7 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
             }
 
             VcsOperations.writeVcsState(wsRoot, VcsState.Action.SWITCH);
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             getLog().warn("  Could not switch workspace repo: " + e.getMessage());
         }
     }

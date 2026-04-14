@@ -4,9 +4,9 @@ import network.ike.plugin.ReleaseSupport;
 
 import network.ike.workspace.Component;
 import network.ike.workspace.WorkspaceGraph;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import network.ike.workspace.VersionSupport;
 
@@ -51,7 +51,7 @@ import java.util.Map;
  * mvn ike:ws-release -Dcomponent=ike-pipeline  # release one specific component
  * }</pre>
  */
-@Mojo(name = "release-draft", requiresProject = false, threadSafe = true)
+@Mojo(name = "release-draft", projectRequired = false)
 public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
     private static final DateTimeFormatter ISO_UTC =
@@ -98,7 +98,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
     public WsReleaseDraftMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -221,7 +221,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
                 getLog().error("Failed at: " + rc.name);
                 getLog().error("Remaining: " + releaseOrder.subList(
                         releaseOrder.indexOf(name) + 1, releaseOrder.size()));
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "Workspace release failed at " + rc.name, e);
             }
         }
@@ -253,7 +253,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
      */
     private void createGitHubReleases(File root,
                                         Map<String, String> releasedVersions)
-            throws MojoExecutionException {
+            throws MojoException {
         for (var entry : releasedVersions.entrySet()) {
             String name = entry.getKey();
             String version = entry.getValue();
@@ -296,7 +296,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
                 ReleaseSupport.exec(compDir, getLog(),
                         cmd.toArray(String[]::new));
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 // Release may already exist — append assets
                 if (!artifacts.isEmpty()) {
                     try {
@@ -306,7 +306,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
                         uploadCmd.addAll(artifacts);
                         ReleaseSupport.exec(compDir, getLog(),
                                 uploadCmd.toArray(String[]::new));
-                    } catch (MojoExecutionException uploadErr) {
+                    } catch (MojoException uploadErr) {
                         getLog().warn("  Could not upload to release " + tag
                                 + ": " + uploadErr.getMessage());
                     }
@@ -443,7 +443,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
                         "git", "commit", "-m",
                         "chore: bump dependency versions after upstream release");
             }
-        } catch (IOException | MojoExecutionException e) {
+        } catch (IOException | MojoException e) {
             getLog().warn("Could not update parent versions in " + rc.name + ": " + e);
         }
     }
@@ -498,7 +498,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
     // ── Helper: write checkpoint YAML ────────────────────────────────
 
     private void writeCheckpoint(File root, WorkspaceGraph graph, String name)
-            throws MojoExecutionException {
+            throws MojoException {
         Path checkpointsDir = root.toPath().resolve("checkpoints");
         try {
             Files.createDirectories(checkpointsDir);

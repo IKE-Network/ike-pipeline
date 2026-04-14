@@ -4,9 +4,9 @@ import network.ike.workspace.Component;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -34,7 +34,7 @@ import java.util.List;
  *
  * @see FeatureFinishSquashDraftMojo for clean single-commit merges (default)
  */
-@Mojo(name = "feature-finish-merge-draft", requiresProject = false, threadSafe = true)
+@Mojo(name = "feature-finish-merge-draft", projectRequired = false)
 public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
 
     /** Creates this goal instance. */
@@ -71,7 +71,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
     boolean publish;
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         if (!isWorkspaceMode()) {
             if (feature == null || feature.isBlank()) {
                 feature = requireParam(feature, "feature",
@@ -94,7 +94,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
         executeWorkspaceMode(branchName);
     }
 
-    private void executeWorkspaceMode(String branchName) throws MojoExecutionException {
+    private void executeWorkspaceMode(String branchName) throws MojoException {
         boolean draft = !publish;
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
@@ -151,7 +151,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
                 getLog().warn(sb.toString());
                 getLog().warn("");
             } else {
-                throw new MojoExecutionException(sb.toString());
+                throw new MojoException(sb.toString());
             }
         }
 
@@ -244,7 +244,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
         return sb.toString();
     }
 
-    private void executeBareMode(String branchName) throws MojoExecutionException {
+    private void executeBareMode(String branchName) throws MojoException {
         boolean draft = !publish;
         File dir = new File(System.getProperty("user.dir"));
 
@@ -256,11 +256,11 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
 
         String currentBranch = gitBranch(dir);
         if (!currentBranch.equals(branchName)) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Not on " + branchName + " (currently on " + currentBranch + ")");
         }
         if (!gitStatus(dir).isEmpty()) {
-            throw new MojoExecutionException("Uncommitted changes. Commit or stash first.");
+            throw new MojoException("Uncommitted changes. Commit or stash first.");
         }
 
         if (draft) {

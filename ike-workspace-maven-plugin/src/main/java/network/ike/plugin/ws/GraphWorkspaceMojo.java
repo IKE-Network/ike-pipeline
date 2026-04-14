@@ -3,9 +3,9 @@ package network.ike.plugin.ws;
 import network.ike.workspace.Component;
 import network.ike.workspace.Dependency;
 import network.ike.workspace.WorkspaceGraph;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,7 +22,7 @@ import java.util.Map;
  * mvn ike:graph -Dformat=dot
  * }</pre>
  */
-@Mojo(name = "graph", requiresProject = false, threadSafe = true)
+@Mojo(name = "graph", projectRequired = false)
 public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
 
     /**
@@ -35,7 +35,7 @@ public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
     public GraphWorkspaceMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         WorkspaceGraph graph = loadGraph();
 
         if ("dot".equalsIgnoreCase(format)) {

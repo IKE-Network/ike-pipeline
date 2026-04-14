@@ -1,6 +1,8 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.api.plugin.Log;
+
+import java.util.function.Supplier;
 
 /**
  * A {@link Log} wrapper that captures info-level output to a
@@ -8,8 +10,8 @@ import org.apache.maven.plugin.logging.Log;
  *
  * <p>Goals that want report output wrap their logger at the start
  * of {@code execute()} and call {@link #captured()} at the end.
- * Only {@code info} messages are captured — debug/warn/error go
- * straight through without capture.
+ * Only {@code info} and {@code warn} messages are captured —
+ * debug/error go straight through without capture.
  *
  * <p>Thread-safe: the StringBuilder is local to each Mojo instance.
  */
@@ -48,12 +50,26 @@ final class ReportLog implements Log {
         delegate.info(error);
     }
 
+    @Override
+    public void info(Supplier<String> content) {
+        delegate.info(content);
+        captured.append(content.get()).append('\n');
+    }
+
+    @Override
+    public void info(Supplier<String> content, Throwable error) {
+        delegate.info(content, error);
+        captured.append(content.get()).append('\n');
+    }
+
     // ── Debug (pass-through) ────────────────────────────────────────
 
     @Override public boolean isDebugEnabled() { return delegate.isDebugEnabled(); }
     @Override public void debug(CharSequence content) { delegate.debug(content); }
     @Override public void debug(CharSequence content, Throwable error) { delegate.debug(content, error); }
     @Override public void debug(Throwable error) { delegate.debug(error); }
+    @Override public void debug(Supplier<String> content) { delegate.debug(content); }
+    @Override public void debug(Supplier<String> content, Throwable error) { delegate.debug(content, error); }
 
     // ── Warn (captured) ─────────────────────────────────────────────
 
@@ -72,6 +88,8 @@ final class ReportLog implements Log {
     }
 
     @Override public void warn(Throwable error) { delegate.warn(error); }
+    @Override public void warn(Supplier<String> content) { delegate.warn(content); }
+    @Override public void warn(Supplier<String> content, Throwable error) { delegate.warn(content, error); }
 
     // ── Error (pass-through) ────────────────────────────────────────
 
@@ -79,4 +97,6 @@ final class ReportLog implements Log {
     @Override public void error(CharSequence content) { delegate.error(content); }
     @Override public void error(CharSequence content, Throwable error) { delegate.error(content, error); }
     @Override public void error(Throwable error) { delegate.error(error); }
+    @Override public void error(Supplier<String> content) { delegate.error(content); }
+    @Override public void error(Supplier<String> content, Throwable error) { delegate.error(content, error); }
 }

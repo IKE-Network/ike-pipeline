@@ -7,9 +7,9 @@ import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,7 +42,7 @@ import java.util.TreeSet;
  *
  * @see FeatureStartDraftMojo for creating feature branches
  */
-@Mojo(name = "feature-abandon-draft", requiresProject = false, threadSafe = true)
+@Mojo(name = "feature-abandon-draft", projectRequired = false)
 public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
 
     @Parameter(property = "feature")
@@ -68,7 +68,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
     public FeatureAbandonDraftMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         if (!isWorkspaceMode()) {
             executeBareMode();
             return;
@@ -77,7 +77,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
         executeWorkspaceMode();
     }
 
-    private void executeWorkspaceMode() throws MojoExecutionException {
+    private void executeWorkspaceMode() throws MojoException {
         boolean draft = !publish;
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
@@ -143,7 +143,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
             // Check for uncommitted changes
             String status = gitStatus(dir);
             if (!status.isEmpty()) {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         name + " has uncommitted changes. Commit, stash, or discard before abandoning.");
             }
 
@@ -156,7 +156,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
                 if (!unmerged.isBlank()) {
                     unmergedCount = (int) unmerged.lines().count();
                 }
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 // Target branch may not exist locally
             }
 
@@ -205,10 +205,10 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
                         Ansi.YELLOW + "  Abandon feature/%s? (yes/no): " + Ansi.RESET,
                         feature);
                 if (response == null || !response.trim().toLowerCase().startsWith("y")) {
-                    throw new MojoExecutionException("Abandon cancelled.");
+                    throw new MojoException("Abandon cancelled.");
                 }
             } else {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "No interactive console for confirmation. Use -Dforce=true to skip.");
             }
         }
@@ -227,7 +227,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
             if (deleteRemote) {
                 try {
                     VcsOperations.deleteRemoteBranch(dir, getLog(), "origin", branchName);
-                } catch (MojoExecutionException e) {
+                } catch (MojoException e) {
                     getLog().warn("    could not delete remote branch: " + e.getMessage());
                 }
             }
@@ -280,7 +280,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
      * the user to choose.
      */
     private String detectFeatureBranch(File root, List<String> components)
-            throws MojoExecutionException {
+            throws MojoException {
         Set<String> features = new TreeSet<>();
 
         for (String name : components) {
@@ -294,7 +294,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
         }
 
         if (features.isEmpty()) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "No components are on a feature branch. Nothing to abandon.");
         }
 
@@ -331,14 +331,14 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
             }
         }
 
-        throw new MojoExecutionException(
+        throw new MojoException(
                 "Multiple features found: " + features
                         + ". Specify with -Dfeature=<name>.");
     }
 
     // ── Bare mode ───────────────────────────────────────────────────
 
-    private void executeBareMode() throws MojoExecutionException {
+    private void executeBareMode() throws MojoException {
         boolean draft = !publish;
         File dir = new File(System.getProperty("user.dir"));
 
@@ -351,7 +351,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
             if (currentBranch.startsWith("feature/")) {
                 feature = currentBranch.substring("feature/".length());
             } else {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "Not on a feature branch (on " + currentBranch
                                 + "). Specify with -Dfeature=<name>.");
             }
@@ -367,11 +367,11 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         if (!currentBranch.equals(branchName)) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Not on " + branchName + " (currently on " + currentBranch + ")");
         }
         if (!gitStatus(dir).isEmpty()) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Uncommitted changes. Commit, stash, or discard first.");
         }
 
@@ -392,10 +392,10 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
                         Ansi.YELLOW + "  Abandon feature/%s? (yes/no): " + Ansi.RESET,
                         feature);
                 if (response == null || !response.trim().toLowerCase().startsWith("y")) {
-                    throw new MojoExecutionException("Abandon cancelled.");
+                    throw new MojoException("Abandon cancelled.");
                 }
             } else {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "No interactive console for confirmation. Use -Dforce=true to skip.");
             }
         }
@@ -411,7 +411,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
             try {
                 VcsOperations.deleteRemoteBranch(dir, getLog(), "origin", branchName);
                 getLog().info(Ansi.green("  ✓ ") + "Deleted remote branch");
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().warn("  Could not delete remote branch: " + e.getMessage());
             }
         }
@@ -425,7 +425,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
     private void abandonWorkspaceRepo(Path manifestPath,
                                        List<String> components,
                                        String branchName)
-            throws MojoExecutionException {
+            throws MojoException {
         try {
             Map<String, String> updates = new LinkedHashMap<>();
             for (String name : components) {
@@ -449,7 +449,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
                 try {
                     ReleaseSupport.exec(wsRoot, getLog(),
                             "git", "cherry-pick", branchName);
-                } catch (MojoExecutionException e) {
+                } catch (MojoException e) {
                     ManifestWriter.updateBranches(manifestPath, updates);
                     ReleaseSupport.exec(wsRoot, getLog(), "git", "add", "workspace.yaml");
                     if (VcsOperations.hasStagedChanges(wsRoot)) {
@@ -463,7 +463,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
                 if (deleteRemote) {
                     try {
                         VcsOperations.deleteRemoteBranch(wsRoot, getLog(), "origin", branchName);
-                    } catch (MojoExecutionException e) {
+                    } catch (MojoException e) {
                         getLog().warn("  Could not delete workspace remote branch: "
                                 + e.getMessage());
                     }

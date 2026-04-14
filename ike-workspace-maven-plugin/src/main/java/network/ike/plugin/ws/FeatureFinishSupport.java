@@ -8,8 +8,8 @@ import network.ike.workspace.VersionSupport;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.Log;
 
 import java.io.File;
 import java.io.IOException;
@@ -46,11 +46,11 @@ class FeatureFinishSupport {
      * @param mojo       the calling mojo (for gitBranch access)
      * @param log        Maven logger
      * @return the detected feature name (without "feature/" prefix)
-     * @throws MojoExecutionException if no feature branch is detected
+     * @throws MojoException if no feature branch is detected
      */
     static String detectFeature(File root, List<String> components,
                                  AbstractWorkspaceMojo mojo, Log log)
-            throws MojoExecutionException {
+            throws MojoException {
         Set<String> features = new TreeSet<>();
 
         // Check workspace root branch
@@ -72,7 +72,7 @@ class FeatureFinishSupport {
         }
 
         if (features.isEmpty()) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "No components are on a feature branch. "
                     + "Specify -Dfeature=<name> or switch to a feature branch.");
         }
@@ -84,7 +84,7 @@ class FeatureFinishSupport {
         }
 
         // Multiple features — list them for the user
-        throw new MojoExecutionException(
+        throw new MojoException(
                 "Multiple feature branches detected: " + features
                 + ". Specify -Dfeature=<name> to disambiguate.");
     }
@@ -171,7 +171,7 @@ class FeatureFinishSupport {
                             ? line.substring(line.indexOf(' ') + 1) : line;
                     sb.append("- ").append(msg).append("\n");
                 }
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 log.debug("Could not get log for " + name + ": " + e.getMessage());
             }
         }
@@ -190,7 +190,7 @@ class FeatureFinishSupport {
                     sb.append("- ").append(msg).append("\n");
                 }
             }
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             log.debug("Could not get workspace log: " + e.getMessage());
         }
 
@@ -203,7 +203,7 @@ class FeatureFinishSupport {
      */
     static String stripBranchVersion(File dir, Component component,
                                       String branchName, Log log)
-            throws MojoExecutionException {
+            throws MojoException {
         // Read actual version from POM on disk — workspace.yaml may be stale
         // if the branch update commit failed (#83).
         String currentVersion = readCurrentVersion(dir, log);
@@ -234,14 +234,14 @@ class FeatureFinishSupport {
      * Strip branch-qualified version in bare mode.
      */
     static String stripBranchVersionBare(File dir, String branchName, Log log)
-            throws MojoExecutionException {
+            throws MojoException {
         File pom = new File(dir, "pom.xml");
         if (!pom.exists()) return null;
 
         String currentVersion;
         try {
             currentVersion = ReleaseSupport.readPomVersion(pom);
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return null;
         }
 
@@ -267,7 +267,7 @@ class FeatureFinishSupport {
      * Delete feature branch locally and remotely.
      */
     static void deleteBranch(File dir, Log log, String branchName)
-            throws MojoExecutionException {
+            throws MojoException {
         VcsOperations.deleteBranch(dir, log, branchName);
         log.info("    deleted local branch: " + branchName);
 
@@ -293,7 +293,7 @@ class FeatureFinishSupport {
             try {
                 ReleaseSupport.cleanRemoteSiteDir(
                         new File(root, name), log, siteDisk);
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 log.debug("No snapshot site to clean for " + name
                         + ": " + e.getMessage());
             }
@@ -324,7 +324,7 @@ class FeatureFinishSupport {
                                     + " after feature/" + feature);
                 }
             }
-        } catch (IOException | MojoExecutionException e) {
+        } catch (IOException | MojoException e) {
             log.warn("  Could not update workspace.yaml: " + e.getMessage());
         }
     }
@@ -337,14 +337,14 @@ class FeatureFinishSupport {
     static void mergeWorkspaceRepo(Path manifestPath, String branchName,
                                      String targetBranch, boolean keepBranch,
                                      boolean push, Log log)
-            throws MojoExecutionException {
+            throws MojoException {
         File wsRoot = manifestPath.getParent().toFile();
         if (!new File(wsRoot, ".git").exists()) return;
 
         String wsBranch = null;
         try {
             wsBranch = VcsOperations.currentBranch(wsRoot);
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return;
         }
 
@@ -361,7 +361,7 @@ class FeatureFinishSupport {
         if (!keepBranch) {
             try {
                 deleteBranch(wsRoot, log, branchName);
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 log.warn("  Could not delete ws branch: " + e.getMessage());
             }
         }
@@ -446,7 +446,7 @@ class FeatureFinishSupport {
                     try {
                         VcsOperations.deleteBranch(dir, log, branch);
                         log.info("    deleted: " + entry.getKey() + "/" + branch);
-                    } catch (MojoExecutionException e) {
+                    } catch (MojoException e) {
                         log.warn("    could not delete " + entry.getKey()
                                 + "/" + branch + ": " + e.getMessage());
                     }
@@ -502,10 +502,10 @@ class FeatureFinishSupport {
      * @param dir        the component directory (now on the target branch)
      * @param branchName the feature branch that was just merged
      * @param log        Maven logger
-     * @throws MojoExecutionException if POM files cannot be scanned or committed
+     * @throws MojoException if POM files cannot be scanned or committed
      */
     static void verifyAndFixQualifiers(File dir, String branchName, Log log)
-            throws MojoExecutionException {
+            throws MojoException {
         String qualifier = qualifierFromBranch(branchName);
         if (qualifier == null) return;
 
@@ -573,7 +573,7 @@ class FeatureFinishSupport {
         List<File> allPoms;
         try {
             allPoms = ReleaseSupport.findPomFiles(dir);
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return contaminated;
         }
 
@@ -595,7 +595,7 @@ class FeatureFinishSupport {
     private static String readCurrentVersion(File dir, Log log) {
         try {
             return ReleaseSupport.readPomVersion(new File(dir, "pom.xml"));
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             log.warn("    Could not read version from " + dir.getName()
                     + "/pom.xml: " + e.getMessage());
             return null;
@@ -667,12 +667,12 @@ class FeatureFinishSupport {
      * @param dir       the component directory containing POM files
      * @param qualifier the branch qualifier to strip (e.g., "search-provider-diagnostics")
      * @param log       Maven logger
-     * @throws MojoExecutionException if POM files cannot be located
+     * @throws MojoException if POM files cannot be located
      */
     private static void stripAllBranchQualifiedVersions(File dir,
                                                          String qualifier,
                                                          Log log)
-            throws MojoExecutionException {
+            throws MojoException {
         if (qualifier == null) return;
 
         List<File> allPoms = ReleaseSupport.findPomFiles(dir);
@@ -734,7 +734,7 @@ class FeatureFinishSupport {
     }
 
     static void setAllVersions(File dir, String oldVersion, String newVersion,
-                                 Log log) throws MojoExecutionException {
+                                 Log log) throws MojoException {
         File pom = new File(dir, "pom.xml");
         ReleaseSupport.setPomVersion(pom, oldVersion, newVersion);
 

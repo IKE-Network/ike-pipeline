@@ -2,9 +2,9 @@ package network.ike.plugin.ws;
 
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -30,7 +30,7 @@ import java.util.TreeSet;
  * mvn ws:cleanup -DtargetBranch=develop   # check against develop
  * }</pre>
  */
-@Mojo(name = "cleanup-draft", requiresProject = false, threadSafe = true)
+@Mojo(name = "cleanup-draft", projectRequired = false)
 public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
 
     /** Creates this goal instance. */
@@ -45,7 +45,7 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
     boolean publish;
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -155,7 +155,7 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
                             new ProcessBuilder("git", "remote", "prune", "origin")
                                     .directory(dir).start().waitFor();
                         } catch (Exception ignored) {}
-                    } catch (MojoExecutionException e) {
+                    } catch (MojoException e) {
                         getLog().warn(Ansi.red("    ✗ ") + entry.getKey()
                                 + "/" + branch + " — " + e.getMessage());
                     }

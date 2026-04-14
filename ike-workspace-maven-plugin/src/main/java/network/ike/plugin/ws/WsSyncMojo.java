@@ -5,9 +5,9 @@ import network.ike.plugin.ReleaseSupport;
 import network.ike.workspace.Component;
 import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.WorkspaceGraph;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,7 +31,7 @@ import java.util.Map;
  * mvn ike:ws-sync -Dfrom=manifest    # switch repos to match yaml
  * }</pre>
  */
-@Mojo(name = "sync", requiresProject = false, threadSafe = true)
+@Mojo(name = "sync", projectRequired = false)
 public class WsSyncMojo extends AbstractWorkspaceMojo {
 
     /**
@@ -50,7 +50,7 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
     public WsSyncMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
         Path manifestPath = resolveManifest();
@@ -82,7 +82,7 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
      * Read actual branches and update workspace.yaml.
      */
     private void syncFromRepos(WorkspaceGraph graph, File root, Path manifestPath)
-            throws MojoExecutionException {
+            throws MojoException {
         Map<String, String> updates = new LinkedHashMap<>();
         int unchanged = 0;
 
@@ -127,7 +127,7 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
                     getLog().info("  Committed workspace.yaml");
                 }
             } catch (IOException e) {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "Failed to update workspace.yaml: " + e.getMessage(), e);
             }
         }
@@ -137,7 +137,7 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
      * Read workspace.yaml and switch repos to declared branches.
      */
     private void syncFromManifest(WorkspaceGraph graph, File root)
-            throws MojoExecutionException {
+            throws MojoException {
         int switched = 0;
         int unchanged = 0;
 

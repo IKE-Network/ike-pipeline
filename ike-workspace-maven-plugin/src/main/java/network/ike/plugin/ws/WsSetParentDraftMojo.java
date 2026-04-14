@@ -3,9 +3,9 @@ package network.ike.plugin.ws;
 import network.ike.plugin.ReleaseSupport;
 import network.ike.workspace.Component;
 import network.ike.workspace.WorkspaceGraph;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,7 +37,7 @@ import java.util.Map;
  * @see WsSetParentPublishMojo
  * @see WsAlignDraftMojo
  */
-@Mojo(name = "set-parent-draft", requiresProject = false, threadSafe = true)
+@Mojo(name = "set-parent-draft", projectRequired = false)
 public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
 
     /**
@@ -58,7 +58,7 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
     public WsSetParentDraftMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         boolean draft = !publish;
 
         WorkspaceGraph graph = loadGraph();
@@ -67,7 +67,7 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
         // --- Resolve target parent version ---
         Path rootPomPath = root.toPath().resolve("pom.xml");
         if (!Files.exists(rootPomPath)) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "No pom.xml in workspace root: " + root);
         }
 
@@ -75,11 +75,11 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
         try {
             rootParent = PomParentSupport.readParent(rootPomPath);
         } catch (IOException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Cannot read root POM parent: " + e.getMessage(), e);
         }
         if (rootParent == null) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Root POM has no <parent> block — nothing to set.");
         }
 
@@ -161,7 +161,7 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
                 List<File> subPoms;
                 try {
                     subPoms = ReleaseSupport.findPomFiles(componentDir);
-                } catch (MojoExecutionException e) {
+                } catch (MojoException e) {
                     getLog().warn("  " + name
                             + ": cannot scan submodules — " + e.getMessage());
                     continue;
@@ -231,11 +231,11 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
      * @param pomPath          path to the POM file
      * @param parentArtifactId the parent artifactId to match
      * @param newVersion       the new parent version
-     * @throws MojoExecutionException if the file cannot be read or written
+     * @throws MojoException if the file cannot be read or written
      */
     private void updateParentInPom(Path pomPath, String parentArtifactId,
                                     String newVersion)
-            throws MojoExecutionException {
+            throws MojoException {
         try {
             String content = Files.readString(pomPath, StandardCharsets.UTF_8);
             String updated = PomParentSupport.updateParentVersion(
@@ -244,7 +244,7 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
                 Files.writeString(pomPath, updated, StandardCharsets.UTF_8);
             }
         } catch (IOException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Failed to update parent in " + pomPath + ": "
                             + e.getMessage(), e);
         }

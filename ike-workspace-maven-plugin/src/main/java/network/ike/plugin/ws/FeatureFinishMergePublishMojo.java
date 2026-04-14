@@ -1,7 +1,7 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
 
 /**
  * Execute a no-fast-forward merge of a feature branch.
@@ -13,14 +13,14 @@ import org.apache.maven.plugins.annotations.Mojo;
  *
  * @see FeatureFinishMergeDraftMojo
  */
-@Mojo(name = "feature-finish-merge-publish", requiresProject = false, threadSafe = true)
+@Mojo(name = "feature-finish-merge-publish", projectRequired = false)
 public class FeatureFinishMergePublishMojo extends FeatureFinishMergeDraftMojo {
 
     /** Creates this goal instance. */
     public FeatureFinishMergePublishMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         publish = true;
         super.execute();
     }

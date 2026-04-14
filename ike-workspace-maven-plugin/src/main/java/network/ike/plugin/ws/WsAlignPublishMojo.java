@@ -1,7 +1,7 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
 
 /**
  * Apply inter-component version alignment.
@@ -13,14 +13,14 @@ import org.apache.maven.plugins.annotations.Mojo;
  *
  * @see WsAlignDraftMojo
  */
-@Mojo(name = "align-publish", requiresProject = false, threadSafe = true)
+@Mojo(name = "align-publish", projectRequired = false)
 public class WsAlignPublishMojo extends WsAlignDraftMojo {
 
     /** Creates this goal instance. */
     public WsAlignPublishMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         publish = true;
         super.execute();
     }

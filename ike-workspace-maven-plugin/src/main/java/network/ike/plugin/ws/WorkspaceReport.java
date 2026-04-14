@@ -1,6 +1,6 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.api.plugin.Log;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

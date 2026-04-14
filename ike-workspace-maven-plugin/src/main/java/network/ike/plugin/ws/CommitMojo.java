@@ -3,9 +3,9 @@ package network.ike.plugin.ws;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
 import network.ike.workspace.WorkspaceGraph;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.util.LinkedHashSet;
@@ -26,7 +26,7 @@ import java.util.Set;
  * mvn ws:commit -Dmessage="fix" -DaddAll=true -Dgroup=core
  * }</pre>
  */
-@Mojo(name = "commit", requiresProject = false, threadSafe = true)
+@Mojo(name = "commit", projectRequired = false)
 public class CommitMojo extends AbstractWorkspaceMojo {
 
     /** Creates this goal instance. */
@@ -58,7 +58,7 @@ public class CommitMojo extends AbstractWorkspaceMojo {
     String group;
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         if (isWorkspaceMode()) {
             executeWorkspace();
         } else {
@@ -66,7 +66,7 @@ public class CommitMojo extends AbstractWorkspaceMojo {
         }
     }
 
-    private void executeWorkspace() throws MojoExecutionException {
+    private void executeWorkspace() throws MojoException {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -116,7 +116,7 @@ public class CommitMojo extends AbstractWorkspaceMojo {
                     getLog().debug("workspace root — clean, skipping");
                     skipped++;
                 }
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().warn(Ansi.red("  ✗ ") + "workspace root — " + e.getMessage());
                 failed++;
             }
@@ -167,7 +167,7 @@ public class CommitMojo extends AbstractWorkspaceMojo {
 
                 getLog().info(Ansi.green("  ✓ ") + name);
                 committed++;
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().warn(Ansi.red("  ✗ ") + name + " — " + e.getMessage());
                 failed++;
             }
@@ -186,7 +186,7 @@ public class CommitMojo extends AbstractWorkspaceMojo {
                 + " skipped, " + failed + " failed.\n");
     }
 
-    private void executeSingleRepo(File dir) throws MojoExecutionException {
+    private void executeSingleRepo(File dir) throws MojoException {
         getLog().info("");
         getLog().info("IKE VCS Bridge — Commit");
         getLog().info("══════════════════════════════════════════════════════════════");

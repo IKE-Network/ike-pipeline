@@ -9,9 +9,9 @@ import network.ike.workspace.DependencyTreeParser.ResolvedDependency;
 import network.ike.workspace.VersionSupport;
 import network.ike.workspace.WorkspaceGraph;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,7 +45,7 @@ import java.util.TreeSet;
  *
  * @see VerifyWorkspaceMojo for general workspace verification
  */
-@Mojo(name = "verify-convergence", requiresProject = false, threadSafe = true)
+@Mojo(name = "verify-convergence", projectRequired = false)
 public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
 
     /**
@@ -59,7 +59,7 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
     public VerifyConvergenceMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         ReportLog report = startReport();
 
         getLog().info("");
@@ -104,7 +104,7 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
                 if (!deps.isEmpty()) {
                     componentTrees.put(name, deps);
                 }
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().warn("    ⚠ " + name + ": dependency:tree failed — "
                         + e.getMessage());
             }
@@ -169,7 +169,7 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
         finishReport("ws:verify-convergence", report);
 
         if (failed) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Convergence verification failed — see output above.");
         }
     }
@@ -282,7 +282,7 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
                                 VersionSupport.safeBranchName(branch));
                     }
                 }
-            } catch (MojoExecutionException ignored) {
+            } catch (MojoException ignored) {
             }
         }
 
@@ -328,14 +328,14 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
         return true;
     }
 
-    private File resolveMvn(File root) throws MojoExecutionException {
+    private File resolveMvn(File root) throws MojoException {
         File mvnw = new File(root, "mvnw");
         if (mvnw.exists() && mvnw.canExecute()) return mvnw;
         try {
             ReleaseSupport.execCapture(root, "mvn", "--version");
             return new File("mvn");
-        } catch (MojoExecutionException e) {
-            throw new MojoExecutionException(
+        } catch (MojoException e) {
+            throw new MojoException(
                     "Cannot find mvnw or mvn. Place mvnw in the workspace "
                             + "root or ensure mvn is on PATH.");
         }

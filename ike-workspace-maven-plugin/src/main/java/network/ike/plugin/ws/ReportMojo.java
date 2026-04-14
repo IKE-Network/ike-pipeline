@@ -1,8 +1,8 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,7 +16,7 @@ import java.nio.file.Path;
  *
  * <p>Usage: {@code mvn ws:report}
  */
-@Mojo(name = "report", requiresProject = false, aggregator = true)
+@Mojo(name = "report", projectRequired = false, aggregator = true)
 public class ReportMojo extends AbstractWorkspaceMojo {
 
     /** Creates this goal instance. */
@@ -29,7 +29,7 @@ public class ReportMojo extends AbstractWorkspaceMojo {
     private boolean printOnly;
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         Path sessionDir = WorkspaceReport.sessionDir(workspaceRoot().toPath());
 
         if (!Files.isDirectory(sessionDir)) {

@@ -3,9 +3,9 @@ package network.ike.plugin.ws;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -40,7 +40,7 @@ import java.util.Set;
  * @see FeatureStartDraftMojo for creating feature branches
  * @see FeatureFinishSquashDraftMojo for merging back to main
  */
-@Mojo(name = "update-feature-draft", requiresProject = false, threadSafe = true)
+@Mojo(name = "update-feature-draft", projectRequired = false)
 public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
 
     /** Creates this goal instance. */
@@ -68,9 +68,9 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
     boolean publish;
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         if (!isWorkspaceMode()) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "ws:update-feature requires a workspace (workspace.yaml).");
         }
 
@@ -148,7 +148,7 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
                 sb.append("  ").append(name).append("\n");
             }
             sb.append("Commit or stash, then try again.");
-            throw new MojoExecutionException(sb.toString());
+            throw new MojoException(sb.toString());
         }
 
         if (eligible.isEmpty()) {
@@ -219,7 +219,7 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
                             String.valueOf(behind.size()),
                             String.valueOf(ahead.size()), "", "merged"});
                 }
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 List<String> conflicts = VcsOperations.conflictingFiles(dir);
 
                 getLog().error("");
@@ -244,7 +244,7 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
                 getLog().error("    5. Re-run: mvn ws:update-feature-publish");
                 getLog().error("       (already-updated components will be skipped)");
                 getLog().error("");
-                throw new MojoExecutionException(
+                throw new MojoException(
                         strategy + " failed for " + name
                                 + " (" + conflicts.size() + " conflicting file"
                                 + (conflicts.size() == 1 ? "" : "s")

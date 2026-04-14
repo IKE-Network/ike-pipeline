@@ -1,7 +1,7 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
 
 /**
  * Execute a squash-merge of a feature branch.
@@ -13,14 +13,14 @@ import org.apache.maven.plugins.annotations.Mojo;
  *
  * @see FeatureFinishSquashDraftMojo
  */
-@Mojo(name = "feature-finish-squash-publish", requiresProject = false, threadSafe = true)
+@Mojo(name = "feature-finish-squash-publish", projectRequired = false)
 public class FeatureFinishSquashPublishMojo extends FeatureFinishSquashDraftMojo {
 
     /** Creates this goal instance. */
     public FeatureFinishSquashPublishMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         publish = true;
         super.execute();
     }

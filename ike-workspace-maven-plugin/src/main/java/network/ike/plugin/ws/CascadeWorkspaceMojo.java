@@ -2,9 +2,9 @@ package network.ike.plugin.ws;
 
 import network.ike.workspace.Component;
 import network.ike.workspace.WorkspaceGraph;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.util.List;
 
@@ -18,7 +18,7 @@ import java.util.List;
  * mvn ike:cascade -Dcomponent=tinkar-core
  * }</pre>
  */
-@Mojo(name = "cascade", requiresProject = false, threadSafe = true)
+@Mojo(name = "cascade", projectRequired = false)
 public class CascadeWorkspaceMojo extends AbstractWorkspaceMojo {
 
     /**
@@ -31,7 +31,7 @@ public class CascadeWorkspaceMojo extends AbstractWorkspaceMojo {
     public CascadeWorkspaceMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         component = requireParam(component, "component", "Component that changed");
 
         WorkspaceGraph graph = loadGraph();

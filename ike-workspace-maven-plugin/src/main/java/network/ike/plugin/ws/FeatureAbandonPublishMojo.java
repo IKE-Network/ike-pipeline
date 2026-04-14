@@ -1,7 +1,7 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
 
 /**
  * Execute a feature branch abandonment with confirmation.
@@ -18,14 +18,14 @@ import org.apache.maven.plugins.annotations.Mojo;
  *
  * @see FeatureAbandonDraftMojo for the preview (draft) variant
  */
-@Mojo(name = "feature-abandon-publish", requiresProject = false, threadSafe = true)
+@Mojo(name = "feature-abandon-publish", projectRequired = false)
 public class FeatureAbandonPublishMojo extends FeatureAbandonDraftMojo {
 
     /** Creates this goal instance. */
     public FeatureAbandonPublishMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         this.publish = true;
         super.execute();
     }

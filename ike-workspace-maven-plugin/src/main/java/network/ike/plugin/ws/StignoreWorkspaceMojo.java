@@ -2,8 +2,8 @@ package network.ike.plugin.ws;
 
 import network.ike.workspace.Component;
 import network.ike.workspace.WorkspaceGraph;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,7 +34,7 @@ import java.util.List;
  *
  * <pre>{@code mvn ike:stignore}</pre>
  */
-@Mojo(name = "stignore", requiresProject = false, threadSafe = true)
+@Mojo(name = "stignore", projectRequired = false)
 public class StignoreWorkspaceMojo extends AbstractWorkspaceMojo {
 
     /** Standard patterns that should never be synced. */
@@ -78,7 +78,7 @@ public class StignoreWorkspaceMojo extends AbstractWorkspaceMojo {
     public StignoreWorkspaceMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -116,13 +116,13 @@ public class StignoreWorkspaceMojo extends AbstractWorkspaceMojo {
     }
 
     private void writeStignore(Path path, List<String> lines)
-            throws MojoExecutionException {
+            throws MojoException {
         try {
             Files.writeString(path,
                     buildStignoreContent(lines),
                     StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Failed to write " + path, e);
         }
     }

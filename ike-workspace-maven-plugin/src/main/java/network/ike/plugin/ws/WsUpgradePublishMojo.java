@@ -1,7 +1,7 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
 
 /**
  * Execute workspace convention upgrades.
@@ -13,14 +13,14 @@ import org.apache.maven.plugins.annotations.Mojo;
  *
  * @see WsUpgradeDraftMojo
  */
-@Mojo(name = "upgrade-publish", requiresProject = false, threadSafe = true)
+@Mojo(name = "upgrade-publish", projectRequired = false)
 public class WsUpgradePublishMojo extends WsUpgradeDraftMojo {
 
     /** Creates this goal instance. */
     public WsUpgradePublishMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         publish = true;
         super.execute();
     }

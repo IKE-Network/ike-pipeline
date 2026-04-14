@@ -1,8 +1,8 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,7 +43,7 @@ import java.util.List;
  *
  * @see WsCreateMojo for creating a new workspace
  */
-@Mojo(name = "upgrade-draft", requiresProject = false, threadSafe = true)
+@Mojo(name = "upgrade-draft", projectRequired = false)
 public class WsUpgradeDraftMojo extends AbstractWorkspaceMojo {
 
     /**
@@ -56,7 +56,7 @@ public class WsUpgradeDraftMojo extends AbstractWorkspaceMojo {
     public WsUpgradeDraftMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         File root = workspaceRoot();
         Path rootPath = root.toPath();
 

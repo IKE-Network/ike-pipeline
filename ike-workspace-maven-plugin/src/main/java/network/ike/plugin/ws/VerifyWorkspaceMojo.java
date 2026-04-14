@@ -16,9 +16,9 @@ import java.util.Map;
 import java.util.Set;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,7 +44,7 @@ import java.util.Properties;
  *
  * <pre>{@code mvn ike:verify}</pre>
  */
-@Mojo(name = "verify", requiresProject = false, threadSafe = true)
+@Mojo(name = "verify", projectRequired = false)
 public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
     /**
@@ -69,7 +69,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
     private final List<String[]> verifyRows = new ArrayList<>();
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         // Console output goes to Maven log; markdown report via writeReport
         getLog().info("");
         getLog().info(header("Verification"));
@@ -109,7 +109,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
     // ── Workspace manifest verification (existing logic) ──────────
 
-    private void verifyWorkspaceManifest() throws MojoExecutionException {
+    private void verifyWorkspaceManifest() throws MojoException {
         WorkspaceGraph graph = loadGraph();
 
         List<String> errors = graph.verify();
@@ -138,7 +138,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
     // ── Parent version alignment ─────────────────────────────────
 
-    private void verifyParentAlignment() throws MojoExecutionException {
+    private void verifyParentAlignment() throws MojoException {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
         int misaligned = 0;
@@ -224,7 +224,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
     // ── BOM cascade verification ──────────────────────────────────
 
-    private void verifyBomCascade() throws MojoExecutionException {
+    private void verifyBomCascade() throws MojoException {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -277,7 +277,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
     // ── Dependency convergence check ───────────────────────────────
 
-    private void verifyDependencyConvergence() throws MojoExecutionException {
+    private void verifyDependencyConvergence() throws MojoException {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -308,7 +308,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
                 if (!deps.isEmpty()) {
                     componentTrees.put(name, deps);
                 }
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().warn(Ansi.yellow("    ⚠ ") + name + ": dependency:tree failed — "
                         + e.getMessage());
             }
@@ -369,14 +369,14 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
         }
     }
 
-    private File resolveMvn(File root) throws MojoExecutionException {
+    private File resolveMvn(File root) throws MojoException {
         File mvnw = new File(root, "mvnw");
         if (mvnw.exists() && mvnw.canExecute()) return mvnw;
         try {
             ReleaseSupport.execCapture(root, "mvn", "--version");
             return new File("mvn");
-        } catch (MojoExecutionException e) {
-            throw new MojoExecutionException(
+        } catch (MojoException e) {
+            throw new MojoException(
                     "Cannot find mvnw or mvn. Place mvnw in the workspace "
                             + "root or ensure mvn is on PATH.");
         }
@@ -391,7 +391,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
     // ── Subproject git state (workspace mode) ─────────────────────
 
-    private void verifyWorkspaceVcs() throws MojoExecutionException {
+    private void verifyWorkspaceVcs() throws MojoException {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -425,7 +425,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
     // ── Subproject git state (bare mode) ──────────────────────────
 
-    private void verifyBareVcs() throws MojoExecutionException {
+    private void verifyBareVcs() throws MojoException {
         File dir = new File(System.getProperty("user.dir"));
         String dirName = dir.getName();
 
@@ -444,7 +444,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
     // ── Shared VCS state reporting ───────────────────────────────
 
     private void reportVcsState(File dir, String indent)
-            throws MojoExecutionException {
+            throws MojoException {
         String localBranch = gitBranch(dir);
         String localSha = gitShortSha(dir);
 
@@ -525,7 +525,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
         Optional<String> remoteSha;
         try {
             remoteSha = VcsOperations.remoteSha(dir, "origin", state.branch());
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             remoteSha = Optional.empty();
         }
 

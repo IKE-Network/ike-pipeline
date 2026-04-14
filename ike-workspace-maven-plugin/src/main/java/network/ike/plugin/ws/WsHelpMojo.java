@@ -1,11 +1,12 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.descriptor.MojoDescriptor;
-import org.apache.maven.plugin.descriptor.PluginDescriptor;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.di.Inject;
+import org.apache.maven.api.plugin.Log;
+import org.apache.maven.api.plugin.Mojo;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Parameter;
+import org.apache.maven.api.plugin.descriptor.MojoDescriptor;
+import org.apache.maven.api.plugin.descriptor.PluginDescriptor;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -34,21 +35,25 @@ import java.util.Map;
  *
  * @see <a href="https://github.com/IKE-Network/ike-pipeline">IKE Pipeline</a>
  */
-@Mojo(name = "help", requiresProject = false, threadSafe = true)
-public class WsHelpMojo extends AbstractMojo {
+@org.apache.maven.api.plugin.annotations.Mojo(name = "help", projectRequired = false)
+public class WsHelpMojo implements Mojo {
 
-    /**
-     * The plugin descriptor, injected by Maven. Contains all
-     * {@link MojoDescriptor} instances discovered from annotations.
-     */
-    @Parameter(defaultValue = "${plugin}", readonly = true)
+    /** Maven logger, injected by the Maven 4 DI container. */
+    @Inject
+    private Log log;
+
+    /** The plugin descriptor, injected by Maven 4 DI. */
+    @Inject
     PluginDescriptor pluginDescriptor;
 
     /** Creates this goal instance. */
     public WsHelpMojo() {}
 
+    /** Access the Maven logger. */
+    private Log getLog() { return log; }
+
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         List<GoalInfo> goals = discoverGoals();
 
         getLog().info("");

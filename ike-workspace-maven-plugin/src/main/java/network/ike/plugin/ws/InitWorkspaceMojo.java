@@ -5,9 +5,9 @@ import network.ike.plugin.ReleaseSupport;
 import network.ike.workspace.Component;
 import network.ike.workspace.Defaults;
 import network.ike.workspace.WorkspaceGraph;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.io.IOException;
@@ -41,7 +41,7 @@ import java.util.Set;
  * mvn ike:init -Dgroup=docs
  * }</pre>
  */
-@Mojo(name = "init", requiresProject = false, threadSafe = true)
+@Mojo(name = "init", projectRequired = false)
 public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
     /**
@@ -54,7 +54,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
     public InitWorkspaceMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
         Defaults defaults = graph.manifest().defaults();
@@ -200,7 +200,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
      * and reset to match the remote branch without overwriting working-tree files.
      */
     private void initSyncthingRepo(File dir, String repo, String branch)
-            throws MojoExecutionException {
+            throws MojoException {
         ReleaseSupport.exec(dir, getLog(), "git", "init");
         ReleaseSupport.exec(dir, getLog(), "git", "remote", "add", "origin", repo);
         ReleaseSupport.exec(dir, getLog(), "git", "fetch", "origin", branch);
@@ -213,7 +213,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
      * Standard git clone into a new directory.
      */
     private void cloneRepo(File root, String name, String repo, String branch)
-            throws MojoExecutionException {
+            throws MojoException {
         ReleaseSupport.exec(root, getLog(),
                 "git", "clone", "-b", branch, repo, name);
     }
@@ -478,7 +478,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
             getLog().info("    Checking out SHA: " + component.sha().substring(0, 8));
             ReleaseSupport.exec(dir, getLog(),
                     "git", "checkout", component.sha());
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             getLog().warn("    Could not checkout SHA " + component.sha()
                     + ": " + e.getMessage());
         }

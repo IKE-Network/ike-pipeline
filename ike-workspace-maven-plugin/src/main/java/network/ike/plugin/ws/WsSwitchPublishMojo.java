@@ -1,7 +1,7 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
 
 /**
  * Execute a branch switch across workspace components.
@@ -16,14 +16,14 @@ import org.apache.maven.plugins.annotations.Mojo;
  *
  * @see WsSwitchDraftMojo for the preview (draft) variant
  */
-@Mojo(name = "switch-publish", requiresProject = false, threadSafe = true)
+@Mojo(name = "switch-publish", projectRequired = false)
 public class WsSwitchPublishMojo extends WsSwitchDraftMojo {
 
     /** Creates this goal instance. */
     public WsSwitchPublishMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         this.publish = true;
         super.execute();
     }

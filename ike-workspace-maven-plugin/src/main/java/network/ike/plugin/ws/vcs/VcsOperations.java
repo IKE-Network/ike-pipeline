@@ -1,7 +1,7 @@
 package network.ike.plugin.ws.vcs;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.Log;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -35,9 +35,9 @@ public class VcsOperations {
      *
      * @param dir the repository root directory
      * @return the short SHA string
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
-    public static String headSha(File dir) throws MojoExecutionException {
+    public static String headSha(File dir) throws MojoException {
         return capture(dir, "git", "rev-parse", "--short=8", "HEAD");
     }
 
@@ -46,9 +46,9 @@ public class VcsOperations {
      *
      * @param dir the repository root directory
      * @return the current branch name
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
-    public static String currentBranch(File dir) throws MojoExecutionException {
+    public static String currentBranch(File dir) throws MojoException {
         return capture(dir, "git", "branch", "--show-current");
     }
 
@@ -59,10 +59,10 @@ public class VcsOperations {
      * @param remote the remote name (e.g., "origin")
      * @param branch the branch name to query
      * @return the short SHA, or empty if the remote branch is unreachable
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
     public static Optional<String> remoteSha(File dir, String remote, String branch)
-            throws MojoExecutionException {
+            throws MojoException {
         try {
             String output = capture(dir, "git", "ls-remote", remote, branch);
             if (output.isEmpty()) {
@@ -71,7 +71,7 @@ public class VcsOperations {
             // ls-remote output: <full-sha>\trefs/heads/<branch>
             String fullSha = output.split("\\s+")[0];
             return Optional.of(fullSha.substring(0, 8));
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return Optional.empty();
         }
     }
@@ -86,7 +86,7 @@ public class VcsOperations {
         try {
             String status = capture(dir, "git", "status", "--porcelain");
             return status.isEmpty();
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return false;
         }
     }
@@ -101,7 +101,7 @@ public class VcsOperations {
         try {
             String diff = capture(dir, "git", "diff", "--cached", "--name-only");
             return !diff.isEmpty();
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return false;
         }
     }
@@ -117,7 +117,7 @@ public class VcsOperations {
             String output = capture(dir, "git", "diff", "--name-only", "--diff-filter=U");
             if (output.isEmpty()) return List.of();
             return List.of(output.split("\n"));
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return List.of();
         }
     }
@@ -181,10 +181,10 @@ public class VcsOperations {
      * @param base the starting ref (exclusive)
      * @param head the ending ref (inclusive)
      * @return list of one-line commit summaries between the two refs
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
     public static List<String> commitLog(File dir, String base, String head)
-            throws MojoExecutionException {
+            throws MojoException {
         String output = capture(dir, "git", "log",
                 base + ".." + head, "--oneline", "--no-decorate");
         if (output.isEmpty()) return List.of();
@@ -198,9 +198,9 @@ public class VcsOperations {
      *
      * @param dir the repository root directory
      * @param log Maven logger
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
-    public static void fetch(File dir, Log log) throws MojoExecutionException {
+    public static void fetch(File dir, Log log) throws MojoException {
         run(dir, log, null, "git", "fetch", "--all", "--quiet");
     }
 
@@ -210,10 +210,10 @@ public class VcsOperations {
      * @param dir the repository root directory
      * @param log Maven logger
      * @param ref the ref to reset to (e.g., "origin/main")
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
     public static void resetSoft(File dir, Log log, String ref)
-            throws MojoExecutionException {
+            throws MojoException {
         run(dir, log, null, "git", "reset", ref, "--quiet");
     }
 
@@ -223,10 +223,10 @@ public class VcsOperations {
      * @param dir    the repository root directory
      * @param log    Maven logger
      * @param branch the branch to check out
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
     public static void checkout(File dir, Log log, String branch)
-            throws MojoExecutionException {
+            throws MojoException {
         run(dir, log, null, "git", "checkout", branch);
     }
 
@@ -236,10 +236,10 @@ public class VcsOperations {
      * @param dir    the repository root directory
      * @param log    Maven logger
      * @param branch the new branch name to create
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
     public static void checkoutNew(File dir, Log log, String branch)
-            throws MojoExecutionException {
+            throws MojoException {
         run(dir, log, null, "git", "checkout", "-b", branch);
     }
 
@@ -250,10 +250,10 @@ public class VcsOperations {
      * @param dir     the repository root directory
      * @param log     Maven logger
      * @param message the commit message
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
     public static void commit(File dir, Log log, String message)
-            throws MojoExecutionException {
+            throws MojoException {
         commitWithStdin(dir, log, message, "git", "commit", "-F", "-");
     }
 
@@ -264,10 +264,10 @@ public class VcsOperations {
      * @param dir     the repository root directory
      * @param log     Maven logger
      * @param message the commit message, or {@code null} to open the editor
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
     public static void commitStaged(File dir, Log log, String message)
-            throws MojoExecutionException {
+            throws MojoException {
         if (message == null) {
             runWithContext(dir, log, "git", "commit");
         } else {
@@ -280,9 +280,9 @@ public class VcsOperations {
      *
      * @param dir the repository root directory
      * @param log Maven logger
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
-    public static void addAll(File dir, Log log) throws MojoExecutionException {
+    public static void addAll(File dir, Log log) throws MojoException {
         run(dir, log, null, "git", "add", "-A");
     }
 
@@ -293,10 +293,10 @@ public class VcsOperations {
      * @param log    Maven logger
      * @param remote the remote name (e.g., "origin")
      * @param branch the branch to push
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
     public static void push(File dir, Log log, String remote, String branch)
-            throws MojoExecutionException {
+            throws MojoException {
         runWithContext(dir, log, "git", "push", remote, branch);
     }
 
@@ -312,7 +312,7 @@ public class VcsOperations {
     public static void pushSafe(File dir, Log log, String remote, String branch) {
         try {
             push(dir, log, remote, branch);
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             log.warn("  Push failed (non-fatal): " + e.getMessage());
         }
     }
@@ -335,7 +335,7 @@ public class VcsOperations {
                 return;
             }
             push(dir, log, remote, branch);
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             log.warn("  Push failed (non-fatal): " + e.getMessage());
         }
     }
@@ -348,10 +348,10 @@ public class VcsOperations {
      * @param log    Maven logger
      * @param remote the remote name (e.g., "origin")
      * @param branch the branch to push
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
     public static void pushWithUpstream(File dir, Log log, String remote, String branch)
-            throws MojoExecutionException {
+            throws MojoException {
         runWithContext(dir, log, "git", "push", "-u", remote, branch);
     }
 
@@ -362,10 +362,10 @@ public class VcsOperations {
      * @param dir    the repository root directory
      * @param log    Maven logger
      * @param branch the branch to delete
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
     public static void deleteBranch(File dir, Log log, String branch)
-            throws MojoExecutionException {
+            throws MojoException {
         run(dir, log, null, "git", "branch", "-D", branch);
     }
 
@@ -376,10 +376,10 @@ public class VcsOperations {
      * @param log    Maven logger
      * @param remote the remote name (e.g., "origin")
      * @param branch the branch to delete on the remote
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
     public static void deleteRemoteBranch(File dir, Log log, String remote, String branch)
-            throws MojoExecutionException {
+            throws MojoException {
         runWithContext(dir, log, "git", "push", remote, "--delete", branch);
     }
 
@@ -389,10 +389,10 @@ public class VcsOperations {
      * @param dir    the repository root directory
      * @param log    Maven logger
      * @param branch the branch to squash-merge
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
     public static void mergeSquash(File dir, Log log, String branch)
-            throws MojoExecutionException {
+            throws MojoException {
         run(dir, log, null, "git", "merge", "--squash", branch);
     }
 
@@ -403,10 +403,10 @@ public class VcsOperations {
      * @param log     Maven logger
      * @param branch  the branch to merge
      * @param message the merge commit message
-     * @throws MojoExecutionException if the git command fails
+     * @throws MojoException if the git command fails
      */
     public static void mergeNoFf(File dir, Log log, String branch, String message)
-            throws MojoExecutionException {
+            throws MojoException {
         runWithContext(dir, log, "git", "merge", "--no-ff", branch, "-m", message);
     }
 
@@ -421,7 +421,7 @@ public class VcsOperations {
         try {
             String output = capture(dir, "git", "branch", "--list", branch);
             return !output.trim().isEmpty();
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return false;
         }
     }
@@ -444,7 +444,7 @@ public class VcsOperations {
                     .filter(b -> b.startsWith(prefix))
                     .filter(b -> !b.equals(target))
                     .toList();
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return List.of();
         }
     }
@@ -464,7 +464,7 @@ public class VcsOperations {
                     .map(line -> line.replaceFirst("^[* ] +", ""))
                     .filter(b -> b.startsWith(prefix))
                     .toList();
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return List.of();
         }
     }
@@ -479,7 +479,7 @@ public class VcsOperations {
     public static String branchLastCommitDate(File dir, String branch) {
         try {
             return capture(dir, "git", "log", "-1", "--format=%ci", branch);
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return "unknown";
         }
     }
@@ -491,17 +491,17 @@ public class VcsOperations {
      *
      * @param dir    the repository root directory
      * @param action the action being performed
-     * @throws MojoExecutionException if writing the state file fails
+     * @throws MojoException if writing the state file fails
      */
     public static void writeVcsState(File dir, VcsState.Action action)
-            throws MojoExecutionException {
+            throws MojoException {
         try {
             String branch = currentBranch(dir);
             String sha = headSha(dir);
             VcsState state = VcsState.create(branch, sha, action);
             VcsState.writeTo(dir.toPath(), state);
         } catch (IOException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Failed to write VCS state file: " + e.getMessage(), e);
         }
     }
@@ -511,9 +511,9 @@ public class VcsOperations {
      *
      * @param dir the repository root directory
      * @return true if in sync or if no state file exists, false if catch-up is needed
-     * @throws MojoExecutionException if reading git state fails
+     * @throws MojoException if reading git state fails
      */
-    public static boolean needsSync(File dir) throws MojoExecutionException {
+    public static boolean needsSync(File dir) throws MojoException {
         Optional<VcsState> state = VcsState.readFrom(dir.toPath());
         if (state.isEmpty()) {
             return false;
@@ -531,9 +531,9 @@ public class VcsOperations {
      * @param dir the repository root directory
      * @param log Maven logger
      * @return the resulting HEAD SHA after sync
-     * @throws MojoExecutionException if a git command or state file read fails
+     * @throws MojoException if a git command or state file read fails
      */
-    public static String sync(File dir, Log log) throws MojoExecutionException {
+    public static String sync(File dir, Log log) throws MojoException {
         Optional<VcsState> stateOpt = VcsState.readFrom(dir.toPath());
         if (stateOpt.isEmpty()) {
             log.info("  No VCS state file — nothing to sync.");
@@ -597,9 +597,9 @@ public class VcsOperations {
      *
      * @param dir the repository root directory
      * @param log Maven logger
-     * @throws MojoExecutionException if sync fails
+     * @throws MojoException if sync fails
      */
-    public static void catchUp(File dir, Log log) throws MojoExecutionException {
+    public static void catchUp(File dir, Log log) throws MojoException {
         if (!VcsState.isIkeManaged(dir.toPath())) {
             return;
         }
@@ -616,7 +616,7 @@ public class VcsOperations {
      * Optionally sets environment variables.
      */
     private static void run(File workDir, Log log, Map<String, String> env,
-                            String... command) throws MojoExecutionException {
+                            String... command) throws MojoException {
         log.debug("» " + String.join(" ", command));
         try {
             ProcessBuilder pb = new ProcessBuilder(command)
@@ -636,12 +636,12 @@ public class VcsOperations {
             }
             int exit = proc.waitFor();
             if (exit != 0) {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "Command failed (exit " + exit + "): "
                                 + String.join(" ", command));
             }
         } catch (IOException | InterruptedException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Failed to execute: " + String.join(" ", command), e);
         }
     }
@@ -650,7 +650,7 @@ public class VcsOperations {
      * Run a command with {@code IKE_VCS_CONTEXT} set in the environment.
      */
     private static void runWithContext(File workDir, Log log, String... command)
-            throws MojoExecutionException {
+            throws MojoException {
         run(workDir, log, Map.of(IKE_VCS_CONTEXT, CONTEXT_VALUE), command);
     }
 
@@ -667,11 +667,11 @@ public class VcsOperations {
      * @param log     Maven logger
      * @param message the message to write to stdin
      * @param command the git command (including {@code -F -})
-     * @throws MojoExecutionException if the command fails
+     * @throws MojoException if the command fails
      */
     private static void commitWithStdin(File workDir, Log log,
                                          String message, String... command)
-            throws MojoExecutionException {
+            throws MojoException {
         log.debug("» " + String.join(" ", command) + " <<< (message via stdin)");
         try {
             ProcessBuilder pb = new ProcessBuilder(command)
@@ -696,13 +696,13 @@ public class VcsOperations {
 
             int exit = proc.waitFor();
             if (exit != 0) {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "Command failed (exit " + exit + "): "
                                 + String.join(" ", command)
                                 + (output.isEmpty() ? "" : "\n" + output));
             }
         } catch (IOException | InterruptedException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Failed to execute: " + String.join(" ", command), e);
         }
     }
@@ -711,7 +711,7 @@ public class VcsOperations {
      * Run a command and capture stdout as a trimmed string.
      */
     private static String capture(File workDir, String... command)
-            throws MojoExecutionException {
+            throws MojoException {
         try {
             Process proc = new ProcessBuilder(command)
                     .directory(workDir)
@@ -725,13 +725,13 @@ public class VcsOperations {
             }
             int exit = proc.waitFor();
             if (exit != 0) {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "Command failed (exit " + exit + "): "
                                 + String.join(" ", command));
             }
             return output;
         } catch (IOException | InterruptedException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Failed to execute: " + String.join(" ", command), e);
         }
     }

@@ -6,9 +6,11 @@ import network.ike.workspace.Manifest;
 import network.ike.workspace.ManifestException;
 import network.ike.workspace.ManifestReader;
 import network.ike.workspace.WorkspaceGraph;
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.Log;
+import org.apache.maven.api.plugin.Mojo;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Parameter;
+import org.apache.maven.api.di.Inject;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -20,7 +22,13 @@ import java.nio.file.Path;
  * directory for a file named {@code workspace.yaml}. All workspace
  * goals inherit this resolution logic.
  */
-abstract class AbstractWorkspaceMojo extends AbstractMojo {
+abstract class AbstractWorkspaceMojo implements Mojo {
+
+    /**
+     * Maven logger, injected by the Maven 4 DI container.
+     */
+    @Inject
+    private Log log;
 
     /**
      * Path to workspace.yaml. If not set, searches upward from the
@@ -30,19 +38,38 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
     File manifest;
 
     /**
+     * Access the Maven logger.
+     *
+     * @return the logger instance
+     */
+    protected Log getLog() {
+        return log;
+    }
+
+    /**
+     * Replace the logger (used by {@link #startReport()} to install
+     * a capturing wrapper).
+     *
+     * @param log the replacement logger
+     */
+    protected void setLog(Log log) {
+        this.log = log;
+    }
+
+    /**
      * Load the manifest and build the workspace graph.
      *
      * @return the workspace dependency graph
-     * @throws MojoExecutionException if the manifest cannot be read
+     * @throws MojoException if the manifest cannot be read
      */
-    protected WorkspaceGraph loadGraph() throws MojoExecutionException {
+    protected WorkspaceGraph loadGraph() {
         Path manifestPath = resolveManifest();
         getLog().debug("Reading manifest: " + manifestPath);
         try {
             Manifest m = ManifestReader.read(manifestPath);
             return new WorkspaceGraph(m);
         } catch (ManifestException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Failed to read workspace manifest: " + e.getMessage(), e);
         }
     }
@@ -51,9 +78,9 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
      * Resolve the manifest path — explicit parameter, or search upward.
      *
      * @return path to the workspace manifest file
-     * @throws MojoExecutionException if the manifest cannot be found
+     * @throws MojoException if the manifest cannot be found
      */
-    protected Path resolveManifest() throws MojoExecutionException {
+    protected Path resolveManifest() {
         if (manifest != null && manifest.exists()) {
             return manifest.toPath();
         }
@@ -68,18 +95,18 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
             dir = dir.getParent();
         }
 
-        throw new MojoExecutionException(
-                "Cannot find workspace.yaml. Specify -Dworkspace.manifest=<path> " +
-                        "or run from within a workspace directory.");
+        throw new MojoException(
+                "Cannot find workspace.yaml. Specify -Dworkspace.manifest=<path> "
+                        + "or run from within a workspace directory.");
     }
 
     /**
      * Resolve the workspace root directory (parent of workspace.yaml).
      *
      * @return the workspace root directory
-     * @throws MojoExecutionException if the manifest cannot be found
+     * @throws MojoException if the manifest cannot be found
      */
-    protected File workspaceRoot() throws MojoExecutionException {
+    protected File workspaceRoot() {
         return resolveManifest().getParent().toFile();
     }
 
@@ -139,7 +166,7 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
         try {
             resolveManifest();
             return true;
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             return false;
         }
     }
@@ -157,11 +184,10 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
      * @param propertyName the {@code -D} property name (for the error message)
      * @param promptLabel  human-readable label shown in the prompt
      * @return the resolved value — either the original or user-supplied
-     * @throws MojoExecutionException if no value can be obtained
+     * @throws MojoException if no value can be obtained
      */
     protected String requireParam(String currentValue, String propertyName,
-                                  String promptLabel)
-            throws MojoExecutionException {
+                                  String promptLabel) {
         if (currentValue != null && !currentValue.isBlank()) {
             return currentValue.trim();
         }
@@ -193,7 +219,7 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
             }
         }
 
-        throw new MojoExecutionException(
+        throw new MojoException(
                 propertyName + " is required. Specify -D" + propertyName
                         + "=<value> or run interactively.");
     }
@@ -210,7 +236,7 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
             if (rootPom.exists()) {
                 return ReleaseSupport.readPomArtifactId(rootPom);
             }
-        } catch (MojoExecutionException e) {
+        } catch (Exception e) {
             // Fall through
         }
         return "Workspace";
@@ -240,7 +266,7 @@ abstract class AbstractWorkspaceMojo extends AbstractMojo {
         try {
             WorkspaceReport.write(
                     workspaceRoot().toPath(), goalName, content, getLog());
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             getLog().debug("Could not resolve workspace root for report: "
                     + e.getMessage());
         }

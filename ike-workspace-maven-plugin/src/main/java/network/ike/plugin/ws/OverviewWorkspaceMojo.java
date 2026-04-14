@@ -4,9 +4,9 @@ import network.ike.workspace.Component;
 import network.ike.workspace.Dependency;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
  * mvn ws:overview -Dformat=dot
  * }</pre>
  */
-@Mojo(name = "overview", requiresProject = false, threadSafe = true)
+@Mojo(name = "overview", projectRequired = false)
 public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
 
     /** Creates this goal instance. */
@@ -53,7 +53,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
     String format;
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         WorkspaceGraph graph = loadGraph();
 
         // DOT mode — delegate to graph-only output
@@ -205,7 +205,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
                         String.valueOf(ahead.size()), divergence});
 
                 if (!anyOnFeature) continue; // skip printing header until first
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 // Can't determine divergence (no main branch, etc.) — skip
                 divergenceRows.add(new String[]{name, branch,
                         "?", "?", "unknown"});

@@ -2,10 +2,11 @@ package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
 
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.di.Inject;
+import org.apache.maven.api.plugin.Log;
+import org.apache.maven.api.plugin.Mojo;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -41,8 +42,15 @@ import java.time.LocalDate;
  * @see WsAddMojo for adding components to an existing workspace
  * @see WsUpgradeDraftMojo for upgrading workspace conventions
  */
-@Mojo(name = "create", requiresProject = false, threadSafe = true)
-public class WsCreateMojo extends AbstractMojo {
+@org.apache.maven.api.plugin.annotations.Mojo(name = "create", projectRequired = false)
+public class WsCreateMojo implements Mojo {
+
+    /** Maven logger, injected by the Maven 4 DI container. */
+    @Inject
+    private Log log;
+
+    /** Access the Maven logger. */
+    private Log getLog() { return log; }
 
     /**
      * Workspace name. Used as the directory name, Maven artifactId,
@@ -91,7 +99,7 @@ public class WsCreateMojo extends AbstractMojo {
     public WsCreateMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         if (name == null || name.isBlank()) {
             name = promptParam("name", "Workspace name");
         }
@@ -106,7 +114,7 @@ public class WsCreateMojo extends AbstractMojo {
         // Fail if workspace files already exist (prevent silent overwrite)
         if (Files.exists(wsDir.resolve("pom.xml"))
                 || Files.exists(wsDir.resolve("workspace.yaml"))) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Workspace already exists at " + wsDir
                     + " (pom.xml or workspace.yaml found). "
                     + "Remove the directory first or choose a different name.");
@@ -141,7 +149,7 @@ public class WsCreateMojo extends AbstractMojo {
             getLog().info(Ansi.green("  ✓ ") + "mvnw (Maven " + mavenVersion + ")");
 
         } catch (IOException e) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Failed to create workspace files: " + e.getMessage(), e);
         }
 
@@ -323,7 +331,7 @@ public class WsCreateMojo extends AbstractMojo {
 
     // ── Helpers ──────────────────────────────────────────────────
 
-    private void initGit(Path wsDir) throws MojoExecutionException {
+    private void initGit(Path wsDir) throws MojoException {
         ReleaseSupport.exec(wsDir.toFile(), getLog(),
                 "git", "init");
         getLog().info(Ansi.green("  ✓ ") + "git init");
@@ -343,7 +351,7 @@ public class WsCreateMojo extends AbstractMojo {
             ReleaseSupport.exec(wsDir.toFile(), getLog(),
                     "git", "commit", "-m", "workspace: initial scaffold");
             getLog().info(Ansi.green("  ✓ ") + "initial commit");
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             getLog().warn("  Auto-commit failed (set git user.email/user.name): "
                     + e.getMessage());
         }
@@ -466,7 +474,7 @@ public class WsCreateMojo extends AbstractMojo {
     }
 
     private String promptParam(String propertyName, String label)
-            throws MojoExecutionException {
+            throws MojoException {
         java.io.Console console = System.console();
         if (console != null) {
             String input = console.readLine(label + ": ");
@@ -474,7 +482,7 @@ public class WsCreateMojo extends AbstractMojo {
                 return input.trim();
             }
         }
-        throw new MojoExecutionException(
+        throw new MojoException(
                 propertyName + " is required. Specify -D" + propertyName + "=<value>");
     }
 }

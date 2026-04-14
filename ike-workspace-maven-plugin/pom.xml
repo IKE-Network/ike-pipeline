@@ -66,12 +66,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.deploy.skip>false</maven.deploy.skip>
         <maven.install.skip>false</maven.install.skip>
-        <!-- Maven plugin build dependencies (not inherited from ike-pipeline root) -->
-        <maven-plugin-api.version>3.9.9</maven-plugin-api.version>
-        <maven-plugin-annotations.version>3.15.1</maven-plugin-annotations.version>
-        <maven-plugin-plugin.version>3.15.1</maven-plugin-plugin.version>
-        <!-- Maven 4 model API — provided by the Maven 4.0.0-rc-5 runtime -->
+        <!-- Maven 4 API — provided by the Maven 4.0.0-rc-5 runtime -->
         <maven-api.version>4.0.0-rc-5</maven-api.version>
+        <maven-plugin-plugin.version>4.0.0-beta-2</maven-plugin-plugin.version>
         <!-- Exclude container tests by default (same as ike-tooling convention) -->
         <surefire.excludedGroups>container</surefire.excludedGroups>
     </properties>
@@ -92,26 +89,25 @@
             <type>zip</type>
             <scope>provided</scope>
         </dependency>
-        <!-- Maven plugin API -->
+        <!-- Maven 4 plugin API (native) -->
         <dependency>
             <groupId>org.apache.maven</groupId>
-            <artifactId>maven-plugin-api</artifactId>
-            <version>${maven-plugin-api.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.maven.plugin-tools</groupId>
-            <artifactId>maven-plugin-annotations</artifactId>
-            <version>${maven-plugin-annotations.version}</version>
+            <artifactId>maven-api-core</artifactId>
+            <version>${maven-api.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.maven</groupId>
-            <artifactId>maven-core</artifactId>
-            <version>${maven-plugin-api.version}</version>
+            <artifactId>maven-api-di</artifactId>
+            <version>${maven-api.version}</version>
             <scope>provided</scope>
         </dependency>
-        <!-- Maven 4 model API for POM parsing -->
+        <dependency>
+            <groupId>org.apache.maven</groupId>
+            <artifactId>maven-api-plugin</artifactId>
+            <version>${maven-api.version}</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-api-model</artifactId>

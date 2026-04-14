@@ -7,9 +7,9 @@ import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,7 +34,7 @@ import java.util.Map;
  * mvn ike:post-release -DnextVersion=4-SNAPSHOT
  * }</pre>
  */
-@Mojo(name = "post-release", requiresProject = false, threadSafe = true)
+@Mojo(name = "post-release", projectRequired = false)
 public class WsPostReleaseMojo extends AbstractWorkspaceMojo {
 
     /**
@@ -48,7 +48,7 @@ public class WsPostReleaseMojo extends AbstractWorkspaceMojo {
     public WsPostReleaseMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         nextVersion = requireParam(nextVersion, "nextVersion",
                 "Next development version (e.g., 4-SNAPSHOT)");
 
@@ -95,7 +95,7 @@ public class WsPostReleaseMojo extends AbstractWorkspaceMojo {
             String currentVersion;
             try {
                 currentVersion = ReleaseSupport.readPomVersion(pomFile);
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().warn("  \u26A0 " + name + " \u2014 could not read version: "
                         + e.getMessage());
                 skipped++;
@@ -131,7 +131,7 @@ public class WsPostReleaseMojo extends AbstractWorkspaceMojo {
                                 + e.getMessage());
                     }
                 }
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().warn("    Could not scan submodule POMs: " + e.getMessage());
             }
 
@@ -146,7 +146,7 @@ public class WsPostReleaseMojo extends AbstractWorkspaceMojo {
                         ReleaseSupport.exec(dir, getLog(), "git", "add", rel);
                     }
                 }
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().debug("Could not stage submodule POMs: " + e.getMessage());
             }
             VcsOperations.commitStaged(dir, getLog(),
@@ -168,7 +168,7 @@ public class WsPostReleaseMojo extends AbstractWorkspaceMojo {
                 getLog().info("  Updated workspace.yaml versions for "
                         + versionUpdates.size() + " components");
             } catch (IOException e) {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "Failed to update workspace.yaml: " + e.getMessage(), e);
             }
 

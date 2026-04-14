@@ -6,9 +6,9 @@ import network.ike.workspace.Dependency;
 import network.ike.workspace.PublishedArtifactSet;
 import network.ike.workspace.WorkspaceGraph;
 import org.apache.maven.api.model.Parent;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.io.IOException;
@@ -41,7 +41,7 @@ import java.util.Set;
  * mvn ws:align -Dpublish=false       # report only (default)
  * }</pre>
  */
-@Mojo(name = "align-draft", requiresProject = false, threadSafe = true)
+@Mojo(name = "align-draft", projectRequired = false)
 public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
 
     /**
@@ -54,7 +54,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
     public WsAlignDraftMojo() {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         boolean draft = !publish;
         getLog().info("");
         getLog().info("IKE Workspace Align — synchronize inter-component dependency versions");
@@ -90,7 +90,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             List<File> pomFiles;
             try {
                 pomFiles = ReleaseSupport.findPomFiles(componentDir);
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().warn("  " + name + ": could not scan POM files — "
                         + e.getMessage());
                 continue;
@@ -122,7 +122,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             try {
                 pomVersion = ReleaseSupport.readPomVersion(
                         new File(componentDir, "pom.xml"));
-            } catch (MojoExecutionException ignored) { }
+            } catch (MojoException ignored) { }
 
             if (componentChanges > 0) {
                 totalChanges += componentChanges;
@@ -288,7 +288,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
      * by artifactId.
      */
     private Map<String, ComponentVersion> buildArtifactIndex(
-            WorkspaceGraph graph, File root) throws MojoExecutionException {
+            WorkspaceGraph graph, File root) throws MojoException {
         Map<String, ComponentVersion> index = new LinkedHashMap<>();
 
         for (Map.Entry<String, Component> entry : graph.manifest().components().entrySet()) {
@@ -303,7 +303,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             try {
                 pomVersion = ReleaseSupport.readPomVersion(
                         new File(componentDir, "pom.xml"));
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().warn("  " + name + ": could not read POM version — "
                         + e.getMessage());
                 continue;
@@ -346,7 +346,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
                                      Map<String, String> versionPropertyMap,
                                      File componentDir, WorkspaceGraph graph,
                                      List<AlignChange> reportChanges)
-            throws MojoExecutionException {
+            throws MojoException {
         PomModel pom;
         try {
             pom = PomModel.parse(pomFile.toPath());
@@ -448,7 +448,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
                 Files.writeString(pomFile.toPath(), updated,
                         StandardCharsets.UTF_8);
             } catch (IOException e) {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "Failed to write " + pomFile + ": "
                         + e.getMessage(), e);
             }

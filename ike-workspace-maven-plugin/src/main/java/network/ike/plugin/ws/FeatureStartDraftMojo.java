@@ -10,9 +10,9 @@ import network.ike.workspace.VersionSupport;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.io.IOException;
@@ -57,7 +57,7 @@ import java.util.Set;
  * mvn ike:feature-start -Dfeature=doc-refresh -Dgroup=docs -DskipVersion=true
  * }</pre>
  */
-@Mojo(name = "feature-start-draft", requiresProject = false, threadSafe = true)
+@Mojo(name = "feature-start-draft", projectRequired = false)
 public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
 
     /** Feature name. Branch will be {@code feature/<name>}. Prompted if omitted. */
@@ -91,7 +91,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                                   String issue) {}
 
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         feature = requireParam(feature, "feature", "Feature name (without feature/ prefix)");
         String branchName = "feature/" + feature;
 
@@ -163,7 +163,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
 
             String status = gitStatus(dir);
             if (!status.isEmpty()) {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         name + " has uncommitted changes — commit or stash, then try again.");
             }
 
@@ -186,7 +186,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                 if (pom.exists()) {
                     try {
                         effectiveVersion = ReleaseSupport.readPomVersion(pom);
-                    } catch (MojoExecutionException e) {
+                    } catch (MojoException e) {
                         getLog().debug("Could not read POM version for "
                                 + name + ": " + e.getMessage());
                     }
@@ -305,7 +305,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
     /**
      * Bare-mode: create feature branch in the current repo only.
      */
-    private void executeBareMode(String branchName) throws MojoExecutionException {
+    private void executeBareMode(String branchName) throws MojoException {
         boolean draft = !publish;
         File dir = new File(System.getProperty("user.dir"));
 
@@ -326,7 +326,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         // Validate clean worktree
         String status = gitStatus(dir);
         if (!status.isEmpty()) {
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Uncommitted changes. Commit or stash before starting a feature.");
         }
 
@@ -336,7 +336,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         if (pom.exists() && !skipVersion) {
             try {
                 currentVersion = ReleaseSupport.readPomVersion(pom);
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().debug("Could not read POM version: " + e.getMessage());
             }
         }
@@ -376,7 +376,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                         ReleaseSupport.exec(dir, getLog(), "git", "add", rel);
                     }
                 }
-            } catch (MojoExecutionException e) {
+            } catch (MojoException e) {
                 getLog().debug("Could not scan submodule POMs: " + e.getMessage());
             }
             ReleaseSupport.exec(dir, getLog(),
@@ -395,7 +395,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
      * and push with IKE_VCS_CONTEXT.
      */
     private void branchWorkspaceRepo(String branchName, List<String> components)
-            throws MojoExecutionException {
+            throws MojoException {
         try {
             Path manifestPath = resolveManifest();
             File wsRoot = manifestPath.getParent().toFile();
@@ -443,7 +443,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
      * Uses ReleaseSupport's POM manipulation which skips the parent block.
      */
     private void setPomVersion(File dir, String oldVersion, String newVersion)
-            throws MojoExecutionException {
+            throws MojoException {
         File pom = new File(dir, "pom.xml");
         if (!pom.exists()) {
             getLog().warn("    No pom.xml found in " + dir.getName());
@@ -477,7 +477,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                     getLog().warn("    Could not update " + subPom + ": " + e.getMessage());
                 }
             }
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             getLog().warn("    Could not scan for submodule POMs: " + e.getMessage());
         }
     }
@@ -497,7 +497,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
      */
     private void cascadeVersionProperties(WorkspaceGraph graph, File root,
                                            List<String> sorted, String branchName)
-            throws MojoExecutionException {
+            throws MojoException {
 
         // Build map of upstream component → new branch-qualified version
         java.util.Map<String, String> newVersions = new java.util.LinkedHashMap<>();
@@ -571,7 +571,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
      */
     private void cascadeBomProperties(WorkspaceGraph graph, File root,
                                        List<String> sorted, String branchName)
-            throws MojoExecutionException {
+            throws MojoException {
 
         // Build map of component name → new branch-qualified version
         java.util.Map<String, String> newVersions = new java.util.LinkedHashMap<>();
@@ -583,7 +583,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                 if (pom.exists()) {
                     try {
                         effectiveVersion = ReleaseSupport.readPomVersion(pom);
-                    } catch (MojoExecutionException e) { /* skip */ }
+                    } catch (MojoException e) { /* skip */ }
                 }
             }
             if (effectiveVersion != null && !effectiveVersion.isEmpty()) {
@@ -640,7 +640,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
      * operations during feature-finish.
      */
     private void ensureFullClone(File dir, String name)
-            throws MojoExecutionException {
+            throws MojoException {
         try {
             String isShallow = ReleaseSupport.execCapture(dir,
                     "git", "rev-parse", "--is-shallow-repository");
@@ -649,7 +649,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                 ReleaseSupport.exec(dir, getLog(),
                         "git", "fetch", "--unshallow");
             }
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             getLog().warn("    Could not check/unshallow " + name
                     + ": " + e.getMessage());
         }
@@ -663,7 +663,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
      * @return cascade gap rows for the markdown report
      */
     private List<CascadeGapRow> checkBomCascadeAndConfirm(WorkspaceGraph graph, File root)
-            throws MojoExecutionException {
+            throws MojoException {
         // Build published artifact sets
         java.util.Map<String, java.util.Set<PublishedArtifactSet.Artifact>>
                 workspaceArtifacts = new java.util.LinkedHashMap<>();
@@ -777,7 +777,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
             String response = console.readLine(
                     "  Proceed with feature-start? (yes/no): ");
             if (response == null || !response.trim().toLowerCase().startsWith("y")) {
-                throw new MojoExecutionException(
+                throw new MojoException(
                         "Feature-start aborted by user. Fix BOM cascade gaps first.");
             }
         } else {
@@ -797,7 +797,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
      */
     private void cascadeBomImports(WorkspaceGraph graph, File root,
                                     List<String> sorted, String branchName)
-            throws MojoExecutionException {
+            throws MojoException {
         // Build published artifact sets and new version map
         java.util.Map<String, java.util.Set<PublishedArtifactSet.Artifact>>
                 workspaceArtifacts = new java.util.LinkedHashMap<>();
@@ -823,7 +823,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                 if (pom.exists()) {
                     try {
                         effectiveVersion = ReleaseSupport.readPomVersion(pom);
-                    } catch (MojoExecutionException e) { /* skip */ }
+                    } catch (MojoException e) { /* skip */ }
                 }
             }
             if (effectiveVersion != null && !effectiveVersion.isEmpty()) {
@@ -878,7 +878,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                     ReleaseSupport.exec(dir, getLog(),
                             "git", "commit", "-m",
                             "feature: update BOM imports for " + branchName);
-                } catch (MojoExecutionException e) {
+                } catch (MojoException e) {
                     getLog().warn("    Could not commit BOM update in "
                             + name + ": " + e.getMessage());
                 }
@@ -904,7 +904,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
      */
     private void removeIntraReactorPins(File root, List<String> components,
                                          boolean publish)
-            throws MojoExecutionException {
+            throws MojoException {
         for (String name : components) {
             File compDir = new File(root, name);
             File rootPom = new File(compDir, "pom.xml");
