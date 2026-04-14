@@ -83,18 +83,9 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
                     "Root POM has no <parent> block — nothing to set.");
         }
 
-        String targetVersion;
-        if (parentVersion != null && !parentVersion.isBlank()) {
-            targetVersion = parentVersion.trim();
-        } else {
-            targetVersion = rootParent.version();
-            if (targetVersion == null || targetVersion.isBlank()) {
-                throw new MojoExecutionException(
-                        "Cannot determine target version. Supply "
-                                + "-Dparent.version=<version> or set it "
-                                + "in the root POM first.");
-            }
-        }
+        String targetVersion = requireParam(parentVersion,
+                "parent.version", "Target parent version");
+        parentVersion = targetVersion;
 
         String parentArtifactId = rootParent.artifactId();
 
