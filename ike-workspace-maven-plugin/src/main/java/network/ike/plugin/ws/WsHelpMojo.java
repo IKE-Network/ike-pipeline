@@ -2,113 +2,227 @@ package network.ike.plugin.ws;
 
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.descriptor.MojoDescriptor;
+import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
- * Displays available ws: workspace goals.
+ * Displays available ws: workspace goals, auto-discovered from the
+ * Maven plugin descriptor.
+ *
+ * <p>Goal names and descriptions are read from the
+ * {@link PluginDescriptor} injected by Maven at runtime, so the help
+ * output is always in sync with the actual plugin — no manual list to
+ * maintain.
+ *
+ * <p>Goals are categorized by prefix convention:
+ * <ul>
+ *   <li>feature-*, update-feature-*, switch-* → Feature Branching</li>
+ *   <li>set-parent-*, align-* → Parent &amp; Version Alignment</li>
+ *   <li>release-*, checkpoint-*, post-release → Release &amp; Checkpoint</li>
+ *   <li>commit, push, sync, check-branch → VCS Bridge</li>
+ *   <li>cleanup-* → Branch Cleanup</li>
+ *   <li>Everything else → Workspace Management</li>
+ * </ul>
  *
  * @see <a href="https://github.com/IKE-Network/ike-pipeline">IKE Pipeline</a>
  */
 @Mojo(name = "help", requiresProject = false, threadSafe = true)
 public class WsHelpMojo extends AbstractMojo {
 
+    /**
+     * The plugin descriptor, injected by Maven. Contains all
+     * {@link MojoDescriptor} instances discovered from annotations.
+     */
+    @Parameter(defaultValue = "${plugin}", readonly = true)
+    PluginDescriptor pluginDescriptor;
+
     /** Creates this goal instance. */
     public WsHelpMojo() {}
 
     @Override
     public void execute() throws MojoExecutionException {
+        List<GoalInfo> goals = discoverGoals();
+
         getLog().info("");
         getLog().info("IKE Workspace Tools — Available Goals");
         getLog().info("══════════════════════════════════════════════════════════════");
+
+        Map<String, List<GoalInfo>> categories = categorize(goals);
+
+        for (Map.Entry<String, List<GoalInfo>> entry : categories.entrySet()) {
+            getLog().info("");
+            getLog().info("  ── " + entry.getKey() + " "
+                    + "─".repeat(Math.max(1,
+                    56 - entry.getKey().length())) + "─");
+            for (GoalInfo g : entry.getValue()) {
+                String goalName = "ws:" + g.name;
+                String padding = " ".repeat(
+                        Math.max(1, 46 - goalName.length()));
+                getLog().info("  " + goalName + padding + g.summary);
+            }
+        }
+
         getLog().info("");
-        getLog().info("  ── Workspace Management ─────────────────────────────────");
-        getLog().info("  ws:create                                       Create a new workspace (workspace.yaml + reactor POM)");
-        getLog().info("  ws:add                                          Add a component to the workspace manifest");
-        getLog().info("  ws:init                                         Clone/initialize repos from workspace.yaml");
-        getLog().info("  ws:verify                                       Check manifest + VCS bridge state");
-        getLog().info("  ws:verify-convergence                           Full verify + transitive dependency convergence");
-        getLog().info("  ws:fix                                          Auto-fix issues found by verify");
-        getLog().info("  ws:overview                                     Workspace overview (manifest, graph, status, cascade)");
-        getLog().info("  ws:report                                       Generate workspace report");
-        getLog().info("  ws:graph                                        Print dependency graph");
-        getLog().info("  ws:stignore                                     Generate .stignore for Syncthing");
-        getLog().info("  ws:sync                                         Sync workspace.yaml <-> actual branches");
-        getLog().info("  ws:upgrade                                      Upgrade workspace plugin/reactor versions");
-        getLog().info("  ws:pull                                         Git pull --rebase across repos");
-        getLog().info("  ws:remove                                       Remove a component from the workspace");
-        getLog().info("");
-        getLog().info("  ── Feature Branching ────────────────────────────────────");
-        getLog().info("  ws:feature-start-draft                          Preview feature branch creation feature branch across repos");
-        getLog().info("  ws:feature-start-publish                        Create feature branch across repos");
-        getLog().info("  ws:feature-abandon-draft                        Preview abandoning feature branch");
-        getLog().info("  ws:feature-abandon-publish                      Abandon feature branch (with confirmation)");
-        getLog().info("  ws:feature-finish-merge-draft                   Preview no-ff merge");
-        getLog().info("  ws:feature-finish-squash-draft                  Preview squash-merge (default)");
-        getLog().info("  ws:update-feature-draft                        Preview merging main into feature branch");
-        getLog().info("  ws:update-feature-publish                      Merge main into feature branch");
-        getLog().info("  ws:switch-draft                                Preview switching all components to a branch");
-        getLog().info("  ws:switch-publish                              Switch all components to a branch");
-        getLog().info("");
-        getLog().info("  ── Release & Checkpoint ─────────────────────────────────");
-        getLog().info("  ws:release-draft                                Preview workspace release components in topo order");
-        getLog().info("  ws:checkpoint-draft                             Preview checkpoint (tag all repos, record YAML)");
-        getLog().info("  ws:checkpoint-publish                           Execute checkpoint");
-        getLog().info("  ws:post-release                                 Post-release cleanup (bump to next SNAPSHOT)");
-        getLog().info("  ws:align-draft                                  Preview dependency alignment across workspace");
-        getLog().info("  ws:release-notes                                Generate release notes from commits");
-        getLog().info("");
-        getLog().info("  ── VCS Bridge ───────────────────────────────────────────");
-        getLog().info("  ws:sync                                         Reconcile git state after machine switch");
-        getLog().info("  ws:commit                                       Catch-up + commit across repos");
-        getLog().info("  ws:push                                         Catch-up + push across repos");
-        getLog().info("  ws:check-branch                                 Warn on direct branching (git hook)");
-        getLog().info("");
-        getLog().info("  ── Branch Cleanup ───────────────────────────────────────");
-        getLog().info("  ws:cleanup-draft                                List merged/stale feature branches");
-        getLog().info("  ws:cleanup-publish                              Delete merged feature branches");
-        getLog().info("");
-        getLog().info("  ── Cascade ──────────────────────────────────────────────");
-        getLog().info("  ws:cascade                                      Show downstream impact of a change");
-        getLog().info("");
-        getLog().info("  ws:help                                         This help message");
-        getLog().info("");
-        getLog().info("Options for workspace management:");
-        getLog().info("  -Dworkspace.manifest=<path>  Path to workspace.yaml (auto-detected)");
-        getLog().info("  -Dgroup=<name>               Restrict to group (status, init, pull)");
-        getLog().info("  -Dcomponent=<name>           Component for ws:cascade (required)");
-        getLog().info("  -Dformat=dot                 Graphviz DOT output for ws:graph");
-        getLog().info("");
-        getLog().info("Options for feature branching:");
-        getLog().info("  -Dfeature=<name>             Feature name (branch: feature/<name>)");
-        getLog().info("  -Dgroup=<name>               Restrict to group");
-        getLog().info("  -DskipVersion=true           Skip POM version qualification (feature-start)");
-        getLog().info("  -DtargetBranch=<name>        Merge target (default: main)");
-        getLog().info("  -DkeepBranch=true            Keep branch after merge (feature-finish)");
-        getLog().info("  -Dmessage=<msg>              Squash commit message (feature-finish-squash)");
-        getLog().info("  -Dpublish=true               Execute (default is draft)");
-        getLog().info("");
-        getLog().info("Options for checkpoint:");
-        getLog().info("  -Dname=<name>                Checkpoint name (auto-derived if omitted)");
-        getLog().info("");
-        getLog().info("Options for release:");
-        getLog().info("  -Dcomponent=<name>           Release one specific component");
-        getLog().info("  -Dgroup=<name>               Restrict to components in group");
-        getLog().info("  -DdeploySite=true            Deploy site for each component");
-        getLog().info("  -Dpublish=true               Execute release");
-        getLog().info("  -Dpush=true                  Push releases to origin (default: true)");
-        getLog().info("  -DskipCheckpoint=true        Skip pre-release checkpoint");
-        getLog().info("");
-        getLog().info("Options for VCS bridge:");
-        getLog().info("  -Dmessage=<msg>              Commit message (ws:commit)");
-        getLog().info("  -DaddAll=true                Stage all changes before commit");
-        getLog().info("  -Dpush=true                  Push after commit");
-        getLog().info("  -Dremote=<name>              Remote name (default: origin)");
-        getLog().info("  -Dgroup=<name>               Restrict to group (commit, push)");
-        getLog().info("");
-        getLog().info("Options for ws:sync:");
-        getLog().info("  -Dfrom=repos                 Update workspace.yaml from repos (default)");
-        getLog().info("  -Dfrom=manifest              Switch repos to match workspace.yaml");
-        getLog().info("  -Dpublish=true               Execute (default is draft)");
+        printOptions();
         getLog().info("");
     }
+
+    // ── Goal discovery ──────────────────────────────────────────
+
+    /**
+     * Read goal names and descriptions from the Maven
+     * {@link PluginDescriptor} injected at runtime.
+     *
+     * @return list of discovered goals, sorted by name
+     */
+    private List<GoalInfo> discoverGoals() {
+        List<GoalInfo> goals = new ArrayList<>();
+
+        if (pluginDescriptor == null) {
+            getLog().warn("Plugin descriptor not available — "
+                    + "cannot discover goals");
+            return goals;
+        }
+
+        for (MojoDescriptor mojo : pluginDescriptor.getMojos()) {
+            String goal = mojo.getGoal();
+            if (goal == null || goal.isBlank()) continue;
+
+            String description = mojo.getDescription();
+            String summary = firstSentence(description);
+            goals.add(new GoalInfo(goal, summary));
+        }
+
+        goals.sort(Comparator.comparing(g -> g.name));
+        return goals;
+    }
+
+    /**
+     * Extract the first sentence from a description string.
+     * Trims at the first period followed by whitespace, or at 80 chars.
+     *
+     * @param description full description
+     * @return first sentence
+     */
+    private static String firstSentence(String description) {
+        if (description == null || description.isBlank()) {
+            return "";
+        }
+        // Collapse whitespace
+        String s = description.replaceAll("\\s+", " ").trim();
+
+        // Find first sentence break
+        int dot = s.indexOf(". ");
+        if (dot > 0 && dot < 80) {
+            return s.substring(0, dot + 1);
+        }
+
+        // Truncate if needed
+        if (s.length() > 80) {
+            return s.substring(0, 77) + "...";
+        }
+        return s;
+    }
+
+    // ── Categorization ──────────────────────────────────────────
+
+    /**
+     * Group goals into named categories based on prefix conventions.
+     *
+     * @param goals sorted list of goals
+     * @return ordered map of category name to goals
+     */
+    private static Map<String, List<GoalInfo>> categorize(
+            List<GoalInfo> goals) {
+        Map<String, List<GoalInfo>> categories = new LinkedHashMap<>();
+        categories.put("Workspace Management", new ArrayList<>());
+        categories.put("Parent & Version Alignment", new ArrayList<>());
+        categories.put("Feature Branching", new ArrayList<>());
+        categories.put("Release & Checkpoint", new ArrayList<>());
+        categories.put("VCS Bridge", new ArrayList<>());
+        categories.put("Branch Cleanup", new ArrayList<>());
+
+        for (GoalInfo g : goals) {
+            categories.get(categoryOf(g.name)).add(g);
+        }
+
+        // Remove empty categories
+        categories.values().removeIf(List::isEmpty);
+        return categories;
+    }
+
+    /**
+     * Determine the category for a goal name.
+     *
+     * @param name goal name (without ws: prefix)
+     * @return category name
+     */
+    private static String categoryOf(String name) {
+        if (name.startsWith("feature-") || name.startsWith("update-feature")
+                || name.startsWith("switch")) {
+            return "Feature Branching";
+        }
+        if (name.startsWith("release") || name.startsWith("checkpoint")
+                || name.equals("post-release") || name.equals("release-notes")) {
+            return "Release & Checkpoint";
+        }
+        if (name.startsWith("set-parent") || name.startsWith("align")) {
+            return "Parent & Version Alignment";
+        }
+        if (name.equals("commit") || name.equals("push")
+                || name.equals("sync") || name.equals("check-branch")) {
+            return "VCS Bridge";
+        }
+        if (name.startsWith("cleanup")) {
+            return "Branch Cleanup";
+        }
+        return "Workspace Management";
+    }
+
+    // ── Options ─────────────────────────────────────────────────
+
+    /**
+     * Print common option groups. These remain static because they
+     * document cross-cutting parameters, not individual goal metadata.
+     */
+    private void printOptions() {
+        getLog().info("Common options:");
+        getLog().info("  -Dworkspace.manifest=<path>   Path to workspace.yaml (auto-detected)");
+        getLog().info("  -Dgroup=<name>                Restrict to a component group");
+        getLog().info("  -Dpublish=true                Execute (most goals default to draft)");
+        getLog().info("");
+        getLog().info("Parent version:");
+        getLog().info("  -Dparent.version=<version>    Target parent version (ws:set-parent)");
+        getLog().info("");
+        getLog().info("Feature branching:");
+        getLog().info("  -Dfeature=<name>              Feature name (branch: feature/<name>)");
+        getLog().info("  -DskipVersion=true            Skip POM version qualification");
+        getLog().info("  -DtargetBranch=<name>         Merge target (default: main)");
+        getLog().info("  -DkeepBranch=true             Keep branch after merge");
+        getLog().info("  -Dmessage=<msg>               Commit/squash message");
+        getLog().info("");
+        getLog().info("Release & checkpoint:");
+        getLog().info("  -Dcomponent=<name>            Release one specific component");
+        getLog().info("  -Dname=<name>                 Checkpoint name (auto-derived)");
+        getLog().info("  -DdeploySite=true             Deploy site for each component");
+        getLog().info("  -Dpush=true                   Push to origin");
+    }
+
+    // ── Internal record ─────────────────────────────────────────
+
+    /**
+     * A discovered goal with its name and summary description.
+     *
+     * @param name    goal name (without prefix)
+     * @param summary first sentence of the javadoc description
+     */
+    private record GoalInfo(String name, String summary) {}
 }
