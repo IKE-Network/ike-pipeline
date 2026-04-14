@@ -1,7 +1,7 @@
 package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * <p>Each test creates a fresh temp workspace via {@link TestWorkspaceHelper},
  * then instantiates a Mojo directly, sets its {@code manifest} field
  * (package-private in {@link AbstractWorkspaceMojo}), and calls
- * {@link org.apache.maven.plugin.Mojo#execute()}.
+ * {@link org.apache.maven.api.plugin.Mojo#execute()}.
  *
  * <p>These Mojos log output via {@code getLog().info()} which defaults
  * to {@code SystemStreamLog} — no mock is needed.
@@ -42,7 +42,7 @@ class WorkspaceMojoIntegrationTest {
 
     @Test
     void verify_validWorkspace_noException() {
-        VerifyWorkspaceMojo mojo = new VerifyWorkspaceMojo();
+        VerifyWorkspaceMojo mojo = TestLog.createMojo(VerifyWorkspaceMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
 
         assertThatCode(mojo::execute).doesNotThrowAnyException();
@@ -52,7 +52,7 @@ class WorkspaceMojoIntegrationTest {
 
     @Test
     void cascade_fromLeaf_showsDownstream() {
-        CascadeWorkspaceMojo mojo = new CascadeWorkspaceMojo();
+        CascadeWorkspaceMojo mojo = TestLog.createMojo(CascadeWorkspaceMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.component = "lib-a";
 
@@ -61,7 +61,7 @@ class WorkspaceMojoIntegrationTest {
 
     @Test
     void cascade_fromTip_noDownstream() {
-        CascadeWorkspaceMojo mojo = new CascadeWorkspaceMojo();
+        CascadeWorkspaceMojo mojo = TestLog.createMojo(CascadeWorkspaceMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.component = "app-c";
 
@@ -72,7 +72,7 @@ class WorkspaceMojoIntegrationTest {
 
     @Test
     void graph_textFormat_runsSuccessfully() {
-        GraphWorkspaceMojo mojo = new GraphWorkspaceMojo();
+        GraphWorkspaceMojo mojo = TestLog.createMojo(GraphWorkspaceMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.format = "text";
 
@@ -81,7 +81,7 @@ class WorkspaceMojoIntegrationTest {
 
     @Test
     void graph_dotFormat_runsSuccessfully() {
-        GraphWorkspaceMojo mojo = new GraphWorkspaceMojo();
+        GraphWorkspaceMojo mojo = TestLog.createMojo(GraphWorkspaceMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.format = "dot";
 
@@ -92,7 +92,7 @@ class WorkspaceMojoIntegrationTest {
 
     @Test
     void status_allClean_runsSuccessfully() {
-        OverviewWorkspaceMojo mojo = new OverviewWorkspaceMojo();
+        OverviewWorkspaceMojo mojo = TestLog.createMojo(OverviewWorkspaceMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
 
         assertThatCode(mojo::execute).doesNotThrowAnyException();
@@ -104,7 +104,7 @@ class WorkspaceMojoIntegrationTest {
         Path untracked = tempDir.resolve("lib-a").resolve("dirty.txt");
         Files.writeString(untracked, "uncommitted", StandardCharsets.UTF_8);
 
-        OverviewWorkspaceMojo mojo = new OverviewWorkspaceMojo();
+        OverviewWorkspaceMojo mojo = TestLog.createMojo(OverviewWorkspaceMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
 
         assertThatCode(mojo::execute).doesNotThrowAnyException();
@@ -112,7 +112,7 @@ class WorkspaceMojoIntegrationTest {
 
     @Test
     void status_groupFilter_runsSuccessfully() {
-        OverviewWorkspaceMojo mojo = new OverviewWorkspaceMojo();
+        OverviewWorkspaceMojo mojo = TestLog.createMojo(OverviewWorkspaceMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.group = "libs";
 
@@ -123,7 +123,7 @@ class WorkspaceMojoIntegrationTest {
 
     @Test
     void dashboard_cleanWorkspace_succeeds() {
-        OverviewWorkspaceMojo mojo = new OverviewWorkspaceMojo();
+        OverviewWorkspaceMojo mojo = TestLog.createMojo(OverviewWorkspaceMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
 
         assertThatCode(mojo::execute).doesNotThrowAnyException();
@@ -135,7 +135,7 @@ class WorkspaceMojoIntegrationTest {
         Path untracked = tempDir.resolve("lib-a").resolve("dirty.txt");
         Files.writeString(untracked, "uncommitted", StandardCharsets.UTF_8);
 
-        OverviewWorkspaceMojo mojo = new OverviewWorkspaceMojo();
+        OverviewWorkspaceMojo mojo = TestLog.createMojo(OverviewWorkspaceMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
 
         assertThatCode(mojo::execute).doesNotThrowAnyException();
@@ -149,7 +149,7 @@ class WorkspaceMojoIntegrationTest {
         TestWorkspaceHelper initHelper = new TestWorkspaceHelper(initRoot);
         initHelper.buildWorkspaceWithUpstreams();
 
-        InitWorkspaceMojo mojo = new InitWorkspaceMojo();
+        InitWorkspaceMojo mojo = TestLog.createMojo(InitWorkspaceMojo.class);
         mojo.manifest = initHelper.workspaceYaml().toFile();
 
         mojo.execute();
@@ -183,7 +183,7 @@ class WorkspaceMojoIntegrationTest {
         // Count commits before init
         String countBefore = execCapture(libA, "git", "rev-list", "--count", "HEAD");
 
-        InitWorkspaceMojo mojo = new InitWorkspaceMojo();
+        InitWorkspaceMojo mojo = TestLog.createMojo(InitWorkspaceMojo.class);
         mojo.manifest = initHelper.workspaceYaml().toFile();
 
         mojo.execute();
@@ -203,7 +203,7 @@ class WorkspaceMojoIntegrationTest {
         TestWorkspaceHelper initHelper = new TestWorkspaceHelper(initRoot);
         initHelper.buildWorkspaceWithUpstreams();
 
-        InitWorkspaceMojo mojo = new InitWorkspaceMojo();
+        InitWorkspaceMojo mojo = TestLog.createMojo(InitWorkspaceMojo.class);
         mojo.manifest = initHelper.workspaceYaml().toFile();
         mojo.group = "libs";
 
@@ -221,7 +221,7 @@ class WorkspaceMojoIntegrationTest {
 
     @Test
     void stignore_createsFiles() throws Exception {
-        StignoreWorkspaceMojo mojo = new StignoreWorkspaceMojo();
+        StignoreWorkspaceMojo mojo = TestLog.createMojo(StignoreWorkspaceMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
 
         mojo.execute();
@@ -253,15 +253,17 @@ class WorkspaceMojoIntegrationTest {
      * annotated tag at the current HEAD so the mojo can read its SHA.
      */
     private static WsCheckpointDraftMojo checkpointMojoWithSimulatedBuild() {
-        return new WsCheckpointDraftMojo() {
+        var mojo = new WsCheckpointDraftMojo() {
             @Override
             protected void checkpointComponent(File dir, String checkpointLabel)
-                    throws MojoExecutionException {
+                    throws MojoException {
                 ReleaseSupport.exec(dir, getLog(),
                         "git", "tag", "-a", "checkpoint/" + checkpointLabel,
                         "-m", "Simulated checkpoint " + checkpointLabel);
             }
         };
+        TestLog.injectInto(mojo);
+        return mojo;
     }
 
     @Test
@@ -311,7 +313,7 @@ class WorkspaceMojoIntegrationTest {
         TestWorkspaceHelper releaseHelper = new TestWorkspaceHelper(releaseRoot);
         releaseHelper.buildWorkspace();
 
-        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
+        WsReleaseDraftMojo mojo = TestLog.createMojo(WsReleaseDraftMojo.class);
         mojo.manifest = releaseHelper.workspaceYaml().toFile();
         mojo.publish = false;
 
@@ -329,7 +331,7 @@ class WorkspaceMojoIntegrationTest {
             exec(releaseRoot.resolve(name), "git", "tag", "v1.0.0");
         }
 
-        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
+        WsReleaseDraftMojo mojo = TestLog.createMojo(WsReleaseDraftMojo.class);
         mojo.manifest = releaseHelper.workspaceYaml().toFile();
         mojo.publish = false;
 

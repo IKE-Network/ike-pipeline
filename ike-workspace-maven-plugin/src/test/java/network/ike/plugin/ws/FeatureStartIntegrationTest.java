@@ -38,7 +38,7 @@ class FeatureStartIntegrationTest {
         String libBBranch = execCapture(tempDir.resolve("lib-b"), "git", "rev-parse", "--abbrev-ref", "HEAD");
         String appCBranch = execCapture(tempDir.resolve("app-c"), "git", "rev-parse", "--abbrev-ref", "HEAD");
 
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "test-feature";
         mojo.publish = false;
@@ -62,7 +62,7 @@ class FeatureStartIntegrationTest {
 
     @Test
     void featureStart_createsBranchesAndQualifiesVersion() throws Exception {
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "my-feature";
         mojo.publish = true;
@@ -95,7 +95,7 @@ class FeatureStartIntegrationTest {
         String appCPom = Files.readString(
                 tempDir.resolve("app-c").resolve("pom.xml"), StandardCharsets.UTF_8);
 
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "skip-test";
         mojo.skipVersion = true;
@@ -121,7 +121,7 @@ class FeatureStartIntegrationTest {
 
     @Test
     void featureStart_groupFilter() throws Exception {
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "libs-only";
         mojo.group = "libs";
@@ -206,7 +206,7 @@ class FeatureStartIntegrationTest {
         exec(libA, "git", "add", ".");
         exec(libA, "git", "commit", "-m", "Add submodules with intra-reactor pin");
 
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "pin-test";
         mojo.publish = true;
@@ -283,7 +283,7 @@ class FeatureStartIntegrationTest {
         exec(libA, "git", "add", ".");
         exec(libA, "git", "commit", "-m", "Add submodules with property pin");
 
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "prop-pin-test";
         mojo.publish = true;

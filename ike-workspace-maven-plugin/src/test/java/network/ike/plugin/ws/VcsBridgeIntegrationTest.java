@@ -2,7 +2,7 @@ package network.ike.plugin.ws;
 
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -113,7 +113,7 @@ class VcsBridgeIntegrationTest {
                 machineBDir.resolve(".ike/vcs-state"));
 
         // Machine B syncs
-        org.apache.maven.plugin.logging.Log log = new org.apache.maven.plugin.logging.SystemStreamLog();
+        org.apache.maven.api.plugin.Log log = new TestLog();
         VcsOperations.sync(machineBDir.toFile(), log);
 
         // Machine B HEAD should now match
@@ -138,7 +138,7 @@ class VcsBridgeIntegrationTest {
                 machineBDir.resolve(".ike/vcs-state"));
 
         // Run VCS bridge sync on machine B (direct API — ws:vcs-sync removed)
-        VcsOperations.sync(machineBDir.toFile(), new org.apache.maven.plugin.logging.SystemStreamLog());
+        VcsOperations.sync(machineBDir.toFile(), new TestLog());
 
         assertThat(VcsOperations.headSha(machineBDir.toFile())).isEqualTo(expectedSha);
     }
@@ -150,7 +150,7 @@ class VcsBridgeIntegrationTest {
         VcsOperations.writeVcsState(machineBDir.toFile(), VcsState.Action.COMMIT);
 
         System.setProperty("user.dir", machineBDir.toAbsolutePath().toString());
-        VerifyWorkspaceMojo mojo = new VerifyWorkspaceMojo();
+        VerifyWorkspaceMojo mojo = TestLog.createMojo(VerifyWorkspaceMojo.class);
         // Should not throw — just reports state
         mojo.execute();
     }
@@ -169,7 +169,7 @@ class VcsBridgeIntegrationTest {
                 machineBDir.resolve(".ike/vcs-state"));
 
         System.setProperty("user.dir", machineBDir.toAbsolutePath().toString());
-        VerifyWorkspaceMojo mojo = new VerifyWorkspaceMojo();
+        VerifyWorkspaceMojo mojo = TestLog.createMojo(VerifyWorkspaceMojo.class);
         // Should not throw — reports "behind" state
         mojo.execute();
     }
@@ -192,7 +192,7 @@ class VcsBridgeIntegrationTest {
         assertThat(VcsOperations.currentBranch(machineBDir.toFile())).isEqualTo("main");
 
         // Sync should switch B to the feature branch
-        org.apache.maven.plugin.logging.Log log = new org.apache.maven.plugin.logging.SystemStreamLog();
+        org.apache.maven.api.plugin.Log log = new TestLog();
         VcsOperations.sync(machineBDir.toFile(), log);
 
         assertThat(VcsOperations.currentBranch(machineBDir.toFile())).isEqualTo("feature/test");
@@ -209,7 +209,7 @@ class VcsBridgeIntegrationTest {
         exec(machineADir, "git", "add", ".");
 
         System.setProperty("user.dir", machineADir.toAbsolutePath().toString());
-        CommitMojo mojo = new CommitMojo();
+        CommitMojo mojo = TestLog.createMojo(CommitMojo.class);
         mojo.message = "Test commit via plugin";
 
         mojo.execute();

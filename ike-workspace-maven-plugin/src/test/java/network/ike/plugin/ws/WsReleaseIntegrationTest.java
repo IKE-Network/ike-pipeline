@@ -1,7 +1,7 @@
 package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -50,7 +50,7 @@ class WsReleaseIntegrationTest {
     @Test
     void dryRun_neverReleased_showsAllComponents() throws Exception {
         // No tags exist, so all components are "never released" and dirty
-        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
+        WsReleaseDraftMojo mojo = TestLog.createMojo(WsReleaseDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.publish = false;
 
@@ -68,7 +68,7 @@ class WsReleaseIntegrationTest {
         addCommit(tempDir.resolve("lib-a"), "new work in lib-a");
         addCommit(tempDir.resolve("app-c"), "new work in app-c");
 
-        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
+        WsReleaseDraftMojo mojo = TestLog.createMojo(WsReleaseDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.publish = false;
 
@@ -83,7 +83,7 @@ class WsReleaseIntegrationTest {
             exec(tempDir.resolve(name), "git", "tag", "v1.0.0");
         }
 
-        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
+        WsReleaseDraftMojo mojo = TestLog.createMojo(WsReleaseDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.publish = false;
 
@@ -108,7 +108,7 @@ class WsReleaseIntegrationTest {
     @Test
     void topologicalOrder_upstreamReleasedFirst() throws Exception {
         // All components are modified (never tagged), verify topological order
-        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
+        WsReleaseDraftMojo mojo = TestLog.createMojo(WsReleaseDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.publish = false;
 
@@ -126,7 +126,7 @@ class WsReleaseIntegrationTest {
 
     @Test
     void groupFilter_onlyGroupComponents() throws Exception {
-        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
+        WsReleaseDraftMojo mojo = TestLog.createMojo(WsReleaseDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.group = "libs";
         mojo.publish = false;
@@ -137,7 +137,7 @@ class WsReleaseIntegrationTest {
 
     @Test
     void componentFilter_singleComponent() throws Exception {
-        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
+        WsReleaseDraftMojo mojo = TestLog.createMojo(WsReleaseDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.component = "lib-a";
         mojo.publish = false;
@@ -154,12 +154,13 @@ class WsReleaseIntegrationTest {
         WsCheckpointDraftMojo cpMojo = new WsCheckpointDraftMojo() {
             @Override
             protected void checkpointComponent(File dir, String checkpointLabel)
-                    throws MojoExecutionException {
+                    throws MojoException {
                 ReleaseSupport.exec(dir, getLog(),
                         "git", "tag", "-a", "checkpoint/" + checkpointLabel,
                         "-m", "Simulated checkpoint " + checkpointLabel);
             }
         };
+        TestLog.injectInto(cpMojo);
         cpMojo.manifest = helper.workspaceYaml().toFile();
         cpMojo.name = "pre-release-test";
         cpMojo.publish = true;
@@ -342,15 +343,15 @@ class WsReleaseIntegrationTest {
         // to run "mvn ike:release" — which fails because there is no
         // mvn/mvnw in the component directories. Verify that:
         //  1. The error message names the failed component
-        //  2. The exception is MojoExecutionException
-        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
+        //  2. The exception is MojoException
+        WsReleaseDraftMojo mojo = TestLog.createMojo(WsReleaseDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.publish = true;
         mojo.skipCheckpoint = true;
         mojo.push = false;
 
         assertThatThrownBy(mojo::execute)
-                .isInstanceOf(MojoExecutionException.class)
+                .isInstanceOf(MojoException.class)
                 .hasMessageContaining("Workspace release failed");
     }
 
@@ -361,7 +362,7 @@ class WsReleaseIntegrationTest {
             exec(tempDir.resolve(name), "git", "tag", "v1.0.0");
         }
 
-        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
+        WsReleaseDraftMojo mojo = TestLog.createMojo(WsReleaseDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.publish = true;
         mojo.skipCheckpoint = true;
@@ -370,7 +371,7 @@ class WsReleaseIntegrationTest {
         // app-c is dirty (never released) — will try mvn ike:release
         // and fail. The error message should name app-c.
         assertThatThrownBy(mojo::execute)
-                .isInstanceOf(MojoExecutionException.class)
+                .isInstanceOf(MojoException.class)
                 .hasMessageContaining("app-c");
     }
 
@@ -382,7 +383,7 @@ class WsReleaseIntegrationTest {
         exec(tempDir.resolve("lib-b"), "git", "tag", "v1.0.0");
         exec(tempDir.resolve("app-c"), "git", "tag", "v1.0.0");
 
-        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
+        WsReleaseDraftMojo mojo = TestLog.createMojo(WsReleaseDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.publish = true;
         mojo.skipCheckpoint = true;
@@ -390,7 +391,7 @@ class WsReleaseIntegrationTest {
 
         try {
             mojo.execute();
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             // Expected — mvn ike:release fails
         }
 
@@ -404,7 +405,7 @@ class WsReleaseIntegrationTest {
 
     @Test
     void nonDryRun_writesCheckpointBeforeRelease() throws Exception {
-        WsReleaseDraftMojo mojo = new WsReleaseDraftMojo();
+        WsReleaseDraftMojo mojo = TestLog.createMojo(WsReleaseDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.publish = true;
         mojo.skipCheckpoint = false;
@@ -412,7 +413,7 @@ class WsReleaseIntegrationTest {
 
         try {
             mojo.execute();
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             // Expected — mvn ike:release fails
         }
 

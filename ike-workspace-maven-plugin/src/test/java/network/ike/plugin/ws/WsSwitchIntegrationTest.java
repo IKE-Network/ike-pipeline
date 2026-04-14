@@ -1,6 +1,6 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -29,7 +29,7 @@ class WsSwitchIntegrationTest {
         helper.buildWorkspace();
 
         // Start first feature branch
-        FeatureStartDraftMojo start1 = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo start1 = TestLog.createMojo(FeatureStartDraftMojo.class);
         start1.manifest = helper.workspaceYaml().toFile();
         start1.feature = "alpha";
         start1.skipVersion = true;
@@ -41,7 +41,7 @@ class WsSwitchIntegrationTest {
             exec(tempDir.resolve(name), "git", "checkout", "main");
         }
 
-        FeatureStartDraftMojo start2 = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo start2 = TestLog.createMojo(FeatureStartDraftMojo.class);
         start2.manifest = helper.workspaceYaml().toFile();
         start2.feature = "beta";
         start2.skipVersion = true;
@@ -54,7 +54,7 @@ class WsSwitchIntegrationTest {
     @Test
     void switch_switchesToFeatureBranch() throws Exception {
         // Currently on feature/beta — switch to feature/alpha
-        WsSwitchDraftMojo mojo = new WsSwitchDraftMojo();
+        WsSwitchDraftMojo mojo = TestLog.createMojo(WsSwitchDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.branch = "feature/alpha";
         mojo.publish = true;
@@ -70,7 +70,7 @@ class WsSwitchIntegrationTest {
 
     @Test
     void switch_switchesToMain() throws Exception {
-        WsSwitchDraftMojo mojo = new WsSwitchDraftMojo();
+        WsSwitchDraftMojo mojo = TestLog.createMojo(WsSwitchDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.branch = "main";
         mojo.publish = true;
@@ -86,7 +86,7 @@ class WsSwitchIntegrationTest {
 
     @Test
     void switch_draftMode_noChanges() throws Exception {
-        WsSwitchDraftMojo mojo = new WsSwitchDraftMojo();
+        WsSwitchDraftMojo mojo = TestLog.createMojo(WsSwitchDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.branch = "feature/alpha";
         mojo.publish = false; // draft
@@ -106,20 +106,20 @@ class WsSwitchIntegrationTest {
         Files.writeString(tempDir.resolve("lib-b").resolve("dirty.txt"),
                 "uncommitted", StandardCharsets.UTF_8);
 
-        WsSwitchDraftMojo mojo = new WsSwitchDraftMojo();
+        WsSwitchDraftMojo mojo = TestLog.createMojo(WsSwitchDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.branch = "feature/alpha";
         mojo.publish = true;
 
         assertThatThrownBy(mojo::execute)
-                .isInstanceOf(MojoExecutionException.class)
+                .isInstanceOf(MojoException.class)
                 .hasMessageContaining("uncommitted changes")
                 .hasMessageContaining("Commit or stash");
     }
 
     @Test
     void switch_alreadyOnBranch_noop() throws Exception {
-        WsSwitchDraftMojo mojo = new WsSwitchDraftMojo();
+        WsSwitchDraftMojo mojo = TestLog.createMojo(WsSwitchDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.branch = "feature/beta"; // already on this branch
         mojo.publish = true;
@@ -136,26 +136,26 @@ class WsSwitchIntegrationTest {
 
     @Test
     void switch_nonexistentBranch_fails() throws Exception {
-        WsSwitchDraftMojo mojo = new WsSwitchDraftMojo();
+        WsSwitchDraftMojo mojo = TestLog.createMojo(WsSwitchDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.branch = "feature/nonexistent";
         mojo.publish = true;
 
         assertThatThrownBy(mojo::execute)
-                .isInstanceOf(MojoExecutionException.class)
+                .isInstanceOf(MojoException.class)
                 .hasMessageContaining("does not exist");
     }
 
     @Test
     void switch_noConsole_noBranch_fails() throws Exception {
         // No -Dbranch and no console → should fail
-        WsSwitchDraftMojo mojo = new WsSwitchDraftMojo();
+        WsSwitchDraftMojo mojo = TestLog.createMojo(WsSwitchDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         // branch is null, System.console() returns null in tests
         mojo.publish = true;
 
         assertThatThrownBy(mojo::execute)
-                .isInstanceOf(MojoExecutionException.class)
+                .isInstanceOf(MojoException.class)
                 .hasMessageContaining("No interactive console");
     }
 

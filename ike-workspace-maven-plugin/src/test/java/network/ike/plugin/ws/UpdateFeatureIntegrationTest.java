@@ -1,6 +1,6 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -29,7 +29,7 @@ class UpdateFeatureIntegrationTest {
         helper.buildWorkspace();
 
         // Start a feature branch
-        FeatureStartDraftMojo start = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo start = TestLog.createMojo(FeatureStartDraftMojo.class);
         start.manifest = helper.workspaceYaml().toFile();
         start.feature = "long-lived";
         start.skipVersion = true;
@@ -58,7 +58,7 @@ class UpdateFeatureIntegrationTest {
         String libASha = execCapture(tempDir.resolve("lib-a"),
                 "git", "rev-parse", "HEAD");
 
-        UpdateFeatureDraftMojo mojo = new UpdateFeatureDraftMojo();
+        UpdateFeatureDraftMojo mojo = TestLog.createMojo(UpdateFeatureDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "long-lived";
         mojo.targetBranch = "main";
@@ -73,7 +73,7 @@ class UpdateFeatureIntegrationTest {
 
     @Test
     void updateFeature_incorporatesMainChanges() throws Exception {
-        UpdateFeatureDraftMojo mojo = new UpdateFeatureDraftMojo();
+        UpdateFeatureDraftMojo mojo = TestLog.createMojo(UpdateFeatureDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "long-lived";
         mojo.targetBranch = "main";
@@ -102,7 +102,7 @@ class UpdateFeatureIntegrationTest {
     @Test
     void updateFeature_alreadyUpToDate() throws Exception {
         // First, merge to get up to date
-        UpdateFeatureDraftMojo mojo1 = new UpdateFeatureDraftMojo();
+        UpdateFeatureDraftMojo mojo1 = TestLog.createMojo(UpdateFeatureDraftMojo.class);
         mojo1.manifest = helper.workspaceYaml().toFile();
         mojo1.feature = "long-lived";
         mojo1.targetBranch = "main";
@@ -113,7 +113,7 @@ class UpdateFeatureIntegrationTest {
                 "git", "rev-parse", "HEAD");
 
         // Run again — should be a no-op
-        UpdateFeatureDraftMojo mojo2 = new UpdateFeatureDraftMojo();
+        UpdateFeatureDraftMojo mojo2 = TestLog.createMojo(UpdateFeatureDraftMojo.class);
         mojo2.manifest = helper.workspaceYaml().toFile();
         mojo2.feature = "long-lived";
         mojo2.targetBranch = "main";
@@ -130,14 +130,14 @@ class UpdateFeatureIntegrationTest {
         Files.writeString(tempDir.resolve("lib-a").resolve("dirty.txt"),
                 "uncommitted", StandardCharsets.UTF_8);
 
-        UpdateFeatureDraftMojo mojo = new UpdateFeatureDraftMojo();
+        UpdateFeatureDraftMojo mojo = TestLog.createMojo(UpdateFeatureDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "long-lived";
         mojo.targetBranch = "main";
         mojo.publish = true;
 
         assertThatThrownBy(mojo::execute)
-                .isInstanceOf(MojoExecutionException.class)
+                .isInstanceOf(MojoException.class)
                 .hasMessageContaining("uncommitted changes");
     }
 

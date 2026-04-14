@@ -49,7 +49,7 @@ class WsSyncIntegrationTest {
         // Switch lib-a to a feature branch
         exec(tempDir.resolve("lib-a"), "git", "checkout", "-b", "feature/test");
 
-        WsSyncMojo mojo = new WsSyncMojo();
+        WsSyncMojo mojo = TestLog.createMojo(WsSyncMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.from = "repos";
         mojo.publish = true;
@@ -68,7 +68,7 @@ class WsSyncIntegrationTest {
         String yamlBefore = Files.readString(
                 helper.workspaceYaml(), StandardCharsets.UTF_8);
 
-        WsSyncMojo mojo = new WsSyncMojo();
+        WsSyncMojo mojo = TestLog.createMojo(WsSyncMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.from = "repos";
         mojo.publish = true;
@@ -89,7 +89,7 @@ class WsSyncIntegrationTest {
         String yamlBefore = Files.readString(
                 helper.workspaceYaml(), StandardCharsets.UTF_8);
 
-        WsSyncMojo mojo = new WsSyncMojo();
+        WsSyncMojo mojo = TestLog.createMojo(WsSyncMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.from = "repos";
         mojo.publish = false;
@@ -107,7 +107,7 @@ class WsSyncIntegrationTest {
         // Switch lib-a to a feature branch
         exec(tempDir.resolve("lib-a"), "git", "checkout", "-b", "feature/sync-commit");
 
-        WsSyncMojo mojo = new WsSyncMojo();
+        WsSyncMojo mojo = TestLog.createMojo(WsSyncMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.from = "repos";
         mojo.publish = true;
@@ -137,7 +137,7 @@ class WsSyncIntegrationTest {
                 "$1develop");
         Files.writeString(helper.workspaceYaml(), yaml, StandardCharsets.UTF_8);
 
-        WsSyncMojo mojo = new WsSyncMojo();
+        WsSyncMojo mojo = TestLog.createMojo(WsSyncMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.from = "manifest";
         mojo.publish = true;
@@ -175,7 +175,7 @@ class WsSyncIntegrationTest {
                 "$1develop");
         Files.writeString(helper.workspaceYaml(), yaml, StandardCharsets.UTF_8);
 
-        WsSyncMojo mojo = new WsSyncMojo();
+        WsSyncMojo mojo = TestLog.createMojo(WsSyncMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.from = "manifest";
         mojo.publish = true;
@@ -191,7 +191,7 @@ class WsSyncIntegrationTest {
     @Test
     void syncFromManifest_allMatch_noChanges() throws Exception {
         // All components are on main, workspace.yaml says main
-        WsSyncMojo mojo = new WsSyncMojo();
+        WsSyncMojo mojo = TestLog.createMojo(WsSyncMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.from = "manifest";
         mojo.publish = true;

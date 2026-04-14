@@ -1,7 +1,7 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.logging.SystemStreamLog;
+import org.apache.maven.api.plugin.MojoException;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -36,7 +36,7 @@ class CheckpointMojoTest {
 
         assertThatCode(() -> CheckpointSupport.preview(
                 tempDir.toFile(), "checkpoint/test-run",
-                new SystemStreamLog()))
+                new TestLog()))
                 .doesNotThrowAnyException();
 
         // No commits, tags, or POM changes
@@ -55,7 +55,7 @@ class CheckpointMojoTest {
 
         assertThatCode(() -> CheckpointSupport.preview(
                 tempDir.toFile(), "checkpoint/sprint-42",
-                new SystemStreamLog()))
+                new TestLog()))
                 .doesNotThrowAnyException();
     }
 
@@ -67,7 +67,7 @@ class CheckpointMojoTest {
 
         CheckpointSupport.checkpoint(
                 tempDir.toFile(), "checkpoint/test-tag",
-                new SystemStreamLog());
+                new TestLog());
 
         String tags = execCapture(tempDir, "git", "tag", "-l");
         assertThat(tags).contains("checkpoint/test-tag");
@@ -82,7 +82,7 @@ class CheckpointMojoTest {
 
         CheckpointSupport.checkpoint(
                 tempDir.toFile(), "checkpoint/no-pom-change",
-                new SystemStreamLog());
+                new TestLog());
 
         assertThat(Files.readString(tempDir.resolve("pom.xml"),
                 StandardCharsets.UTF_8))
@@ -97,7 +97,7 @@ class CheckpointMojoTest {
 
         CheckpointSupport.checkpoint(
                 tempDir.toFile(), "checkpoint/no-commits",
-                new SystemStreamLog());
+                new TestLog());
 
         // HEAD should not change — tag is on existing commit
         assertThat(execCapture(tempDir, "git", "rev-parse", "HEAD"))

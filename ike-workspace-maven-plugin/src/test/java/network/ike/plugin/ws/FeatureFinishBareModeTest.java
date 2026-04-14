@@ -1,6 +1,6 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -78,7 +78,7 @@ class FeatureFinishBareModeTest {
 
     @Test
     void squash_mergesAndStripsVersion() throws Exception {
-        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash: add test feature";
@@ -101,7 +101,7 @@ class FeatureFinishBareModeTest {
 
     @Test
     void squash_deletesBranchByDefault() throws Exception {
-        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash merge";
@@ -116,7 +116,7 @@ class FeatureFinishBareModeTest {
 
     @Test
     void squash_keepBranch_preservesBranch() throws Exception {
-        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash merge";
@@ -149,7 +149,7 @@ class FeatureFinishBareModeTest {
         exec(tempDir, "git", "add", ".");
         exec(tempDir, "git", "commit", "-m", "Add submodule");
 
-        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash with submodules";
@@ -191,7 +191,7 @@ class FeatureFinishBareModeTest {
         exec(tempDir, "git", "add", "pom.xml");
         exec(tempDir, "git", "commit", "-m", "Add version properties");
 
-        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash with properties";
@@ -237,7 +237,7 @@ class FeatureFinishBareModeTest {
         exec(tempDir, "git", "add", "pom.xml");
         exec(tempDir, "git", "commit", "-m", "Add BOM import");
 
-        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash with BOM import";
@@ -271,7 +271,7 @@ class FeatureFinishBareModeTest {
         exec(tempDir, "git", "add", "pom.xml");
         exec(tempDir, "git", "commit", "-m", "Non-semver version");
 
-        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash non-semver";
@@ -306,7 +306,7 @@ class FeatureFinishBareModeTest {
         exec(tempDir, "git", "add", "pom.xml");
         exec(tempDir, "git", "commit", "-m", "Date-based version");
 
-        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash date-based";
@@ -326,7 +326,7 @@ class FeatureFinishBareModeTest {
 
     @Test
     void merge_createsMergeCommit() throws Exception {
-        FeatureFinishMergeDraftMojo mojo = new FeatureFinishMergeDraftMojo();
+        FeatureFinishMergeDraftMojo mojo = TestLog.createMojo(FeatureFinishMergeDraftMojo.class);
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.publish = true;
@@ -342,7 +342,7 @@ class FeatureFinishBareModeTest {
 
     @Test
     void merge_keepsBranchByDefault() throws Exception {
-        FeatureFinishMergeDraftMojo mojo = new FeatureFinishMergeDraftMojo();
+        FeatureFinishMergeDraftMojo mojo = TestLog.createMojo(FeatureFinishMergeDraftMojo.class);
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.publish = true;
@@ -358,7 +358,7 @@ class FeatureFinishBareModeTest {
 
     @Test
     void dryRun_staysOnFeatureBranch() throws Exception {
-        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Should not happen";
@@ -375,14 +375,14 @@ class FeatureFinishBareModeTest {
     void wrongBranch_fails() throws Exception {
         exec(tempDir, "git", "checkout", "main");
 
-        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Should fail";
         mojo.publish = true;
 
         assertThatThrownBy(mojo::execute)
-                .isInstanceOf(MojoExecutionException.class)
+                .isInstanceOf(MojoException.class)
                 .hasMessageContaining("Not on " + BRANCH_NAME);
     }
 
@@ -396,7 +396,7 @@ class FeatureFinishBareModeTest {
         exec(tempDir, "git", "add", ".ike");
         exec(tempDir, "git", "commit", "-m", "Add .ike marker");
 
-        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
         mojo.message = "Squash with state";

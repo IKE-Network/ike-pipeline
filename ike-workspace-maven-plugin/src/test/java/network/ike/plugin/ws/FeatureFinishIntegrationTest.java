@@ -69,7 +69,7 @@ class FeatureFinishIntegrationTest {
 
     @Test
     void squash_dryRun_noMerge() throws Exception {
-        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
@@ -87,7 +87,7 @@ class FeatureFinishIntegrationTest {
 
     @Test
     void squash_mergesAndStripsVersions() throws Exception {
-        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
@@ -120,7 +120,7 @@ class FeatureFinishIntegrationTest {
 
     @Test
     void merge_preservesHistory() throws Exception {
-        FeatureFinishMergeDraftMojo mojo = new FeatureFinishMergeDraftMojo();
+        FeatureFinishMergeDraftMojo mojo = TestLog.createMojo(FeatureFinishMergeDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";
@@ -150,7 +150,7 @@ class FeatureFinishIntegrationTest {
         yaml = yaml.replace("branch: " + BRANCH_NAME, "branch: main");
         Files.writeString(wsYaml, yaml, StandardCharsets.UTF_8);
 
-        FeatureFinishSquashDraftMojo mojo = new FeatureFinishSquashDraftMojo();
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = FEATURE_NAME;
         mojo.targetBranch = "main";

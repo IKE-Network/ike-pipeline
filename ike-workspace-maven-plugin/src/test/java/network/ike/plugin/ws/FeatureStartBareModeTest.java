@@ -1,6 +1,6 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,7 +60,7 @@ class FeatureStartBareModeTest {
 
     @Test
     void bareMode_createsBranchInCurrentRepo() throws Exception {
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.feature = "test-bare";
         mojo.publish = true;
 
@@ -85,7 +85,7 @@ class FeatureStartBareModeTest {
         String originalPom = Files.readString(
                 tempDir.resolve("pom.xml"), StandardCharsets.UTF_8);
 
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.feature = "dry-test";
         mojo.publish = false;
 
@@ -112,12 +112,12 @@ class FeatureStartBareModeTest {
         Files.writeString(tempDir.resolve("dirty.txt"),
                 "uncommitted", StandardCharsets.UTF_8);
 
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.feature = "dirty-test";
         mojo.publish = true;
 
         assertThatThrownBy(mojo::execute)
-                .isInstanceOf(MojoExecutionException.class)
+                .isInstanceOf(MojoException.class)
                 .hasMessageContaining("Uncommitted changes");
     }
 
@@ -126,7 +126,7 @@ class FeatureStartBareModeTest {
         String originalPom = Files.readString(
                 tempDir.resolve("pom.xml"), StandardCharsets.UTF_8);
 
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.feature = "skip-ver";
         mojo.skipVersion = true;
         mojo.publish = true;
@@ -164,7 +164,7 @@ class FeatureStartBareModeTest {
         exec(tempDir, "git", "add", ".");
         exec(tempDir, "git", "commit", "-m", "Add submodule");
 
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.feature = "multi-mod";
         mojo.publish = true;
 
@@ -185,7 +185,7 @@ class FeatureStartBareModeTest {
 
     @Test
     void bareMode_dryRun_skipVersion_noVersionInfo() throws Exception {
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.feature = "skip-dry";
         mojo.publish = false;
         mojo.skipVersion = true;
@@ -220,7 +220,7 @@ class FeatureStartBareModeTest {
         String savedDir = System.getProperty("user.dir");
         System.setProperty("user.dir", noPomDir.toAbsolutePath().toString());
         try {
-            FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+            FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
             mojo.feature = "no-pom-test";
             mojo.skipVersion = true;
             mojo.publish = true;

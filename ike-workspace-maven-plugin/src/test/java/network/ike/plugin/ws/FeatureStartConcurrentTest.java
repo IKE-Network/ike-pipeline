@@ -1,6 +1,6 @@
 package network.ike.plugin.ws;
 
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -29,7 +29,7 @@ class FeatureStartConcurrentTest {
         helper.buildWorkspace();
 
         // Start first feature branch on all components
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "first-feature";
         mojo.publish = true;
@@ -45,7 +45,7 @@ class FeatureStartConcurrentTest {
 
     @Test
     void featureStart_whileOnDifferentFeature_switchesToMainFirst() throws Exception {
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "second-feature";
         mojo.publish = true;
@@ -68,7 +68,7 @@ class FeatureStartConcurrentTest {
 
     @Test
     void featureStart_whileOnDifferentFeature_draftMode_noChanges() throws Exception {
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "second-feature";
         mojo.publish = false; // draft
@@ -89,13 +89,13 @@ class FeatureStartConcurrentTest {
         Files.writeString(tempDir.resolve("lib-a").resolve("dirty.txt"),
                 "uncommitted", StandardCharsets.UTF_8);
 
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "second-feature";
         mojo.publish = true;
 
         assertThatThrownBy(mojo::execute)
-                .isInstanceOf(MojoExecutionException.class)
+                .isInstanceOf(MojoException.class)
                 .hasMessageContaining("uncommitted changes")
                 .hasMessageContaining("commit or stash");
     }
@@ -106,7 +106,7 @@ class FeatureStartConcurrentTest {
         String mainSha = execCapture(tempDir.resolve("lib-a"),
                 "git", "rev-parse", "main");
 
-        FeatureStartDraftMojo mojo = new FeatureStartDraftMojo();
+        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.feature = "second-feature";
         mojo.skipVersion = true; // skip version to simplify — only 1 commit on feature

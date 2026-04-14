@@ -1,8 +1,9 @@
 package network.ike.plugin.ws.vcs;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.logging.Log;
-import org.apache.maven.plugin.logging.SystemStreamLog;
+import network.ike.plugin.ws.TestLog;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.Log;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -25,7 +26,7 @@ class VcsOperationsTest {
     Path tempDir;
 
     private File repoDir;
-    private final Log log = new SystemStreamLog();
+    private final Log log = new TestLog();
 
     @BeforeEach
     void setUp() throws Exception {
@@ -39,14 +40,14 @@ class VcsOperationsTest {
     }
 
     @Test
-    void headSha_returns8chars() throws MojoExecutionException {
+    void headSha_returns8chars() throws MojoException {
         String sha = VcsOperations.headSha(repoDir);
         assertThat(sha).hasSize(8);
         assertThat(sha).matches("[0-9a-f]{8}");
     }
 
     @Test
-    void currentBranch_returnsMain() throws MojoExecutionException {
+    void currentBranch_returnsMain() throws MojoException {
         assertThat(VcsOperations.currentBranch(repoDir)).isEqualTo("main");
     }
 
@@ -71,7 +72,7 @@ class VcsOperationsTest {
     }
 
     @Test
-    void checkoutNew_createsAndSwitches() throws MojoExecutionException {
+    void checkoutNew_createsAndSwitches() throws MojoException {
         VcsOperations.checkoutNew(repoDir, log, "feature/new");
         assertThat(VcsOperations.currentBranch(repoDir)).isEqualTo("feature/new");
     }
@@ -118,19 +119,19 @@ class VcsOperationsTest {
     }
 
     @Test
-    void needsSync_falseWhenNoStateFile() throws MojoExecutionException {
+    void needsSync_falseWhenNoStateFile() throws MojoException {
         assertThat(VcsOperations.needsSync(repoDir)).isFalse();
     }
 
     @Test
-    void catchUp_noOpWhenNotIkeManaged() throws MojoExecutionException {
+    void catchUp_noOpWhenNotIkeManaged() throws MojoException {
         // No .ike/ directory — should do nothing
         VcsOperations.catchUp(repoDir, log);
         assertThat(VcsOperations.currentBranch(repoDir)).isEqualTo("main");
     }
 
     @Test
-    void remoteSha_emptyForLocalRepo() throws MojoExecutionException {
+    void remoteSha_emptyForLocalRepo() throws MojoException {
         Optional<String> sha = VcsOperations.remoteSha(repoDir, "origin", "main");
         assertThat(sha).isEmpty();
     }

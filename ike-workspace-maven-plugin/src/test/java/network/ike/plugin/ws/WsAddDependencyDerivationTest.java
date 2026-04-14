@@ -299,7 +299,7 @@ class WsAddDependencyDerivationTest {
     private String invokeDeriveForward(Path wsDir, Path manifestPath,
                                         Path componentDir, String componentName)
             throws Exception {
-        WsAddMojo mojo = new WsAddMojo();
+        WsAddMojo mojo = TestLog.createMojo(WsAddMojo.class);
         var method = WsAddMojo.class.getDeclaredMethod(
                 "deriveDependencies", Path.class, Path.class, Path.class, String.class);
         method.setAccessible(true);
