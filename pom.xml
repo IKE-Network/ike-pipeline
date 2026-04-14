@@ -240,7 +240,7 @@
                 <plugin>
                     <groupId>network.ike.pipeline</groupId>
                     <artifactId>ike-workspace-maven-plugin</artifactId>
-                    <version>95</version>
+                    <version>${project.version}</version>
                 </plugin>
 
                 <!-- Maven Clean Plugin -->
@@ -602,7 +602,7 @@
                 <plugin>
                     <groupId>network.ike.pipeline</groupId>
                     <artifactId>semantic-linebreak</artifactId>
-                    <version>95</version>
+                    <version>${project.version}</version>
                 </plugin>
 
                 <!-- Build Helper Plugin — attach classified PDF artifacts -->
