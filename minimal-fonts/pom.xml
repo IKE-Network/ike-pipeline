@@ -4,13 +4,13 @@
   ═════════════════════════════════════════
 
   Downloads 13 TTF files from notofonts GitHub releases during the Maven
-  build, assembles them into a single JAR. No fonts are committed to git;
+  build, assembles them into a single ZIP. No fonts are committed to git;
   `mvn install` is fully self-sufficient.
 
   Cached in ~/.m2/repository/.cache/download-maven-plugin/ after first
   download — no network hit on subsequent builds.
 
-  JAR contents (13 TTFs at root):
+  ZIP contents (13 TTFs at root):
     NotoSerif-Regular.ttf, NotoSerif-Bold.ttf,
     NotoSerif-Italic.ttf, NotoSerif-BoldItalic.ttf,
     NotoSans-Regular.ttf, NotoSans-Bold.ttf,
@@ -32,7 +32,7 @@
     </parent>
 
     <artifactId>minimal-fonts</artifactId>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
     <name>IKE Minimal Fonts</name>
     <description>Minimal Noto font subset for IKE documentation (~4MB)</description>
@@ -106,24 +106,10 @@
             <plugins>
                 <plugin><artifactId>maven-clean-plugin</artifactId><version>3.4.0</version></plugin>
                 <plugin><artifactId>maven-resources-plugin</artifactId><version>3.3.1</version></plugin>
-                <plugin><artifactId>maven-compiler-plugin</artifactId><version>3.13.0</version></plugin>
-                <plugin><artifactId>maven-surefire-plugin</artifactId><version>3.5.2</version></plugin>
-                <plugin><artifactId>maven-jar-plugin</artifactId><version>3.4.2</version></plugin>
                 <plugin><artifactId>maven-install-plugin</artifactId><version>3.1.3</version></plugin>
                 <plugin><artifactId>maven-deploy-plugin</artifactId><version>3.1.3</version></plugin>
             </plugins>
         </pluginManagement>
-
-        <!--
-          Override default resource directory.
-          We don't use src/main/resources — everything is assembled
-          in the staging directory from the downloaded font ZIPs.
-        -->
-        <resources>
-            <resource>
-                <directory>${staging.directory}</directory>
-            </resource>
-        </resources>
 
         <plugins>
             <plugin>
@@ -331,10 +317,23 @@
                 </executions>
             </plugin>
 
+            <!-- 3. Package staged TTFs into a ZIP artifact                   -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-install-plugin</artifactId>
-                <version>3.1.3</version>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>zip-fonts</id>
+                        <phase>package</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <descriptors>
+                                <descriptor>src/assembly/fonts.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

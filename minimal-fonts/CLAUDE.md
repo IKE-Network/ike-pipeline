@@ -20,11 +20,11 @@ After validate completes, read and follow these files in `.claude/standards/`:
 ## Module Overview
 
 Downloads 13 Noto TTF fonts from GitHub releases and packages them
-as a single JAR artifact. No fonts are committed to git — `mvn install`
+as a ZIP artifact. No fonts are committed to git — `mvn install`
 is fully self-sufficient. Downloads are cached after first fetch.
 
-- **Artifact**: `network.ike:minimal-fonts:1.0.0`
-- **Packaging**: JAR (contains TTF files at root)
+- **Artifact**: `network.ike:minimal-fonts` (type: zip)
+- **Packaging**: POM + assembly (produces ZIP containing TTF files at root)
 - **License**: SIL Open Font License 1.1
 
 ## Key Conventions

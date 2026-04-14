@@ -99,11 +99,12 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Fonts for PDF generation (minimal subset - 10 files, ~2MB) -->
+        <!-- Fonts for PDF generation (minimal subset - 13 TTFs, ~4MB) -->
         <dependency>
             <groupId>network.ike.pipeline</groupId>
             <artifactId>minimal-fonts</artifactId>
             <version>${project.version}</version>
+            <type>zip</type>
         </dependency>
     </dependencies>
 
