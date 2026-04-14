@@ -186,6 +186,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
 
             VcsOperations.checkout(dir, getLog(), targetBranch);
             VcsOperations.mergeNoFf(dir, getLog(), branchName, generatedMessage);
+            FeatureFinishSupport.verifyAndFixQualifiers(dir, branchName, getLog());
             if (push) {
                 VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
             }
@@ -276,6 +277,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
 
         VcsOperations.checkout(dir, getLog(), targetBranch);
         VcsOperations.mergeNoFf(dir, getLog(), branchName, bareMessage);
+        FeatureFinishSupport.verifyAndFixQualifiers(dir, branchName, getLog());
         if (push) {
             VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
         }

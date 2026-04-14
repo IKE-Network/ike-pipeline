@@ -189,6 +189,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
 
             if (VcsOperations.hasStagedChanges(dir)) {
                 VcsOperations.commit(dir, getLog(), message);
+                FeatureFinishSupport.verifyAndFixQualifiers(dir, branchName, getLog());
                 if (push) {
                     VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
                 }
@@ -287,6 +288,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
 
         if (VcsOperations.hasStagedChanges(dir)) {
             VcsOperations.commit(dir, getLog(), message);
+            FeatureFinishSupport.verifyAndFixQualifiers(dir, branchName, getLog());
             if (push) {
                 VcsOperations.pushIfRemoteExists(dir, getLog(), "origin", targetBranch);
             }

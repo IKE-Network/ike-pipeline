@@ -488,6 +488,108 @@ class FeatureFinishSupport {
         }
     }
 
+    // ── Post-merge qualifier guard ────────────────────────────────
+
+    /**
+     * Verify that no branch-qualified versions remain in the component's
+     * POM tree after merging to the target branch. If any are found, they
+     * are auto-stripped and committed as a fixup.
+     *
+     * <p>This guards against contamination when the merge-prep strip was
+     * incomplete (e.g., some POMs were missed) or when commits were
+     * cherry-picked outside the {@code ws:} workflow.
+     *
+     * @param dir        the component directory (now on the target branch)
+     * @param branchName the feature branch that was just merged
+     * @param log        Maven logger
+     * @throws MojoExecutionException if POM files cannot be scanned or committed
+     */
+    static void verifyAndFixQualifiers(File dir, String branchName, Log log)
+            throws MojoExecutionException {
+        String qualifier = qualifierFromBranch(branchName);
+        if (qualifier == null) return;
+
+        List<File> allPoms = ReleaseSupport.findPomFiles(dir);
+        List<String> contaminated = new ArrayList<>();
+
+        for (File pom : allPoms) {
+            try {
+                String content = Files.readString(pom.toPath(), StandardCharsets.UTF_8);
+                if (content.contains("-" + qualifier + "-")) {
+                    contaminated.add(dir.toPath().relativize(pom.toPath()).toString());
+                }
+            } catch (IOException e) {
+                log.warn("    Could not read " + pom + ": " + e.getMessage());
+            }
+        }
+
+        if (contaminated.isEmpty()) return;
+
+        log.warn("    Post-merge guard: " + contaminated.size()
+                + " POM(s) still contain branch qualifier '" + qualifier + "'");
+        for (String path : contaminated) {
+            log.warn("      " + path);
+        }
+
+        // Auto-strip and commit
+        stripAllBranchQualifiedVersions(dir, qualifier, log);
+
+        // Also strip the artifact version if still qualified
+        String currentVersion = readCurrentVersion(dir, log);
+        if (currentVersion != null
+                && containsBranchQualifier(currentVersion, qualifier)) {
+            String baseVersion = stripQualifier(currentVersion, qualifier);
+            setAllVersions(dir, currentVersion, baseVersion, log);
+            log.info("    Auto-fixed: " + currentVersion + " → " + baseVersion);
+        }
+
+        ReleaseSupport.exec(dir, log, "git", "add", "-A");
+        String status = ReleaseSupport.execCapture(dir,
+                "git", "status", "--porcelain");
+        if (!status.isEmpty()) {
+            ReleaseSupport.exec(dir, log, "git", "commit", "-m",
+                    "fixup: strip residual branch qualifier '"
+                            + qualifier + "' after merge");
+            log.info("    Auto-fixed and committed qualifier cleanup");
+        }
+    }
+
+    /**
+     * Scan a component directory for any version strings containing a
+     * branch qualifier. Returns the list of POM-relative paths that
+     * are contaminated, or an empty list if clean.
+     *
+     * <p>This is a read-only check suitable for use in verification
+     * goals or draft modes.
+     *
+     * @param dir        the component directory
+     * @param qualifier  the branch qualifier to search for
+     * @return list of relative POM paths containing the qualifier
+     */
+    static List<String> findQualifierContamination(File dir, String qualifier) {
+        List<String> contaminated = new ArrayList<>();
+        if (qualifier == null) return contaminated;
+
+        List<File> allPoms;
+        try {
+            allPoms = ReleaseSupport.findPomFiles(dir);
+        } catch (MojoExecutionException e) {
+            return contaminated;
+        }
+
+        for (File pom : allPoms) {
+            try {
+                String content = Files.readString(pom.toPath(), StandardCharsets.UTF_8);
+                if (content.contains("-" + qualifier + "-")) {
+                    contaminated.add(dir.toPath().relativize(pom.toPath()).toString());
+                }
+            } catch (IOException ignored) {
+            }
+        }
+
+        return contaminated;
+    }
+
     // ── Internal helpers ─────────────────────────────────────────
 
     private static String readCurrentVersion(File dir, Log log) {
