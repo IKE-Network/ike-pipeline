@@ -573,7 +573,40 @@ This is the mechanical cascade at the POM level—the workspace graph tells
 you which POMs to touch, and the version to write comes from the upstream
 component's root POM.
 
+Does **not** modify the aggregator parent (ike-parent) version — use
+`ws:set-parent` for that.
+
 Commit changes per component.
+
+---
+
+### 5.14 ws:set-parent
+
+**Purpose:** Set the aggregator parent version (ike-parent) across the root
+POM and all component POMs in one operation.
+
+**Parameters:**
+- `parent.version` (required) — target parent version. Prompted
+  interactively if omitted (works in IntelliJ's Maven runner).
+
+**Behavior:**
+1. Read the root POM's `<parent>` block to identify the parent
+   groupId:artifactId.
+2. Update the root POM parent version to the target.
+3. For each cloned component whose POM references the same parent
+   artifactId: update the root POM and all submodule POMs.
+4. Uses PomRewriter (OpenRewrite LST) for lossless XML edits.
+
+Draft variant previews changes; publish variant writes files.
+
+**Usage:**
+```bash
+mvn ws:set-parent-draft -Dparent.version=94    # preview
+mvn ws:set-parent-publish -Dparent.version=94   # apply
+```
+
+This replaces the manual workflow of editing 7+ POM files after an
+ike-pipeline release.
 
 ---
 

@@ -146,6 +146,21 @@ mvn ws:pull
 mvn ws:overview
 ```
 
+### Key Version Commands
+
+```bash
+# Update ike-parent version across all workspace components
+mvn ws:set-parent-draft -Dparent.version=94     # preview
+mvn ws:set-parent-publish -Dparent.version=94    # apply
+
+# Align inter-component dependency versions (after component version changes)
+mvn ws:align-draft                                # preview
+mvn ws:align-publish                              # apply
+
+# Verify parent skew, qualifier contamination, dependency convergence
+mvn ws:verify-convergence
+```
+
 ### Key Gitflow Commands
 
 ```bash

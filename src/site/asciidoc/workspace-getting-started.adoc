@@ -275,6 +275,20 @@ Verify that `~/.m2/settings.xml` contains `network.ike` in `<pluginGroups>`:
 
 Also confirm that `ike-maven-plugin` is declared in the workspace `pom.xml`.
 
+=== Updating the parent version after an ike-pipeline release
+
+After a new ike-pipeline release, update the workspace to use the new
+parent version:
+
+[source,bash]
+----
+mvn ws:set-parent-draft -Dparent.version=94    # preview changes
+mvn ws:set-parent-publish -Dparent.version=94   # apply to all POMs
+----
+
+This updates the root POM and all component POMs in one pass.
+If you omit `-Dparent.version`, the goal prompts interactively.
+
 === Build warnings about BOM imports
 
 There should be zero warnings about BOM imports.
