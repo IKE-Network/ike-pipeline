@@ -127,6 +127,42 @@ final class PomRewriter {
     }
 
     /**
+     * Update the version of a specific plugin identified by
+     * {@code groupId:artifactId} anywhere in the POM (both
+     * {@code <plugins>} and {@code <pluginManagement>}).
+     *
+     * @param pomContent the raw POM text
+     * @param groupId    plugin groupId to match
+     * @param artifactId plugin artifactId to match
+     * @param newVersion the version to set
+     * @return updated POM text, or unchanged if no match
+     */
+    static String updatePluginVersion(String pomContent,
+                                       String groupId,
+                                       String artifactId,
+                                       String newVersion) {
+        Xml.Document doc = parse(pomContent);
+        if (doc == null) return pomContent;
+
+        Xml.Document updated = (Xml.Document) new XmlVisitor<Integer>() {
+            @Override
+            public Xml.Tag visitTag(Xml.Tag tag, Integer ctx) {
+                Xml.Tag t = (Xml.Tag) super.visitTag(tag, ctx);
+                if (!"plugin".equals(t.getName())) return t;
+
+                String gid = t.getChildValue("groupId").orElse(null);
+                String aid = t.getChildValue("artifactId").orElse(null);
+                if (groupId.equals(gid) && artifactId.equals(aid)) {
+                    return t.withChildValue("version", newVersion);
+                }
+                return t;
+            }
+        }.visitNonNull(doc, 0);
+
+        return print(updated);
+    }
+
+    /**
      * Remove the {@code <version>} child from a dependency matched by
      * {@code groupId:artifactId}. Used to eliminate intra-reactor
      * version pins where the reactor resolves the version automatically.

@@ -1,9 +1,12 @@
 package network.ike.plugin.ws;
 
+import org.apache.maven.api.model.Build;
 import org.apache.maven.api.model.Dependency;
 import org.apache.maven.api.model.DependencyManagement;
 import org.apache.maven.api.model.Model;
 import org.apache.maven.api.model.Parent;
+import org.apache.maven.api.model.Plugin;
+import org.apache.maven.api.model.PluginManagement;
 import org.apache.maven.model.v4.MavenStaxReader;
 
 import javax.xml.stream.XMLStreamException;
@@ -75,6 +78,23 @@ final class PomModel {
         DependencyManagement mgmt = model.getDependencyManagement();
         if (mgmt != null) {
             result.addAll(mgmt.getDependencies());
+        }
+        return Collections.unmodifiableList(result);
+    }
+
+    /**
+     * All plugins from both {@code <build><plugins>} and
+     * {@code <build><pluginManagement><plugins>} sections.
+     */
+    List<Plugin> allPlugins() {
+        List<Plugin> result = new ArrayList<>();
+        Build build = model.getBuild();
+        if (build != null) {
+            result.addAll(build.getPlugins());
+            PluginManagement mgmt = build.getPluginManagement();
+            if (mgmt != null) {
+                result.addAll(mgmt.getPlugins());
+            }
         }
         return Collections.unmodifiableList(result);
     }
@@ -203,6 +223,26 @@ final class PomModel {
                                        String newVersion) {
         return PomRewriter.updateParentVersion(
                 pomContent, parentArtifactId, newVersion);
+    }
+
+    /**
+     * Update the version of a specific plugin identified by
+     * {@code groupId:artifactId}. Uses OpenRewrite LST for
+     * element-order-tolerant matching within plugin blocks,
+     * including both {@code <plugins>} and {@code <pluginManagement>}.
+     *
+     * @param pomContent the raw POM text
+     * @param groupId    plugin groupId to match
+     * @param artifactId plugin artifactId to match
+     * @param newVersion the version to set
+     * @return updated POM text, or unchanged if no match
+     */
+    static String updatePluginVersion(String pomContent,
+                                       String groupId,
+                                       String artifactId,
+                                       String newVersion) {
+        return PomRewriter.updatePluginVersion(
+                pomContent, groupId, artifactId, newVersion);
     }
 
     /**

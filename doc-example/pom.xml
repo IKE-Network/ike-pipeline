@@ -26,6 +26,9 @@
     </parent>
 
     <artifactId>doc-example</artifactId>
+    <!-- pom packaging within the reactor — ike-doc requires the
+         installed ike-maven-plugin extensions, which are external.
+         External doc projects should use ike-doc packaging. -->
     <packaging>pom</packaging>
 
     <name>IKE Documentation Example</name>

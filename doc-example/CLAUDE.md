@@ -28,8 +28,8 @@ POM). Exercises all pipeline features across all 6 PDF renderers:
 diagrams, Koncept macros, typography, tables, and layout.
 
 - **Artifact**: `network.ike:doc-example`
-- **Packaging**: JAR (empty JAR — doc-only projects use `jar` packaging
-  to inherit the full renderer pipeline)
+- **Packaging**: POM (within the reactor; external doc projects use
+  `ike-doc` packaging instead)
 - **Parent**: `ike-parent`
 
 ## Key Build Commands

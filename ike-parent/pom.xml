@@ -278,13 +278,15 @@
 
             <!-- IKE Maven Plugin — release and doc packaging.
                  extensions=true enables ike-doc custom packaging type.
-                 Inherited by external projects via ike-parent. -->
-            <!-- ike-maven-plugin is in ike-tooling (separate repo/version).
-                 ike-tooling.version from the root POM is the tested pair. -->
+                 Inherited by external projects via ike-parent.
+                 LITERAL VERSION REQUIRED: Maven loads extensions before
+                 property interpolation, so ${ike-tooling.version} cannot
+                 be used here. ws:align-publish maintains this value
+                 automatically when ike-tooling is released. -->
             <plugin>
                 <groupId>network.ike.tooling</groupId>
                 <artifactId>ike-maven-plugin</artifactId>
-                <version>${ike-tooling.version}</version>
+                <version>107</version>
                 <extensions>true</extensions>
             </plugin>
 

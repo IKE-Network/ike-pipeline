@@ -6,6 +6,7 @@ import network.ike.workspace.Dependency;
 import network.ike.workspace.PublishedArtifactSet;
 import network.ike.workspace.WorkspaceGraph;
 import org.apache.maven.api.model.Parent;
+import org.apache.maven.api.model.Plugin;
 import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.api.plugin.annotations.Mojo;
 import org.apache.maven.api.plugin.annotations.Parameter;
@@ -114,6 +115,9 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
                 int changes = alignPomDependencies(
                         name, pomFile, artifactIndex, versionPropertyMap,
                         componentDir, graph, reportChanges);
+                changes += alignPomPlugins(
+                        name, pomFile, artifactIndex,
+                        componentDir, reportChanges);
                 componentChanges += changes;
             }
 
@@ -443,6 +447,88 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         }
 
         // Write if changed
+        if (changes > 0 && publish && !updated.equals(pom.content())) {
+            try {
+                Files.writeString(pomFile.toPath(), updated,
+                        StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                throw new MojoException(
+                        "Failed to write " + pomFile + ": "
+                        + e.getMessage(), e);
+            }
+        }
+
+        return changes;
+    }
+
+    /**
+     * Scan a single POM file for plugins whose {@code groupId:artifactId}
+     * matches a workspace component's published artifact, and update
+     * mismatched literal versions.
+     *
+     * <p>Uses Maven 4's {@link PomModel} for reading plugin coordinates.
+     * Writes use {@link PomModel#updatePluginVersion} (OpenRewrite LST)
+     * to preserve formatting.
+     *
+     * <p>Property-based plugin versions (e.g., {@code ${ike-tooling.version}})
+     * are skipped here — property alignment is handled by the dependency
+     * alignment pass via {@code versionProperty} declarations.
+     *
+     * @return number of changes made (or that would be made in draft)
+     */
+    private int alignPomPlugins(String ownerName, File pomFile,
+                                Map<String, ComponentVersion> artifactIndex,
+                                File componentDir,
+                                List<AlignChange> reportChanges)
+            throws MojoException {
+        PomModel pom;
+        try {
+            pom = PomModel.parse(pomFile.toPath());
+        } catch (IOException e) {
+            return 0;
+        }
+
+        String updated = pom.content();
+        int changes = 0;
+
+        for (Plugin plugin : pom.allPlugins()) {
+            String pluginGroupId = plugin.getGroupId();
+            String pluginArtifactId = plugin.getArtifactId();
+            String currentVersion = plugin.getVersion();
+
+            if (pluginGroupId == null || pluginArtifactId == null
+                    || currentVersion == null) {
+                continue;
+            }
+
+            // Skip property-based versions — handled by dependency/property alignment
+            if (currentVersion.startsWith("${")) {
+                continue;
+            }
+
+            String key = pluginGroupId + ":" + pluginArtifactId;
+            ComponentVersion target = artifactIndex.get(key);
+
+            if (target == null || target.name().equals(ownerName)) {
+                continue;
+            }
+
+            if (!currentVersion.equals(target.version())) {
+                String relPath = componentDir.toPath().relativize(
+                        pomFile.toPath()).toString();
+                getLog().info("  " + ownerName + " (" + relPath + "): plugin "
+                        + key + " " + currentVersion
+                        + " → " + target.version());
+                reportChanges.add(new AlignChange(
+                        ownerName, relPath, "plugin:" + key,
+                        currentVersion, target.version()));
+                updated = PomModel.updatePluginVersion(
+                        updated, pluginGroupId, pluginArtifactId,
+                        target.version());
+                changes++;
+            }
+        }
+
         if (changes > 0 && publish && !updated.equals(pom.content())) {
             try {
                 Files.writeString(pomFile.toPath(), updated,

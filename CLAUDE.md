@@ -39,18 +39,22 @@ versionless (parent is the aggregator).
 
 | Module | Purpose | Packaging |
 |---|---|---|
-| `ike-build-tools` | Shared build scripts + release automation | POM + ZIP |
-| `ike-build-standards` | Versioned Claude instruction files | POM + ZIP |
 | `ike-doc-resources` | Shared doc build resources (themes, configs, assembly descriptors) | JAR |
 | `minimal-fonts` | Noto font subset for PDF rendering | JAR |
 | `docbook-xsl` | DocBook XSL 1.79.2 + IKE FO customization | JAR |
 | `koncept-asciidoc-extension` | AsciidoctorJ `k:Name[]` inline macro + glossary | JAR |
-| `ike-maven-plugin` | Maven plugin: release orchestration, BOM generation, site deployment, AsciiDoc utilities | maven-plugin |
 | `ike-workspace-maven-plugin` | Maven plugin: workspace management, feature branching, release orchestration | maven-plugin |
 | `ike-bom` | Auto-generated BOM (from ike-parent, zero maintenance) | POM |
 | `semantic-linebreak` | CLI tool — AsciiDoc semantic linefeed reformatter | JAR |
-| `doc-example` | Doc-only project exercising all pipeline features | JAR (empty) |
+| `doc-example` | Doc-only project exercising all pipeline features | POM (in-reactor; external projects use `ike-doc`) |
 | `example-project` | Java+docs demo project | JAR + docs |
+
+**External dependency** (from ike-tooling repo, not a reactor module):
+
+| Artifact | Purpose | Version |
+|---|---|---|
+| `ike-maven-plugin` | Release orchestration, BOM generation, site deployment, AsciiDoc utilities | `${ike-tooling.version}` (literal in ike-parent pluginManagement) |
+| `ike-build-standards` | Versioned Claude instruction files + build config | `${ike-tooling.version}` |
 
 ### Parent Architecture
 
@@ -112,13 +116,18 @@ mvn clean verify -pl example-project -Dike.skip.html=false
 
 ## Workspace Tooling (`ike-maven-plugin` + `ike-workspace-maven-plugin`)
 
-The `ike-maven-plugin` provides build goals (prefix `ike:`) for release
-orchestration, BOM generation, site deployment, and AsciiDoc utilities.
-The `ike-workspace-maven-plugin` provides workspace goals (prefix `ws:`)
-for multi-repository workspace management and gitflow branching.
-Both plugins are now modules in this reactor and co-release with
-ike-parent at `${project.version}` — no separate `ike-tooling.version`
-property is needed for `ws:` goals.
+The `ike-maven-plugin` (prefix `ike:`) provides release orchestration,
+BOM generation, site deployment, and AsciiDoc utilities. It is an
+**external dependency** from the `ike-tooling` repo (groupId
+`network.ike.tooling`), pinned at `${ike-tooling.version}` in the root
+POM. The ike-parent pluginManagement entry uses a **literal version**
+(not a property) because Maven loads extensions before property
+interpolation. `ws:align-publish` maintains this literal automatically.
+
+The `ike-workspace-maven-plugin` (prefix `ws:`) provides workspace
+management and gitflow branching. It **is** a module in this reactor
+and co-releases with ike-parent at `${project.version}`.
+
 All former bash scripts for workspace and release operations have been
 retired — use `ws:*` goals for workspace operations and `ike:*` goals
 for build/release operations.
