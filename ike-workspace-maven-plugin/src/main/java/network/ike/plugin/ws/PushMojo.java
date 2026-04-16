@@ -73,6 +73,29 @@ public class PushMojo extends AbstractWorkspaceMojo {
         int pushed = 0;
         int skipped = 0;
         int failed = 0;
+        int uncommittedWarnings = 0;
+
+        // Push workspace root if it has a .git directory
+        if (new File(root, ".git").exists()) {
+            try {
+                VcsOperations.catchUp(root, getLog());
+                String branch = VcsOperations.currentBranch(root);
+                VcsOperations.push(root, getLog(), remote, branch);
+                VcsOperations.writeVcsState(root, VcsState.Action.PUSH);
+                getLog().info(Ansi.green("  ✓ ") + "workspace root → "
+                        + remote + "/" + branch);
+                pushed++;
+                if (!VcsOperations.isClean(root)) {
+                    getLog().warn(Ansi.yellow("  ⚠ ") + "workspace root"
+                            + " — has uncommitted changes (not pushed)");
+                    uncommittedWarnings++;
+                }
+            } catch (MojoException e) {
+                getLog().warn(Ansi.red("  ✗ ") + "workspace root — "
+                        + e.getMessage());
+                failed++;
+            }
+        }
 
         for (String name : sorted) {
             File dir = new File(root, name);
@@ -88,28 +111,60 @@ public class PushMojo extends AbstractWorkspaceMojo {
                 VcsOperations.catchUp(dir, getLog());
 
                 String branch = VcsOperations.currentBranch(dir);
-                VcsOperations.push(dir, getLog(), remote, branch);
+                try {
+                    VcsOperations.push(dir, getLog(), remote, branch);
+                } catch (MojoException e) {
+                    // Handle missing upstream — retry with -u (#132)
+                    if (e.getMessage() != null
+                            && e.getMessage().contains("has no upstream")) {
+                        getLog().info("  " + name
+                                + " — setting upstream and pushing...");
+                        VcsOperations.pushWithUpstream(
+                                dir, getLog(), remote, branch);
+                    } else {
+                        throw e;
+                    }
+                }
                 VcsOperations.writeVcsState(dir, VcsState.Action.PUSH);
 
-                getLog().info(Ansi.green("  ✓ ") + name + " → " + remote + "/" + branch);
+                getLog().info(Ansi.green("  ✓ ") + name + " → "
+                        + remote + "/" + branch);
                 pushed++;
+
+                // Warn if repo has uncommitted changes (#132)
+                if (!VcsOperations.isClean(dir)) {
+                    getLog().warn(Ansi.yellow("  ⚠ ") + name
+                            + " — has uncommitted changes (not pushed)");
+                    uncommittedWarnings++;
+                }
             } catch (MojoException e) {
-                getLog().warn(Ansi.red("  ✗ ") + name + " — " + e.getMessage());
+                getLog().warn(Ansi.red("  ✗ ") + name + " — "
+                        + e.getMessage());
                 failed++;
             }
         }
 
         getLog().info("");
-        getLog().info("  Done: " + pushed + " pushed, " + skipped
-                + " skipped, " + failed + " failed");
+        var summary = new StringBuilder();
+        summary.append(pushed).append(" pushed");
+        if (skipped > 0) {
+            summary.append(", ").append(skipped).append(" skipped");
+        }
+        if (uncommittedWarnings > 0) {
+            summary.append(", ").append(uncommittedWarnings)
+                    .append(" with uncommitted changes");
+        }
+        if (failed > 0) {
+            summary.append(", ").append(failed).append(" failed");
+        }
+        getLog().info("  Done: " + summary);
         getLog().info("");
 
         if (failed > 0) {
             getLog().warn("  Some pushes failed — check output above for details.");
         }
 
-        writeReport("ws:push", pushed + " pushed, " + skipped
-                + " skipped, " + failed + " failed.\n");
+        writeReport("ws:push", summary + "\n");
     }
 
     private void executeSingleRepo(File dir) throws MojoException {

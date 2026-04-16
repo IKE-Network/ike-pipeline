@@ -85,15 +85,26 @@ public class CommitMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         int committed = 0;
-        int skipped = 0;
+        int skippedClean = 0;
+        int skippedUnstaged = 0;
         int failed = 0;
 
         // Include workspace root in commit scan (#102)
         if (new File(root, ".git").exists()) {
             try {
-                VcsOperations.catchUp(root, getLog());
-                if (addAll) {
-                    VcsOperations.addAll(root, getLog());
+                // Skip catch-up if user has pending changes to commit (#132)
+                boolean hasWork = addAll
+                        ? !VcsOperations.isClean(root)
+                        : VcsOperations.hasStagedChanges(root);
+                if (hasWork) {
+                    if (addAll) {
+                        VcsOperations.addAll(root, getLog());
+                    }
+                } else {
+                    VcsOperations.catchUp(root, getLog());
+                    if (addAll) {
+                        VcsOperations.addAll(root, getLog());
+                    }
                 }
                 if (VcsOperations.hasStagedChanges(root)) {
                     if (message != null && !message.isBlank()) {
@@ -110,11 +121,14 @@ public class CommitMojo extends AbstractWorkspaceMojo {
                     getLog().info(Ansi.green("  ✓ ") + "workspace root");
                     committed++;
                 } else if (!VcsOperations.isClean(root)) {
-                    getLog().debug("workspace root — unstaged changes, skipping");
-                    skipped++;
+                    String files = VcsOperations.unstagedFiles(root);
+                    getLog().warn(Ansi.yellow("  ⚠ ") + "workspace root"
+                            + " — skipped (unstaged: " + files + ")");
+                    getLog().warn("    Use -DaddAll=true to stage and commit");
+                    skippedUnstaged++;
                 } else {
                     getLog().debug("workspace root — clean, skipping");
-                    skipped++;
+                    skippedClean++;
                 }
             } catch (MojoException e) {
                 getLog().warn(Ansi.red("  ✗ ") + "workspace root — " + e.getMessage());
@@ -128,26 +142,38 @@ public class CommitMojo extends AbstractWorkspaceMojo {
 
             if (!gitDir.exists()) {
                 getLog().debug(name + " — not cloned, skipping");
-                skipped++;
+                skippedClean++;
                 continue;
             }
 
             try {
-                VcsOperations.catchUp(dir, getLog());
-
-                if (addAll) {
-                    VcsOperations.addAll(dir, getLog());
+                // Skip catch-up if user has pending changes to commit (#132)
+                boolean hasWork = addAll
+                        ? !VcsOperations.isClean(dir)
+                        : VcsOperations.hasStagedChanges(dir);
+                if (hasWork) {
+                    if (addAll) {
+                        VcsOperations.addAll(dir, getLog());
+                    }
+                } else {
+                    VcsOperations.catchUp(dir, getLog());
+                    if (addAll) {
+                        VcsOperations.addAll(dir, getLog());
+                    }
                 }
 
                 if (!VcsOperations.hasStagedChanges(dir) && VcsOperations.isClean(dir)) {
                     getLog().debug(name + " — clean, skipping");
-                    skipped++;
+                    skippedClean++;
                     continue;
                 }
 
                 if (!VcsOperations.hasStagedChanges(dir)) {
-                    getLog().debug(name + " — no staged changes, skipping");
-                    skipped++;
+                    String files = VcsOperations.unstagedFiles(dir);
+                    getLog().warn(Ansi.yellow("  ⚠ ") + name
+                            + " — skipped (unstaged: " + files + ")");
+                    getLog().warn("    Use -DaddAll=true to stage and commit");
+                    skippedUnstaged++;
                     continue;
                 }
 
@@ -174,16 +200,26 @@ public class CommitMojo extends AbstractWorkspaceMojo {
         }
 
         getLog().info("");
-        getLog().info("  Done: " + committed + " committed, " + skipped
-                + " skipped, " + failed + " failed");
+        var summary = new StringBuilder();
+        summary.append(committed).append(" committed");
+        if (skippedClean > 0) {
+            summary.append(", ").append(skippedClean).append(" clean");
+        }
+        if (skippedUnstaged > 0) {
+            summary.append(", ").append(skippedUnstaged)
+                    .append(" skipped (unstaged — use -DaddAll=true)");
+        }
+        if (failed > 0) {
+            summary.append(", ").append(failed).append(" failed");
+        }
+        getLog().info("  Done: " + summary);
         getLog().info("");
 
         if (failed > 0) {
             getLog().warn("  Some commits failed — check output above for details.");
         }
 
-        writeReport("ws:commit", committed + " committed, " + skipped
-                + " skipped, " + failed + " failed.\n");
+        writeReport("ws:commit", summary + "\n");
     }
 
     private void executeSingleRepo(File dir) throws MojoException {

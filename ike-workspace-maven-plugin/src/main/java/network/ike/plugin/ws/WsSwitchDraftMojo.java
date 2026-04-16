@@ -163,9 +163,15 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
             var sb = new StringBuilder();
             sb.append("Cannot switch — uncommitted changes in:\n");
             for (String name : uncommitted) {
-                sb.append("  ").append(name).append("\n");
+                File dir = "workspace root".equals(name)
+                        ? root : new File(root, name);
+                String files = gitStatus(dir).lines()
+                        .map(l -> "    " + l.strip())
+                        .collect(java.util.stream.Collectors.joining("\n"));
+                sb.append("  ").append(name).append(":\n")
+                        .append(files).append("\n");
             }
-            sb.append("Commit or stash, then try again.");
+            sb.append("Commit or stash changes first, then retry.");
             throw new MojoException(sb.toString());
         }
 

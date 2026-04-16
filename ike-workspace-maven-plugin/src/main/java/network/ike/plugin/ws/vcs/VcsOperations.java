@@ -107,6 +107,53 @@ public class VcsOperations {
     }
 
     /**
+     * Check whether there are modified but unstaged changes in the working tree.
+     *
+     * @param dir the repository root directory
+     * @return true if there are unstaged modifications
+     */
+    public static boolean hasUnstagedChanges(File dir) {
+        try {
+            String diff = capture(dir, "git", "diff", "--name-only");
+            return !diff.isEmpty();
+        } catch (MojoException e) {
+            return false;
+        }
+    }
+
+    /**
+     * List files with unstaged modifications in the working tree.
+     * Returns a comma-separated summary suitable for log messages.
+     *
+     * @param dir the repository root directory
+     * @return comma-separated file names, or empty string if clean
+     */
+    public static String unstagedFiles(File dir) {
+        try {
+            String diff = capture(dir, "git", "diff", "--name-only");
+            if (diff.isEmpty()) return "";
+            return String.join(", ", diff.split("\n"));
+        } catch (MojoException e) {
+            return "";
+        }
+    }
+
+    /**
+     * List files with any uncommitted changes (staged, unstaged, or untracked).
+     * Returns the raw porcelain output suitable for detailed error messages.
+     *
+     * @param dir the repository root directory
+     * @return porcelain status output, or empty string if clean
+     */
+    public static String uncommittedStatus(File dir) {
+        try {
+            return capture(dir, "git", "status", "--porcelain");
+        } catch (MojoException e) {
+            return "";
+        }
+    }
+
+    /**
      * List files with unresolved merge conflicts.
      *
      * @param dir the repository root directory

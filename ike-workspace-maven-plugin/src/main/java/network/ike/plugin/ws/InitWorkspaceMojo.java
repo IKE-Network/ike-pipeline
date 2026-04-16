@@ -1,6 +1,7 @@
 package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
+import network.ike.plugin.ws.vcs.VcsOperations;
 
 import network.ike.workspace.Component;
 import network.ike.workspace.Defaults;
@@ -82,6 +83,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
         int cloned = 0;
         int syncthing = 0;
+        int updated = 0;
         int skipped = 0;
         int wrappers = 0;
         List<String[]> rows = new ArrayList<>();
@@ -92,8 +94,38 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
             File gitDir = new File(dir, ".git");
 
             if (gitDir.exists()) {
-                // Already a git repo — still ensure wrapper, jvm.config, and CLAUDE.md are current
-                getLog().info(Ansi.green("  ✓ ") + name + " — already initialized");
+                // Already a git repo — pull latest, then ensure wrapper/config (#133)
+                if (VcsOperations.isClean(dir)) {
+                    try {
+                        String branch = VcsOperations.currentBranch(dir);
+                        ReleaseSupport.exec(dir, getLog(),
+                                "git", "fetch", "origin", "--quiet");
+                        // Rebase onto upstream to incorporate remote changes
+                        ReleaseSupport.exec(dir, getLog(),
+                                "git", "rebase", "origin/" + branch, "--quiet");
+                        getLog().info(Ansi.green("  ✓ ") + name
+                                + " — updated (" + branch + ")");
+                        updated++;
+                        rows.add(new String[]{name, "updated",
+                                component.repo() != null ? component.repo() : "—", "✓"});
+                    } catch (MojoException e) {
+                        getLog().warn(Ansi.yellow("  ⚠ ") + name
+                                + " — fetch/rebase failed: " + e.getMessage());
+                        rows.add(new String[]{name, "update-failed",
+                                component.repo() != null ? component.repo() : "—",
+                                e.getMessage()});
+                        skipped++;
+                    }
+                } else {
+                    String files = VcsOperations.unstagedFiles(dir);
+                    getLog().warn(Ansi.yellow("  ⚠ ") + name
+                            + " — skipped update (uncommitted changes: "
+                            + files + ")");
+                    skipped++;
+                    rows.add(new String[]{name, "skipped",
+                            component.repo() != null ? component.repo() : "—",
+                            "uncommitted changes"});
+                }
                 if (ensureMavenWrapper(dir, component, defaults)) {
                     wrappers++;
                 }
@@ -101,9 +133,6 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 ensureClaudeNotes(dir.toPath(), name);
                 writeComponentClaudeMd(dir.toPath(), component);
                 checkoutSha(dir, component);
-                skipped++;
-                rows.add(new String[]{name, "present",
-                        component.repo() != null ? component.repo() : "—", "✓"});
                 continue;
             }
 
@@ -155,9 +184,21 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
         }
 
         getLog().info("");
-        getLog().info("  Done: " + cloned + " cloned, " + syncthing
-                + " Syncthing-initialized, " + skipped + " already present"
-                + (wrappers > 0 ? ", " + wrappers + " Maven wrappers installed/updated" : ""));
+        var summary = new StringBuilder();
+        summary.append(cloned).append(" cloned");
+        if (syncthing > 0) {
+            summary.append(", ").append(syncthing).append(" Syncthing-initialized");
+        }
+        if (updated > 0) {
+            summary.append(", ").append(updated).append(" updated");
+        }
+        if (skipped > 0) {
+            summary.append(", ").append(skipped).append(" skipped");
+        }
+        if (wrappers > 0) {
+            summary.append(", ").append(wrappers).append(" Maven wrappers installed/updated");
+        }
+        getLog().info("  Done: " + summary);
         getLog().info("");
 
         // Generate goal cheatsheet, reference, and CLAUDE.md at workspace root
@@ -168,16 +209,18 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
         // Structured markdown report (replaces console-log capture)
         writeReport("ws:init", buildInitMarkdownReport(
-                rows, cloned, syncthing, skipped, wrappers));
+                rows, cloned, syncthing, updated, skipped, wrappers));
     }
 
     private String buildInitMarkdownReport(List<String[]> rows,
                                             int cloned, int syncthing,
-                                            int skipped, int wrappers) {
+                                            int updated, int skipped,
+                                            int wrappers) {
         var sb = new StringBuilder();
         sb.append(cloned).append(" cloned, ").append(syncthing)
-                .append(" Syncthing-initialized, ").append(skipped)
-                .append(" already present");
+                .append(" Syncthing-initialized, ").append(updated)
+                .append(" updated, ").append(skipped)
+                .append(" skipped");
         if (wrappers > 0) {
             sb.append(", ").append(wrappers).append(" Maven wrappers updated");
         }
