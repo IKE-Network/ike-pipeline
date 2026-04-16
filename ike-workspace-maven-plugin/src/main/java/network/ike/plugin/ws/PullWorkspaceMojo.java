@@ -51,6 +51,9 @@ public class PullWorkspaceMojo extends AbstractWorkspaceMojo {
 
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
 
+        // Preflight: all working trees must be clean (#132)
+        preflightCleanCheck("pull", sorted, root);
+
         getLog().info("");
         getLog().info(header("Pull"));
         getLog().info("══════════════════════════════════════════════════════════════");

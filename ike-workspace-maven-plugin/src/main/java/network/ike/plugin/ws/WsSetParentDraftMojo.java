@@ -89,6 +89,15 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
 
         String parentArtifactId = rootParent.artifactId();
 
+        // Preflight: all working trees must be clean (#132)
+        if (!draft) {
+            preflightCleanCheck("set-parent",
+                    graph.topologicalSort(), root);
+        } else {
+            preflightCleanWarn("ws:set-parent-publish",
+                    graph.topologicalSort(), root);
+        }
+
         // --- Header ---
         getLog().info("");
         getLog().info(header("Set Parent"));

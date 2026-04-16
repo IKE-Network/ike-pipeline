@@ -99,6 +99,14 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
         List<String> reversed = new ArrayList<>(sorted);
         Collections.reverse(reversed);
 
+        // Preflight: all working trees must be clean (#132)
+        if (!draft) {
+            preflightCleanCheck("abandon feature", sorted, root);
+        } else {
+            preflightCleanWarn("ws:feature-abandon-publish",
+                    sorted, root);
+        }
+
         // Auto-detect feature branch if not specified
         if (feature == null || feature.isBlank()) {
             feature = detectFeatureBranch(root, reversed);

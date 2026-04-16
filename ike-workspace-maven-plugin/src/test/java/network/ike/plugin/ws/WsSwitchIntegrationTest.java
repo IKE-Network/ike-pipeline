@@ -114,7 +114,7 @@ class WsSwitchIntegrationTest {
         assertThatThrownBy(mojo::execute)
                 .isInstanceOf(MojoException.class)
                 .hasMessageContaining("uncommitted changes")
-                .hasMessageContaining("Commit or stash");
+                .hasMessageContaining("ws:commit -DaddAll=true");
     }
 
     @Test

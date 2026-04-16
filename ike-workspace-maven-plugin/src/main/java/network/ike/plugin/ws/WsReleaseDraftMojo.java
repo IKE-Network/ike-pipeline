@@ -114,6 +114,9 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
         boolean draft = !publish;
 
+        // ── Preflight: all working trees must be clean (#132) ───────
+        preflightCleanCheck("release", candidates, root);
+
         // ── 2. Filter to checked-out and modified ────────────────────────
         Map<String, ReleaseCandidate> releasable = new LinkedHashMap<>();
         for (String name : graph.topologicalSort()) {

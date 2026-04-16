@@ -69,6 +69,14 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
+        // Preflight: all working trees must be clean (#132)
+        List<String> sorted = graph.topologicalSort();
+        if (!draft) {
+            preflightCleanCheck("align", sorted, root);
+        } else {
+            preflightCleanWarn("ws:align-publish", sorted, root);
+        }
+
         // Build lookup: groupId:artifactId → (component name, current POM version)
         Map<String, ComponentVersion> artifactIndex = buildArtifactIndex(graph, root);
 

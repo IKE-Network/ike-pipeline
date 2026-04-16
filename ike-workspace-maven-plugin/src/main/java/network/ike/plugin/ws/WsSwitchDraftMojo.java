@@ -143,37 +143,7 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         // ── Validate clean working trees ─────────────────────────
-        List<String> uncommitted = new ArrayList<>();
-        for (String name : sorted) {
-            File dir = new File(root, name);
-            if (!new File(dir, ".git").exists()) continue;
-
-            String status = gitStatus(dir);
-            if (!status.isEmpty()) {
-                uncommitted.add(name);
-            }
-        }
-
-        // Also check workspace root
-        if (new File(root, ".git").exists() && !gitStatus(root).isEmpty()) {
-            uncommitted.add("workspace root");
-        }
-
-        if (!uncommitted.isEmpty()) {
-            var sb = new StringBuilder();
-            sb.append("Cannot switch — uncommitted changes in:\n");
-            for (String name : uncommitted) {
-                File dir = "workspace root".equals(name)
-                        ? root : new File(root, name);
-                String files = gitStatus(dir).lines()
-                        .map(l -> "    " + l.strip())
-                        .collect(java.util.stream.Collectors.joining("\n"));
-                sb.append("  ").append(name).append(":\n")
-                        .append(files).append("\n");
-            }
-            sb.append("Commit or stash changes first, then retry.");
-            throw new MojoException(sb.toString());
-        }
+        preflightCleanCheck("switch", sorted, root);
 
         // ── Switch components ────────────────────────────────────
         int switched = 0;

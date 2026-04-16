@@ -101,6 +101,15 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
 
         boolean draft = !publish;
 
+        // Preflight: all working trees must be clean (#132)
+        if (!draft) {
+            preflightCleanCheck("checkpoint",
+                    graph.topologicalSort(), root);
+        } else {
+            preflightCleanWarn("ws:checkpoint-publish",
+                    graph.topologicalSort(), root);
+        }
+
         if (name == null || name.isBlank()) {
             name = deriveCheckpointName(root);
         }

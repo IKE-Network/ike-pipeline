@@ -157,6 +157,110 @@ abstract class AbstractWorkspaceMojo implements Mojo {
     }
 
     /**
+     * Preflight check: validate that all target component working trees
+     * are clean (no uncommitted changes). Fails fast with a detailed
+     * list of blocking repos and their uncommitted files.
+     *
+     * <p>Call this at the start of any multi-repo goal that modifies
+     * files or switches branches. The pattern ensures the workspace
+     * is never left in a partially-modified state.
+     *
+     * @param goalName display name for the error message (e.g., "release", "align")
+     * @param sorted   components to check, in topological order
+     * @param root     workspace root directory
+     * @throws MojoException if any component has uncommitted changes
+     */
+    protected void preflightCleanCheck(String goalName,
+                                        java.util.List<String> sorted,
+                                        File root) throws MojoException {
+        java.util.List<String> uncommitted = new java.util.ArrayList<>();
+
+        // Check workspace root
+        if (new File(root, ".git").exists() && !gitStatus(root).isEmpty()) {
+            uncommitted.add("workspace root");
+        }
+
+        // Check each component
+        for (String name : sorted) {
+            File dir = new File(root, name);
+            if (!new File(dir, ".git").exists()) continue;
+            String status = gitStatus(dir);
+            if (!status.isEmpty()) {
+                uncommitted.add(name);
+            }
+        }
+
+        if (!uncommitted.isEmpty()) {
+            var sb = new StringBuilder();
+            sb.append("Cannot ").append(goalName)
+                    .append(" — uncommitted changes in:\n");
+            for (String name : uncommitted) {
+                File dir = "workspace root".equals(name)
+                        ? root : new File(root, name);
+                String files = gitStatus(dir).lines()
+                        .map(l -> "    " + l.strip())
+                        .collect(java.util.stream.Collectors.joining("\n"));
+                sb.append("  ").append(name).append(":\n")
+                        .append(files).append("\n");
+            }
+            sb.append("To resolve:\n");
+            sb.append("  mvn ws:commit -DaddAll=true"
+                    + " -Dmessage=\"<your message>\"\n");
+            sb.append("Or stash changes in each affected component.");
+            throw new MojoException(sb.toString());
+        }
+    }
+
+    /**
+     * Soft preflight check: warn (but don't fail) about uncommitted
+     * changes that would block the corresponding {@code -publish} goal.
+     * Call this in draft mode to give the user early notice.
+     *
+     * @param goalName display name (e.g., "align-publish")
+     * @param sorted   components to check
+     * @param root     workspace root directory
+     */
+    protected void preflightCleanWarn(String goalName,
+                                       java.util.List<String> sorted,
+                                       File root) {
+        java.util.List<String> uncommitted = new java.util.ArrayList<>();
+
+        if (new File(root, ".git").exists() && !gitStatus(root).isEmpty()) {
+            uncommitted.add("workspace root");
+        }
+        for (String name : sorted) {
+            File dir = new File(root, name);
+            if (!new File(dir, ".git").exists()) continue;
+            if (!gitStatus(dir).isEmpty()) {
+                uncommitted.add(name);
+            }
+        }
+
+        if (!uncommitted.isEmpty()) {
+            getLog().warn("");
+            getLog().warn(Ansi.yellow("  ⚠ ") + uncommitted.size()
+                    + " component(s) have uncommitted changes"
+                    + " — " + goalName + " will fail until resolved:");
+            for (String name : uncommitted) {
+                File dir = "workspace root".equals(name)
+                        ? root : new File(root, name);
+                String files = gitStatus(dir).lines()
+                        .map(l -> "      " + l.strip())
+                        .collect(java.util.stream.Collectors.joining("\n"));
+                getLog().warn("    • " + name + ":");
+                getLog().warn(files);
+            }
+            getLog().warn("");
+            getLog().warn("  To resolve before running " + goalName + ":");
+            getLog().warn("    mvn ws:commit -DaddAll=true"
+                    + " -Dmessage=\"<your message>\"");
+            getLog().warn("  Or stash changes:");
+            getLog().warn("    git stash  (in each affected component)");
+            getLog().warn("");
+        }
+    }
+
+    /**
      * Check whether a workspace.yaml exists in the directory hierarchy.
      * Does not throw — returns false if no manifest is found.
      *
