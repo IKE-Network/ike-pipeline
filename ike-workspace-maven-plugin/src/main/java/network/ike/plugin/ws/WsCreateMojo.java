@@ -265,12 +265,39 @@ public class WsCreateMojo implements Mojo {
         yaml.append("components:\n");
         yaml.append("  # Add components with: mvn ws:add -Drepo=<git-url>\n\n");
         yaml.append("groups:\n");
-        yaml.append("  all: []\n");
+        yaml.append("  all: []\n\n");
+        yaml.append("# Optional: IntelliJ project settings shared across collaborators.\n");
+        yaml.append("# Uncomment and set to have `ws:upgrade` enforce these values in\n");
+        yaml.append("# .idea/misc.xml on every run. Useful when the project uses\n");
+        yaml.append("# --enable-preview (set language-level to JDK_NN_PREVIEW).\n");
+        yaml.append("# ide:\n");
+        yaml.append("#   language-level: JDK_25_PREVIEW\n");
+        yaml.append("#   jdk-name: \"25\"\n");
         return yaml.toString();
     }
 
+    /**
+     * Generate the workspace {@code .gitignore} using the whitelist
+     * strategy: ignore everything by default, then allowlist only
+     * workspace-owned files. Component repos are independent git
+     * repos cloned by {@code ws:init}, so they must stay ignored at
+     * the workspace level.
+     *
+     * <p>The generated file includes a curated {@code .idea/} slice so
+     * that fresh checkouts land at the correct IntelliJ project
+     * settings (JDK, language level including preview mode, encoding,
+     * Maven repositories) without per-collaborator manual setup.
+     * {@code compiler.xml} and {@code vcs.xml} are intentionally not
+     * allowlisted — they regenerate on every Maven reload or per
+     * workspace membership and would cause constant diff churn.
+     * User-specific state ({@code workspace.xml}, {@code shelf/},
+     * {@code httpRequests/}) is excluded by IntelliJ's own
+     * {@code .idea/.gitignore}.
+     *
+     * @return the {@code .gitignore} content
+     */
     String generateGitignore() {
-        StringBuilder gi = new StringBuilder(512);
+        StringBuilder gi = new StringBuilder(768);
         gi.append("# ").append(name).append(" .gitignore\n");
         gi.append("# ").append("═".repeat(name.length() + 11)).append("\n");
         gi.append("#\n");
@@ -293,7 +320,17 @@ public class WsCreateMojo implements Mojo {
         gi.append("!checkpoints/\n");
         gi.append("!checkpoints/**\n");
         gi.append("!.run/\n");
-        gi.append("!.run/**\n");
+        gi.append("!.run/**\n\n");
+        gi.append("# ── IntelliJ project config (curated slice) ──────────────────────\n");
+        gi.append("# Small, stable project-wide settings shared across collaborators.\n");
+        gi.append("# compiler.xml and vcs.xml are excluded — they regenerate per\n");
+        gi.append("# Maven reload or per workspace membership.\n");
+        gi.append("!.idea/\n");
+        gi.append("!.idea/.gitignore\n");
+        gi.append("!.idea/misc.xml\n");
+        gi.append("!.idea/kotlinc.xml\n");
+        gi.append("!.idea/encodings.xml\n");
+        gi.append("!.idea/jarRepositories.xml\n");
         return gi.toString();
     }
 

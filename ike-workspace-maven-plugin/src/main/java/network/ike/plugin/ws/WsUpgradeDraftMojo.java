@@ -1,5 +1,10 @@
 package network.ike.plugin.ws;
 
+import network.ike.workspace.IdeSettings;
+import network.ike.workspace.Manifest;
+import network.ike.workspace.ManifestException;
+import network.ike.workspace.ManifestReader;
+
 import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.api.plugin.annotations.Mojo;
 import org.apache.maven.api.plugin.annotations.Parameter;
@@ -10,7 +15,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Upgrade workspace conventions to the current plugin version.
@@ -26,12 +36,23 @@ import java.util.List;
  *       is in the global gitignore (VCS bridge coordination file
  *       should be synced by Syncthing, not tracked by git)</li>
  *   <li><b>gitignore-whitelist</b> — ensure workspace .gitignore
- *       uses the whitelist strategy and includes all standard entries</li>
+ *       uses the whitelist strategy and includes all standard entries,
+ *       grouped into sections (workspace-level files, workspace-owned
+ *       directories, curated IntelliJ {@code .idea/} slice). When a
+ *       section has no entries in the existing file, the full section
+ *       is appended with its header comment; when partially present,
+ *       only the missing entries are appended.</li>
  *   <li><b>stignore-delete-flag</b> — ensure {@code stignore-shared}
  *       uses {@code (?d)} prefix on directory ignore patterns</li>
  *   <li><b>pom-root-attribute</b> — ensure workspace POM has
  *       {@code root="true"} for Maven 4.1.0 reactor boundary</li>
  *   <li><b>maven-config</b> — ensure {@code .mvn/maven.config} exists</li>
+ *   <li><b>ide-language-level</b> — when workspace.yaml has an
+ *       {@code ide:} section and {@code .idea/misc.xml} exists, write
+ *       the requested {@code language-level} and {@code jdk-name} to
+ *       the {@code ProjectRootManager} component. Skipped cleanly when
+ *       either input is absent. This is how projects using
+ *       {@code --enable-preview} keep IntelliJ in sync with the POM.</li>
  *   <li><b>plugin-version</b> — update {@code ike-tooling.version}
  *       property in the workspace POM to the current plugin version</li>
  * </ul>
@@ -92,7 +113,10 @@ public class WsUpgradeDraftMojo extends AbstractWorkspaceMojo {
         // ── 5. .mvn/maven.config ────────────────────────────────
         upgradeMavenConfig(rootPath, applied, skipped);
 
-        // ── 6. Plugin version ───────────────────────────────────
+        // ── 6. IntelliJ language level (.idea/misc.xml) ─────────
+        upgradeIdeLanguageLevel(rootPath, applied, skipped);
+
+        // ── 7. Plugin version ───────────────────────────────────
         upgradePluginVersion(rootPath, pluginVersion, applied, skipped);
 
         // ── Summary ─────────────────────────────────────────────
@@ -146,6 +170,82 @@ public class WsUpgradeDraftMojo extends AbstractWorkspaceMojo {
         }
     }
 
+    /**
+     * Required {@code .gitignore} entries grouped into named sections.
+     * Order mirrors what {@link WsCreateMojo#generateGitignore()} emits
+     * so that output from {@code ws:create} and {@code ws:upgrade}
+     * remains visually consistent.
+     */
+    static final List<GitignoreSection> GITIGNORE_SECTIONS = List.of(
+            new GitignoreSection(
+                    "# ── Whitelist workspace-level files ──────────────────────────────",
+                    "!.gitignore", "!pom.xml", "!workspace.yaml"
+            ),
+            new GitignoreSection(
+                    "# ── Whitelist workspace-owned directories ────────────────────────",
+                    "!.mvn/", "!.mvn/**", "!checkpoints/", "!checkpoints/**"
+            ),
+            new GitignoreSection(
+                    "# ── IntelliJ project config (curated slice) ──────────────────────\n"
+                            + "# Small, stable project-wide settings shared across collaborators.\n"
+                            + "# compiler.xml and vcs.xml are excluded — they regenerate per\n"
+                            + "# Maven reload or per workspace membership.",
+                    "!.idea/", "!.idea/.gitignore", "!.idea/misc.xml",
+                    "!.idea/kotlinc.xml", "!.idea/encodings.xml",
+                    "!.idea/jarRepositories.xml"
+            )
+    );
+
+    /**
+     * A named group of {@code .gitignore} entries sharing a section
+     * header comment. Upgrade emits the full header when no entries
+     * from this section are present; otherwise appends only the
+     * missing entries individually.
+     *
+     * @param header  the section header comment block (no trailing newline)
+     * @param entries the required entries for this section
+     */
+    record GitignoreSection(String header, List<String> entries) {
+        GitignoreSection(String header, String... entries) {
+            this(header, List.of(entries));
+        }
+    }
+
+    /**
+     * Compute the additions needed to bring an existing {@code .gitignore}
+     * up to spec. Package-private for test access.
+     *
+     * @param content the current {@code .gitignore} content
+     * @return the text to append (empty string if already current)
+     */
+    static String computeGitignoreAdditions(String content) {
+        Set<String> existingLines = new LinkedHashSet<>();
+        for (String line : content.split("\n")) {
+            existingLines.add(line.trim());
+        }
+
+        StringBuilder additions = new StringBuilder();
+        for (GitignoreSection section : GITIGNORE_SECTIONS) {
+            List<String> missing = new ArrayList<>();
+            for (String entry : section.entries()) {
+                if (!existingLines.contains(entry)) {
+                    missing.add(entry);
+                }
+            }
+            if (missing.isEmpty()) {
+                continue;
+            }
+            boolean fullSection = missing.size() == section.entries().size();
+            if (fullSection) {
+                additions.append("\n").append(section.header()).append("\n");
+            }
+            for (String entry : missing) {
+                additions.append(entry).append("\n");
+            }
+        }
+        return additions.toString();
+    }
+
     private void upgradeWorkspaceGitignore(Path root, List<String> applied,
                                             List<String> skipped) {
         Path gitignore = root.resolve(".gitignore");
@@ -157,20 +257,9 @@ public class WsUpgradeDraftMojo extends AbstractWorkspaceMojo {
             }
 
             String content = Files.readString(gitignore, StandardCharsets.UTF_8);
-            boolean changed = false;
+            String additions = computeGitignoreAdditions(content);
 
-            // Ensure whitelist entries exist
-            String[] required = {"!.gitignore", "!pom.xml", "!workspace.yaml",
-                    "!.mvn/", "!.mvn/**", "!checkpoints/", "!checkpoints/**"};
-            StringBuilder additions = new StringBuilder();
-            for (String entry : required) {
-                if (!content.contains(entry)) {
-                    additions.append(entry).append("\n");
-                    changed = true;
-                }
-            }
-
-            if (!changed) {
+            if (additions.isEmpty()) {
                 skipped.add("workspace-gitignore");
                 getLog().info(Ansi.green("  ✓ ") + "Workspace .gitignore: already current");
                 return;
@@ -186,6 +275,103 @@ public class WsUpgradeDraftMojo extends AbstractWorkspaceMojo {
         } catch (IOException e) {
             getLog().warn(Ansi.yellow("  ⚠ ") + "Could not update .gitignore: " + e.getMessage());
         }
+    }
+
+    /**
+     * Enforce the IntelliJ language level (and optionally the JDK name)
+     * declared in {@code workspace.yaml}'s {@code ide:} section. Targets
+     * the {@code ProjectRootManager} component in {@code .idea/misc.xml}.
+     *
+     * <p>Skipped cleanly when {@code .idea/misc.xml} is absent (workspace
+     * does not use IntelliJ) or when the manifest has no {@code ide:}
+     * section. Idempotent — only writes when the target attribute value
+     * differs from the manifest.
+     *
+     * @param root    workspace root directory
+     * @param applied steps that modified files
+     * @param skipped steps that made no change
+     */
+    private void upgradeIdeLanguageLevel(Path root, List<String> applied,
+                                          List<String> skipped) {
+        Path misc = root.resolve(".idea").resolve("misc.xml");
+        if (!Files.exists(misc)) {
+            skipped.add("ide-language-level");
+            getLog().info("  - IDE language level: .idea/misc.xml not present (skipped)");
+            return;
+        }
+
+        IdeSettings ide;
+        try {
+            Manifest m = ManifestReader.read(resolveManifest());
+            ide = m.ide();
+        } catch (ManifestException e) {
+            getLog().warn(Ansi.yellow("  ⚠ ") + "IDE language level: could not read workspace.yaml: "
+                    + e.getMessage());
+            return;
+        }
+
+        if (!ide.hasAnyValue()) {
+            skipped.add("ide-language-level");
+            getLog().info("  - IDE language level: no 'ide' section in workspace.yaml (skipped)");
+            return;
+        }
+
+        try {
+            String content = Files.readString(misc, StandardCharsets.UTF_8);
+            String updated = applyIdeSettings(content, ide);
+            if (updated.equals(content)) {
+                skipped.add("ide-language-level");
+                getLog().info(Ansi.green("  ✓ ") + "IDE language level: already "
+                        + (ide.languageLevel() != null ? ide.languageLevel() : "(unchanged)"));
+                return;
+            }
+
+            if (publish) {
+                Files.writeString(misc, updated, StandardCharsets.UTF_8);
+            }
+            applied.add("ide-language-level");
+            getLog().info(Ansi.cyan("  ↑ ") + "IDE language level: set to "
+                    + (ide.languageLevel() != null ? ide.languageLevel() : "(jdk-name only)"));
+        } catch (IOException e) {
+            getLog().warn(Ansi.yellow("  ⚠ ") + "Could not update .idea/misc.xml: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Apply {@code ide.languageLevel} and {@code ide.jdkName} to the
+     * {@code ProjectRootManager} component in {@code .idea/misc.xml}
+     * content. Returns the updated content, or the original if no
+     * change is needed. Package-private for test access.
+     *
+     * @param content the current {@code misc.xml} content
+     * @param ide     the settings to enforce (null fields are no-ops)
+     * @return the updated content
+     */
+    static String applyIdeSettings(String content, IdeSettings ide) {
+        String updated = content;
+        if (ide.languageLevel() != null) {
+            updated = replaceProjectRootAttr(updated, "languageLevel", ide.languageLevel());
+        }
+        if (ide.jdkName() != null) {
+            updated = replaceProjectRootAttr(updated, "project-jdk-name", ide.jdkName());
+        }
+        return updated;
+    }
+
+    private static String replaceProjectRootAttr(String content, String attr, String value) {
+        Pattern p = Pattern.compile(
+                "(<component\\s+name=\"ProjectRootManager\"[^>]*\\b"
+                        + Pattern.quote(attr) + "=\")([^\"]*)(\")");
+        Matcher m = p.matcher(content);
+        if (!m.find()) {
+            return content;
+        }
+        if (m.group(2).equals(value)) {
+            return content;
+        }
+        return m.replaceFirst(Matcher.quoteReplacement(m.group(1))
+                + Matcher.quoteReplacement(value)
+                + Matcher.quoteReplacement(m.group(3)));
     }
 
     private void upgradeStignoreShared(Path root, List<String> applied,
