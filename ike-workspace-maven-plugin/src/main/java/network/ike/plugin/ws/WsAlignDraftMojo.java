@@ -210,6 +210,69 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             }
         }
 
+        // --- Plugin version alignment in ike-parent (#132) ---
+        // When ike-tooling.version property changes, the literal version
+        // in ike-parent's pluginManagement for ike-maven-plugin must match.
+        // Extensions plugins need literal versions (loaded before property
+        // interpolation), so this literal is the only way to pin the version.
+        for (Map.Entry<String, Component> entry : graph.manifest().components().entrySet()) {
+            String name = entry.getKey();
+            File componentDir = new File(root, name);
+            Path rootPomPath = componentDir.toPath().resolve("pom.xml");
+            if (!Files.exists(rootPomPath)) continue;
+
+            try {
+                PomModel rootPom = PomModel.parse(rootPomPath);
+                String toolingVersion = rootPom.properties()
+                        .get("ike-tooling.version");
+                if (toolingVersion == null) continue;
+
+                // Find ike-parent submodule POM
+                List<String> subprojects = rootPom.subprojects();
+                for (String sub : subprojects) {
+                    if (!"ike-parent".equals(sub)) continue;
+
+                    Path parentPomPath = componentDir.toPath()
+                            .resolve(sub).resolve("pom.xml");
+                    if (!Files.exists(parentPomPath)) continue;
+
+                    String parentContent = Files.readString(
+                            parentPomPath, StandardCharsets.UTF_8);
+
+                    // Check if ike-maven-plugin literal differs
+                    // from the ike-tooling.version property
+                    String testUpdated = PomModel.updatePluginVersion(
+                            parentContent, "network.ike.tooling",
+                            "ike-maven-plugin", toolingVersion);
+                    if (testUpdated.equals(parentContent)) continue;
+
+                    String relPath = sub + "/pom.xml";
+                    if (draft) {
+                        getLog().info("  " + name + " (" + relPath
+                                + "): plugin ike-maven-plugin literal → "
+                                + toolingVersion + " (draft)");
+                    } else {
+                        Files.writeString(parentPomPath, testUpdated,
+                                StandardCharsets.UTF_8);
+                        getLog().info("  " + name + " (" + relPath
+                                + "): plugin ike-maven-plugin literal → "
+                                + toolingVersion);
+                    }
+                    reportChanges.add(new AlignChange(
+                            name, relPath,
+                            "plugin:ike-maven-plugin",
+                            "(literal)", toolingVersion));
+                    totalChanges++;
+                    if (!changedComponents.contains(name)) {
+                        changedComponents.add(name);
+                    }
+                }
+            } catch (IOException e) {
+                getLog().debug(name + ": could not check plugin versions — "
+                        + e.getMessage());
+            }
+        }
+
         // --- Summary ---
         getLog().info("");
         if (totalChanges == 0) {
