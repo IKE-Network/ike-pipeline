@@ -22,7 +22,7 @@
 
     <groupId>network.ike.pipeline</groupId>
     <artifactId>ike-pipeline</artifactId>
-    <version>103-SNAPSHOT</version>
+    <version>103</version>
     <packaging>pom</packaging>
 
     <name>IKE Pipeline</name>
@@ -87,7 +87,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- Reproducible builds — maven-release-plugin updates automatically -->
-        <project.build.outputTimestamp>2026-04-16T20:53:02Z</project.build.outputTimestamp>
+        <project.build.outputTimestamp>2026-04-16T22:46:11Z</project.build.outputTimestamp>
 
         <!-- ── Java Configuration (from java-parent) ─────────────────── -->
         <java.version>25</java.version>
@@ -240,7 +240,7 @@
                 <plugin>
                     <groupId>network.ike.pipeline</groupId>
                     <artifactId>ike-workspace-maven-plugin</artifactId>
-                    <version>${project.version}</version>
+                    <version>103</version>
                 </plugin>
 
                 <!-- Maven Clean Plugin -->
@@ -602,7 +602,7 @@
                 <plugin>
                     <groupId>network.ike.pipeline</groupId>
                     <artifactId>semantic-linebreak</artifactId>
-                    <version>${project.version}</version>
+                    <version>103</version>
                 </plugin>
 
                 <!-- Build Helper Plugin — attach classified PDF artifacts -->
