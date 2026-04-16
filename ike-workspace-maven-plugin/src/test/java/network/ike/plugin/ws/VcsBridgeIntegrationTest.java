@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * End-to-end integration tests for the VCS bridge workflow.
@@ -172,6 +173,129 @@ class VcsBridgeIntegrationTest {
         VerifyWorkspaceMojo mojo = TestLog.createMojo(VerifyWorkspaceMojo.class);
         // Should not throw — reports "behind" state
         mojo.execute();
+    }
+
+    @Test
+    void sync_preservesLocalCommitsAheadOfOrigin() throws Exception {
+        // Regression for #144: sync() used to unconditionally reset local
+        // HEAD to origin/<state.branch>, silently discarding unpushed
+        // commits. The fix: when local is strictly ahead of origin,
+        // sync() must leave local alone.
+        //
+        // Scenario: Machine A made a COMMIT (writing vcs-state) but did
+        // not push. Then ran a goal that calls catchUp → sync.
+        Files.writeString(machineADir.resolve("file.txt"), "local-only work",
+                StandardCharsets.UTF_8);
+        exec(machineADir, "git", "add", ".");
+        exec(machineADir, "git", "commit", "-m", "Local-only commit");
+        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.Action.COMMIT);
+
+        String localSha = VcsOperations.headSha(machineADir.toFile());
+        Optional<String> remoteShaBefore = VcsOperations.remoteSha(
+                machineADir.toFile(), "origin", "main");
+        assertThat(remoteShaBefore).isPresent();
+        assertThat(remoteShaBefore.get()).isNotEqualTo(localSha);  // ahead
+
+        // Sync should NOT reset local to origin — that would lose the commit.
+        VcsOperations.sync(machineADir.toFile(), new TestLog());
+
+        assertThat(VcsOperations.headSha(machineADir.toFile()))
+                .as("local commit must be preserved; #144 regression")
+                .isEqualTo(localSha);
+    }
+
+    @Test
+    void sync_fastForwardsWhenLocalIsBehind() throws Exception {
+        // Origin advances; local is strictly behind. sync() should
+        // fast-forward local to origin safely.
+        Files.writeString(machineADir.resolve("file.txt"), "A update",
+                StandardCharsets.UTF_8);
+        exec(machineADir, "git", "add", ".");
+        exec(machineADir, "git", "commit", "-m", "A update");
+        exec(machineADir, "git", "push", "origin", "main");
+        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.Action.COMMIT);
+
+        String expectedSha = VcsOperations.headSha(machineADir.toFile());
+
+        // Deliver state file to B (which is behind)
+        Files.createDirectories(machineBDir.resolve(".ike"));
+        Files.copy(machineADir.resolve(".ike/vcs-state"),
+                machineBDir.resolve(".ike/vcs-state"));
+
+        VcsOperations.sync(machineBDir.toFile(), new TestLog());
+
+        assertThat(VcsOperations.headSha(machineBDir.toFile())).isEqualTo(expectedSha);
+    }
+
+    @Test
+    void sync_abortsOnDivergedBranch() throws Exception {
+        // Both local and origin have unique commits (diverged).
+        // sync() must refuse rather than silently pick a side.
+        //
+        // Machine A commits locally without pushing.
+        Files.writeString(machineADir.resolve("a-only.txt"), "A local work",
+                StandardCharsets.UTF_8);
+        exec(machineADir, "git", "add", ".");
+        exec(machineADir, "git", "commit", "-m", "A local commit");
+        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.Action.COMMIT);
+        String aLocalSha = VcsOperations.headSha(machineADir.toFile());
+
+        // Machine B commits and pushes — origin/main advances to B's commit.
+        Files.writeString(machineBDir.resolve("b-only.txt"), "B pushed work",
+                StandardCharsets.UTF_8);
+        exec(machineBDir, "git", "add", ".");
+        exec(machineBDir, "git", "commit", "-m", "B pushed commit");
+        exec(machineBDir, "git", "push", "origin", "main");
+
+        // A fetches — now A sees origin has B's commit, and A has its own
+        // unpushed commit. Neither is ancestor of the other → diverged.
+        exec(machineADir, "git", "fetch", "origin");
+
+        assertThatThrownBy(() ->
+                VcsOperations.sync(machineADir.toFile(), new TestLog()))
+                .isInstanceOf(MojoException.class)
+                .hasMessageContaining("diverged");
+
+        // Critically: local state untouched.
+        assertThat(VcsOperations.headSha(machineADir.toFile())).isEqualTo(aLocalSha);
+    }
+
+    @Test
+    void sync_noOpWhenAlreadyAtOrigin() throws Exception {
+        // Local and origin are at the same commit — sync should be
+        // idempotent (no reset, no error).
+        Files.writeString(machineADir.resolve("file.txt"), "update",
+                StandardCharsets.UTF_8);
+        exec(machineADir, "git", "add", ".");
+        exec(machineADir, "git", "commit", "-m", "Update");
+        exec(machineADir, "git", "push", "origin", "main");
+        VcsOperations.writeVcsState(machineADir.toFile(), VcsState.Action.PUSH);
+
+        String before = VcsOperations.headSha(machineADir.toFile());
+
+        VcsOperations.sync(machineADir.toFile(), new TestLog());
+
+        assertThat(VcsOperations.headSha(machineADir.toFile())).isEqualTo(before);
+    }
+
+    @Test
+    void isAncestor_detectsAncestry() throws Exception {
+        // Initial commit is ancestor of any later commit.
+        String initialSha = VcsOperations.headSha(machineADir.toFile());
+
+        Files.writeString(machineADir.resolve("later.txt"), "later",
+                StandardCharsets.UTF_8);
+        exec(machineADir, "git", "add", ".");
+        exec(machineADir, "git", "commit", "-m", "Later commit");
+        String laterSha = VcsOperations.headSha(machineADir.toFile());
+
+        assertThat(VcsOperations.isAncestor(machineADir.toFile(), initialSha, laterSha))
+                .as("initial is ancestor of later").isTrue();
+        assertThat(VcsOperations.isAncestor(machineADir.toFile(), laterSha, initialSha))
+                .as("later is not ancestor of initial").isFalse();
+        // Self-ancestry: a commit is its own ancestor per git's semantics
+        assertThat(VcsOperations.isAncestor(machineADir.toFile(), initialSha, initialSha))
+                .isTrue();
     }
 
     @Test

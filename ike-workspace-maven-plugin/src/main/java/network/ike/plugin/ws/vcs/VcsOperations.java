@@ -265,6 +265,42 @@ public class VcsOperations {
     }
 
     /**
+     * Check whether one commit is an ancestor of (or equal to) another.
+     *
+     * <p>Uses {@code git merge-base --is-ancestor}: exit 0 means yes,
+     * exit 1 means no, any other exit is an error (e.g., unknown ref).
+     *
+     * @param dir           the repository root directory
+     * @param maybeAncestor candidate ancestor commit (ref or sha)
+     * @param descendant    candidate descendant commit (ref or sha)
+     * @return {@code true} iff {@code maybeAncestor} is reachable from
+     *         {@code descendant} via parent edges (or is equal)
+     * @throws MojoException if either ref is unknown or the git command fails
+     */
+    public static boolean isAncestor(File dir, String maybeAncestor, String descendant)
+            throws MojoException {
+        try {
+            Process proc = new ProcessBuilder("git", "merge-base",
+                    "--is-ancestor", maybeAncestor, descendant)
+                    .directory(dir)
+                    .redirectErrorStream(true)
+                    .start();
+            String output = new String(proc.getInputStream().readAllBytes(),
+                    StandardCharsets.UTF_8);
+            int exit = proc.waitFor();
+            if (exit == 0) return true;
+            if (exit == 1) return false;
+            throw new MojoException(
+                    "git merge-base --is-ancestor " + maybeAncestor + " "
+                            + descendant + " failed (exit " + exit + "): " + output);
+        } catch (IOException | InterruptedException e) {
+            throw new MojoException(
+                    "Failed to check ancestry of " + maybeAncestor + " / "
+                            + descendant + ": " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Checkout an existing branch.
      *
      * @param dir    the repository root directory
@@ -618,11 +654,42 @@ public class VcsOperations {
         }
 
         Optional<String> remoteRef = remoteSha(dir, "origin", state.branch());
-        if (remoteRef.isPresent()) {
-            resetSoft(dir, log, "origin/" + state.branch());
-        } else {
+        if (remoteRef.isEmpty()) {
             log.info("  No remote ref for " + state.branch()
                     + " on origin — branch is local-only, using local state.");
+            return headSha(dir);
+        }
+
+        // Evaluate the relationship between local branch tip and origin
+        // before touching HEAD. An unconditional reset-to-origin would
+        // silently discard unpushed local commits (#144).
+        String localSha = headSha(dir);
+        String remoteShaValue = remoteRef.get();
+
+        if (localSha.equals(remoteShaValue)) {
+            log.info("  Already at origin/" + state.branch()
+                    + " — no reset needed.");
+        } else if (isAncestor(dir, remoteShaValue, localSha)) {
+            // Local is strictly ahead of origin. Preserve the unpushed
+            // commits — the caller (usually ws:push) will push them.
+            log.info("  Local " + state.branch()
+                    + " is ahead of origin — keeping unpushed commits.");
+        } else if (isAncestor(dir, localSha, remoteShaValue)) {
+            // Local is strictly behind origin. Fast-forward is safe
+            // (equivalent to git pull --ff-only).
+            log.info("  Fast-forwarding " + state.branch() + " to origin.");
+            resetSoft(dir, log, "origin/" + state.branch());
+        } else {
+            // Diverged — local and origin each have unique commits.
+            // Refuse to silently pick a side; ask the human.
+            throw new MojoException(
+                    "Local " + state.branch() + " (" + localSha
+                            + ") has diverged from origin/" + state.branch()
+                            + " (" + remoteShaValue + ") — neither is an "
+                            + "ancestor of the other. Resolve manually "
+                            + "(git pull --rebase, git rebase origin/"
+                            + state.branch() + ", or ws:update-feature), "
+                            + "then retry.");
         }
 
         String newSha = headSha(dir);
