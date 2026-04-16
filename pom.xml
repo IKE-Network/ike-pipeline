@@ -22,7 +22,7 @@
 
     <groupId>network.ike.pipeline</groupId>
     <artifactId>ike-pipeline</artifactId>
-    <version>100-SNAPSHOT</version>
+    <version>100</version>
     <packaging>pom</packaging>
 
     <name>IKE Pipeline</name>
@@ -87,7 +87,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- Reproducible builds — maven-release-plugin updates automatically -->
-        <project.build.outputTimestamp>2026-04-16T14:30:02Z</project.build.outputTimestamp>
+        <project.build.outputTimestamp>2026-04-16T14:58:11Z</project.build.outputTimestamp>
 
         <!-- ── Java Configuration (from java-parent) ─────────────────── -->
         <java.version>25</java.version>
