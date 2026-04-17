@@ -265,6 +265,24 @@ public class VcsOperations {
     }
 
     /**
+     * Hard reset — updates HEAD, index, and working tree to match
+     * {@code ref}, discarding uncommitted changes. Also clears any
+     * in-progress merge state ({@code .git/SQUASH_MSG},
+     * {@code .git/MERGE_MSG}), which is useful after a {@code git merge
+     * --squash} whose squashed diff turned out to be empty — see
+     * issue #162.
+     *
+     * @param dir the repository root directory
+     * @param log Maven logger
+     * @param ref the ref to reset to (e.g., {@code "HEAD"})
+     * @throws MojoException if the git command fails
+     */
+    public static void resetHard(File dir, Log log, String ref)
+            throws MojoException {
+        run(dir, log, null, "git", "reset", "--hard", ref, "--quiet");
+    }
+
+    /**
      * Check whether one commit is an ancestor of (or equal to) another.
      *
      * <p>Uses {@code git merge-base --is-ancestor}: exit 0 means yes,

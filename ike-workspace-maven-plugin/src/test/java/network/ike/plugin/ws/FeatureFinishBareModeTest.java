@@ -372,6 +372,40 @@ class FeatureFinishBareModeTest {
     }
 
     @Test
+    void squash_emptyResult_clearsSquashMsgAndMergeMsg() throws Exception {
+        // Issue #162: when the squash produces no diff (version-only
+        // feature branch), the mojo skips the commit — but must clean
+        // up .git/SQUASH_MSG and .git/MERGE_MSG left behind by
+        // git merge --squash, or a subsequent git commit will land an
+        // empty "Squashed commit of the following:" on main.
+        //
+        // Reduce the fixture's feature branch to a version-only history
+        // by removing the substantive feature-work commit.
+        exec(tempDir, "git", "rm", "feature-work.txt");
+        exec(tempDir, "git", "commit", "-m", "feature: revert feature work");
+
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
+        mojo.feature = FEATURE_NAME;
+        mojo.targetBranch = "main";
+        mojo.message = "Should not be used — squash is empty";
+        mojo.publish = true;
+
+        mojo.execute();
+
+        // Ended up on main, as expected when the finish ran to completion.
+        assertThat(currentBranch()).isEqualTo("main");
+
+        // Critical: no in-progress merge state dangling for a later
+        // git commit to pick up.
+        assertThat(tempDir.resolve(".git/SQUASH_MSG")).doesNotExist();
+        assertThat(tempDir.resolve(".git/MERGE_MSG")).doesNotExist();
+
+        // And no empty "Squashed commit of the following:" actually landed.
+        String log = execCapture(tempDir, "git", "log", "--oneline", "-5");
+        assertThat(log).doesNotContain("Squashed commit of the following");
+    }
+
+    @Test
     void squash_publishRequiresMessage_throwsBeforeAnyMutation() throws Exception {
         // Issue #160: publish without -Dmessage previously NPE'd mid-operation,
         // leaving partial state. The preflight now hard-fails before any

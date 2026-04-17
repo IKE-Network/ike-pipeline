@@ -226,6 +226,10 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
                 }
             } else {
                 getLog().info("    no changes after squash (version-only branch) — skipping commit");
+                // #162: clear .git/SQUASH_MSG & .git/MERGE_MSG so a later
+                // git commit doesn't pick up the template and land an
+                // empty "Squashed commit of the following:" on main.
+                VcsOperations.resetHard(dir, getLog(), "HEAD");
             }
 
             if (!keepBranch) {
@@ -325,6 +329,8 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
             }
         } else {
             getLog().info("  No changes after squash — skipping commit");
+            // #162: see executeWorkspaceMode for rationale.
+            VcsOperations.resetHard(dir, getLog(), "HEAD");
         }
 
         if (!keepBranch) {
