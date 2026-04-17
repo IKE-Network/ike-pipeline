@@ -9,7 +9,7 @@ import org.apache.maven.api.plugin.annotations.Mojo;
  * <p>This is the {@code -publish} counterpart of {@code ws:upgrade}
  * (which defaults to a draft preview).
  *
- * <p>Usage: {@code mvn ws:upgrade-apply}
+ * <p>Usage: {@code mvn ws:upgrade-publish}
  *
  * @see WsUpgradeDraftMojo
  */

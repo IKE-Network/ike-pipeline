@@ -14,7 +14,7 @@ import java.io.File;
  * (which defaults to a draft preview). Before checkpointing, this
  * goal automatically aligns inter-component dependency versions.
  *
- * <p>Usage: {@code mvn ws:checkpoint-apply}
+ * <p>Usage: {@code mvn ws:checkpoint-publish}
  *
  * @see WsCheckpointDraftMojo
  */
@@ -36,7 +36,8 @@ public class WsCheckpointPublishMojo extends WsCheckpointDraftMojo {
         String mvn = WsReleaseDraftMojo.resolveMvnCommand(root);
         getLog().info("Auto-aligning workspace versions...");
         try {
-            ReleaseSupport.exec(root, getLog(), mvn, "ws:align-apply", "-B");
+            ReleaseSupport.exec(root, getLog(), mvn,
+                    "ws:" + WsAlignPublishMojo.GOAL_NAME, "-B");
         } catch (MojoException e) {
             getLog().warn("Auto-alignment completed with warnings: "
                     + e.getMessage());

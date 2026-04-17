@@ -9,7 +9,7 @@ import org.apache.maven.api.plugin.annotations.Mojo;
  * <p>This is the {@code -publish} counterpart of
  * {@code ws:feature-finish-merge} (which defaults to a draft preview).
  *
- * <p>Usage: {@code mvn ws:feature-finish-merge-apply -Dfeature=long-running}
+ * <p>Usage: {@code mvn ws:feature-finish-merge-publish -Dfeature=long-running}
  *
  * @see FeatureFinishMergeDraftMojo
  */

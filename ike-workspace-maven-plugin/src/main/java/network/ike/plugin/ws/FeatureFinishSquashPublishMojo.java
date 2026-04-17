@@ -9,7 +9,7 @@ import org.apache.maven.api.plugin.annotations.Mojo;
  * <p>This is the {@code -publish} counterpart of
  * {@code ws:feature-finish-squash} (which defaults to a draft preview).
  *
- * <p>Usage: {@code mvn ws:feature-finish-squash-apply -Dfeature=done -Dmessage="Ship it"}
+ * <p>Usage: {@code mvn ws:feature-finish-squash-publish -Dfeature=done -Dmessage="Ship it"}
  *
  * @see FeatureFinishSquashDraftMojo
  */

@@ -15,7 +15,7 @@ import java.io.File;
  * automatically aligns inter-component dependency versions so that
  * a release never ships with stale cross-references.
  *
- * <p>Usage: {@code mvn ws:release-apply}
+ * <p>Usage: {@code mvn ws:release-publish}
  *
  * @see WsReleaseDraftMojo
  */
@@ -37,7 +37,8 @@ public class WsReleasePublishMojo extends WsReleaseDraftMojo {
         String mvn = resolveMvnCommand(root);
         getLog().info("Auto-aligning workspace versions...");
         try {
-            ReleaseSupport.exec(root, getLog(), mvn, "ws:align-apply", "-B");
+            ReleaseSupport.exec(root, getLog(), mvn,
+                    "ws:" + WsAlignPublishMojo.GOAL_NAME, "-B");
         } catch (MojoException e) {
             getLog().warn("Auto-alignment completed with warnings: "
                     + e.getMessage());

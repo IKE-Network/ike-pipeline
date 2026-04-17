@@ -15,7 +15,7 @@ import java.io.File;
  * this goal automatically aligns inter-component dependency versions so
  * that the feature branch starts from a consistent state.
  *
- * <p>Usage: {@code mvn ws:feature-start-apply -Dfeature=my-feature}
+ * <p>Usage: {@code mvn ws:feature-start-publish -Dfeature=my-feature}
  *
  * @see FeatureStartDraftMojo
  */
@@ -37,7 +37,8 @@ public class FeatureStartPublishMojo extends FeatureStartDraftMojo {
         String mvn = WsReleaseDraftMojo.resolveMvnCommand(root);
         getLog().info("Auto-aligning workspace versions...");
         try {
-            ReleaseSupport.exec(root, getLog(), mvn, "ws:align-apply", "-B");
+            ReleaseSupport.exec(root, getLog(), mvn,
+                    "ws:" + WsAlignPublishMojo.GOAL_NAME, "-B");
         } catch (MojoException e) {
             getLog().warn("Auto-alignment completed with warnings: "
                     + e.getMessage());
