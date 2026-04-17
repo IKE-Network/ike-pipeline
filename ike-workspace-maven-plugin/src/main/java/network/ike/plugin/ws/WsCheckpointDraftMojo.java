@@ -9,6 +9,7 @@ import network.ike.plugin.ws.preflight.PreflightResult;
 
 import network.ike.workspace.Component;
 import network.ike.workspace.ManifestWriter;
+import network.ike.workspace.SubprojectType;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
@@ -158,9 +159,8 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
             String shortSha = gitShortSha(dir);
             String version  = readVersion(dir);
 
-            var ct = graph.manifest().componentTypes().get(component.type());
-            boolean composite = ct != null
-                    && "composite".equals(ct.checkpointMechanism());
+            boolean composite = component.type().checkpointMechanism()
+                    == SubprojectType.CheckpointMechanism.COMPOSITE;
 
             if (draft) {
                 getLog().info(Ansi.green("  ✓ ") + compName
@@ -169,14 +169,14 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
                 CheckpointSupport.preview(dir, wsTagName, getLog());
                 snapshots.add(new ComponentSnapshot(
                         compName, sha, shortSha, branch,
-                        version, false, component.type(), composite));
+                        version, false, component.type().yamlName(), composite));
             } else {
                 CheckpointSupport.checkpoint(dir, wsTagName, getLog());
                 getLog().info(Ansi.green("  ✓ ") + compName
                         + " [" + shortSha + "] → " + wsTagName);
                 snapshots.add(new ComponentSnapshot(
                         compName, sha, shortSha, branch,
-                        version, false, component.type(), composite));
+                        version, false, component.type().yamlName(), composite));
             }
         }
 

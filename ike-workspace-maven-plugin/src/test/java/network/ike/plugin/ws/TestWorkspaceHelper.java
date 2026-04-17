@@ -83,13 +83,13 @@ class TestWorkspaceHelper {
 
                 components:
                   lib-a:
-                    type: maven
+                    type: software
                     description: Shared library A
                     repo: https://example.com/lib-a.git
                     branch: main
                     version: "1.0.0-SNAPSHOT"
                   lib-b:
-                    type: maven
+                    type: software
                     description: Library B (depends on A)
                     repo: https://example.com/lib-b.git
                     branch: main
@@ -98,7 +98,7 @@ class TestWorkspaceHelper {
                       - component: lib-a
                         relationship: build
                   app-c:
-                    type: maven
+                    type: software
                     description: Application C (depends on B)
                     repo: https://example.com/app-c.git
                     branch: main
@@ -232,13 +232,13 @@ class TestWorkspaceHelper {
 
                 components:
                   lib-a:
-                    type: maven
+                    type: software
                     description: Shared library A
                     repo: %s
                     branch: main
                     version: "1.0.0-SNAPSHOT"
                   lib-b:
-                    type: maven
+                    type: software
                     description: Library B (depends on A)
                     repo: %s
                     branch: main
@@ -247,7 +247,7 @@ class TestWorkspaceHelper {
                       - component: lib-a
                         relationship: build
                   app-c:
-                    type: maven
+                    type: software
                     description: Application C (depends on B)
                     repo: %s
                     branch: main

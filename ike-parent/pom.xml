@@ -286,7 +286,7 @@
             <plugin>
                 <groupId>network.ike.tooling</groupId>
                 <artifactId>ike-maven-plugin</artifactId>
-                <version>110</version>
+                <version>112-SNAPSHOT</version>
                 <extensions>true</extensions>
             </plugin>
 

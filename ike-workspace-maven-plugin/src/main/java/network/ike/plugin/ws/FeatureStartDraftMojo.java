@@ -703,8 +703,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
             // path exists through the BOM import chain.
             for (String bomName : graph.manifest().components().keySet()) {
                 Component bomComp = graph.manifest().components().get(bomName);
-                if (!"bom".equals(bomComp.type())
-                        && !"infrastructure".equals(bomComp.type())) continue;
+                if (bomComp.type() != network.ike.workspace.SubprojectType.INFRASTRUCTURE) continue;
                 java.nio.file.Path bomPom = root.toPath()
                         .resolve(bomName).resolve("pom.xml");
                 if (java.nio.file.Files.exists(bomPom)) {

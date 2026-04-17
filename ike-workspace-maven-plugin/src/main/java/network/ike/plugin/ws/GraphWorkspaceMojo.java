@@ -61,7 +61,7 @@ public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
             Component comp = graph.manifest().components().get(name);
 
             getLog().info(String.format("  %2d. %-28s [%s]",
-                    i + 1, name, comp.type()));
+                    i + 1, name, comp.type().yamlName()));
 
             if (!comp.dependsOn().isEmpty()) {
                 for (int j = 0; j < comp.dependsOn().size(); j++) {
@@ -119,7 +119,7 @@ public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
         // Build data structures for the pure function
         Map<String, String> componentTypes = new LinkedHashMap<>();
         for (Component comp : graph.manifest().components().values()) {
-            componentTypes.put(comp.name(), comp.type());
+            componentTypes.put(comp.name(), comp.type().yamlName());
         }
 
         Map<String, List<String[]>> edges = new LinkedHashMap<>();

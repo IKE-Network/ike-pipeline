@@ -115,7 +115,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
         List<String> errors = graph.verify();
 
         int componentCount = graph.manifest().components().size();
-        int typeCount = graph.manifest().componentTypes().size();
+        int typeCount = network.ike.workspace.SubprojectType.values().length;
 
         getLog().info("  Components:      " + componentCount);
         getLog().info("  Component types: " + typeCount);

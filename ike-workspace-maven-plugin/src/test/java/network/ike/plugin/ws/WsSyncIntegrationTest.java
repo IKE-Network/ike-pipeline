@@ -133,7 +133,7 @@ class WsSyncIntegrationTest {
         // Replace the first occurrence of "branch: main" (which is lib-a's)
         // We need to be targeted — update the lib-a block specifically
         yaml = yaml.replaceFirst(
-                "(lib-a:\\s+type: maven\\s+description: [^\\n]+\\s+repo: [^\\n]+\\s+branch: )main",
+                "(lib-a:\\s+type: software\\s+description: [^\\n]+\\s+repo: [^\\n]+\\s+branch: )main",
                 "$1develop");
         Files.writeString(helper.workspaceYaml(), yaml, StandardCharsets.UTF_8);
 
@@ -171,7 +171,7 @@ class WsSyncIntegrationTest {
         // Update workspace.yaml to say lib-a should be on "develop"
         String yaml = Files.readString(helper.workspaceYaml(), StandardCharsets.UTF_8);
         yaml = yaml.replaceFirst(
-                "(lib-a:\\s+type: maven\\s+description: [^\\n]+\\s+repo: [^\\n]+\\s+branch: )main",
+                "(lib-a:\\s+type: software\\s+description: [^\\n]+\\s+repo: [^\\n]+\\s+branch: )main",
                 "$1develop");
         Files.writeString(helper.workspaceYaml(), yaml, StandardCharsets.UTF_8);
 

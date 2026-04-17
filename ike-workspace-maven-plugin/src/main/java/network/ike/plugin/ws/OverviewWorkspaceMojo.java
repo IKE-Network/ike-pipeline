@@ -96,7 +96,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
             getLog().info(String.format("  %2d. %-24s → %s",
                     i + 1, name, deps));
             graphRows.add(new String[]{String.valueOf(i + 1), name,
-                    comp.type(), deps});
+                    comp.type().yamlName(), deps});
         }
 
         // ── Section 3: Component Status ─────────────────────────────
@@ -394,7 +394,8 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
     private void printDot(WorkspaceGraph graph) {
         String dot = GraphWorkspaceMojo.buildDotGraph("workspace",
                 graph.manifest().components().values().stream()
-                        .collect(Collectors.toMap(Component::name, Component::type)),
+                        .collect(Collectors.toMap(Component::name,
+                                c -> c.type().yamlName())),
                 graph.manifest().components().values().stream()
                         .filter(c -> !c.dependsOn().isEmpty())
                         .collect(Collectors.toMap(Component::name,
