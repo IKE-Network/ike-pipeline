@@ -37,7 +37,7 @@ public class WsCheckpointPublishMojo extends WsCheckpointDraftMojo {
         getLog().info("Auto-aligning workspace versions...");
         try {
             ReleaseSupport.exec(root, getLog(), mvn,
-                    "ws:" + WsAlignPublishMojo.GOAL_NAME, "-B");
+                    WsGoal.ALIGN_PUBLISH.qualified(), "-B");
         } catch (MojoException e) {
             getLog().warn("Auto-alignment completed with warnings: "
                     + e.getMessage());

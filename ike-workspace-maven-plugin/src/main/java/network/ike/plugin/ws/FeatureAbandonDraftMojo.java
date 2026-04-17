@@ -103,7 +103,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
         if (!draft) {
             preflightCleanCheck("abandon feature", sorted, root);
         } else {
-            preflightCleanWarn("ws:feature-abandon-publish",
+            preflightCleanWarn(WsGoal.FEATURE_ABANDON_PUBLISH,
                     sorted, root);
         }
 
@@ -276,7 +276,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
         sb.append("\n**").append(eligible.size()).append("** ")
           .append(isDraft ? "would be abandoned" : "abandoned")
           .append(", **").append(skipped.size()).append("** skipped.\n");
-        writeReport("ws:feature-abandon" + (publish ? "-publish" : "-draft"),
+        writeReport(publish ? WsGoal.FEATURE_ABANDON_PUBLISH : WsGoal.FEATURE_ABANDON_DRAFT,
                 sb.toString());
     }
 

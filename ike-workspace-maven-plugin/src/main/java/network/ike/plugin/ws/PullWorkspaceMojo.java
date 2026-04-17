@@ -94,7 +94,7 @@ public class PullWorkspaceMojo extends AbstractWorkspaceMojo {
         }
 
         // Structured markdown report
-        writeReport("ws:pull", pulled + " pulled, " + skipped
+        writeReport(WsGoal.PULL, pulled + " pulled, " + skipped
                 + " skipped, " + failed + " failed.\n");
     }
 }

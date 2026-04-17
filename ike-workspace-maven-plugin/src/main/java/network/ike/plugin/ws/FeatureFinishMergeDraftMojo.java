@@ -219,7 +219,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         // Structured markdown report
-        writeReport("ws:feature-finish-merge" + (publish ? "-publish" : "-draft"), buildMergeReport(
+        writeReport(publish ? WsGoal.FEATURE_FINISH_MERGE_PUBLISH : WsGoal.FEATURE_FINISH_MERGE_DRAFT, buildMergeReport(
                 eligible, branchName, targetBranch, merged, draft, keepBranch));
     }
 

@@ -96,6 +96,6 @@ public class CascadeWorkspaceMojo extends AbstractWorkspaceMojo {
                   .append(" | ").append(buildOrder.get(i)).append(" |\n");
             }
         }
-        writeReport("ws:cascade", sb.toString());
+        writeReport(WsGoal.CASCADE, sb.toString());
     }
 }

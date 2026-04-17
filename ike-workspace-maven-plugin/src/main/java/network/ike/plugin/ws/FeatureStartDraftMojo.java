@@ -267,7 +267,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         // Structured markdown report
-        writeReport("ws:feature-start" + (publish ? "-publish" : "-draft"), buildMarkdownReport(
+        writeReport(publish ? WsGoal.FEATURE_START_PUBLISH : WsGoal.FEATURE_START_DRAFT, buildMarkdownReport(
                 branchName, branchRows, cascadeGaps));
     }
 

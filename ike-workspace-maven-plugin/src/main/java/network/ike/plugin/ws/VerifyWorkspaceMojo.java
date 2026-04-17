@@ -91,7 +91,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
         getLog().info("");
         // Structured markdown summary
         if (!verifyRows.isEmpty()) {
-            writeReport("ws:verify", buildVerifyMarkdownReport());
+            writeReport(WsGoal.VERIFY, buildVerifyMarkdownReport());
         }
     }
 

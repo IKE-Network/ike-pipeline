@@ -164,7 +164,7 @@ public class PushMojo extends AbstractWorkspaceMojo {
             getLog().warn("  Some pushes failed — check output above for details.");
         }
 
-        writeReport("ws:push", summary + "\n");
+        writeReport(WsGoal.PUSH, summary + "\n");
     }
 
     private void executeSingleRepo(File dir) throws MojoException {

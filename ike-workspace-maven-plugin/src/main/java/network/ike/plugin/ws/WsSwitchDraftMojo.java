@@ -202,7 +202,7 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
           .append("` **To:** `").append(branch).append("`\n\n");
         sb.append("**").append(switched).append("** switched, **")
           .append(skipped).append("** skipped.\n");
-        writeReport("ws:switch" + (publish ? "-publish" : "-draft"),
+        writeReport(publish ? WsGoal.SWITCH_PUBLISH : WsGoal.SWITCH_DRAFT,
                 sb.toString());
     }
 

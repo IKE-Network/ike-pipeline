@@ -219,7 +219,7 @@ public class CommitMojo extends AbstractWorkspaceMojo {
             getLog().warn("  Some commits failed — check output above for details.");
         }
 
-        writeReport("ws:commit", summary + "\n");
+        writeReport(WsGoal.COMMIT, summary + "\n");
     }
 
     private void executeSingleRepo(File dir) throws MojoException {

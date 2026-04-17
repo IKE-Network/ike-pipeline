@@ -172,7 +172,7 @@ public class WsCreateMojo implements Mojo {
         getLog().info("    mvn ws:add -Drepo=<git-url>    # add components");
         getLog().info("    mvn ws:init                     # clone components");
         getLog().info("");
-        WorkspaceReport.write(wsDir, "ws:create",
+        WorkspaceReport.write(wsDir, WsGoal.CREATE.qualified(),
                 "Created workspace **" + name + "**\n\nDirectory: `" + wsDir + "`\n", null);
     }
 

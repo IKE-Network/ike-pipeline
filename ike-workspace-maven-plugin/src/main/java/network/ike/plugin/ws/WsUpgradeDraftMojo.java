@@ -128,7 +128,7 @@ public class WsUpgradeDraftMojo extends AbstractWorkspaceMojo {
         }
         getLog().info("");
 
-        writeReport("ws:upgrade" + (publish ? "-publish" : "-draft"),
+        writeReport(publish ? WsGoal.UPGRADE_PUBLISH : WsGoal.UPGRADE_DRAFT,
                 "**" + applied.size() + "** upgrade(s) applied, **"
                         + skipped.size() + "** already current."
                         + (draft && !applied.isEmpty() ? " (DRAFT)" : "") + "\n");

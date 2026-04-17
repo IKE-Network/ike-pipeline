@@ -216,13 +216,14 @@ abstract class AbstractWorkspaceMojo implements Mojo {
      * changes that would block the corresponding {@code -publish} goal.
      * Call this in draft mode to give the user early notice.
      *
-     * @param goalName display name (e.g., "align-publish")
-     * @param sorted   components to check
-     * @param root     workspace root directory
+     * @param publishGoal the publish goal whose preflight would fail
+     * @param sorted      components to check
+     * @param root        workspace root directory
      */
-    protected void preflightCleanWarn(String goalName,
+    protected void preflightCleanWarn(WsGoal publishGoal,
                                        java.util.List<String> sorted,
                                        File root) {
+        String goalName = publishGoal.qualified();
         java.util.List<String> uncommitted = new java.util.ArrayList<>();
 
         if (new File(root, ".git").exists() && !gitStatus(root).isEmpty()) {
@@ -363,13 +364,13 @@ abstract class AbstractWorkspaceMojo implements Mojo {
      * <p>Overwrites any previous content for this goal. Filenames use
      * {@code ꞉} (U+A789) to cluster as {@code ws꞉goal-name.md} in IDE file browsers.
      *
-     * @param goalName the goal name including variant (e.g., "ws:feature-start-draft")
-     * @param content  markdown content to write
+     * @param goal    the goal whose output is being reported
+     * @param content markdown content to write
      */
-    protected void writeReport(String goalName, String content) {
+    protected void writeReport(WsGoal goal, String content) {
         try {
             WorkspaceReport.write(
-                    workspaceRoot().toPath(), goalName, content, getLog());
+                    workspaceRoot().toPath(), goal.qualified(), content, getLog());
         } catch (MojoException e) {
             getLog().debug("Could not resolve workspace root for report: "
                     + e.getMessage());
@@ -379,7 +380,7 @@ abstract class AbstractWorkspaceMojo implements Mojo {
     /**
      * Start capturing info-level log output for the workspace report.
      * Replaces the Mojo's logger with a tee that captures info output.
-     * Call {@link #finishReport(String, ReportLog)} at the end of
+     * Call {@link #finishReport(WsGoal, ReportLog)} at the end of
      * {@code execute()} to write the captured output to the report file.
      *
      * @return a ReportLog that wraps the original logger and captures info output
@@ -393,13 +394,13 @@ abstract class AbstractWorkspaceMojo implements Mojo {
     /**
      * Write captured log output to the workspace report file.
      *
-     * @param goalName  the goal name for the report section header
+     * @param goal      the goal whose output is being reported
      * @param reportLog the ReportLog from {@link #startReport()}
      */
-    protected void finishReport(String goalName, ReportLog reportLog) {
+    protected void finishReport(WsGoal goal, ReportLog reportLog) {
         String content = reportLog.captured();
         if (!content.isBlank()) {
-            writeReport(goalName, content);
+            writeReport(goal, content);
         }
     }
 }

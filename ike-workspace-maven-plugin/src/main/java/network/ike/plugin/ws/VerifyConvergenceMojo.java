@@ -112,7 +112,7 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
 
         if (componentTrees.size() < 2) {
             getLog().info("    Fewer than 2 components resolved — skipping analysis");
-            finishReport("ws:verify-convergence", report);
+            finishReport(WsGoal.VERIFY_CONVERGENCE, report);
             return;
         }
 
@@ -166,7 +166,7 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
         }
 
         getLog().info("");
-        finishReport("ws:verify-convergence", report);
+        finishReport(WsGoal.VERIFY_CONVERGENCE, report);
 
         if (failed) {
             throw new MojoException(

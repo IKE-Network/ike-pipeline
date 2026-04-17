@@ -281,7 +281,7 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
         sb.append("\n**").append(eligible.size()).append("** component(s)")
           .append(draft ? " to update" : " updated")
           .append(", **").append(skipped.size()).append("** skipped.\n");
-        writeReport("ws:update-feature" + (publish ? "-publish" : "-draft"),
+        writeReport(publish ? WsGoal.UPDATE_FEATURE_PUBLISH : WsGoal.UPDATE_FEATURE_DRAFT,
                 sb.toString());
     }
 }

@@ -327,7 +327,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
             getLog().info("  Component added. Run 'mvn ws:init' to clone.");
         }
         getLog().info("");
-        writeReport("ws:add", "Added component **" + component + "**\n\n"
+        writeReport(WsGoal.ADD, "Added component **" + component + "**\n\n"
                 + "| Field | Value |\n|-------|-------|\n"
                 + "| Repo | " + repo + " |\n"
                 + "| Type | " + type + " |\n"

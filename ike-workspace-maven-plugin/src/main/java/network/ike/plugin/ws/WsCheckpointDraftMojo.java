@@ -106,7 +106,7 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
             preflightCleanCheck("checkpoint",
                     graph.topologicalSort(), root);
         } else {
-            preflightCleanWarn("ws:checkpoint-publish",
+            preflightCleanWarn(WsGoal.CHECKPOINT_PUBLISH,
                     graph.topologicalSort(), root);
         }
 
@@ -269,7 +269,7 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
                 + " | Absent: " + absentComponents.size());
         getLog().info("");
 
-        writeReport("ws:checkpoint" + (publish ? "-publish" : "-draft"),
+        writeReport(publish ? WsGoal.CHECKPOINT_PUBLISH : WsGoal.CHECKPOINT_DRAFT,
                 buildCheckpointMarkdownReport(snapshots, absentComponents));
     }
 

@@ -152,7 +152,7 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
         getLog().info("  Component '" + component + "' removed.");
         getLog().info("");
 
-        writeReport("ws:remove", "Removed component **" + component + "**."
+        writeReport(WsGoal.REMOVE, "Removed component **" + component + "**."
                 + (deleteDir ? " Directory deleted." : "") + "\n");
     }
 

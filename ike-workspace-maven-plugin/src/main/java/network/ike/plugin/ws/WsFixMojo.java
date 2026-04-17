@@ -116,7 +116,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
                 getLog().info("  (" + skipped + " component(s) not cloned)");
             }
             getLog().info("");
-            writeReport("ws:fix", "All denormalized fields are in sync. "
+            writeReport(WsGoal.FIX, "All denormalized fields are in sync. "
                     + skipped + " component(s) not cloned.\n");
             return;
         }
@@ -140,7 +140,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
         }
         getLog().info("");
 
-        writeReport("ws:fix", "Updated **" + totalChanges + "** field(s): "
+        writeReport(WsGoal.FIX, "Updated **" + totalChanges + "** field(s): "
                 + versionUpdates.size() + " version, "
                 + groupIdUpdates.size() + " groupId. "
                 + skipped + " not cloned.\n");

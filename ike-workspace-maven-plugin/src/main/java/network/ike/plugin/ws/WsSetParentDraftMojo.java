@@ -94,7 +94,7 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
             preflightCleanCheck("set-parent",
                     graph.topologicalSort(), root);
         } else {
-            preflightCleanWarn("ws:set-parent-publish",
+            preflightCleanWarn(WsGoal.SET_PARENT_PUBLISH,
                     graph.topologicalSort(), root);
         }
 
@@ -231,7 +231,7 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         // --- Report ---
-        writeReport("ws:set-parent" + (publish ? "-publish" : "-draft"),
+        writeReport(publish ? WsGoal.SET_PARENT_PUBLISH : WsGoal.SET_PARENT_DRAFT,
                 buildMarkdownReport(parentArtifactId, targetVersion,
                         changes, draft));
     }

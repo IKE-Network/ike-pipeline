@@ -245,7 +245,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
         }
 
         // Structured markdown report
-        writeReport("ws:release" + (publish ? "-publish" : "-draft"), buildReleaseMarkdownReport(releasedVersions));
+        writeReport(publish ? WsGoal.RELEASE_PUBLISH : WsGoal.RELEASE_DRAFT, buildReleaseMarkdownReport(releasedVersions));
     }
 
     /**

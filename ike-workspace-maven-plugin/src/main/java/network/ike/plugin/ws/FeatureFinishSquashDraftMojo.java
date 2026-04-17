@@ -228,7 +228,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         // Structured markdown report
-        writeReport("ws:feature-finish-squash" + (publish ? "-publish" : "-draft"), buildSquashReport(
+        writeReport(publish ? WsGoal.FEATURE_FINISH_SQUASH_PUBLISH : WsGoal.FEATURE_FINISH_SQUASH_DRAFT, buildSquashReport(
                 eligible, branchName, targetBranch, merged, draft, keepBranch));
     }
 

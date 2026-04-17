@@ -208,7 +208,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
         writeWorkspaceClaudeMd(root.toPath(), graph);
 
         // Structured markdown report (replaces console-log capture)
-        writeReport("ws:init", buildInitMarkdownReport(
+        writeReport(WsGoal.INIT, buildInitMarkdownReport(
                 rows, cloned, syncthing, updated, skipped, wrappers));
     }
 

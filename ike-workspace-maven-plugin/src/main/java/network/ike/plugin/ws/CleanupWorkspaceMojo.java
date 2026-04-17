@@ -168,7 +168,7 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
 
         getLog().info("");
 
-        writeReport("ws:cleanup" + (publish ? "-publish" : "-draft"), buildCleanupReport(
+        writeReport(publish ? WsGoal.CLEANUP_PUBLISH : WsGoal.CLEANUP_DRAFT, buildCleanupReport(
                 allMerged, allActive, mergedByComponent, root));
     }
 

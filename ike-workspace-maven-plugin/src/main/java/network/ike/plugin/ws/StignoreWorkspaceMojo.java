@@ -111,7 +111,7 @@ public class StignoreWorkspaceMojo extends AbstractWorkspaceMojo {
                 + " component .stignore files");
         getLog().info("");
 
-        writeReport("ws:stignore", "Generated **1** workspace + **"
+        writeReport(WsGoal.STIGNORE, "Generated **1** workspace + **"
                 + perComponent + "** component .stignore files.\n");
     }
 

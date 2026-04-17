@@ -13,15 +13,8 @@ import org.apache.maven.api.plugin.annotations.Mojo;
  *
  * @see WsAlignDraftMojo
  */
-@Mojo(name = WsAlignPublishMojo.GOAL_NAME, projectRequired = false)
+@Mojo(name = "align-publish", projectRequired = false)
 public class WsAlignPublishMojo extends WsAlignDraftMojo {
-
-    /**
-     * The Maven goal name for this mojo, without the {@code ws:} prefix.
-     * Callers that invoke this goal as a subprocess should reference this
-     * constant so a rename stays compiler-visible across call sites.
-     */
-    public static final String GOAL_NAME = "align-publish";
 
     /** Creates this goal instance. */
     public WsAlignPublishMojo() {}

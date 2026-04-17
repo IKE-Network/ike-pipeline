@@ -74,7 +74,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         if (!draft) {
             preflightCleanCheck("align", sorted, root);
         } else {
-            preflightCleanWarn("ws:align-publish", sorted, root);
+            preflightCleanWarn(WsGoal.ALIGN_PUBLISH, sorted, root);
         }
 
         // Build lookup: groupId:artifactId → (component name, current POM version)
@@ -288,7 +288,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         // --- Structured markdown report ---
-        writeReport("ws:align" + (publish ? "-publish" : "-draft"), buildMarkdownReport(
+        writeReport(publish ? WsGoal.ALIGN_PUBLISH : WsGoal.ALIGN_DRAFT, buildMarkdownReport(
                 totalChanges, changedComponents, reportChanges, alignChecks));
     }
 
