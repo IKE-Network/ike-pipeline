@@ -63,7 +63,10 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
     @Parameter(property = "keepBranch", defaultValue = "false")
     boolean keepBranch;
 
-    /** Squash commit message. Prompted if omitted. */
+    /**
+     * Squash commit message. Required — draft warns that publish will
+     * fail if missing; publish refuses before any mutation (see #160).
+     */
     @Parameter(property = "message")
     String message;
 
@@ -80,11 +83,14 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoException {
+        boolean draft = !publish;
+
         if (!isWorkspaceMode()) {
             if (feature == null || feature.isBlank()) {
                 feature = requireParam(feature, "feature",
                         "Feature to squash-merge (without feature/ prefix)");
             }
+            validateMessage(draft);
             executeBareMode("feature/" + feature);
             return;
         }
@@ -96,8 +102,33 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
             feature = FeatureFinishSupport.detectFeature(
                     workspaceRoot(), all, this, getLog());
         }
-        // message is optional — auto-generated from component history
+        validateMessage(draft);
         executeWorkspaceMode("feature/" + feature);
+    }
+
+    /**
+     * Ensure {@code -Dmessage=...} is supplied before any mutation path
+     * runs. In draft mode this emits a warning (so the plan still
+     * renders); in publish mode it aborts before any VCS operation
+     * touches a component. Fixes #160 — null message previously
+     * propagated into {@code git commit -m} and NPE'd mid-operation
+     * on the first component, leaving partial state.
+     *
+     * @param draft whether we're in draft (warn) or publish (throw) mode
+     * @throws MojoException in publish mode when message is missing
+     */
+    private void validateMessage(boolean draft) throws MojoException {
+        if (message != null && !message.isBlank()) return;
+        String detail = WsGoal.FEATURE_FINISH_SQUASH_PUBLISH.qualified()
+                + " requires -Dmessage=\"...\" — the squash commit message "
+                + "is not auto-generated.";
+        if (draft) {
+            getLog().warn("");
+            getLog().warn("  ⚠ " + detail);
+            getLog().warn("");
+        } else {
+            throw new MojoException(detail);
+        }
     }
 
     private void executeWorkspaceMode(String branchName) throws MojoException {

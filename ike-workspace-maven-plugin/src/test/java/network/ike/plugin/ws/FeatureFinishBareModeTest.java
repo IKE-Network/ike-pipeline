@@ -372,6 +372,43 @@ class FeatureFinishBareModeTest {
     }
 
     @Test
+    void squash_publishRequiresMessage_throwsBeforeAnyMutation() throws Exception {
+        // Issue #160: publish without -Dmessage previously NPE'd mid-operation,
+        // leaving partial state. The preflight now hard-fails before any
+        // VCS operation touches the working tree.
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
+        mojo.feature = FEATURE_NAME;
+        mojo.targetBranch = "main";
+        mojo.publish = true;
+        // No mojo.message — deliberately
+
+        assertThatThrownBy(mojo::execute)
+                .isInstanceOf(MojoException.class)
+                .hasMessageContaining("-Dmessage=\"...\"");
+
+        // Working tree unchanged: still on feature branch with branch-qualified version.
+        assertThat(currentBranch()).isEqualTo(BRANCH_NAME);
+        String pomContent = Files.readString(tempDir.resolve("pom.xml"),
+                StandardCharsets.UTF_8);
+        assertThat(pomContent).contains("test-finish");
+    }
+
+    @Test
+    void squash_draftWithoutMessage_warnsButDoesNotThrow() throws Exception {
+        // Draft is a preview; a missing -Dmessage produces a warning that
+        // publish would fail, but draft itself still runs and returns.
+        FeatureFinishSquashDraftMojo mojo = TestLog.createMojo(FeatureFinishSquashDraftMojo.class);
+        mojo.feature = FEATURE_NAME;
+        mojo.targetBranch = "main";
+        mojo.publish = false;
+        // No mojo.message
+
+        mojo.execute(); // must not throw
+
+        assertThat(currentBranch()).isEqualTo(BRANCH_NAME);
+    }
+
+    @Test
     void wrongBranch_fails() throws Exception {
         exec(tempDir, "git", "checkout", "main");
 
