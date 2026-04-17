@@ -60,8 +60,6 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoException {
-        ReportLog report = startReport();
-
         getLog().info("");
         getLog().info(header("Dependency Convergence"));
         getLog().info("══════════════════════════════════════════════════════════════");
@@ -72,8 +70,10 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
 
         // ── Fast pre-checks (no Maven invocations) ──────────────
 
-        failed |= checkParentVersionSkew(graph, root);
-        failed |= checkBranchQualifierContamination(graph, root);
+        boolean parentSkew = checkParentVersionSkew(graph, root);
+        boolean qualifierContamination = checkBranchQualifierContamination(graph, root);
+        failed |= parentSkew;
+        failed |= qualifierContamination;
 
         // ── Dependency tree convergence (slow) ──────────────────
 
@@ -112,7 +112,10 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
 
         if (componentTrees.size() < 2) {
             getLog().info("    Fewer than 2 components resolved — skipping analysis");
-            finishReport(WsGoal.VERIFY_CONVERGENCE, report);
+            writeReport(WsGoal.VERIFY_CONVERGENCE, buildSummary(
+                    workspaceName(), componentTrees.size(),
+                    parentSkew, qualifierContamination,
+                    java.util.List.of(), failed));
             return;
         }
 
@@ -166,12 +169,65 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
         }
 
         getLog().info("");
-        finishReport(WsGoal.VERIFY_CONVERGENCE, report);
+        writeReport(WsGoal.VERIFY_CONVERGENCE, buildSummary(
+                wsName, componentTrees.size(),
+                parentSkew, qualifierContamination,
+                divergences, failed));
 
         if (failed) {
             throw new MojoException(
                     "Convergence verification failed — see output above.");
         }
+    }
+
+    /**
+     * Build the session report summary. A higher-level view than the
+     * configurable {@code convergenceReport} markdown: captures all three
+     * finding buckets (parent skew, qualifier contamination, transitive
+     * divergence) and an overall pass/fail status.
+     *
+     * @param wsName                 workspace name for the heading
+     * @param componentsResolved     number of components whose dependency tree resolved
+     * @param parentSkew             whether the parent-version check found mismatches
+     * @param qualifierContamination whether branch-qualifier contamination was found
+     * @param divergences            transitive dependency divergences (may be empty)
+     * @param failed                 overall pass/fail flag
+     * @return structured markdown for the session report
+     */
+    static String buildSummary(String wsName,
+                                int componentsResolved,
+                                boolean parentSkew,
+                                boolean qualifierContamination,
+                                List<Divergence> divergences,
+                                boolean failed) {
+        var sb = new StringBuilder();
+        sb.append("# Dependency Convergence — ").append(wsName).append("\n\n");
+        sb.append("**Components resolved:** ").append(componentsResolved).append("\n\n");
+        sb.append("| Check | Result |\n|-------|--------|\n");
+        sb.append("| Parent version skew | ")
+                .append(parentSkew ? "❌ mismatches" : "✓ clean")
+                .append(" |\n");
+        sb.append("| Branch qualifier contamination | ")
+                .append(qualifierContamination ? "❌ found" : "✓ clean")
+                .append(" |\n");
+        sb.append("| Dependency convergence | ")
+                .append(divergences.isEmpty() ? "✓ clean"
+                        : "❌ " + divergences.size() + " divergence(s)")
+                .append(" |\n");
+        sb.append("\n**Overall:** ").append(failed ? "FAIL" : "PASS").append("\n");
+
+        if (!divergences.isEmpty()) {
+            sb.append("\n## Divergences\n\n");
+            for (Divergence d : divergences) {
+                sb.append("- `").append(d.coordinate()).append("`\n");
+                for (var vEntry : d.versionToComponents().entrySet()) {
+                    sb.append("  - `").append(vEntry.getKey()).append("` ← ")
+                      .append(String.join(", ", vEntry.getValue())).append("\n");
+                }
+            }
+        }
+
+        return sb.toString();
     }
 
     // ── Parent version skew check ───────────────────────────────

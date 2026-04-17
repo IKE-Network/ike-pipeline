@@ -36,7 +36,9 @@ public class CheckBranchMojo extends AbstractWorkspaceMojo {
     @Override
     public void execute() throws MojoException {
         if (!isWorkspaceMode()) {
-            return; // Bare repo — nothing to check
+            writeReport(WsGoal.CHECK_BRANCH,
+                    "_Bare mode — not inside a workspace._\n");
+            return;
         }
 
         WorkspaceGraph graph = loadGraph();
@@ -46,23 +48,33 @@ public class CheckBranchMojo extends AbstractWorkspaceMojo {
         // Determine which component we're in by matching CWD to workspace root + component name
         String componentName = findComponentName(wsRoot, cwd, graph);
         if (componentName == null) {
-            return; // Not inside a known component directory
+            writeReport(WsGoal.CHECK_BRANCH,
+                    "_CWD is not inside a known component directory._\n");
+            return;
         }
 
         Component component = graph.manifest().components().get(componentName);
         if (component == null || component.branch() == null) {
-            return; // No expected branch declared
+            writeReport(WsGoal.CHECK_BRANCH,
+                    "**Component:** `" + componentName + "`\n\n"
+                            + "_No expected branch declared in workspace.yaml._\n");
+            return;
         }
 
         String expectedBranch = component.branch();
         String actualBranch = gitBranch(cwd);
 
         if (actualBranch.equals(expectedBranch)) {
-            return; // On the expected branch — all good
+            writeReport(WsGoal.CHECK_BRANCH,
+                    "**Component:** `" + componentName + "`\n"
+                            + "**Branch:** `" + actualBranch
+                            + "` (matches expected)  ✓\n");
+            return;
         }
 
         // Determine if this was a branch creation (new branch that doesn't match expected)
         boolean isNewBranch = !branchExistsRemotely(cwd, actualBranch);
+        String scenario;
 
         if (isNewBranch && actualBranch.startsWith("feature/")) {
             // Created a feature branch directly — suggest ike:feature-start
@@ -78,6 +90,7 @@ public class CheckBranchMojo extends AbstractWorkspaceMojo {
             getLog().warn("  ike:feature-start creates aligned branches across all workspace");
             getLog().warn("  components and sets version-qualified SNAPSHOTs.");
             getLog().warn("");
+            scenario = "new feature branch created directly (should use ws:feature-start)";
         } else if (isNewBranch) {
             // Created a non-feature branch directly
             getLog().warn("");
@@ -89,6 +102,7 @@ public class CheckBranchMojo extends AbstractWorkspaceMojo {
             getLog().warn("    git checkout " + expectedBranch);
             getLog().warn("    git branch -D " + actualBranch);
             getLog().warn("");
+            scenario = "new non-feature branch created directly";
         } else {
             // Switched to an existing branch that doesn't match workspace.yaml
             getLog().warn("");
@@ -101,7 +115,14 @@ public class CheckBranchMojo extends AbstractWorkspaceMojo {
             getLog().warn("  If not:");
             getLog().warn("    git checkout " + expectedBranch);
             getLog().warn("");
+            scenario = "switched to an existing branch";
         }
+
+        writeReport(WsGoal.CHECK_BRANCH,
+                "**Component:** `" + componentName + "`\n"
+                        + "**Expected:** `" + expectedBranch + "`\n"
+                        + "**Actual:** `" + actualBranch + "`\n"
+                        + "**Scenario:** " + scenario + "\n");
     }
 
     /**
