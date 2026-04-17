@@ -1,6 +1,9 @@
 package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
+import network.ike.plugin.ws.preflight.Preflight;
+import network.ike.plugin.ws.preflight.PreflightCondition;
+import network.ike.plugin.ws.preflight.PreflightContext;
 
 import network.ike.workspace.Component;
 import network.ike.workspace.WorkspaceGraph;
@@ -51,8 +54,11 @@ public class PullWorkspaceMojo extends AbstractWorkspaceMojo {
 
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
 
-        // Preflight: all working trees must be clean (#132)
-        preflightCleanCheck("pull", sorted, root);
+        // Preflight: all working trees must be clean (#132, #154)
+        Preflight.of(
+                List.of(PreflightCondition.WORKING_TREE_CLEAN),
+                PreflightContext.of(root, graph, sorted))
+                .requirePassed(WsGoal.PULL);
 
         getLog().info("");
         getLog().info(header("Pull"));

@@ -1,6 +1,10 @@
 package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
+import network.ike.plugin.ws.preflight.Preflight;
+import network.ike.plugin.ws.preflight.PreflightCondition;
+import network.ike.plugin.ws.preflight.PreflightContext;
+import network.ike.plugin.ws.preflight.PreflightResult;
 
 import network.ike.workspace.Component;
 import network.ike.workspace.WorkspaceGraph;
@@ -114,8 +118,15 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
         boolean draft = !publish;
 
-        // ── Preflight: all working trees must be clean (#132) ───────
-        preflightCleanCheck("release", candidates, root);
+        // ── Preflight: all working trees must be clean (#132, #154) ───
+        PreflightResult releasePreflight = Preflight.of(
+                List.of(PreflightCondition.WORKING_TREE_CLEAN),
+                PreflightContext.of(root, graph, candidates));
+        if (draft) {
+            releasePreflight.warnIfFailed(getLog(), WsGoal.RELEASE_PUBLISH);
+        } else {
+            releasePreflight.requirePassed(WsGoal.RELEASE_PUBLISH);
+        }
 
         // ── 2. Filter to checked-out and modified ────────────────────────
         Map<String, ReleaseCandidate> releasable = new LinkedHashMap<>();

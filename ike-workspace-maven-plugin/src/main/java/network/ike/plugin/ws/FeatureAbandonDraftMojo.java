@@ -1,6 +1,10 @@
 package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
+import network.ike.plugin.ws.preflight.Preflight;
+import network.ike.plugin.ws.preflight.PreflightCondition;
+import network.ike.plugin.ws.preflight.PreflightContext;
+import network.ike.plugin.ws.preflight.PreflightResult;
 
 import network.ike.workspace.Component;
 import network.ike.workspace.ManifestWriter;
@@ -100,11 +104,13 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
         Collections.reverse(reversed);
 
         // Preflight: all working trees must be clean (#132)
-        if (!draft) {
-            preflightCleanCheck("abandon feature", sorted, root);
+        PreflightResult preflight = Preflight.of(
+                List.of(PreflightCondition.WORKING_TREE_CLEAN),
+                PreflightContext.of(root, graph, sorted));
+        if (draft) {
+            preflight.warnIfFailed(getLog(), WsGoal.FEATURE_ABANDON_PUBLISH);
         } else {
-            preflightCleanWarn(WsGoal.FEATURE_ABANDON_PUBLISH,
-                    sorted, root);
+            preflight.requirePassed(WsGoal.FEATURE_ABANDON_PUBLISH);
         }
 
         // Auto-detect feature branch if not specified

@@ -2,6 +2,10 @@ package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseNotesSupport;
 import network.ike.plugin.ReleaseSupport;
+import network.ike.plugin.ws.preflight.Preflight;
+import network.ike.plugin.ws.preflight.PreflightCondition;
+import network.ike.plugin.ws.preflight.PreflightContext;
+import network.ike.plugin.ws.preflight.PreflightResult;
 
 import network.ike.workspace.Component;
 import network.ike.workspace.ManifestWriter;
@@ -101,13 +105,14 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
 
         boolean draft = !publish;
 
-        // Preflight: all working trees must be clean (#132)
-        if (!draft) {
-            preflightCleanCheck("checkpoint",
-                    graph.topologicalSort(), root);
+        // Preflight: all working trees must be clean (#132, #154)
+        PreflightResult preflight = Preflight.of(
+                List.of(PreflightCondition.WORKING_TREE_CLEAN),
+                PreflightContext.of(root, graph, graph.topologicalSort()));
+        if (draft) {
+            preflight.warnIfFailed(getLog(), WsGoal.CHECKPOINT_PUBLISH);
         } else {
-            preflightCleanWarn(WsGoal.CHECKPOINT_PUBLISH,
-                    graph.topologicalSort(), root);
+            preflight.requirePassed(WsGoal.CHECKPOINT_PUBLISH);
         }
 
         if (name == null || name.isBlank()) {

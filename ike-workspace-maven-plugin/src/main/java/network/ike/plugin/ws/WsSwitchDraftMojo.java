@@ -2,6 +2,10 @@ package network.ike.plugin.ws;
 
 import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.WorkspaceGraph;
+import network.ike.plugin.ws.preflight.Preflight;
+import network.ike.plugin.ws.preflight.PreflightCondition;
+import network.ike.plugin.ws.preflight.PreflightContext;
+import network.ike.plugin.ws.preflight.PreflightResult;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
 import org.apache.maven.api.plugin.MojoException;
@@ -142,8 +146,15 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
         if (draft) getLog().info("  Mode:  DRAFT");
         getLog().info("");
 
-        // ── Validate clean working trees ─────────────────────────
-        preflightCleanCheck("switch", sorted, root);
+        // ── Validate clean working trees (#154) ──────────────────
+        PreflightResult switchPreflight = Preflight.of(
+                List.of(PreflightCondition.WORKING_TREE_CLEAN),
+                PreflightContext.of(root, graph, sorted));
+        if (draft) {
+            switchPreflight.warnIfFailed(getLog(), WsGoal.SWITCH_PUBLISH);
+        } else {
+            switchPreflight.requirePassed(WsGoal.SWITCH_PUBLISH);
+        }
 
         // ── Switch components ────────────────────────────────────
         int switched = 0;

@@ -1,6 +1,10 @@
 package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
+import network.ike.plugin.ws.preflight.Preflight;
+import network.ike.plugin.ws.preflight.PreflightCondition;
+import network.ike.plugin.ws.preflight.PreflightContext;
+import network.ike.plugin.ws.preflight.PreflightResult;
 import network.ike.workspace.Component;
 import network.ike.workspace.Dependency;
 import network.ike.workspace.PublishedArtifactSet;
@@ -71,10 +75,13 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
 
         // Preflight: all working trees must be clean (#132)
         List<String> sorted = graph.topologicalSort();
-        if (!draft) {
-            preflightCleanCheck("align", sorted, root);
+        PreflightResult preflight = Preflight.of(
+                List.of(PreflightCondition.WORKING_TREE_CLEAN),
+                PreflightContext.of(root, graph, sorted));
+        if (draft) {
+            preflight.warnIfFailed(getLog(), WsGoal.ALIGN_PUBLISH);
         } else {
-            preflightCleanWarn(WsGoal.ALIGN_PUBLISH, sorted, root);
+            preflight.requirePassed(WsGoal.ALIGN_PUBLISH);
         }
 
         // Build lookup: groupId:artifactId → (component name, current POM version)
