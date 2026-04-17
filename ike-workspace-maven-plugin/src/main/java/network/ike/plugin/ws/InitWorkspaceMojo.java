@@ -38,18 +38,10 @@ import java.util.Set;
  *
  * <pre>{@code
  * mvn ike:init
- * mvn ike:init -Dgroup=studio
- * mvn ike:init -Dgroup=docs
  * }</pre>
  */
 @Mojo(name = "init", projectRequired = false)
 public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
-
-    /**
-     * Restrict to a named group (or single component). Default: all.
-     */
-    @Parameter(property = "group")
-    String group;
 
     /** Creates this goal instance. */
     public InitWorkspaceMojo() {}
@@ -60,21 +52,12 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
         File root = workspaceRoot();
         Defaults defaults = graph.manifest().defaults();
 
-        Set<String> targets;
-        if (group != null && !group.isEmpty()) {
-            targets = graph.expandGroup(group);
-        } else {
-            targets = graph.manifest().components().keySet();
-        }
-
-        // Sort in dependency order
-        List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
+        List<String> sorted = graph.topologicalSort();
 
         getLog().info("");
         getLog().info(header("Init"));
         getLog().info("══════════════════════════════════════════════════════════════");
-        getLog().info("  Target: " + (group != null ? group : "all")
-                + " (" + sorted.size() + " components)");
+        getLog().info("  Target: all (" + sorted.size() + " components)");
         getLog().info("  Root:   " + root.getAbsolutePath());
         if (defaults.mavenVersion() != null) {
             getLog().info("  Maven:  " + defaults.mavenVersion() + " (default)");
@@ -597,7 +580,6 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 | `ws:verify` | Check manifest, parents, BOM cascade, VCS state |
                 | `ws:verify-convergence` | Full verify + transitive dependency convergence (slow) |
                 | `ws:overview` | Workspace overview (manifest, graph, status, cascade) |
-                | `ws:cascade` | Show downstream impact of a component change |
 
                 ## Version Alignment
 
@@ -707,7 +689,6 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 | Parameter | Default | Description |
                 |-----------|---------|-------------|
                 | `feature` | prompted | Feature name (branch: `feature/<name>`) |
-                | `group` | all | Restrict to group or component |
                 | `targetBranch` | `main` | Source branch |
                 | `skipVersion` | `false` | Skip version qualification |
 

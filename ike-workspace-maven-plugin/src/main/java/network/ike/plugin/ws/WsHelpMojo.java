@@ -201,7 +201,6 @@ public class WsHelpMojo implements Mojo {
     private void printOptions() {
         getLog().info("Common options:");
         getLog().info("  -Dworkspace.manifest=<path>   Path to workspace.yaml (auto-detected)");
-        getLog().info("  -Dgroup=<name>                Restrict to a component group");
         getLog().info("  -Dpublish=true                Execute (most goals default to draft)");
         getLog().info("");
         getLog().info("Parent version:");
@@ -215,7 +214,6 @@ public class WsHelpMojo implements Mojo {
         getLog().info("  -Dmessage=<msg>               Commit/squash message");
         getLog().info("");
         getLog().info("Release & checkpoint:");
-        getLog().info("  -Dcomponent=<name>            Release one specific component");
         getLog().info("  -Dname=<name>                 Checkpoint name (auto-derived)");
         getLog().info("  -DdeploySite=true             Deploy site for each component");
         getLog().info("  -Dpush=true                   Push to origin");

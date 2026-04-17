@@ -48,26 +48,6 @@ class WorkspaceMojoIntegrationTest {
         assertThatCode(mojo::execute).doesNotThrowAnyException();
     }
 
-    // ── CascadeWorkspaceMojo ────────────────────────────────────────
-
-    @Test
-    void cascade_fromLeaf_showsDownstream() {
-        CascadeWorkspaceMojo mojo = TestLog.createMojo(CascadeWorkspaceMojo.class);
-        mojo.manifest = helper.workspaceYaml().toFile();
-        mojo.component = "lib-a";
-
-        assertThatCode(mojo::execute).doesNotThrowAnyException();
-    }
-
-    @Test
-    void cascade_fromTip_noDownstream() {
-        CascadeWorkspaceMojo mojo = TestLog.createMojo(CascadeWorkspaceMojo.class);
-        mojo.manifest = helper.workspaceYaml().toFile();
-        mojo.component = "app-c";
-
-        assertThatCode(mojo::execute).doesNotThrowAnyException();
-    }
-
     // ── GraphWorkspaceMojo ──────────────────────────────────────────
 
     @Test
@@ -106,15 +86,6 @@ class WorkspaceMojoIntegrationTest {
 
         OverviewWorkspaceMojo mojo = TestLog.createMojo(OverviewWorkspaceMojo.class);
         mojo.manifest = helper.workspaceYaml().toFile();
-
-        assertThatCode(mojo::execute).doesNotThrowAnyException();
-    }
-
-    @Test
-    void status_groupFilter_runsSuccessfully() {
-        OverviewWorkspaceMojo mojo = TestLog.createMojo(OverviewWorkspaceMojo.class);
-        mojo.manifest = helper.workspaceYaml().toFile();
-        mojo.group = "libs";
 
         assertThatCode(mojo::execute).doesNotThrowAnyException();
     }
@@ -195,26 +166,6 @@ class WorkspaceMojoIntegrationTest {
         // lib-b and app-c should have been cloned
         assertThat(initRoot.resolve("lib-b").resolve(".git")).isDirectory();
         assertThat(initRoot.resolve("app-c").resolve(".git")).isDirectory();
-    }
-
-    @Test
-    void init_groupFilter_clonesOnlyGroup() throws Exception {
-        Path initRoot = Files.createTempDirectory(tempDir, "init-");
-        TestWorkspaceHelper initHelper = new TestWorkspaceHelper(initRoot);
-        initHelper.buildWorkspaceWithUpstreams();
-
-        InitWorkspaceMojo mojo = TestLog.createMojo(InitWorkspaceMojo.class);
-        mojo.manifest = initHelper.workspaceYaml().toFile();
-        mojo.group = "libs";
-
-        mojo.execute();
-
-        // libs group: lib-a and lib-b should be cloned
-        assertThat(initRoot.resolve("lib-a").resolve(".git")).isDirectory();
-        assertThat(initRoot.resolve("lib-b").resolve(".git")).isDirectory();
-
-        // app-c should NOT be cloned
-        assertThat(initRoot.resolve("app-c")).doesNotExist();
     }
 
     // ── StignoreWorkspaceMojo ───────────────────────────────────────

@@ -116,11 +116,9 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
         int componentCount = graph.manifest().components().size();
         int typeCount = graph.manifest().componentTypes().size();
-        int groupCount = graph.manifest().groups().size();
 
         getLog().info("  Components:      " + componentCount);
         getLog().info("  Component types: " + typeCount);
-        getLog().info("  Groups:          " + groupCount);
         getLog().info("");
 
         if (errors.isEmpty()) {

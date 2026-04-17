@@ -8,9 +8,7 @@ import org.apache.maven.api.plugin.annotations.Mojo;
 import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Commit with a VCS bridge catch-up preamble.
@@ -23,7 +21,6 @@ import java.util.Set;
  * <p>Usage:
  * <pre>{@code
  * mvn ws:commit -Dmessage="my commit message" -DaddAll=true
- * mvn ws:commit -Dmessage="fix" -DaddAll=true -Dgroup=core
  * }</pre>
  */
 @Mojo(name = "commit", projectRequired = false)
@@ -51,12 +48,6 @@ public class CommitMojo extends AbstractWorkspaceMojo {
     @Parameter(property = "push", defaultValue = "false")
     boolean push;
 
-    /**
-     * Restrict to a named group (or single component). Default: all.
-     */
-    @Parameter(property = "group")
-    String group;
-
     @Override
     public void execute() throws MojoException {
         if (isWorkspaceMode()) {
@@ -70,14 +61,7 @@ public class CommitMojo extends AbstractWorkspaceMojo {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
-        Set<String> targets;
-        if (group != null && !group.isEmpty()) {
-            targets = graph.expandGroup(group);
-        } else {
-            targets = graph.manifest().components().keySet();
-        }
-
-        List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
+        List<String> sorted = graph.topologicalSort();
 
         getLog().info("");
         getLog().info(header("Commit"));

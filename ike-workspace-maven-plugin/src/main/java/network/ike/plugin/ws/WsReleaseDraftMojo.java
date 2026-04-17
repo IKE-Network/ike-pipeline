@@ -51,8 +51,6 @@ import java.util.Map;
  * <pre>{@code
  * mvn ike:ws-release                         # release all modified components
  * mvn ike:ws-release -DdryRun=true           # show what would be released
- * mvn ike:ws-release -Dgroup=core            # only components in the core group
- * mvn ike:ws-release -Dcomponent=ike-pipeline  # release one specific component
  * }</pre>
  */
 @Mojo(name = "release-draft", projectRequired = false)
@@ -61,14 +59,6 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
     private static final DateTimeFormatter ISO_UTC =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
                     .withZone(ZoneOffset.UTC);
-
-    /** Release only components in this group. */
-    @Parameter(property = "group")
-    String group;
-
-    /** Release only this specific component. */
-    @Parameter(property = "component")
-    String component;
 
     /** Preview what would be released without executing. */
     @Parameter(property = "publish", defaultValue = "false")
@@ -107,14 +97,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
         File root = workspaceRoot();
 
         // ── 1. Determine candidate components ─────────────────────────
-        List<String> candidates;
-        if (component != null) {
-            candidates = List.of(component);
-        } else if (group != null) {
-            candidates = new ArrayList<>(graph.expandGroup(group));
-        } else {
-            candidates = graph.topologicalSort();
-        }
+        List<String> candidates = graph.topologicalSort();
 
         boolean draft = !publish;
 

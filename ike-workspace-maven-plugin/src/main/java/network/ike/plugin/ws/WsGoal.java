@@ -28,8 +28,6 @@ public enum WsGoal {
             "Preview inter-component version alignment."),
     ALIGN_PUBLISH("align-publish", WsAlignPublishMojo.class,
             "Apply inter-component version alignment."),
-    CASCADE("cascade", CascadeWorkspaceMojo.class,
-            "Cascade version bumps across dependent components."),
     CHECK_BRANCH("check-branch", CheckBranchMojo.class,
             "Warn when a component branch deviates from workspace.yaml."),
     CHECKPOINT_DRAFT("checkpoint-draft", WsCheckpointDraftMojo.class,

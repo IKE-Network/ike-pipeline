@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  * once and presents four sections:
  *
  * <ol>
- *   <li><b>Manifest</b> — component/group counts, consistency check</li>
+ *   <li><b>Manifest</b> — component count, consistency check</li>
  *   <li><b>Graph</b> — dependency order with direct dependencies</li>
  *   <li><b>Status</b> — branch, SHA, clean/modified per component</li>
  *   <li><b>Cascade</b> — downstream rebuild impact of modified components</li>
@@ -34,7 +34,6 @@ import java.util.stream.Collectors;
  *
  * <pre>{@code
  * mvn ws:overview
- * mvn ws:overview -Dgroup=core
  * mvn ws:overview -Dformat=dot
  * }</pre>
  */
@@ -43,10 +42,6 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
 
     /** Creates this goal instance. */
     public OverviewWorkspaceMojo() {}
-
-    /** Restrict status section to a named group or component. Default: all. */
-    @Parameter(property = "group")
-    String group;
 
     /** Output format: "overview" (default) or "dot" (Graphviz DOT). */
     @Parameter(property = "format", defaultValue = "overview")
@@ -73,8 +68,8 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         getLog().info("");
         if (errors.isEmpty()) {
             getLog().info(Ansi.green("  ✓ ") + "Manifest: "
-                    + graph.manifest().components().size() + " components, "
-                    + graph.manifest().groups().size() + " groups — consistent");
+                    + graph.manifest().components().size()
+                    + " components — consistent");
         } else {
             getLog().warn(Ansi.red("  ✗ ") + "Manifest: "
                     + errors.size() + " error(s)");
@@ -105,12 +100,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         }
 
         // ── Section 3: Component Status ─────────────────────────────
-        Set<String> targets;
-        if (group != null && !group.isEmpty()) {
-            targets = graph.expandGroup(group);
-        } else {
-            targets = graph.manifest().components().keySet();
-        }
+        Set<String> targets = graph.manifest().components().keySet();
 
         getLog().info("");
         getLog().info("  Status");

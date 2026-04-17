@@ -52,10 +52,6 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
     @Parameter(property = "feature")
     String feature;
 
-    /** Restrict to a named group. Default: all cloned. */
-    @Parameter(property = "group")
-    String group;
-
     /** Merge strategy — always merge (rebase is not supported). */
     private final String strategy = "merge";
 
@@ -88,12 +84,7 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
         }
         String branchName = "feature/" + feature;
 
-        Set<String> targets;
-        if (group != null && !group.isEmpty()) {
-            targets = graph.expandGroup(group);
-        } else {
-            targets = graph.manifest().components().keySet();
-        }
+        Set<String> targets = graph.manifest().components().keySet();
 
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
 

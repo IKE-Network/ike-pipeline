@@ -124,27 +124,6 @@ class WsReleaseIntegrationTest {
         assertThat(libBIdx).isLessThan(appCIdx);
     }
 
-    @Test
-    void groupFilter_onlyGroupComponents() throws Exception {
-        WsReleaseDraftMojo mojo = TestLog.createMojo(WsReleaseDraftMojo.class);
-        mojo.manifest = helper.workspaceYaml().toFile();
-        mojo.group = "libs";
-        mojo.publish = false;
-
-        // Should only consider lib-a and lib-b, not app-c
-        assertThatCode(mojo::execute).doesNotThrowAnyException();
-    }
-
-    @Test
-    void componentFilter_singleComponent() throws Exception {
-        WsReleaseDraftMojo mojo = TestLog.createMojo(WsReleaseDraftMojo.class);
-        mojo.manifest = helper.workspaceYaml().toFile();
-        mojo.component = "lib-a";
-        mojo.publish = false;
-
-        assertThatCode(mojo::execute).doesNotThrowAnyException();
-    }
-
     // ── Checkpoint writing ───────────────────────────────────────────
 
     @Test

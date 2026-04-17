@@ -52,9 +52,6 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
     @Parameter(property = "feature")
     String feature;
 
-    @Parameter(property = "group")
-    String group;
-
     @Parameter(property = "targetBranch")
     String targetBranch;
 
@@ -92,12 +89,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
             if (targetBranch == null) targetBranch = "main";
         }
 
-        Set<String> targets;
-        if (group != null && !group.isEmpty()) {
-            targets = graph.expandGroup(group);
-        } else {
-            targets = graph.manifest().components().keySet();
-        }
+        Set<String> targets = graph.manifest().components().keySet();
 
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
         List<String> reversed = new ArrayList<>(sorted);

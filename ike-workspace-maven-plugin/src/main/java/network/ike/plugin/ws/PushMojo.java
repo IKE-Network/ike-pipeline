@@ -22,7 +22,6 @@ import java.util.Set;
  * <p>Usage:
  * <pre>{@code
  * mvn ws:push
- * mvn ws:push -Dgroup=core
  * }</pre>
  */
 @Mojo(name = "push", projectRequired = false)
@@ -37,12 +36,6 @@ public class PushMojo extends AbstractWorkspaceMojo {
     @Parameter(property = "remote", defaultValue = "origin")
     String remote;
 
-    /**
-     * Restrict to a named group (or single component). Default: all.
-     */
-    @Parameter(property = "group")
-    String group;
-
     @Override
     public void execute() throws MojoException {
         if (isWorkspaceMode()) {
@@ -56,12 +49,7 @@ public class PushMojo extends AbstractWorkspaceMojo {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
-        Set<String> targets;
-        if (group != null && !group.isEmpty()) {
-            targets = graph.expandGroup(group);
-        } else {
-            targets = graph.manifest().components().keySet();
-        }
+        Set<String> targets = graph.manifest().components().keySet();
 
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
 

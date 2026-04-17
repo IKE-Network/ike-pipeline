@@ -32,7 +32,6 @@ import java.util.List;
  *
  * <pre>{@code
  * mvn ike:feature-finish-squash -Dfeature=my-feature -Dmessage="Add widget support"
- * mvn ike:feature-finish-squash -Dfeature=kec-march-25 -Dgroup=core -Dmessage="Core updates"
  * }</pre>
  *
  * @see FeatureFinishMergeDraftMojo for long-lived branches
@@ -46,10 +45,6 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
     /** Feature name. Expects branch {@code feature/<name>}. Prompted if omitted. */
     @Parameter(property = "feature")
     String feature;
-
-    /** Restrict to a named group or component. Default: all cloned. */
-    @Parameter(property = "group")
-    String group;
 
     /** Target branch to merge into. */
     @Parameter(property = "targetBranch", defaultValue = "main")
@@ -137,9 +132,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
         File root = workspaceRoot();
         Path manifestPath = resolveManifest();
 
-        var targets = group != null && !group.isEmpty()
-                ? graph.expandGroup(group)
-                : graph.manifest().components().keySet();
+        var targets = graph.manifest().components().keySet();
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
         List<String> reversed = new ArrayList<>(sorted);
         Collections.reverse(reversed);

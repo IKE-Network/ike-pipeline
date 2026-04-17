@@ -9,7 +9,6 @@ import network.ike.workspace.Component;
 import network.ike.workspace.WorkspaceGraph;
 import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.api.plugin.annotations.Mojo;
-import org.apache.maven.api.plugin.annotations.Parameter;
 
 import java.io.File;
 import java.util.LinkedHashSet;
@@ -25,17 +24,10 @@ import java.util.Set;
  *
  * <pre>{@code
  * mvn ike:pull
- * mvn ike:pull -Dgroup=studio
  * }</pre>
  */
 @Mojo(name = "pull", projectRequired = false)
 public class PullWorkspaceMojo extends AbstractWorkspaceMojo {
-
-    /**
-     * Restrict to a named group (or single component). Default: all.
-     */
-    @Parameter(property = "group")
-    private String group;
 
     /** Creates this goal instance. */
     public PullWorkspaceMojo() {}
@@ -45,12 +37,7 @@ public class PullWorkspaceMojo extends AbstractWorkspaceMojo {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
-        Set<String> targets;
-        if (group != null && !group.isEmpty()) {
-            targets = graph.expandGroup(group);
-        } else {
-            targets = graph.manifest().components().keySet();
-        }
+        Set<String> targets = graph.manifest().components().keySet();
 
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
 

@@ -27,8 +27,8 @@ import java.util.Set;
 /**
  * Start a coordinated feature branch across workspace components.
  *
- * <p>Creates a feature branch with a consistent name across the
- * specified components (or group), optionally setting branch-qualified
+ * <p>Creates a feature branch with a consistent name across all
+ * workspace components, optionally setting branch-qualified
  * SNAPSHOT versions in each POM.
  *
  * <p><strong>Workspace mode</strong> (workspace.yaml found):</p>
@@ -52,9 +52,8 @@ import java.util.Set;
  * dependencies get their new versions first.
  *
  * <pre>{@code
- * mvn ike:feature-start -Dfeature=shield-terminology -Dgroup=core
- * mvn ike:feature-start -Dfeature=kec-march-25 -Dgroup=studio
- * mvn ike:feature-start -Dfeature=doc-refresh -Dgroup=docs -DskipVersion=true
+ * mvn ike:feature-start -Dfeature=shield-terminology
+ * mvn ike:feature-start -Dfeature=doc-refresh -DskipVersion=true
  * }</pre>
  */
 @Mojo(name = "feature-start-draft", projectRequired = false)
@@ -63,10 +62,6 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
     /** Feature name. Branch will be {@code feature/<name>}. Prompted if omitted. */
     @Parameter(property = "feature")
     String feature;
-
-    /** Restrict to a named group or component. Default: all cloned. */
-    @Parameter(property = "group")
-    String group;
 
     /**
      * Skip POM version qualification. Useful for document projects
@@ -108,12 +103,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         // VCS bridge: catch-up before branching
         VcsOperations.catchUp(root, getLog());
 
-        Set<String> targets;
-        if (group != null && !group.isEmpty()) {
-            targets = graph.expandGroup(group);
-        } else {
-            targets = graph.manifest().components().keySet();
-        }
+        Set<String> targets = graph.manifest().components().keySet();
 
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
 
@@ -122,8 +112,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("══════════════════════════════════════════════════════════════");
         getLog().info("  Feature: " + feature);
         getLog().info("  Branch:  " + branchName);
-        getLog().info("  Scope:   " + (group != null ? group : "all")
-                + " (" + sorted.size() + " components)");
+        getLog().info("  Scope:   " + sorted.size() + " components");
         if (draft) {
             getLog().info("  Mode:    DRAFT");
         }

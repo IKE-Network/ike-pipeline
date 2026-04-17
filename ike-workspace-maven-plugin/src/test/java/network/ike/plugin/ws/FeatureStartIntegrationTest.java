@@ -120,30 +120,6 @@ class FeatureStartIntegrationTest {
     }
 
     @Test
-    void featureStart_groupFilter() throws Exception {
-        FeatureStartDraftMojo mojo = TestLog.createMojo(FeatureStartDraftMojo.class);
-        mojo.manifest = helper.workspaceYaml().toFile();
-        mojo.feature = "libs-only";
-        mojo.group = "libs";
-        mojo.publish = true;
-
-        mojo.execute();
-
-        // lib-a and lib-b should be on feature branch
-        assertThat(execCapture(tempDir.resolve("lib-a"),
-                "git", "rev-parse", "--abbrev-ref", "HEAD"))
-                .isEqualTo("feature/libs-only");
-        assertThat(execCapture(tempDir.resolve("lib-b"),
-                "git", "rev-parse", "--abbrev-ref", "HEAD"))
-                .isEqualTo("feature/libs-only");
-
-        // app-c should still be on main
-        assertThat(execCapture(tempDir.resolve("app-c"),
-                "git", "rev-parse", "--abbrev-ref", "HEAD"))
-                .isEqualTo("main");
-    }
-
-    @Test
     void featureStart_removesIntraReactorPins() throws Exception {
         // Add submodules to lib-a to create an intra-reactor scenario:
         // lib-a (reactor root)

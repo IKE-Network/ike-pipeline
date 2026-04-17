@@ -61,10 +61,6 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
     @Parameter(property = "branch")
     String branch;
 
-    /** Restrict to a named group. Default: all cloned. */
-    @Parameter(property = "group")
-    String group;
-
     /** Execute the switch. Default is draft (preview only). */
     @Parameter(property = "publish", defaultValue = "false")
     boolean publish;
@@ -81,12 +77,7 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
-        Set<String> targets;
-        if (group != null && !group.isEmpty()) {
-            targets = graph.expandGroup(group);
-        } else {
-            targets = graph.manifest().components().keySet();
-        }
+        Set<String> targets = graph.manifest().components().keySet();
 
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
 
