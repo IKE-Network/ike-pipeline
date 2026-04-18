@@ -27,11 +27,11 @@ import java.time.LocalDate;
  *   <li>POM uses Maven 4.1.0 model with {@code root="true"}</li>
  *   <li>.gitignore uses whitelist strategy (ignore everything,
  *       whitelist workspace-owned files)</li>
- *   <li>workspace.yaml has schema-version 1.0 with empty components</li>
+ *   <li>workspace.yaml has schema-version 1.0 with empty subprojects</li>
  *   <li>.mvn/maven.config sets {@code -T 1C}</li>
  * </ul>
  *
- * <p>After creation, use {@code ws:add} to add component repos,
+ * <p>After creation, use {@code ws:add} to add subproject repos,
  * then {@code ws:init} to clone them.
  *
  * <pre>{@code
@@ -39,7 +39,7 @@ import java.time.LocalDate;
  * mvn ws:create -Dname=my-workspace -Dorg=knowledge-graphlet
  * }</pre>
  *
- * @see WsAddMojo for adding components to an existing workspace
+ * @see WsAddMojo for adding subprojects to an existing workspace
  * @see WsUpgradeDraftMojo for upgrading workspace conventions
  */
 @org.apache.maven.api.plugin.annotations.Mojo(name = "create", projectRequired = false)
@@ -76,14 +76,14 @@ public class WsCreateMojo implements Mojo {
     private String org;
 
     /**
-     * Default Maven version for components. Written to
+     * Default Maven version for subprojects. Written to
      * {@code defaults.maven-version} in workspace.yaml.
      */
     @Parameter(property = "mavenVersion", defaultValue = "4.0.0-rc-5")
     private String mavenVersion;
 
     /**
-     * Default branch for components. Written to
+     * Default branch for subprojects. Written to
      * {@code defaults.branch} in workspace.yaml.
      */
     @Parameter(property = "branch", defaultValue = "main")
@@ -193,6 +193,7 @@ public class WsCreateMojo implements Mojo {
         xml.append("  Every subproject is inside a file-activated profile so the reactor\n");
         xml.append("  automatically includes only the repos that are physically cloned.\n");
         xml.append("  Clone more repos and they join the reactor on the next build.\n");
+
         xml.append("\n");
         xml.append("  Usage:\n");
         xml.append("    mvn clean install                        # All cloned repos\n");
@@ -257,15 +258,8 @@ public class WsCreateMojo implements Mojo {
         yaml.append("defaults:\n");
         yaml.append("  branch: ").append(defaultBranch).append("\n");
         yaml.append("  maven-version: \"").append(mavenVersion).append("\"\n\n");
-        yaml.append("component-types:\n");
-        yaml.append("  software:\n");
-        yaml.append("    description: \"Java libraries and applications\"\n");
-        yaml.append("    build-command: \"mvn clean install\"\n");
-        yaml.append("    checkpoint-mechanism: git-tag\n\n");
-        yaml.append("components:\n");
-        yaml.append("  # Add components with: mvn ws:add -Drepo=<git-url>\n\n");
-        yaml.append("groups:\n");
-        yaml.append("  all: []\n\n");
+        yaml.append("subprojects:\n");
+        yaml.append("  # Add subprojects with: mvn ws:add -Drepo=<git-url>\n\n");
         yaml.append("# Optional: IntelliJ project settings shared across collaborators.\n");
         yaml.append("# Uncomment and set to have `ws:upgrade` enforce these values in\n");
         yaml.append("# .idea/misc.xml on every run. Useful when the project uses\n");
@@ -351,7 +345,7 @@ public class WsCreateMojo implements Mojo {
         adoc.append("mvn ws:init         # <1>\n");
         adoc.append("mvn clean install   # <2>\n");
         adoc.append("----\n");
-        adoc.append("<1> Clones all component repos in dependency order; installs Maven\n");
+        adoc.append("<1> Clones all subproject repos in dependency order; installs Maven\n");
         adoc.append("    wrapper and JVM config per subproject.\n");
         adoc.append("<2> Builds the full stack.\n\n");
         adoc.append("== Workspace Commands\n\n");

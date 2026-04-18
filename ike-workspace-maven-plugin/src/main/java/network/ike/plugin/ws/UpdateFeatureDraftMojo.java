@@ -47,7 +47,7 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
     public UpdateFeatureDraftMojo() {}
 
     /**
-     * Feature name. If omitted, auto-detected from component branches.
+     * Feature name. If omitted, auto-detected from subproject branches.
      */
     @Parameter(property = "feature")
     String feature;
@@ -84,7 +84,7 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
         }
         String branchName = "feature/" + feature;
 
-        Set<String> targets = graph.manifest().components().keySet();
+        Set<String> targets = graph.manifest().subprojects().keySet();
 
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
 

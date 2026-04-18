@@ -23,12 +23,12 @@ class CheckpointSupportTest {
                 .contains("created: \"2026-03-20T10:00:00Z\"")
                 .contains("author: \"kec\"")
                 .contains("schema-version: \"1.0\"")
-                .contains("components:");
+                .contains("subprojects:");
     }
 
     @Test
-    void buildCheckpointYaml_singleComponent() {
-        ComponentSnapshot snap = new ComponentSnapshot(
+    void buildCheckpointYaml_singleSubproject() {
+        SubprojectSnapshot snap = new SubprojectSnapshot(
                 "ike-pipeline", "abc123def456", "abc123d",
                 "main", "20-SNAPSHOT", false,
                 "infrastructure", false);
@@ -50,8 +50,8 @@ class CheckpointSupportTest {
     @Test
     void buildCheckpointYaml_dirtyFlagDoesNotAppearInOutput() {
         // Checkpoints require a clean worktree; the dirty field in
-        // ComponentSnapshot is informational only and is not written to YAML.
-        ComponentSnapshot snap = new ComponentSnapshot(
+        // SubprojectSnapshot is informational only and is not written to YAML.
+        SubprojectSnapshot snap = new SubprojectSnapshot(
                 "ike-docs", "aaa", "aaa",
                 "feature/docs", "1.0-SNAPSHOT", true,
                 "document", false);
@@ -67,8 +67,8 @@ class CheckpointSupportTest {
     }
 
     @Test
-    void buildCheckpointYaml_compositeComponent_hasTodoComment() {
-        ComponentSnapshot snap = new ComponentSnapshot(
+    void buildCheckpointYaml_compositeSubproject_hasTodoComment() {
+        SubprojectSnapshot snap = new SubprojectSnapshot(
                 "tinkar-data", "bbb", "bbb",
                 "main", "1.0", false,
                 "knowledge-source", true);
@@ -82,7 +82,7 @@ class CheckpointSupportTest {
     }
 
     @Test
-    void buildCheckpointYaml_absentComponent_markedAbsent() {
+    void buildCheckpointYaml_absentSubproject_markedAbsent() {
         String yaml = WsCheckpointDraftMojo.buildCheckpointYaml(
                 "test", "2026-01-01T00:00:00Z", "ci", "1.0",
                 List.of(), List.of("missing-repo"));
@@ -94,7 +94,7 @@ class CheckpointSupportTest {
 
     @Test
     void buildCheckpointYaml_nullVersion_omitted() {
-        ComponentSnapshot snap = new ComponentSnapshot(
+        SubprojectSnapshot snap = new SubprojectSnapshot(
                 "no-pom", "ccc", "ccc",
                 "main", null, false,
                 "software", false);
@@ -103,30 +103,30 @@ class CheckpointSupportTest {
                 "test", "2026-01-01T00:00:00Z", "ci", "1.0",
                 List.of(snap), List.of());
 
-        // The component section should not contain a version line
+        // The subproject section should not contain a version line
         // (schema-version in the header is separate)
-        String componentSection = yaml.substring(yaml.indexOf("    no-pom:"));
-        assertThat(componentSection)
+        String subprojectSection = yaml.substring(yaml.indexOf("    no-pom:"));
+        assertThat(subprojectSection)
                 .doesNotContain("version:");
     }
 
     @Test
-    void buildCheckpointYaml_emptyComponents_minimalOutput() {
+    void buildCheckpointYaml_emptySubprojects_minimalOutput() {
         String yaml = WsCheckpointDraftMojo.buildCheckpointYaml(
                 "empty", "2026-01-01T00:00:00Z", "ci", "1.0",
                 List.of(), List.of());
 
         assertThat(yaml)
                 .contains("checkpoint:")
-                .contains("  components:")
-                .endsWith("  components:\n");
+                .contains("  subprojects:")
+                .endsWith("  subprojects:\n");
     }
 
     @Test
-    void buildCheckpointYaml_multipleComponents_allPresent() {
-        List<ComponentSnapshot> snaps = List.of(
-                new ComponentSnapshot("alpha", "a1", "a1", "main", "1.0", false, "software", false),
-                new ComponentSnapshot("beta", "b2", "b2", "main", "2.0", false, "document", false));
+    void buildCheckpointYaml_multipleSubprojects_allPresent() {
+        List<SubprojectSnapshot> snaps = List.of(
+                new SubprojectSnapshot("alpha", "a1", "a1", "main", "1.0", false, "software", false),
+                new SubprojectSnapshot("beta", "b2", "b2", "main", "2.0", false, "document", false));
 
         String yaml = WsCheckpointDraftMojo.buildCheckpointYaml(
                 "multi", "2026-01-01T00:00:00Z", "ci", "1.0",

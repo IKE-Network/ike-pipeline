@@ -12,7 +12,7 @@ import java.io.File;
  *
  * <p>This is the {@code -publish} counterpart of {@code ws:feature-start}
  * (which defaults to a draft preview). Before creating feature branches,
- * this goal automatically aligns inter-component dependency versions so
+ * this goal automatically aligns inter-subproject dependency versions so
  * that the feature branch starts from a consistent state.
  *
  * <p>Usage: {@code mvn ws:feature-start-publish -Dfeature=my-feature}

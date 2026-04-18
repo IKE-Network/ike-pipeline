@@ -96,7 +96,7 @@ public class StignoreWorkspaceMojo extends AbstractWorkspaceMojo {
 
         // Write per-subproject .stignore for components that are cloned
         int perComponent = 0;
-        for (Subproject subproject : graph.manifest().components().values()) {
+        for (Subproject subproject : graph.manifest().subprojects().values()) {
             File dir = new File(root, subproject.name());
             if (dir.exists()) {
                 Path componentStignore = dir.toPath().resolve(".stignore");
@@ -131,7 +131,7 @@ public class StignoreWorkspaceMojo extends AbstractWorkspaceMojo {
 
     /**
      * Return the standard list of ignore patterns common to all
-     * IKE workspace components.
+     * IKE workspace subprojects.
      *
      * @return unmodifiable list of patterns (includes comments and blanks)
      */

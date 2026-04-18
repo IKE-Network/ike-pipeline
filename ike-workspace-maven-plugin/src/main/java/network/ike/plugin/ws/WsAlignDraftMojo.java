@@ -7,6 +7,7 @@ import network.ike.plugin.ws.preflight.PreflightContext;
 import network.ike.plugin.ws.preflight.PreflightResult;
 import network.ike.workspace.Subproject;
 import network.ike.workspace.Dependency;
+import network.ike.workspace.ManifestReader;
 import network.ike.workspace.PublishedArtifactSet;
 import network.ike.workspace.WorkspaceGraph;
 import org.apache.maven.api.model.Parent;
@@ -70,6 +71,15 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             getLog().info("");
         }
 
+        // #150 migration: ws:align is the designated entry point that
+        // rewrites legacy schemas in place. Every other reader hits the
+        // hard-cut in ManifestReader.read, so users on an old workspace
+        // see a message pointing them at ws:align first. Do this BEFORE
+        // loadGraph() so graph construction sees the migrated content.
+        Path manifestPath = resolveManifest();
+        ManifestReader.migrateLegacySchemaIfNeeded(
+                manifestPath, msg -> getLog().info("  " + msg));
+
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
@@ -92,12 +102,12 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         List<AlignChange> reportChanges = new ArrayList<>();
         List<AlignCheck> alignChecks = new ArrayList<>();
 
-        for (Map.Entry<String, Subproject> entry : graph.manifest().components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : graph.manifest().subprojects().entrySet()) {
             String name = entry.getKey();
             Subproject subproject = entry.getValue();
-            File componentDir = new File(root, name);
+            File subprojectDir = new File(root, name);
 
-            if (!new File(componentDir, "pom.xml").exists()) {
+            if (!new File(subprojectDir, "pom.xml").exists()) {
                 getLog().debug("  " + name + ": not cloned — skipping");
                 continue;
             }
@@ -105,7 +115,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             // Find all POM files in this subproject
             List<File> pomFiles;
             try {
-                pomFiles = ReleaseSupport.findPomFiles(componentDir);
+                pomFiles = ReleaseSupport.findPomFiles(subprojectDir);
             } catch (MojoException e) {
                 getLog().warn("  " + name + ": could not scan POM files — "
                         + e.getMessage());
@@ -116,10 +126,10 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             Map<String, String> versionPropertyMap = new LinkedHashMap<>();
             for (Dependency dep : subproject.dependsOn()) {
                 if (dep.versionProperty() != null && !dep.versionProperty().isEmpty()) {
-                    Subproject target = graph.manifest().components().get(dep.component());
+                    Subproject target = graph.manifest().subprojects().get(dep.subproject());
                     if (target != null && target.groupId() != null
                             && !target.groupId().isEmpty()) {
-                        versionPropertyMap.put(dep.component(), dep.versionProperty());
+                        versionPropertyMap.put(dep.subproject(), dep.versionProperty());
                     }
                 }
             }
@@ -129,10 +139,10 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             for (File pomFile : pomFiles) {
                 int changes = alignPomDependencies(
                         name, pomFile, artifactIndex, versionPropertyMap,
-                        componentDir, graph, reportChanges);
+                        subprojectDir, graph, reportChanges);
                 changes += alignPomPlugins(
                         name, pomFile, artifactIndex,
-                        componentDir, reportChanges);
+                        subprojectDir, reportChanges);
                 componentChanges += changes;
             }
 
@@ -140,7 +150,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             String pomVersion = "—";
             try {
                 pomVersion = ReleaseSupport.readPomVersion(
-                        new File(componentDir, "pom.xml"));
+                        new File(subprojectDir, "pom.xml"));
             } catch (MojoException ignored) { }
 
             if (componentChanges > 0) {
@@ -153,17 +163,17 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         }
 
         // --- Parent version alignment (via Maven 4 Model API) ---
-        for (Map.Entry<String, Subproject> entry : graph.manifest().components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : graph.manifest().subprojects().entrySet()) {
             String name = entry.getKey();
             Subproject subproject = entry.getValue();
-            String parentComponentName = subproject.parent();
-            if (parentComponentName == null) continue;
+            String parentSubprojectName = subproject.parent();
+            if (parentSubprojectName == null) continue;
 
-            Subproject parentComponent = graph.manifest().components().get(parentComponentName);
-            if (parentComponent == null || parentComponent.version() == null) continue;
+            Subproject parentSubproject = graph.manifest().subprojects().get(parentSubprojectName);
+            if (parentSubproject == null || parentSubproject.version() == null) continue;
 
-            File componentDir = new File(root, name);
-            Path pomPath = componentDir.toPath().resolve("pom.xml");
+            File subprojectDir = new File(root, name);
+            Path pomPath = subprojectDir.toPath().resolve("pom.xml");
             if (!Files.exists(pomPath)) continue;
 
             try {
@@ -171,7 +181,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
                 Parent parentInfo = pom.parent();
                 if (parentInfo == null) continue;
 
-                String expectedVersion = parentComponent.version();
+                String expectedVersion = parentSubproject.version();
                 String currentVersion = parentInfo.getVersion();
                 if (currentVersion == null
                         || expectedVersion.equals(currentVersion)) {
@@ -191,7 +201,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
                             + " " + currentVersion + " → " + expectedVersion);
 
                     // Also update submodule POMs that reference the same parent
-                    List<File> subPoms = ReleaseSupport.findPomFiles(componentDir);
+                    List<File> subPoms = ReleaseSupport.findPomFiles(subprojectDir);
                     for (File subPom : subPoms) {
                         if (subPom.toPath().equals(pomPath)) continue;
                         String subContent = Files.readString(
@@ -222,10 +232,10 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         // in ike-parent's pluginManagement for ike-maven-plugin must match.
         // Extensions plugins need literal versions (loaded before property
         // interpolation), so this literal is the only way to pin the version.
-        for (Map.Entry<String, Subproject> entry : graph.manifest().components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : graph.manifest().subprojects().entrySet()) {
             String name = entry.getKey();
-            File componentDir = new File(root, name);
-            Path rootPomPath = componentDir.toPath().resolve("pom.xml");
+            File subprojectDir = new File(root, name);
+            Path rootPomPath = subprojectDir.toPath().resolve("pom.xml");
             if (!Files.exists(rootPomPath)) continue;
 
             try {
@@ -239,7 +249,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
                 for (String sub : subprojects) {
                     if (!"ike-parent".equals(sub)) continue;
 
-                    Path parentPomPath = componentDir.toPath()
+                    Path parentPomPath = subprojectDir.toPath()
                             .resolve(sub).resolve("pom.xml");
                     if (!Files.exists(parentPomPath)) continue;
 
@@ -362,7 +372,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
 
     /**
      * Build an index from {@code groupId:artifactId} to (subproject name,
-     * current POM version) for all cloned workspace components.
+     * current POM version) for all cloned workspace subprojects.
      *
      * <p>Uses {@link PublishedArtifactSet#scan} to discover every
      * artifact each subproject publishes, so components sharing a
@@ -373,18 +383,18 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             WorkspaceGraph graph, File root) throws MojoException {
         Map<String, ComponentVersion> index = new LinkedHashMap<>();
 
-        for (Map.Entry<String, Subproject> entry : graph.manifest().components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : graph.manifest().subprojects().entrySet()) {
             String name = entry.getKey();
-            File componentDir = new File(root, name);
+            File subprojectDir = new File(root, name);
 
-            if (!new File(componentDir, "pom.xml").exists()) {
+            if (!new File(subprojectDir, "pom.xml").exists()) {
                 continue;
             }
 
             String pomVersion;
             try {
                 pomVersion = ReleaseSupport.readPomVersion(
-                        new File(componentDir, "pom.xml"));
+                        new File(subprojectDir, "pom.xml"));
             } catch (MojoException e) {
                 getLog().warn("  " + name + ": could not read POM version — "
                         + e.getMessage());
@@ -393,7 +403,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
 
             Set<PublishedArtifactSet.Artifact> published;
             try {
-                published = PublishedArtifactSet.scan(componentDir.toPath());
+                published = PublishedArtifactSet.scan(subprojectDir.toPath());
             } catch (IOException e) {
                 getLog().warn("  " + name + ": could not scan published artifacts — "
                         + e.getMessage());
@@ -426,7 +436,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
     private int alignPomDependencies(String ownerName, File pomFile,
                                      Map<String, ComponentVersion> artifactIndex,
                                      Map<String, String> versionPropertyMap,
-                                     File componentDir, WorkspaceGraph graph,
+                                     File subprojectDir, WorkspaceGraph graph,
                                      List<AlignChange> reportChanges)
             throws MojoException {
         PomModel pom;
@@ -466,7 +476,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
                         currentVersion.length() - 1);
                 String propValue = pom.properties().get(propName);
                 if (propValue != null && !propValue.equals(target.version)) {
-                    String relPath = componentDir.toPath().relativize(
+                    String relPath = subprojectDir.toPath().relativize(
                             pomFile.toPath()).toString();
                     getLog().info("  " + ownerName + " (" + relPath
                             + "): property <" + propName + "> "
@@ -481,7 +491,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
                 }
             } else if (!currentVersion.equals(target.version)) {
                 // Direct version mismatch — targeted text replacement
-                String relPath = componentDir.toPath().relativize(
+                String relPath = subprojectDir.toPath().relativize(
                         pomFile.toPath()).toString();
                 getLog().info("  " + ownerName + " (" + relPath + "): "
                         + key + " " + currentVersion
@@ -509,7 +519,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             // Read current property value from the model
             String currentValue = pom.properties().get(versionProperty);
             if (currentValue != null && !currentValue.equals(cv.version)) {
-                String relPath = componentDir.toPath().relativize(
+                String relPath = subprojectDir.toPath().relativize(
                         pomFile.toPath()).toString();
                 getLog().info("  " + ownerName + " (" + relPath
                         + "): property <" + versionProperty + "> "
@@ -556,7 +566,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
      */
     private int alignPomPlugins(String ownerName, File pomFile,
                                 Map<String, ComponentVersion> artifactIndex,
-                                File componentDir,
+                                File subprojectDir,
                                 List<AlignChange> reportChanges)
             throws MojoException {
         PomModel pom;
@@ -592,7 +602,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             }
 
             if (!currentVersion.equals(target.version())) {
-                String relPath = componentDir.toPath().relativize(
+                String relPath = subprojectDir.toPath().relativize(
                         pomFile.toPath()).toString();
                 getLog().info("  " + ownerName + " (" + relPath + "): plugin "
                         + key + " " + currentVersion
@@ -629,13 +639,13 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
     private ComponentVersion findComponentVersion(
             String subprojectName,
             Map<String, ComponentVersion> artifactIndex, File root) {
-        File componentDir = new File(root, subprojectName);
-        if (!new File(componentDir, "pom.xml").exists()) {
+        File subprojectDir = new File(root, subprojectName);
+        if (!new File(subprojectDir, "pom.xml").exists()) {
             return null;
         }
         try {
             Set<PublishedArtifactSet.Artifact> published =
-                    PublishedArtifactSet.scan(componentDir.toPath());
+                    PublishedArtifactSet.scan(subprojectDir.toPath());
             for (PublishedArtifactSet.Artifact artifact : published) {
                 String key = artifact.groupId() + ":" + artifact.artifactId();
                 ComponentVersion cv = artifactIndex.get(key);

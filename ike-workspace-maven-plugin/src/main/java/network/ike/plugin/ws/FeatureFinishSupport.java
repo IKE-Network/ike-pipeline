@@ -38,7 +38,7 @@ class FeatureFinishSupport {
 
     /**
      * Detect the feature branch name from subproject branches.
-     * If all components on a feature branch agree on the name,
+     * If all subprojects on a feature branch agree on the name,
      * returns it. Also checks the workspace root branch.
      *
      * @param root       workspace root directory
@@ -373,7 +373,7 @@ class FeatureFinishSupport {
     }
 
     /**
-     * Scan for stale feature branches across all components and offer
+     * Scan for stale feature branches across all subprojects and offer
      * interactive cleanup after a successful feature-finish.
      *
      * <p>Stale branches are feature branches that are fully merged into the
@@ -389,7 +389,7 @@ class FeatureFinishSupport {
     static void promptStaleBranchCleanup(File root, List<String> components,
                                            String finishedBranch, String targetBranch,
                                            Log log) {
-        // Collect stale branches across all components
+        // Collect stale branches across all subprojects
         Map<String, List<String>> staleBranches = new LinkedHashMap<>();
         for (String name : components) {
             File dir = new File(root, name);
@@ -423,11 +423,11 @@ class FeatureFinishSupport {
                     break;
                 }
             }
-            int componentCount = (int) staleBranches.values().stream()
+            int subprojectCount = (int) staleBranches.values().stream()
                     .filter(list -> list.contains(branch))
                     .count();
-            log.info("    " + branch + " (" + componentCount
-                    + " component" + (componentCount == 1 ? "" : "s")
+            log.info("    " + branch + " (" + subprojectCount
+                    + " subproject" + (subprojectCount == 1 ? "" : "s")
                     + ", last commit: " + date + ")");
         }
 
@@ -491,7 +491,7 @@ class FeatureFinishSupport {
     // ── Post-merge qualifier guard ────────────────────────────────
 
     /**
-     * Verify that no branch-qualified versions remain in the component's
+     * Verify that no branch-qualified versions remain in the subproject's
      * POM tree after merging to the target branch. If any are found, they
      * are auto-stripped and committed as a fixup.
      *

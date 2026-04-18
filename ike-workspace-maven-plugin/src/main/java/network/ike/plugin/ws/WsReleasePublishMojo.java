@@ -12,7 +12,7 @@ import java.io.File;
  *
  * <p>This is the {@code -publish} counterpart of {@code ws:release}
  * (which defaults to a draft preview). Before releasing, this goal
- * automatically aligns inter-component dependency versions so that
+ * automatically aligns inter-subproject dependency versions so that
  * a release never ships with stale cross-references.
  *
  * <p>Usage: {@code mvn ws:release-publish}

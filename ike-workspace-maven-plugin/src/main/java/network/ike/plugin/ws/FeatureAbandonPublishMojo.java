@@ -8,7 +8,7 @@ import org.apache.maven.api.plugin.annotations.Mojo;
  *
  * <p>This is the publish variant of {@link FeatureAbandonDraftMojo}.
  * It prompts for confirmation (unless {@code -Dforce=true}), then
- * deletes the feature branch across all components.
+ * deletes the feature branch across all subprojects.
  *
  * <pre>{@code
  * mvn ws:feature-abandon-publish                     # with confirmation

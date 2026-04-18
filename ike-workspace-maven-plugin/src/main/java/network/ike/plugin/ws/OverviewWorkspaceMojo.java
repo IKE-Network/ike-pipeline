@@ -68,7 +68,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         getLog().info("");
         if (errors.isEmpty()) {
             getLog().info(Ansi.green("  ✓ ") + "Manifest: "
-                    + graph.manifest().components().size()
+                    + graph.manifest().subprojects().size()
                     + " components — consistent");
         } else {
             getLog().warn(Ansi.red("  ✗ ") + "Manifest: "
@@ -87,10 +87,10 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         List<String[]> graphRows = new ArrayList<>();
         for (int i = 0; i < sorted.size(); i++) {
             String name = sorted.get(i);
-            Subproject sub = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().subprojects().get(name);
             String deps = sub.dependsOn().isEmpty() ? "—"
                     : sub.dependsOn().stream()
-                        .map(Dependency::component)
+                        .map(Dependency::subproject)
                         .collect(Collectors.joining(", "));
 
             getLog().info(String.format("  %2d. %-24s → %s",
@@ -100,7 +100,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         }
 
         // ── Section 3: Subproject Status ─────────────────────────────
-        Set<String> targets = graph.manifest().components().keySet();
+        Set<String> targets = graph.manifest().subprojects().keySet();
 
         getLog().info("");
         getLog().info("  Status");
@@ -114,7 +114,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         int notCloned = 0;
 
         for (String name : targets) {
-            Subproject sub = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().subprojects().get(name);
             File dir = new File(root, name);
 
             if (!dir.exists()) {
@@ -252,12 +252,12 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
                         new LinkedHashSet<>(allAffected));
                 for (String name : buildOrder) {
                     List<String> triggeredBy = new ArrayList<>();
-                    Subproject sub = graph.manifest().components().get(name);
+                    Subproject sub = graph.manifest().subprojects().get(name);
                     if (sub != null) {
                         for (Dependency dep : sub.dependsOn()) {
-                            if (modifiedComponents.contains(dep.component())
-                                    || allAffected.contains(dep.component())) {
-                                triggeredBy.add(dep.component());
+                            if (modifiedComponents.contains(dep.subproject())
+                                    || allAffected.contains(dep.subproject())) {
+                                triggeredBy.add(dep.subproject());
                             }
                         }
                     }
@@ -371,10 +371,10 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         sb.append('\n');
 
         for (String name : sorted) {
-            Subproject sub = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().subprojects().get(name);
             String sourceId = name.replace("-", "_");
             for (Dependency dep : sub.dependsOn()) {
-                String targetId = dep.component().replace("-", "_");
+                String targetId = dep.subproject().replace("-", "_");
                 if ("content".equals(dep.relationship())) {
                     sb.append("    ").append(sourceId)
                       .append(" -.-> ").append(targetId).append('\n');
@@ -393,14 +393,14 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
 
     private void printDot(WorkspaceGraph graph) {
         String dot = GraphWorkspaceMojo.buildDotGraph("workspace",
-                graph.manifest().components().values().stream()
+                graph.manifest().subprojects().values().stream()
                         .collect(Collectors.toMap(Subproject::name,
                                 c -> c.type().yamlName())),
-                graph.manifest().components().values().stream()
+                graph.manifest().subprojects().values().stream()
                         .filter(c -> !c.dependsOn().isEmpty())
                         .collect(Collectors.toMap(Subproject::name,
                                 c -> c.dependsOn().stream()
-                                        .map(d -> new String[]{d.component(), d.relationship()})
+                                        .map(d -> new String[]{d.subproject(), d.relationship()})
                                         .toList())));
         for (String line : dot.split("\n")) {
             getLog().info(line);

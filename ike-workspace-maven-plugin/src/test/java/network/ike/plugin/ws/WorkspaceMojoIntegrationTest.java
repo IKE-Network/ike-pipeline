@@ -127,10 +127,10 @@ class WorkspaceMojoIntegrationTest {
 
         // All 3 components should be cloned
         for (String name : new String[]{"lib-a", "lib-b", "app-c"}) {
-            Path compDir = initRoot.resolve(name);
-            assertThat(compDir).isDirectory();
-            assertThat(compDir.resolve(".git")).isDirectory();
-            assertThat(compDir.resolve("pom.xml")).isRegularFile();
+            Path subDir = initRoot.resolve(name);
+            assertThat(subDir).isDirectory();
+            assertThat(subDir.resolve(".git")).isDirectory();
+            assertThat(subDir.resolve("pom.xml")).isRegularFile();
         }
     }
 

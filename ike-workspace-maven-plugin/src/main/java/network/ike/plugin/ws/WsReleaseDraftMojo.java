@@ -75,7 +75,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
     /**
      * GitHub repository for release creation (e.g., "IKE-Network/komet").
      * If set, creates a GitHub Release for each released subproject and
-     * attaches any platform installers found in the component's
+     * attaches any platform installers found in the subproject's
      * {@code target/installers/} directory.
      */
     @Parameter(property = "githubRepo")
@@ -116,26 +116,26 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
         for (String name : graph.topologicalSort()) {
             if (!candidates.contains(name)) continue;
 
-            Subproject sub = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().subprojects().get(name);
             if (sub == null) continue;
 
-            File compDir = new File(root, name);
-            if (!compDir.isDirectory() || !new File(compDir, "pom.xml").exists()) {
+            File subDir = new File(root, name);
+            if (!subDir.isDirectory() || !new File(subDir, "pom.xml").exists()) {
                 getLog().debug("Skipping " + name + " — not checked out");
                 continue;
             }
 
-            String latestTag = latestReleaseTag(compDir);
+            String latestTag = latestReleaseTag(subDir);
             if (latestTag == null) {
                 // No release tag exists — subproject has never been released
-                releasable.put(name, new ReleaseCandidate(name, sub, compDir,
+                releasable.put(name, new ReleaseCandidate(name, sub, subDir,
                         null, "never released"));
                 continue;
             }
 
-            int commitsSinceTag = commitsSinceTag(compDir, latestTag);
+            int commitsSinceTag = commitsSinceTag(subDir, latestTag);
             if (commitsSinceTag > 0) {
-                releasable.put(name, new ReleaseCandidate(name, sub, compDir,
+                releasable.put(name, new ReleaseCandidate(name, sub, subDir,
                         latestTag, commitsSinceTag + " commits since " + latestTag));
                 continue;
             }
@@ -255,10 +255,10 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
             String name = entry.getKey();
             String version = entry.getValue();
             String tag = "v" + version;
-            File compDir = new File(root, name);
+            File subDir = new File(root, name);
 
             // Collect installer artifacts
-            java.nio.file.Path targetDir = compDir.toPath().resolve("target");
+            java.nio.file.Path targetDir = subDir.toPath().resolve("target");
             List<String> artifacts = new ArrayList<>();
             if (java.nio.file.Files.exists(targetDir)) {
                 try {
@@ -291,7 +291,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
                         "--generate-notes"));
                 cmd.addAll(artifacts);
 
-                ReleaseSupport.exec(compDir, getLog(),
+                ReleaseSupport.exec(subDir, getLog(),
                         cmd.toArray(String[]::new));
             } catch (MojoException e) {
                 // Release may already exist — append assets
@@ -301,7 +301,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
                                 "gh", "release", "upload", tag,
                                 "--repo", githubRepo, "--clobber"));
                         uploadCmd.addAll(artifacts);
-                        ReleaseSupport.exec(compDir, getLog(),
+                        ReleaseSupport.exec(subDir, getLog(),
                                 uploadCmd.toArray(String[]::new));
                     } catch (MojoException uploadErr) {
                         getLog().warn("  Could not upload to release " + tag
@@ -332,9 +332,9 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
     // ── Helper: find latest release tag ──────────────────────────────
 
-    private String latestReleaseTag(File compDir) {
+    private String latestReleaseTag(File subDir) {
         try {
-            String tags = ReleaseSupport.execCapture(compDir,
+            String tags = ReleaseSupport.execCapture(subDir,
                     "git", "tag", "-l", "v*", "--sort=-version:refname");
             if (tags == null || tags.isBlank()) return null;
             return tags.lines().findFirst().orElse(null);
@@ -345,9 +345,9 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
     // ── Helper: count commits since tag ──────────────────────────────
 
-    private int commitsSinceTag(File compDir, String tag) {
+    private int commitsSinceTag(File subDir, String tag) {
         try {
-            String count = ReleaseSupport.execCapture(compDir,
+            String count = ReleaseSupport.execCapture(subDir,
                     "git", "rev-list", tag + "..HEAD", "--count");
             return Integer.parseInt(count.strip());
         } catch (Exception e) {
@@ -357,9 +357,9 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
     // ── Helper: read current POM version ─────────────────────────────
 
-    private String currentVersion(File compDir) {
+    private String currentVersion(File subDir) {
         try {
-            Path pom = compDir.toPath().resolve("pom.xml");
+            Path pom = subDir.toPath().resolve("pom.xml");
             String content = Files.readString(pom, StandardCharsets.UTF_8);
             return extractVersionFromPom(content);
         } catch (Exception e) {
@@ -398,7 +398,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
             // Use explicit version-property declarations from depends-on edges
             for (network.ike.workspace.Dependency dep : rc.subproject.dependsOn()) {
-                String upstreamName = dep.component();
+                String upstreamName = dep.subproject();
                 if (!releasedVersions.containsKey(upstreamName)) continue;
 
                 String releasedVersion = releasedVersions.get(upstreamName);
@@ -505,12 +505,12 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
             String timestamp = ISO_UTC.format(Instant.now());
             List<String[]> componentData = new ArrayList<>();
             for (String subName : graph.topologicalSort()) {
-                File compDir = new File(root, subName);
-                if (!compDir.isDirectory()) continue;
+                File subDir = new File(root, subName);
+                if (!subDir.isDirectory()) continue;
                 componentData.add(new String[]{
-                        subName, gitBranch(compDir), gitShortSha(compDir),
-                        currentVersion(compDir),
-                        String.valueOf(!gitStatus(compDir).isEmpty())
+                        subName, gitBranch(subDir), gitShortSha(subDir),
+                        currentVersion(subDir),
+                        String.valueOf(!gitStatus(subDir).isEmpty())
                 });
             }
 
@@ -542,7 +542,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
         yaml.append("# Generated: ").append(timestamp).append("\n");
         yaml.append("checkpoint: ").append(name).append("\n");
         yaml.append("timestamp: ").append(timestamp).append("\n");
-        yaml.append("components:\n");
+        yaml.append("subprojects:\n");
 
         for (String[] sub : componentData) {
             yaml.append("  ").append(sub[0]).append(":\n");
@@ -557,8 +557,8 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
     // ── Helper: find mvn or mvnw ─────────────────────────────────────
 
-    private String findMvn(File compDir) {
-        return resolveMvnCommand(compDir);
+    private String findMvn(File subDir) {
+        return resolveMvnCommand(subDir);
     }
 
     /**
@@ -568,15 +568,15 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
      * the given directory. Falls back to {@code "mvn"} from the system
      * PATH if no wrapper is found.
      *
-     * @param compDir the subproject directory to check
+     * @param subDir the subproject directory to check
      * @return absolute path to mvnw/mvnw.cmd, or {@code "mvn"}
      */
-    public static String resolveMvnCommand(File compDir) {
-        File mvnw = new File(compDir, "mvnw");
+    public static String resolveMvnCommand(File subDir) {
+        File mvnw = new File(subDir, "mvnw");
         if (mvnw.exists() && mvnw.canExecute()) {
             return mvnw.getAbsolutePath();
         }
-        File mvnwCmd = new File(compDir, "mvnw.cmd");
+        File mvnwCmd = new File(subDir, "mvnw.cmd");
         if (mvnwCmd.exists()) {
             return mvnwCmd.getAbsolutePath();
         }

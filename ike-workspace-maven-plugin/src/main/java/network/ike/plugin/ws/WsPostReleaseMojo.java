@@ -20,9 +20,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Post-release version bump across workspace components.
+ * Post-release version bump across workspace subprojects.
  *
- * <p>After a release, this goal bumps every checked-out component's
+ * <p>After a release, this goal bumps every checked-out subproject's
  * POM version to the specified {@code nextVersion}, commits the
  * change, pushes if a remote exists, then updates workspace.yaml
  * to reflect the new development versions.
@@ -38,7 +38,7 @@ import java.util.Map;
 public class WsPostReleaseMojo extends AbstractWorkspaceMojo {
 
     /**
-     * The next development version to set across all components,
+     * The next development version to set across all subprojects,
      * e.g., {@code "4-SNAPSHOT"}.
      */
     @Parameter(property = "nextVersion")
@@ -60,7 +60,7 @@ public class WsPostReleaseMojo extends AbstractWorkspaceMojo {
         VcsOperations.catchUp(root, getLog());
 
         List<String> sorted = graph.topologicalSort(
-                new LinkedHashSet<>(graph.manifest().components().keySet()));
+                new LinkedHashSet<>(graph.manifest().subprojects().keySet()));
 
         getLog().info("");
         getLog().info("IKE Workspace \u2014 Post-Release");
@@ -74,7 +74,7 @@ public class WsPostReleaseMojo extends AbstractWorkspaceMojo {
         int skipped = 0;
 
         for (String name : sorted) {
-            Subproject subproject = graph.manifest().components().get(name);
+            Subproject subproject = graph.manifest().subprojects().get(name);
             File dir = new File(root, name);
             File gitDir = new File(dir, ".git");
             File pomFile = new File(dir, "pom.xml");

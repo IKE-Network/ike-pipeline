@@ -4,7 +4,7 @@ import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.api.plugin.annotations.Mojo;
 
 /**
- * Execute a branch switch across workspace components.
+ * Execute a branch switch across workspace subprojects.
  *
  * <p>This is the publish variant of {@link WsSwitchDraftMojo}.
  * It performs the actual checkout rather than previewing it.

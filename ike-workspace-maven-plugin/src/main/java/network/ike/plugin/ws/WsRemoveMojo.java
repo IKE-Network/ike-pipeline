@@ -96,7 +96,7 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
         // Load graph and validate subproject exists
         WorkspaceGraph graph = loadGraph();
 
-        if (!graph.manifest().components().containsKey(subproject)) {
+        if (!graph.manifest().subprojects().containsKey(subproject)) {
             throw new MojoException(
                     "Subproject '" + subproject + "' not found in workspace.yaml.");
         }
@@ -121,12 +121,8 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
 
         try {
             // Remove from workspace.yaml
-            removeComponentFromManifest(manifestPath);
+            removeSubprojectFromManifest(manifestPath);
             getLog().info(Ansi.green("  ✓ ") + "workspace.yaml updated — subproject entry removed");
-
-            // Remove from groups in workspace.yaml
-            removeFromGroups(manifestPath);
-            getLog().info(Ansi.green("  ✓ ") + "workspace.yaml updated — group references removed");
 
             // Remove profile from pom.xml
             removeProfileFromPom(pomPath);
@@ -162,11 +158,11 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
      * Remove a subproject block from workspace.yaml.
      *
      * <p>Matches the subproject header at 2-space indent under
-     * {@code components:} and removes everything until the next
+     * {@code subprojects:} and removes everything until the next
      * subproject header or section header (a line at 0 or 2-space
      * indent that is not a continuation of this block).
      */
-    void removeComponentFromManifest(Path manifestPath) throws IOException {
+    void removeSubprojectFromManifest(Path manifestPath) throws IOException {
         String yaml = Files.readString(manifestPath, StandardCharsets.UTF_8);
 
         // Match:  "  subproject-name:\n" followed by lines at 4+ space indent
@@ -181,38 +177,6 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
         if (m.find()) {
             yaml = m.replaceFirst("\n");
         }
-
-        Files.writeString(manifestPath, yaml, StandardCharsets.UTF_8);
-    }
-
-    /**
-     * Remove the subproject from all group lists in workspace.yaml.
-     *
-     * <p>Handles both inline bracket syntax {@code [a, b, c]} and
-     * removes the subproject from comma-separated lists within brackets.
-     */
-    void removeFromGroups(Path manifestPath) throws IOException {
-        String yaml = Files.readString(manifestPath, StandardCharsets.UTF_8);
-        String escaped = Pattern.quote(subproject);
-
-        // Case 1: subproject is the only member — leave empty list
-        // e.g. "  docs: [ike-lab-documents]" → "  docs: []"
-        yaml = yaml.replaceAll(
-                "(:\\s*\\[)\\s*" + escaped + "\\s*(])",
-                "$1$2");
-
-        // Case 2: subproject is first in list with others after
-        // e.g. "[subproject, other]" → "[other]"
-        yaml = yaml.replaceAll(
-                "(\\[)\\s*" + escaped + "\\s*,\\s*",
-                "$1");
-
-        // Case 3: subproject is in the middle or at end
-        // e.g. "[other, subproject]" → "[other]"
-        // e.g. "[a, subproject, b]" → "[a, b]"
-        yaml = yaml.replaceAll(
-                ",\\s*" + escaped + "(?=\\s*[,\\]])",
-                "");
 
         Files.writeString(manifestPath, yaml, StandardCharsets.UTF_8);
     }

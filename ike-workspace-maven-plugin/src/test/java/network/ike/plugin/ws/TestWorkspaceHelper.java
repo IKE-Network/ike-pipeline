@@ -8,9 +8,9 @@ import java.nio.file.Path;
 /**
  * Creates a realistic temp workspace for Mojo integration tests.
  *
- * <p>Builds a {@code workspace.yaml}, component directories with
+ * <p>Builds a {@code workspace.yaml}, subproject directories with
  * initialised git repos and Maven POMs. The workspace has three
- * components forming a linear dependency chain:
+ * subprojects forming a linear dependency chain:
  *
  * <pre>
  *   lib-a  (leaf)
@@ -19,9 +19,6 @@ import java.nio.file.Path;
  *     ↑
  *   app-c  (depends on lib-b)
  * </pre>
- *
- * <p>Two groups are defined: {@code all} (all three) and
- * {@code libs} (lib-a, lib-b).
  */
 class TestWorkspaceHelper {
 
@@ -31,12 +28,12 @@ class TestWorkspaceHelper {
         this.root = tempDir;
     }
 
-    /** Build a complete workspace with 3 components. */
+    /** Build a complete workspace with 3 subprojects. */
     void buildWorkspace() throws Exception {
         writeWorkspaceYaml();
-        createComponent("lib-a", "1.0.0-SNAPSHOT", null);
-        createComponent("lib-b", "2.0.0-SNAPSHOT", "lib-a");
-        createComponent("app-c", "3.0.0-SNAPSHOT", "lib-b");
+        createSubproject("lib-a", "1.0.0-SNAPSHOT", null);
+        createSubproject("lib-b", "2.0.0-SNAPSHOT", "lib-a");
+        createSubproject("app-c", "3.0.0-SNAPSHOT", "lib-b");
     }
 
     Path workspaceYaml() {
@@ -50,9 +47,9 @@ class TestWorkspaceHelper {
     /**
      * Build a workspace with bare upstream repos for init testing.
      *
-     * <p>Creates bare repos for each component, pushes initial commits
+     * <p>Creates bare repos for each subproject, pushes initial commits
      * to them, and writes workspace.yaml with {@code file://} repo URLs.
-     * Does NOT create component directories — init will clone them.
+     * Does NOT create subproject directories — init will clone them.
      */
     void buildWorkspaceWithUpstreams() throws Exception {
         Path upstreams = root.resolve(".upstreams");
@@ -75,13 +72,7 @@ class TestWorkspaceHelper {
                 defaults:
                   branch: main
 
-                component-types:
-                  maven:
-                    description: Maven project
-                    build-command: "mvn clean install"
-                    checkpoint-mechanism: git-tag
-
-                components:
+                subprojects:
                   lib-a:
                     type: software
                     description: Shared library A
@@ -95,7 +86,7 @@ class TestWorkspaceHelper {
                     branch: main
                     version: "2.0.0-SNAPSHOT"
                     depends-on:
-                      - component: lib-a
+                      - subproject: lib-a
                         relationship: build
                   app-c:
                     type: software
@@ -104,22 +95,13 @@ class TestWorkspaceHelper {
                     branch: main
                     version: "3.0.0-SNAPSHOT"
                     depends-on:
-                      - component: lib-b
+                      - subproject: lib-b
                         relationship: build
-
-                groups:
-                  all:
-                    - lib-a
-                    - lib-b
-                    - app-c
-                  libs:
-                    - lib-a
-                    - lib-b
                 """;
         Files.writeString(workspaceYaml(), yaml, StandardCharsets.UTF_8);
     }
 
-    private void createComponent(String name, String version,
+    private void createSubproject(String name, String version,
                                   String dependencyArtifact) throws Exception {
         Path dir = root.resolve(name);
         Files.createDirectories(dir);
@@ -224,13 +206,7 @@ class TestWorkspaceHelper {
                 defaults:
                   branch: main
 
-                component-types:
-                  maven:
-                    description: Maven project
-                    build-command: "mvn clean install"
-                    checkpoint-mechanism: git-tag
-
-                components:
+                subprojects:
                   lib-a:
                     type: software
                     description: Shared library A
@@ -244,7 +220,7 @@ class TestWorkspaceHelper {
                     branch: main
                     version: "2.0.0-SNAPSHOT"
                     depends-on:
-                      - component: lib-a
+                      - subproject: lib-a
                         relationship: build
                   app-c:
                     type: software
@@ -253,17 +229,8 @@ class TestWorkspaceHelper {
                     branch: main
                     version: "3.0.0-SNAPSHOT"
                     depends-on:
-                      - component: lib-b
+                      - subproject: lib-b
                         relationship: build
-
-                groups:
-                  all:
-                    - lib-a
-                    - lib-b
-                    - app-c
-                  libs:
-                    - lib-a
-                    - lib-b
                 """.formatted(libAUrl, libBUrl, appCUrl);
         Files.writeString(workspaceYaml(), yaml, StandardCharsets.UTF_8);
     }

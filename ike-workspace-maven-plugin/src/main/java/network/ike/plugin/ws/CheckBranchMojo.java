@@ -46,14 +46,14 @@ public class CheckBranchMojo extends AbstractWorkspaceMojo {
         File cwd = new File(System.getProperty("user.dir"));
 
         // Determine which subproject we're in by matching CWD to workspace root + subproject name
-        String subprojectName = findComponentName(wsRoot, cwd, graph);
+        String subprojectName = findSubprojectName(wsRoot, cwd, graph);
         if (subprojectName == null) {
             writeReport(WsGoal.CHECK_BRANCH,
                     "_CWD is not inside a known subproject directory._\n");
             return;
         }
 
-        Subproject subproject = graph.manifest().components().get(subprojectName);
+        Subproject subproject = graph.manifest().subprojects().get(subprojectName);
         if (subproject == null || subproject.branch() == null) {
             writeReport(WsGoal.CHECK_BRANCH,
                     "**Subproject:** `" + subprojectName + "`\n\n"
@@ -134,7 +134,7 @@ public class CheckBranchMojo extends AbstractWorkspaceMojo {
      * @param graph  workspace dependency graph
      * @return the subproject name, or null if CWD is not inside a known subproject
      */
-    static String findComponentName(File wsRoot, File cwd, WorkspaceGraph graph) {
+    static String findSubprojectName(File wsRoot, File cwd, WorkspaceGraph graph) {
         // Walk up from CWD toward wsRoot, checking each directory name
         Path wsPath = wsRoot.toPath().toAbsolutePath().normalize();
         Path cwdPath = cwd.toPath().toAbsolutePath().normalize();
@@ -143,7 +143,7 @@ public class CheckBranchMojo extends AbstractWorkspaceMojo {
             // The directory immediately under wsRoot is the subproject name
             Path relative = wsPath.relativize(cwdPath);
             String topDir = relative.getName(0).toString();
-            if (graph.manifest().components().containsKey(topDir)) {
+            if (graph.manifest().subprojects().containsKey(topDir)) {
                 return topDir;
             }
             cwdPath = cwdPath.getParent();

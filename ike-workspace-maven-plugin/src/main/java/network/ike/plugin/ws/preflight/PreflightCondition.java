@@ -29,12 +29,12 @@ import java.util.Optional;
 public enum PreflightCondition {
 
     /**
-     * Every component working tree (and the workspace root itself, if it
-     * is a git repo) must have no uncommitted changes. Any draft or
+     * Every subproject working tree (and the workspace root itself, if
+     * it is a git repo) must have no uncommitted changes. Any draft or
      * publish goal that creates branches, edits POMs, or otherwise
      * mutates files requires this.
      */
-    WORKING_TREE_CLEAN("All component working trees are clean") {
+    WORKING_TREE_CLEAN("All subproject working trees are clean") {
         @Override
         public Optional<String> check(PreflightContext ctx) {
             File root = ctx.workspaceRoot();
@@ -44,7 +44,7 @@ public enum PreflightCondition {
                     && !gitStatus(root).isEmpty()) {
                 uncommitted.add(WORKSPACE_ROOT_NAME);
             }
-            for (String name : ctx.components()) {
+            for (String name : ctx.subprojects()) {
                 File dir = new File(root, name);
                 if (!new File(dir, ".git").exists()) continue;
                 if (!gitStatus(dir).isEmpty()) {

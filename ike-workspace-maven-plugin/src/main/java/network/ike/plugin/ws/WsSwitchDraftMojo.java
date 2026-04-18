@@ -25,14 +25,14 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 /**
- * Switch all workspace components to a different branch.
+ * Switch all workspace subprojects to a different branch.
  *
  * <p>Discovers all local feature branches across components and presents
  * an interactive menu. The selected branch is checked out in every
- * component that has it locally; components without the branch are
+ * subproject that has it locally; subprojects without the branch are
  * skipped with a warning.
  *
- * <p>Before switching, validates that all component working trees are
+ * <p>Before switching, validates that all subproject working trees are
  * clean. If any have uncommitted changes, the goal fails with a list
  * of the affected subprojects and a "commit or stash, then try again"
  * message.
@@ -77,7 +77,7 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
-        Set<String> targets = graph.manifest().components().keySet();
+        Set<String> targets = graph.manifest().subprojects().keySet();
 
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
 
@@ -96,7 +96,7 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
             String compBranch = gitBranch(dir);
             branchCounts.merge(compBranch, 1, Integer::sum);
 
-            // Add main for every cloned component
+            // Add main for every cloned subproject
             branchComponents.get("main").add(name);
 
             // Discover all local feature branches
@@ -125,7 +125,7 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
         // Validate the target branch exists somewhere (or is main)
         if (!branch.equals("main") && !branchComponents.containsKey(branch)) {
             throw new MojoException(
-                    "Branch '" + branch + "' does not exist in any component. "
+                    "Branch '" + branch + "' does not exist in any subproject. "
                     + "Available: " + branchComponents.keySet());
         }
 
@@ -164,7 +164,7 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
                 continue;
             }
 
-            // Check if the target branch exists locally in this component
+            // Check if the target branch exists locally in this subproject
             if (!branch.equals("main")) {
                 List<String> localBranches = VcsOperations.localBranches(dir, "");
                 if (!localBranches.contains(branch)) {
@@ -238,7 +238,7 @@ public class WsSwitchDraftMojo extends AbstractWorkspaceMojo {
             int count = branchComponents.get(b).size();
             String current = b.equals(currentBranch) ? " (current)" : "";
             getLog().info("    " + (i + 1) + ". " + b
-                    + " (" + count + " component" + (count == 1 ? "" : "s") + ")"
+                    + " (" + count + " subproject" + (count == 1 ? "" : "s") + ")"
                     + current);
         }
         getLog().info("");

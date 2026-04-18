@@ -25,10 +25,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Start a coordinated feature branch across workspace components.
+ * Start a coordinated feature branch across workspace subprojects.
  *
  * <p>Creates a feature branch with a consistent name across all
- * workspace components, optionally setting branch-qualified
+ * workspace subprojects, optionally setting branch-qualified
  * SNAPSHOT versions in each POM.
  *
  * <p><strong>Workspace mode</strong> (workspace.yaml found):</p>
@@ -103,7 +103,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         // VCS bridge: catch-up before branching
         VcsOperations.catchUp(root, getLog());
 
-        Set<String> targets = graph.manifest().components().keySet();
+        Set<String> targets = graph.manifest().subprojects().keySet();
 
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
 
@@ -130,7 +130,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         List<BranchRow> branchRows = new ArrayList<>();
 
         for (String name : sorted) {
-            Subproject subproject = graph.manifest().components().get(name);
+            Subproject subproject = graph.manifest().subprojects().get(name);
             File dir = new File(root, name);
             File gitDir = new File(dir, ".git");
 
@@ -491,7 +491,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         // Build map of upstream subproject → new branch-qualified version
         java.util.Map<String, String> newVersions = new java.util.LinkedHashMap<>();
         for (String name : sorted) {
-            Subproject sub = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().subprojects().get(name);
             if (sub.version() != null && !sub.version().isEmpty()) {
                 newVersions.put(name, VersionSupport.branchQualifiedVersion(
                         sub.version(), branchName));
@@ -501,7 +501,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         // For each subproject in topological order, update version-properties
         // that reference upstream subprojects
         for (String name : sorted) {
-            Subproject sub = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().subprojects().get(name);
             File dir = new File(root, name);
             File pomFile = new File(dir, "pom.xml");
             if (!pomFile.exists()) continue;
@@ -513,7 +513,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                 String original = content;
 
                 for (network.ike.workspace.Dependency dep : sub.dependsOn()) {
-                    String upstreamName = dep.component();
+                    String upstreamName = dep.subproject();
                     if (dep.versionProperty() == null) continue;
                     if (!newVersions.containsKey(upstreamName)) continue;
 
@@ -565,7 +565,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         // Build map of subproject name → new branch-qualified version
         java.util.Map<String, String> newVersions = new java.util.LinkedHashMap<>();
         for (String name : sorted) {
-            Subproject sub = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().subprojects().get(name);
             String effectiveVersion = sub.version();
             if (effectiveVersion == null || effectiveVersion.isEmpty()) {
                 File pom = new File(new File(root, name), "pom.xml");
@@ -582,7 +582,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         }
 
         // For each subproject, check its POM properties for references
-        // to other workspace components (e.g., <tinkar-core.version>)
+        // to other workspace subprojects (e.g., <tinkar-core.version>)
         for (String name : sorted) {
             File dir = new File(root, name);
             File pomFile = new File(dir, "pom.xml");
@@ -656,12 +656,12 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         // Build published artifact sets
         java.util.Map<String, java.util.Set<PublishedArtifactSet.Artifact>>
                 workspaceArtifacts = new java.util.LinkedHashMap<>();
-        for (String name : graph.manifest().components().keySet()) {
-            java.nio.file.Path compDir = root.toPath().resolve(name);
-            if (java.nio.file.Files.exists(compDir.resolve("pom.xml"))) {
+        for (String name : graph.manifest().subprojects().keySet()) {
+            java.nio.file.Path subDir = root.toPath().resolve(name);
+            if (java.nio.file.Files.exists(subDir.resolve("pom.xml"))) {
                 try {
                     workspaceArtifacts.put(name,
-                            PublishedArtifactSet.scan(compDir));
+                            PublishedArtifactSet.scan(subDir));
                 } catch (java.io.IOException e) {
                     // Skip
                 }
@@ -684,11 +684,11 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         issues.removeIf(issue -> {
             String propertyName = issue.dependsOn() + ".version";
             // Check the affected subproject's POM tree
-            java.nio.file.Path compDir = root.toPath().resolve(issue.subprojectName());
-            if (java.nio.file.Files.exists(compDir.resolve("pom.xml"))) {
+            java.nio.file.Path subDir = root.toPath().resolve(issue.subprojectName());
+            if (java.nio.file.Files.exists(subDir.resolve("pom.xml"))) {
                 try {
                     java.util.List<java.io.File> poms = network.ike.plugin.ReleaseSupport
-                            .findPomFiles(compDir.toFile());
+                            .findPomFiles(subDir.toFile());
                     for (java.io.File pom : poms) {
                         String content = java.nio.file.Files.readString(
                                 pom.toPath(), java.nio.charset.StandardCharsets.UTF_8);
@@ -701,8 +701,8 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
             // Also check workspace-internal BOMs that manage the upstream's
             // artifacts — if a BOM subproject has the property, the cascade
             // path exists through the BOM import chain.
-            for (String bomName : graph.manifest().components().keySet()) {
-                Subproject bomComp = graph.manifest().components().get(bomName);
+            for (String bomName : graph.manifest().subprojects().keySet()) {
+                Subproject bomComp = graph.manifest().subprojects().get(bomName);
                 if (bomComp.type() != network.ike.workspace.SubprojectType.INFRASTRUCTURE) continue;
                 java.nio.file.Path bomPom = root.toPath()
                         .resolve(bomName).resolve("pom.xml");
@@ -792,13 +792,13 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         java.util.Map<String, String> newVersions = new java.util.LinkedHashMap<>();
 
         for (String name : sorted) {
-            Subproject sub = graph.manifest().components().get(name);
-            java.nio.file.Path compDir = root.toPath().resolve(name);
+            Subproject sub = graph.manifest().subprojects().get(name);
+            java.nio.file.Path subDir = root.toPath().resolve(name);
 
-            if (java.nio.file.Files.exists(compDir.resolve("pom.xml"))) {
+            if (java.nio.file.Files.exists(subDir.resolve("pom.xml"))) {
                 try {
                     workspaceArtifacts.put(name,
-                            PublishedArtifactSet.scan(compDir));
+                            PublishedArtifactSet.scan(subDir));
                 } catch (java.io.IOException e) {
                     // Skip
                 }
@@ -823,7 +823,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         // For each subproject in topological order, check if it imports
         // a BOM published by an upstream subproject that got a new version
         for (String name : sorted) {
-            Subproject sub = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().subprojects().get(name);
             File dir = new File(root, name);
             java.nio.file.Path pomPath = dir.toPath().resolve("pom.xml");
 
@@ -894,8 +894,8 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                                          boolean publish)
             throws MojoException {
         for (String name : components) {
-            File compDir = new File(root, name);
-            File rootPom = new File(compDir, "pom.xml");
+            File subDir = new File(root, name);
+            File rootPom = new File(subDir, "pom.xml");
             if (!rootPom.exists()) continue;
 
             try {
@@ -904,13 +904,13 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                 PomModel rootModel = PomModel.parse(rootPom.toPath());
                 String reactorGroupId = rootModel.groupId();
                 Set<String> reactorArtifacts = new java.util.LinkedHashSet<>();
-                collectReactorArtifacts(compDir.toPath(), rootModel,
+                collectReactorArtifacts(subDir.toPath(), rootModel,
                         reactorArtifacts);
 
                 if (reactorArtifacts.size() <= 1) continue;  // no submodules
 
                 // Scan all POMs for pinned intra-reactor dependencies
-                List<java.io.File> allPoms = ReleaseSupport.findPomFiles(compDir);
+                List<java.io.File> allPoms = ReleaseSupport.findPomFiles(subDir);
                 boolean anyChanged = false;
 
                 for (java.io.File pom : allPoms) {
@@ -931,7 +931,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                         if (!reactorArtifacts.contains(dep.getArtifactId())) continue;
 
                         // Found an intra-reactor pin
-                        String relPath = compDir.toPath()
+                        String relPath = subDir.toPath()
                                 .relativize(pom.toPath()).toString();
 
                         if (publish) {
@@ -956,8 +956,8 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                 }
 
                 if (anyChanged) {
-                    ReleaseSupport.exec(compDir, getLog(), "git", "add", "-A");
-                    ReleaseSupport.exec(compDir, getLog(),
+                    ReleaseSupport.exec(subDir, getLog(), "git", "add", "-A");
+                    ReleaseSupport.exec(subDir, getLog(),
                             "git", "commit", "-m",
                             "build: remove intra-reactor version pins");
                 }

@@ -109,7 +109,7 @@ class CheckpointMojoTest {
     @Test
     void buildCheckpointYaml_includesComponentData() {
         var snapshots = java.util.List.of(
-                new ComponentSnapshot(
+                new SubprojectSnapshot(
                         "tinkar-core", "abc123full", "abc123", "main",
                         "1.0.0-SNAPSHOT", false, "software", false));
 

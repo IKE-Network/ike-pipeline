@@ -287,7 +287,7 @@ class WsReleaseSupportTest {
                 .contains("# Generated: 2026-03-20T10:00:00Z")
                 .contains("checkpoint: pre-release-20260320-100000")
                 .contains("timestamp: 2026-03-20T10:00:00Z")
-                .contains("components:");
+                .contains("subprojects:");
     }
 
     @Test
@@ -338,8 +338,8 @@ class WsReleaseSupportTest {
                 "empty", "2026-01-01T00:00:00Z", List.of());
 
         assertThat(yaml)
-                .contains("components:\n")
-                .endsWith("components:\n");
+                .contains("subprojects:\n")
+                .endsWith("subprojects:\n");
     }
 
     // ── extractVersionFromPom: edge cases ────────────────────────────

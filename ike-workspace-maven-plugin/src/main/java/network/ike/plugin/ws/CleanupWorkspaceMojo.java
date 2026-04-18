@@ -51,7 +51,7 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
 
         boolean draft = !publish;
         List<String> sorted = graph.topologicalSort(
-                new LinkedHashSet<>(graph.manifest().components().keySet()));
+                new LinkedHashSet<>(graph.manifest().subprojects().keySet()));
 
         getLog().info("");
         getLog().info(header("Cleanup"));

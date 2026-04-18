@@ -8,7 +8,7 @@ import org.apache.maven.api.plugin.annotations.Mojo;
  *
  * <p>This is the {@code -publish} counterpart of
  * {@code ws:set-parent-draft}. It updates the root POM and all
- * component POMs to the specified parent version.
+ * subproject POMs to the specified parent version.
  *
  * <pre>{@code
  * mvn ws:set-parent-publish -Dparent.version=92

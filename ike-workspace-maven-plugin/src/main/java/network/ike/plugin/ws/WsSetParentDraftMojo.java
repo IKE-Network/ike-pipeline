@@ -22,11 +22,11 @@ import java.util.Map;
 
 /**
  * Set the aggregator parent version (ike-parent) across the root POM and
- * all component POMs in one operation.
+ * all subproject POMs in one operation.
  *
  * <p>This goal cascades the parent version from the root POM to every
- * cloned component, including submodule POMs that reference the same
- * parent. It does <strong>not</strong> modify inter-component dependency
+ * cloned subproject, including submodule POMs that reference the same
+ * parent. It does <strong>not</strong> modify inter-subproject dependency
  * versions — use {@code ws:align} for that.
  *
  * <p>The target version is specified via {@code -Dparent.version}. If
@@ -126,12 +126,12 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
 
         // --- Subproject POMs ---
         for (Map.Entry<String, Subproject> entry
-                : graph.manifest().components().entrySet()) {
+                : graph.manifest().subprojects().entrySet()) {
             String name = entry.getKey();
-            File componentDir = new File(root, name);
-            Path componentPom = componentDir.toPath().resolve("pom.xml");
+            File subprojectDir = new File(root, name);
+            Path subprojectPom = subprojectDir.toPath().resolve("pom.xml");
 
-            if (!Files.exists(componentPom)) {
+            if (!Files.exists(subprojectPom)) {
                 getLog().debug("  " + name + ": not cloned — skipping");
                 continue;
             }
@@ -139,7 +139,7 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
             // Read the subproject's root POM parent
             PomParentSupport.ParentInfo compParent;
             try {
-                compParent = PomParentSupport.readParent(componentPom);
+                compParent = PomParentSupport.readParent(subprojectPom);
             } catch (IOException e) {
                 getLog().warn("  " + name
                         + ": cannot read parent — " + e.getMessage());
@@ -168,13 +168,13 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
                     currentVersion, targetVersion));
 
             if (!draft) {
-                updateParentInPom(componentPom, parentArtifactId,
+                updateParentInPom(subprojectPom, parentArtifactId,
                         targetVersion);
 
                 // Also update submodule POMs referencing the same parent
                 List<File> subPoms;
                 try {
-                    subPoms = ReleaseSupport.findPomFiles(componentDir);
+                    subPoms = ReleaseSupport.findPomFiles(subprojectDir);
                 } catch (MojoException e) {
                     getLog().warn("  " + name
                             + ": cannot scan submodules — " + e.getMessage());
@@ -182,7 +182,7 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
                 }
 
                 for (File subPom : subPoms) {
-                    if (subPom.toPath().equals(componentPom)) {
+                    if (subPom.toPath().equals(subprojectPom)) {
                         continue;
                     }
                     try {
@@ -193,7 +193,7 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
                         if (!subUpdated.equals(subContent)) {
                             Files.writeString(subPom.toPath(), subUpdated,
                                     StandardCharsets.UTF_8);
-                            String relPath = componentDir.toPath()
+                            String relPath = subprojectDir.toPath()
                                     .relativize(subPom.toPath()).toString();
                             getLog().debug("  " + name + "/" + relPath
                                     + ": submodule parent updated");
@@ -208,7 +208,7 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
 
         // --- Output ---
         for (ParentChange c : changes) {
-            getLog().info("  " + padRight(c.component + "/" + c.pomRelPath, 40)
+            getLog().info("  " + padRight(c.subproject + "/" + c.pomRelPath, 40)
                     + c.fromVersion + " → " + c.toVersion);
         }
         getLog().info("");
@@ -314,7 +314,7 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
         md.append("| Subproject | POM | From | To |\n");
         md.append("|-----------|-----|------|----|\n");
         for (ParentChange c : changes) {
-            md.append("| ").append(c.component)
+            md.append("| ").append(c.subproject)
               .append(" | ").append(c.pomRelPath)
               .append(" | ").append(c.fromVersion)
               .append(" | ").append(c.toVersion)
@@ -327,11 +327,11 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
     /**
      * A single parent-version change for reporting.
      *
-     * @param component   component name or "(root)"
-     * @param pomRelPath  relative POM path within component
+     * @param subproject  subproject name or "(root)"
+     * @param pomRelPath  relative POM path within subproject
      * @param fromVersion current parent version
      * @param toVersion   target parent version
      */
-    private record ParentChange(String component, String pomRelPath,
+    private record ParentChange(String subproject, String pomRelPath,
                                  String fromVersion, String toVersion) {}
 }

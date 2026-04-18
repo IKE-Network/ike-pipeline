@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Check transitive dependency convergence across workspace components.
+ * Check transitive dependency convergence across workspace subprojects.
  *
  * <p>This goal runs {@code mvn dependency:tree} for each subproject in
  * topological order, then compares resolved versions of shared
@@ -89,13 +89,13 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
                 new LinkedHashMap<>();
 
         for (String name : order) {
-            File compDir = new File(root, name);
-            File pomFile = new File(compDir, "pom.xml");
+            File subDir = new File(root, name);
+            File pomFile = new File(subDir, "pom.xml");
             if (!pomFile.exists()) continue;
 
             getLog().info("    Resolving " + name + "...");
             try {
-                String treeOutput = ReleaseSupport.execCapture(compDir,
+                String treeOutput = ReleaseSupport.execCapture(subDir,
                         mvnExecutable.getAbsolutePath(),
                         "dependency:tree", "-DoutputType=text",
                         "-B", "-q");
@@ -233,7 +233,7 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
     // ── Parent version skew check ───────────────────────────────
 
     /**
-     * Check that all component POMs reference the same ike-parent
+     * Check that all subproject POMs reference the same ike-parent
      * version as the root POM. Logs a warning for each mismatch.
      *
      * @param graph workspace graph
@@ -260,10 +260,10 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
         getLog().info("  Parent version check (" + parentAid + ":" + rootVersion + ")");
 
         for (Map.Entry<String, Subproject> entry
-                : graph.manifest().components().entrySet()) {
+                : graph.manifest().subprojects().entrySet()) {
             String name = entry.getKey();
-            File compDir = new File(root, name);
-            Path compPom = compDir.toPath().resolve("pom.xml");
+            File subDir = new File(root, name);
+            Path compPom = subDir.toPath().resolve("pom.xml");
             if (!Files.exists(compPom)) continue;
 
             try {
@@ -301,7 +301,7 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
 
     /**
      * Check for branch-qualifier version strings on non-feature branches.
-     * Scans all component POM files for version strings containing
+     * Scans all subproject POM files for version strings containing
      * known feature branch qualifiers.
      *
      * @param graph workspace graph
@@ -321,15 +321,15 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
             return false;
         }
 
-        // Collect known feature branch qualifiers from component branches
+        // Collect known feature branch qualifiers from subproject branches
         Set<String> qualifiers = new TreeSet<>();
         for (Map.Entry<String, Subproject> entry
-                : graph.manifest().components().entrySet()) {
-            File compDir = new File(root, entry.getKey());
-            if (!new File(compDir, ".git").exists()) continue;
+                : graph.manifest().subprojects().entrySet()) {
+            File subDir = new File(root, entry.getKey());
+            if (!new File(subDir, ".git").exists()) continue;
 
             try {
-                String output = ReleaseSupport.execCapture(compDir,
+                String output = ReleaseSupport.execCapture(subDir,
                         "git", "branch", "--list", "feature/*");
                 for (String line : output.split("\n")) {
                     String branch = line.trim().replaceFirst("^\\* ", "");
@@ -355,14 +355,14 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
         List<String> contaminated = new ArrayList<>();
 
         for (Map.Entry<String, Subproject> entry
-                : graph.manifest().components().entrySet()) {
+                : graph.manifest().subprojects().entrySet()) {
             String name = entry.getKey();
-            File compDir = new File(root, name);
-            if (!new File(compDir, "pom.xml").exists()) continue;
+            File subDir = new File(root, name);
+            if (!new File(subDir, "pom.xml").exists()) continue;
 
             for (String qualifier : qualifiers) {
                 List<String> hits = FeatureFinishSupport
-                        .findQualifierContamination(compDir, qualifier);
+                        .findQualifierContamination(subDir, qualifier);
                 for (String hit : hits) {
                     contaminated.add(name + "/" + hit
                             + " (qualifier: " + qualifier + ")");

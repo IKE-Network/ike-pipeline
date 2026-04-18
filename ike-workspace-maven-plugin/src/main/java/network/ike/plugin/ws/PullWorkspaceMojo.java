@@ -16,9 +16,9 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Pull latest changes across workspace components.
+ * Pull latest changes across workspace subprojects.
  *
- * <p>Runs {@code git pull --rebase} in each cloned component directory
+ * <p>Runs {@code git pull --rebase} in each cloned subproject directory
  * in topological order (dependencies first). Uninitialized components
  * are skipped with a warning.
  *
@@ -37,7 +37,7 @@ public class PullWorkspaceMojo extends AbstractWorkspaceMojo {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
-        Set<String> targets = graph.manifest().components().keySet();
+        Set<String> targets = graph.manifest().subprojects().keySet();
 
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
 

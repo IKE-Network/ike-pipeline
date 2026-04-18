@@ -4,7 +4,7 @@ import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.api.plugin.annotations.Mojo;
 
 /**
- * Apply inter-component version alignment.
+ * Apply inter-subproject version alignment.
  *
  * <p>This is the {@code -publish} counterpart of {@code ws:align}
  * (which defaults to a draft preview).

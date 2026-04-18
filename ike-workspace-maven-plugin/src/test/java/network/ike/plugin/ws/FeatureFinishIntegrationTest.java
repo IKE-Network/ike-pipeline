@@ -32,26 +32,26 @@ class FeatureFinishIntegrationTest {
         helper.buildWorkspace();
 
         for (String name : new String[]{"lib-a", "lib-b", "app-c"}) {
-            Path compDir = tempDir.resolve(name);
+            Path subDir = tempDir.resolve(name);
 
-            exec(compDir, "git", "checkout", "-b", BRANCH_NAME);
+            exec(subDir, "git", "checkout", "-b", BRANCH_NAME);
 
-            Path pom = compDir.resolve("pom.xml");
+            Path pom = subDir.resolve("pom.xml");
             String pomContent = Files.readString(pom, StandardCharsets.UTF_8);
             String qualified = pomContent.replaceFirst(
                     "<version>(\\d+\\.\\d+\\.\\d+)-SNAPSHOT</version>",
                     "<version>$1-test-finish-SNAPSHOT</version>");
             Files.writeString(pom, qualified, StandardCharsets.UTF_8);
 
-            exec(compDir, "git", "add", "pom.xml");
-            exec(compDir, "git", "commit", "-m",
+            exec(subDir, "git", "add", "pom.xml");
+            exec(subDir, "git", "commit", "-m",
                     "feature: set branch-qualified version");
 
             // Add actual feature work (beyond just version change)
-            Files.writeString(compDir.resolve("feature-work.txt"),
+            Files.writeString(subDir.resolve("feature-work.txt"),
                     "feature content for " + name, StandardCharsets.UTF_8);
-            exec(compDir, "git", "add", "feature-work.txt");
-            exec(compDir, "git", "commit", "-m", "feature: add feature work");
+            exec(subDir, "git", "add", "feature-work.txt");
+            exec(subDir, "git", "commit", "-m", "feature: add feature work");
         }
 
         Path wsYaml = helper.workspaceYaml();

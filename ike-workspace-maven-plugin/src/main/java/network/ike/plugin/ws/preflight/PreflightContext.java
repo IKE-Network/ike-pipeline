@@ -18,7 +18,7 @@ import java.util.List;
  * @param workspaceRoot the workspace root directory
  * @param graph         the loaded workspace graph (may be {@code null}
  *                      for conditions that operate on raw files)
- * @param components    component names (in topological order) to evaluate
+ * @param subprojects   subproject names (in topological order) to evaluate
  * @param branchName    target branch for branch-oriented checks
  *                      (e.g. {@code "feature/my-feature"}), or {@code null}
  * @param tagName       target tag name for tag-oriented checks
@@ -29,15 +29,15 @@ import java.util.List;
 public record PreflightContext(
         File workspaceRoot,
         WorkspaceGraph graph,
-        List<String> components,
+        List<String> subprojects,
         String branchName,
         String tagName,
         String parentVersion) {
 
-    /** Minimal context for conditions that only need root + component list. */
+    /** Minimal context for conditions that only need root + subproject list. */
     public static PreflightContext of(File root,
                                        WorkspaceGraph graph,
-                                       List<String> components) {
-        return new PreflightContext(root, graph, components, null, null, null);
+                                       List<String> subprojects) {
+        return new PreflightContext(root, graph, subprojects, null, null, null);
     }
 }

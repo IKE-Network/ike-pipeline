@@ -12,7 +12,7 @@ import java.io.File;
  *
  * <p>This is the {@code -publish} counterpart of {@code ws:checkpoint}
  * (which defaults to a draft preview). Before checkpointing, this
- * goal automatically aligns inter-component dependency versions.
+ * goal automatically aligns inter-subproject dependency versions.
  *
  * <p>Usage: {@code mvn ws:checkpoint-publish}
  *

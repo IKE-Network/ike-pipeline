@@ -55,11 +55,11 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
         Map<String, String> groupIdUpdates = new LinkedHashMap<>();
         int skipped = 0;
 
-        for (Map.Entry<String, Subproject> entry : graph.manifest().components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : graph.manifest().subprojects().entrySet()) {
             String name = entry.getKey();
             Subproject subproject = entry.getValue();
-            File componentDir = new File(root, name);
-            File pomFile = new File(componentDir, "pom.xml");
+            File subprojectDir = new File(root, name);
+            File pomFile = new File(subprojectDir, "pom.xml");
 
             if (!pomFile.exists()) {
                 getLog().debug("  " + name + ": not cloned — skipping");
@@ -190,7 +190,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
 
     /**
      * Update the {@code version} field for each subproject in the YAML.
-     * Uses {@link ManifestWriter#updateComponentField} to preserve
+     * Uses {@link ManifestWriter#updateSubprojectField} to preserve
      * comments and formatting.
      */
     private void updateVersionFields(Path manifestPath,
@@ -198,7 +198,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
             throws IOException {
         String content = Files.readString(manifestPath, StandardCharsets.UTF_8);
         for (Map.Entry<String, String> entry : updates.entrySet()) {
-            content = ManifestWriter.updateComponentField(
+            content = ManifestWriter.updateSubprojectField(
                     content, entry.getKey(), "version", entry.getValue());
         }
         Files.writeString(manifestPath, content, StandardCharsets.UTF_8);
@@ -206,7 +206,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
 
     /**
      * Update the {@code groupId} field for each subproject in the YAML.
-     * Uses {@link ManifestWriter#updateComponentField} to preserve
+     * Uses {@link ManifestWriter#updateSubprojectField} to preserve
      * comments and formatting.
      */
     private void updateGroupIdFields(Path manifestPath,
@@ -214,7 +214,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
             throws IOException {
         String content = Files.readString(manifestPath, StandardCharsets.UTF_8);
         for (Map.Entry<String, String> entry : updates.entrySet()) {
-            content = ManifestWriter.updateComponentField(
+            content = ManifestWriter.updateSubprojectField(
                     content, entry.getKey(), "groupId", entry.getValue());
         }
         Files.writeString(manifestPath, content, StandardCharsets.UTF_8);

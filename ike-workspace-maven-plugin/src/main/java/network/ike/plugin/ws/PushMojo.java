@@ -16,7 +16,7 @@ import java.util.Set;
  * Push with a VCS bridge catch-up preamble.
  *
  * <p>When run from a workspace root (where {@code workspace.yaml} exists),
- * iterates all component repositories in topological order and pushes each.
+ * iterates all subproject repositories in topological order and pushes each.
  * When run from a single repository, operates on the current directory only.
  *
  * <p>Usage:
@@ -49,7 +49,7 @@ public class PushMojo extends AbstractWorkspaceMojo {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
-        Set<String> targets = graph.manifest().components().keySet();
+        Set<String> targets = graph.manifest().subprojects().keySet();
 
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
 

@@ -49,7 +49,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
     /**
      * Run transitive dependency convergence analysis across all
-     * workspace components. Slow — requires {@code mvn dependency:tree}
+     * workspace subprojects. Slow — requires {@code mvn dependency:tree}
      * per subproject.
      */
     @Parameter(property = "checkConvergence", defaultValue = "false")
@@ -114,10 +114,10 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
         List<String> errors = graph.verify();
 
-        int componentCount = graph.manifest().components().size();
+        int subprojectCount = graph.manifest().subprojects().size();
         int typeCount = network.ike.workspace.SubprojectType.values().length;
 
-        getLog().info("  Components:      " + componentCount);
+        getLog().info("  Components:      " + subprojectCount);
         getLog().info("  Subproject types: " + typeCount);
         getLog().info("");
 
@@ -145,7 +145,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         for (Map.Entry<String, Subproject> entry :
-                graph.manifest().components().entrySet()) {
+                graph.manifest().subprojects().entrySet()) {
             String name = entry.getKey();
             Subproject subproject = entry.getValue();
             java.nio.file.Path pomFile = root.toPath().resolve(name).resolve("pom.xml");
@@ -158,11 +158,11 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
                 if (parent == null) continue;
 
                 // Check if parent matches a workspace subproject
-                String parentComponentName = subproject.parent();
-                if (parentComponentName == null) {
-                    // Try to detect: does the parent artifactId match a workspace component?
+                String parentSubprojectName = subproject.parent();
+                if (parentSubprojectName == null) {
+                    // Try to detect: does the parent artifactId match a workspace subproject?
                     for (Map.Entry<String, Subproject> candidate :
-                            graph.manifest().components().entrySet()) {
+                            graph.manifest().subprojects().entrySet()) {
                         if (candidate.getValue().groupId() != null
                                 && candidate.getValue().groupId().equals(parent.groupId())) {
                             getLog().info("  INFO: " + name + " has parent "
@@ -178,24 +178,24 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
                 // Parent is declared — check version alignment
                 checked++;
-                Subproject parentComponent =
-                        graph.manifest().components().get(parentComponentName);
-                if (parentComponent == null) {
+                Subproject parentSubproject =
+                        graph.manifest().subprojects().get(parentSubprojectName);
+                if (parentSubproject == null) {
                     getLog().warn("  WARN: " + name + " declares parent '"
-                            + parentComponentName + "' but it is not a workspace component");
+                            + parentSubprojectName + "' but it is not a workspace subproject");
                     misaligned++;
                     continue;
                 }
 
-                String expectedVersion = parentComponent.version();
+                String expectedVersion = parentSubproject.version();
                 if (expectedVersion != null
                         && !expectedVersion.equals(parent.version())) {
                     getLog().warn("  WARN: " + name + " parent version "
-                            + parent.version() + " != " + parentComponentName
+                            + parent.version() + " != " + parentSubprojectName
                             + " workspace version " + expectedVersion);
                     misaligned++;
                 } else {
-                    getLog().info(Ansi.green("  " + name + ": parent " + parentComponentName
+                    getLog().info(Ansi.green("  " + name + ": parent " + parentSubprojectName
                             + ":" + parent.version() + "  ✓"));
                 }
             } catch (java.io.IOException e) {
@@ -226,15 +226,15 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
         WorkspaceGraph graph = loadGraph();
         File root = workspaceRoot();
 
-        // Build published artifact sets for all components
+        // Build published artifact sets for all subprojects
         Map<String, Set<PublishedArtifactSet.Artifact>> workspaceArtifacts =
                 new LinkedHashMap<>();
-        for (String name : graph.manifest().components().keySet()) {
-            java.nio.file.Path compDir = root.toPath().resolve(name);
-            if (java.nio.file.Files.exists(compDir.resolve("pom.xml"))) {
+        for (String name : graph.manifest().subprojects().keySet()) {
+            java.nio.file.Path subDir = root.toPath().resolve(name);
+            if (java.nio.file.Files.exists(subDir.resolve("pom.xml"))) {
                 try {
                     workspaceArtifacts.put(name,
-                            PublishedArtifactSet.scan(compDir));
+                            PublishedArtifactSet.scan(subDir));
                 } catch (java.io.IOException e) {
                     getLog().debug("Could not scan " + name + ": " + e.getMessage());
                 }
@@ -291,13 +291,13 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
                 new LinkedHashMap<>();
 
         for (String name : order) {
-            File compDir = new File(root, name);
-            File pomFile = new File(compDir, "pom.xml");
+            File subDir = new File(root, name);
+            File pomFile = new File(subDir, "pom.xml");
             if (!pomFile.exists()) continue;
 
             getLog().info("    Resolving " + name + "...");
             try {
-                String treeOutput = ReleaseSupport.execCapture(compDir,
+                String treeOutput = ReleaseSupport.execCapture(subDir,
                         mvnExecutable.getAbsolutePath(),
                         "dependency:tree", "-DoutputType=text",
                         "-B", "-q");
@@ -402,7 +402,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
         }
 
         // Each subproject
-        for (var entry : graph.manifest().components().entrySet()) {
+        for (var entry : graph.manifest().subprojects().entrySet()) {
             String name = entry.getKey();
             File dir = new File(root, name);
 

@@ -13,10 +13,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Tests for POM-based dependency derivation in {@link WsAddMojo}.
  *
- * <p>Verifies that {@code ws:add} correctly derives inter-component
+ * <p>Verifies that {@code ws:add} correctly derives inter-subproject
  * dependencies from POM analysis (parent and dependency groupIds)
  * and that bidirectional resolution works regardless of the order
- * in which components are added.
+ * in which subprojects are added.
  */
 class WsAddDependencyDerivationTest {
 
@@ -32,16 +32,7 @@ class WsAddDependencyDerivationTest {
                 defaults:
                   branch: main
 
-                component-types:
-                  software:
-                    description: Java libraries
-                    build-command: "mvn clean install"
-                    checkpoint-mechanism: git-tag
-
-                components:
-
-                groups:
-                  all: []
+                subprojects:
                 """);
 
         writePom(tempDir.resolve("pom.xml"), """
@@ -61,11 +52,11 @@ class WsAddDependencyDerivationTest {
     @Test
     void forward_derivation_finds_dependency_by_artifact() throws Exception {
         // Register lib-a (publishes com.example.lib:lib-a)
-        createComponentDir("lib-a", "com.example.lib", null, null);
+        createSubprojectDir("lib-a", "com.example.lib", null, null);
         addToManifest("lib-a", "com.example.lib");
 
         // Create lib-b which depends on com.example.lib:lib-a
-        createComponentDir("lib-b", "com.example.app", "com.example.lib", "lib-a");
+        createSubprojectDir("lib-b", "com.example.app", "com.example.lib", "lib-a");
 
         String derivedDeps = invokeDeriveForward(
                 tempDir, tempDir.resolve("workspace.yaml"),
@@ -77,11 +68,11 @@ class WsAddDependencyDerivationTest {
     @Test
     void forward_derivation_returns_null_when_no_match() throws Exception {
         // Register lib-a (publishes com.example.lib:lib-a)
-        createComponentDir("lib-a", "com.example.lib", null, null);
+        createSubprojectDir("lib-a", "com.example.lib", null, null);
         addToManifest("lib-a", "com.example.lib");
 
         // Create lib-b with a dependency on com.unrelated:something — no match
-        createComponentDir("lib-b", "com.example.app", "com.unrelated", "something");
+        createSubprojectDir("lib-b", "com.example.app", "com.unrelated", "something");
 
         String derivedDeps = invokeDeriveForward(
                 tempDir, tempDir.resolve("workspace.yaml"),
@@ -93,7 +84,7 @@ class WsAddDependencyDerivationTest {
     @Test
     void forward_derivation_matches_parent_artifact() throws Exception {
         // Register parent-pom (publishes com.example.parent:parent-pom)
-        createComponentDir("parent-pom", "com.example.parent", null, null);
+        createSubprojectDir("parent-pom", "com.example.parent", null, null);
         addToManifest("parent-pom", "com.example.parent");
 
         // Create child whose <parent> references com.example.parent:parent-pom
@@ -121,13 +112,13 @@ class WsAddDependencyDerivationTest {
 
     @Test
     void forward_derivation_skips_self_with_shared_groupId() throws Exception {
-        // Two components share groupId com.example.shared
-        createComponentDir("comp-a", "com.example.shared", null, null);
+        // Two subprojects share groupId com.example.shared
+        createSubprojectDir("comp-a", "com.example.shared", null, null);
         addToManifest("comp-a", "com.example.shared");
 
         // comp-b has same groupId but depends on itself (via its own artifacts)
         // — should NOT create a self-dependency
-        createComponentDir("comp-b", "com.example.shared", "com.example.shared", "comp-b");
+        createSubprojectDir("comp-b", "com.example.shared", "com.example.shared", "comp-b");
         addToManifest("comp-b", "com.example.shared");
 
         String derivedDeps = invokeDeriveForward(
@@ -139,32 +130,32 @@ class WsAddDependencyDerivationTest {
     }
 
     @Test
-    void backward_resolution_updates_existing_component() throws Exception {
+    void backward_resolution_updates_existing_subproject() throws Exception {
         // Add lib-b first (depends on com.example.lib, but lib-a isn't registered yet)
-        createComponentDir("lib-b", "com.example.app", "com.example.lib", "lib-a");
+        createSubprojectDir("lib-b", "com.example.app", "com.example.lib", "lib-a");
         addToManifest("lib-b", "com.example.app");
 
         // Now "add" lib-a — backfill should detect that lib-b depends on it
-        createComponentDir("lib-a", "com.example.lib", null, null);
+        createSubprojectDir("lib-a", "com.example.lib", null, null);
 
         String yaml = Files.readString(tempDir.resolve("workspace.yaml"),
                 StandardCharsets.UTF_8);
 
         // Verify lib-b currently has no depends-on
         assertThat(yaml).contains("lib-b:");
-        assertThat(yaml).doesNotContain("component: lib-a");
+        assertThat(yaml).doesNotContain("subproject: lib-a");
 
         // Simulate backfill: add dependency edge to lib-b
         String updated = WsAddMojo.addDependencyEdge(yaml, "lib-b", "lib-a", null);
 
-        assertThat(updated).contains("component: lib-a");
+        assertThat(updated).contains("subproject: lib-a");
         assertThat(updated).contains("relationship: build");
     }
 
     @Test
     void addDependencyEdge_converts_empty_list() {
         String yaml = """
-                components:
+                subprojects:
                   my-lib:
                     type: software
                     depends-on: []
@@ -173,7 +164,7 @@ class WsAddDependencyDerivationTest {
         String result = WsAddMojo.addDependencyEdge(yaml, "my-lib", "upstream", null);
 
         assertThat(result)
-                .contains("component: upstream")
+                .contains("subproject: upstream")
                 .contains("relationship: build")
                 .doesNotContain("[]");
     }
@@ -181,54 +172,40 @@ class WsAddDependencyDerivationTest {
     @Test
     void addDependencyEdge_appends_to_existing_list() {
         String yaml = """
-                components:
+                subprojects:
                   my-lib:
                     type: software
                     depends-on:
-                      - component: existing-dep
+                      - subproject: existing-dep
                         relationship: build
                 """;
 
         String result = WsAddMojo.addDependencyEdge(yaml, "my-lib", "new-dep", null);
 
         assertThat(result)
-                .contains("component: existing-dep")
-                .contains("component: new-dep");
+                .contains("subproject: existing-dep")
+                .contains("subproject: new-dep");
     }
 
     @Test
-    void deriveComponentName_strips_git_suffix() {
-        assertThat(WsAddMojo.deriveComponentName(
+    void deriveSubprojectName_strips_git_suffix() {
+        assertThat(WsAddMojo.deriveSubprojectName(
                 "https://github.com/ikmdev/tinkar-core.git"))
                 .isEqualTo("tinkar-core");
     }
 
     @Test
-    void deriveComponentName_handles_no_suffix() {
-        assertThat(WsAddMojo.deriveComponentName(
+    void deriveSubprojectName_handles_no_suffix() {
+        assertThat(WsAddMojo.deriveSubprojectName(
                 "https://github.com/ikmdev/tinkar-core"))
                 .isEqualTo("tinkar-core");
     }
 
     @Test
-    void deriveComponentName_handles_trailing_slash() {
-        assertThat(WsAddMojo.deriveComponentName(
+    void deriveSubprojectName_handles_trailing_slash() {
+        assertThat(WsAddMojo.deriveSubprojectName(
                 "https://github.com/ikmdev/tinkar-core/"))
                 .isEqualTo("tinkar-core");
-    }
-
-    @Test
-    void addToAllGroup_adds_to_empty_group() {
-        String yaml = "  all: []";
-        assertThat(WsAddMojo.addToAllGroup(yaml, "new-comp"))
-                .contains("all: [new-comp]");
-    }
-
-    @Test
-    void addToAllGroup_appends_to_existing() {
-        String yaml = "  all: [lib-a, lib-b]";
-        assertThat(WsAddMojo.addToAllGroup(yaml, "app-c"))
-                .contains("all: [lib-a, lib-b, app-c]");
     }
 
     // ── Helpers ──────────────────────────────────────────────────
@@ -242,7 +219,7 @@ class WsAddDependencyDerivationTest {
         Files.writeString(path, content, StandardCharsets.UTF_8);
     }
 
-    private void createComponentDir(String name, String groupId,
+    private void createSubprojectDir(String name, String groupId,
                                      String depGroupId, String depArtifact)
             throws Exception {
         Path dir = tempDir.resolve(name);
@@ -280,34 +257,29 @@ class WsAddDependencyDerivationTest {
                 + "    groupId: " + groupId + "\n"
                 + "    depends-on: []\n";
 
-        int groupsIdx = yaml.indexOf("\ngroups:");
-        if (groupsIdx >= 0) {
-            yaml = yaml.substring(0, groupsIdx) + entry + yaml.substring(groupsIdx);
-        } else {
-            yaml = yaml + entry;
-        }
+        yaml = yaml + entry;
         Files.writeString(tempDir.resolve("workspace.yaml"), yaml,
                 StandardCharsets.UTF_8);
     }
 
     /**
      * Invoke the private deriveDependencies method reflectively.
-     * Converts List<DerivedDep> result to comma-separated string
+     * Converts List&lt;DerivedDep&gt; result to comma-separated string
      * for assertion simplicity.
      */
     @SuppressWarnings("unchecked")
     private String invokeDeriveForward(Path wsDir, Path manifestPath,
-                                        Path componentDir, String componentName)
+                                        Path subprojectDir, String subprojectName)
             throws Exception {
         WsAddMojo mojo = TestLog.createMojo(WsAddMojo.class);
         var method = WsAddMojo.class.getDeclaredMethod(
                 "deriveDependencies", Path.class, Path.class, Path.class, String.class);
         method.setAccessible(true);
         var result = (java.util.List<WsAddMojo.DerivedDep>) method.invoke(
-                mojo, wsDir, manifestPath, componentDir, componentName);
+                mojo, wsDir, manifestPath, subprojectDir, subprojectName);
         if (result == null || result.isEmpty()) return null;
         return result.stream()
-                .map(WsAddMojo.DerivedDep::component)
+                .map(WsAddMojo.DerivedDep::subproject)
                 .collect(java.util.stream.Collectors.joining(","));
     }
 }

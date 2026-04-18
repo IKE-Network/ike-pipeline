@@ -86,7 +86,7 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
         Map<String, String> updates = new LinkedHashMap<>();
         int unchanged = 0;
 
-        for (Map.Entry<String, Subproject> entry : graph.manifest().components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : graph.manifest().subprojects().entrySet()) {
             String name = entry.getKey();
             Subproject subproject = entry.getValue();
             File dir = new File(root, name);
@@ -141,7 +141,7 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
         int switched = 0;
         int unchanged = 0;
 
-        for (Map.Entry<String, Subproject> entry : graph.manifest().components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : graph.manifest().subprojects().entrySet()) {
             String name = entry.getKey();
             Subproject subproject = entry.getValue();
             File dir = new File(root, name);

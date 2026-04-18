@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * Print the workspace dependency graph.
  *
- * <p>Displays all components in topological order with their
+ * <p>Displays all subprojects in topological order with their
  * dependencies. Optionally outputs DOT format for Graphviz rendering.
  *
  * <pre>{@code
@@ -58,7 +58,7 @@ public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
 
         for (int i = 0; i < sorted.size(); i++) {
             String name = sorted.get(i);
-            Subproject sub = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().subprojects().get(name);
 
             getLog().info(String.format("  %2d. %-28s [%s]",
                     i + 1, name, sub.type().yamlName()));
@@ -69,10 +69,10 @@ public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
                     boolean last = (j == sub.dependsOn().size() - 1);
                     String connector = last ? "└─" : "├─";
                     getLog().info(String.format("        %s %s (%s)",
-                            connector, dep.component(), dep.relationship()));
+                            connector, dep.subproject(), dep.relationship()));
                     // Show transitive dependencies
-                    Subproject depComp = graph.manifest().components()
-                            .get(dep.component());
+                    Subproject depComp = graph.manifest().subprojects()
+                            .get(dep.subproject());
                     if (depComp != null && !depComp.dependsOn().isEmpty()) {
                         String prefix = last ? "           " : "        │  ";
                         printTransitiveDeps(graph, depComp, prefix, name);
@@ -99,15 +99,15 @@ public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
         for (int i = 0; i < sub.dependsOn().size(); i++) {
             Dependency dep = sub.dependsOn().get(i);
             // Prevent infinite recursion if there's a cycle
-            if (dep.component().equals(root)) continue;
+            if (dep.subproject().equals(root)) continue;
 
             boolean last = (i == sub.dependsOn().size() - 1);
             String connector = last ? "└─" : "├─";
             getLog().info(String.format("%s%s %s (%s)",
-                    prefix, connector, dep.component(), dep.relationship()));
+                    prefix, connector, dep.subproject(), dep.relationship()));
 
-            Subproject depComp = graph.manifest().components()
-                    .get(dep.component());
+            Subproject depComp = graph.manifest().subprojects()
+                    .get(dep.subproject());
             if (depComp != null && !depComp.dependsOn().isEmpty()) {
                 String childPrefix = prefix + (last ? "   " : "│  ");
                 printTransitiveDeps(graph, depComp, childPrefix, root);
@@ -118,14 +118,14 @@ public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
     private void printDot(WorkspaceGraph graph) {
         // Build data structures for the pure function
         Map<String, String> componentTypes = new LinkedHashMap<>();
-        for (Subproject sub : graph.manifest().components().values()) {
+        for (Subproject sub : graph.manifest().subprojects().values()) {
             componentTypes.put(sub.name(), sub.type().yamlName());
         }
 
         Map<String, List<String[]>> edges = new LinkedHashMap<>();
-        for (Subproject sub : graph.manifest().components().values()) {
+        for (Subproject sub : graph.manifest().subprojects().values()) {
             List<String[]> compEdges = sub.dependsOn().stream()
-                    .map(dep -> new String[]{dep.component(), dep.relationship()})
+                    .map(dep -> new String[]{dep.subproject(), dep.relationship()})
                     .toList();
             if (!compEdges.isEmpty()) {
                 edges.put(sub.name(), compEdges);
@@ -147,7 +147,7 @@ public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
         sb.append("```mermaid\ngraph TD\n");
 
         for (String name : sorted) {
-            Subproject sub = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().subprojects().get(name);
             String id = mermaidId(name);
             sb.append("    ").append(id)
               .append("[\"").append(name).append("\"]\n");
@@ -156,10 +156,10 @@ public class GraphWorkspaceMojo extends AbstractWorkspaceMojo {
         sb.append('\n');
 
         for (String name : sorted) {
-            Subproject sub = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().subprojects().get(name);
             String sourceId = mermaidId(name);
             for (Dependency dep : sub.dependsOn()) {
-                String targetId = mermaidId(dep.component());
+                String targetId = mermaidId(dep.subproject());
                 if ("content".equals(dep.relationship())) {
                     sb.append("    ").append(sourceId)
                       .append(" -.-> ").append(targetId).append('\n');

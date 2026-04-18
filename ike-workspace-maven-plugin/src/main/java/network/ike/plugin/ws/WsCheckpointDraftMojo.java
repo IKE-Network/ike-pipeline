@@ -39,7 +39,7 @@ import java.util.LinkedHashSet;
  * and handles CI.
  *
  * <p>Each subproject is tagged in topological order (dependencies before
- * dependents). After all components are tagged, a YAML file recording
+ * dependents). After all subprojects are tagged, a YAML file recording
  * the SHAs, versions, and branches is committed and tagged in the
  * workspace aggregator repo.
  *
@@ -137,14 +137,14 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         // ── Tag each subproject in dependency order ────────────────────
-        List<ComponentSnapshot> snapshots = new ArrayList<>();
+        List<SubprojectSnapshot> snapshots = new ArrayList<>();
         List<String> absentComponents = new ArrayList<>();
 
         List<String> ordered = graph.topologicalSort(
-                new LinkedHashSet<>(graph.manifest().components().keySet()));
+                new LinkedHashSet<>(graph.manifest().subprojects().keySet()));
 
         for (String subName : ordered) {
-            Subproject subproject = graph.manifest().components().get(subName);
+            Subproject subproject = graph.manifest().subprojects().get(subName);
             File dir = new File(root, subName);
             File gitDir = new File(dir, ".git");
 
@@ -167,14 +167,14 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
                         + " [" + shortSha + "] " + branch
                         + " (" + version + ")");
                 CheckpointSupport.preview(dir, wsTagName, getLog());
-                snapshots.add(new ComponentSnapshot(
+                snapshots.add(new SubprojectSnapshot(
                         subName, sha, shortSha, branch,
                         version, false, subproject.type().yamlName(), composite));
             } else {
                 CheckpointSupport.checkpoint(dir, wsTagName, getLog());
                 getLog().info(Ansi.green("  ✓ ") + subName
                         + " [" + shortSha + "] → " + wsTagName);
-                snapshots.add(new ComponentSnapshot(
+                snapshots.add(new SubprojectSnapshot(
                         subName, sha, shortSha, branch,
                         version, false, subproject.type().yamlName(), composite));
             }
@@ -207,7 +207,7 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
         // ── Write subproject SHAs into workspace.yaml ────────────────
         try {
             java.util.Map<String, String> shaUpdates = new java.util.LinkedHashMap<>();
-            for (ComponentSnapshot snap : snapshots) {
+            for (SubprojectSnapshot snap : snapshots) {
                 shaUpdates.put(snap.name(), snap.sha());
             }
             ManifestWriter.updateShas(resolveManifest(), shaUpdates);
@@ -257,11 +257,11 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
         }
 
         // VCS bridge: write state file after checkpoint
-        for (var entry : graph.manifest().components().entrySet()) {
-            File compDir = new File(root, entry.getKey());
-            if (new File(compDir, ".git").exists()
-                    && VcsState.isIkeManaged(compDir.toPath())) {
-                VcsOperations.writeVcsState(compDir, VcsState.Action.CHECKPOINT);
+        for (var entry : graph.manifest().subprojects().entrySet()) {
+            File subDir = new File(root, entry.getKey());
+            if (new File(subDir, ".git").exists()
+                    && VcsState.isIkeManaged(subDir.toPath())) {
+                VcsOperations.writeVcsState(subDir, VcsState.Action.CHECKPOINT);
             }
         }
         if (VcsState.isIkeManaged(root.toPath())) {
@@ -296,7 +296,7 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
     // ── Report ────────────────────────────────────────────────────────
 
     private String buildCheckpointMarkdownReport(
-            List<ComponentSnapshot> snapshots, List<String> absent) {
+            List<SubprojectSnapshot> snapshots, List<String> absent) {
         var sb = new StringBuilder();
         sb.append(snapshots.size()).append(" subproject(s) checkpointed");
         if (!absent.isEmpty()) {
@@ -334,7 +334,7 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
      */
     public static String buildCheckpointYaml(String name, String timestamp,
                                               String author, String schemaVersion,
-                                              List<ComponentSnapshot> snapshots,
+                                              List<SubprojectSnapshot> snapshots,
                                               List<String> absentNames) {
         List<String> yaml = new ArrayList<>();
         yaml.add("# IKE Workspace Checkpoint");
@@ -346,14 +346,14 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
         yaml.add("  author: \"" + author + "\"");
         yaml.add("  schema-version: \"" + schemaVersion + "\"");
         yaml.add("");
-        yaml.add("  components:");
+        yaml.add("  subprojects:");
 
         for (String absent : absentNames) {
             yaml.add("    " + absent + ":");
             yaml.add("      status: absent");
         }
 
-        for (ComponentSnapshot snap : snapshots) {
+        for (SubprojectSnapshot snap : snapshots) {
             yaml.add("    " + snap.name() + ":");
             if (snap.version() != null) {
                 yaml.add("      version: \"" + snap.version() + "\"");
@@ -409,7 +409,7 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
         String milestoneName = milestone;
 
         if (milestoneName == null || milestoneName.isBlank()) {
-            var components = graph.manifest().components();
+            var components = graph.manifest().subprojects();
             if (!components.isEmpty()) {
                 var first = components.entrySet().iterator().next();
                 String subName = first.getKey();

@@ -97,7 +97,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
         File root = workspaceRoot();
         Path manifestPath = resolveManifest();
 
-        var targets = graph.manifest().components().keySet();
+        var targets = graph.manifest().subprojects().keySet();
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
         List<String> reversed = new ArrayList<>(sorted);
         Collections.reverse(reversed);
@@ -116,7 +116,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
         List<String> eligible = new ArrayList<>();
         List<String> uncommitted = new ArrayList<>();
         for (String name : reversed) {
-            Subproject subproject = graph.manifest().components().get(name);
+            Subproject subproject = graph.manifest().subprojects().get(name);
             String reason = FeatureFinishSupport.validateComponent(
                     root, name, branchName, subproject, this);
             if (reason == null) {
@@ -166,7 +166,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
 
         int merged = 0;
         for (String name : eligible) {
-            Subproject subproject = graph.manifest().components().get(name);
+            Subproject subproject = graph.manifest().subprojects().get(name);
             File dir = new File(root, name);
 
             if (draft) {

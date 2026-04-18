@@ -28,7 +28,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Abandon a feature branch across all workspace components.
+ * Abandon a feature branch across all workspace subprojects.
  *
  * <p>The draft variant previews what would be abandoned — which components,
  * how many unmerged commits, what would be lost. The publish variant
@@ -89,7 +89,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
             if (targetBranch == null) targetBranch = "main";
         }
 
-        Set<String> targets = graph.manifest().components().keySet();
+        Set<String> targets = graph.manifest().subprojects().keySet();
 
         List<String> sorted = graph.topologicalSort(new LinkedHashSet<>(targets));
         List<String> reversed = new ArrayList<>(sorted);
@@ -221,7 +221,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
 
         // Execute
         for (String name : eligible) {
-            Subproject subproject = graph.manifest().components().get(name);
+            Subproject subproject = graph.manifest().subprojects().get(name);
             File dir = new File(root, name);
 
             // Strip branch-qualified versions before switching
@@ -281,7 +281,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
     // ── Auto-detect ─────────────────────────────────────────────────
 
     /**
-     * Scan workspace components for feature branches and return
+     * Scan workspace subprojects for feature branches and return
      * the feature name. If multiple features are found, prompts
      * the user to choose.
      */
