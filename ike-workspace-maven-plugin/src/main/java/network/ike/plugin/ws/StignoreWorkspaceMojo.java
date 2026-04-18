@@ -1,6 +1,6 @@
 package network.ike.plugin.ws;
 
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.WorkspaceGraph;
 import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.api.plugin.annotations.Mojo;
@@ -23,9 +23,9 @@ import java.util.List;
  * <ul>
  *   <li><b>Workspace-level {@code .stignore}</b> — ignores
  *       {@code target/}, {@code .git/}, IDE files, and OS metadata
- *       within each component directory.</li>
- *   <li><b>Per-component {@code .stignore}</b> — same patterns, placed
- *       in each cloned component for standalone Syncthing folders.</li>
+ *       within each subproject directory.</li>
+ *   <li><b>Per-subproject {@code .stignore}</b> — same patterns, placed
+ *       in each cloned subproject for standalone Syncthing folders.</li>
  * </ul>
  *
  * <p>The generated file is deterministic (sorted, no timestamps) so
@@ -94,25 +94,25 @@ public class StignoreWorkspaceMojo extends AbstractWorkspaceMojo {
         writeStignore(workspaceStignore, lines);
         getLog().info(Ansi.green("  ✓ ") + workspaceStignore);
 
-        // Write per-component .stignore for components that are cloned
+        // Write per-subproject .stignore for components that are cloned
         int perComponent = 0;
-        for (Component component : graph.manifest().components().values()) {
-            File dir = new File(root, component.name());
+        for (Subproject subproject : graph.manifest().components().values()) {
+            File dir = new File(root, subproject.name());
             if (dir.exists()) {
                 Path componentStignore = dir.toPath().resolve(".stignore");
                 writeStignore(componentStignore, COMMON_IGNORES);
                 perComponent++;
-                getLog().info(Ansi.green("  ✓ ") + component.name() + "/.stignore");
+                getLog().info(Ansi.green("  ✓ ") + subproject.name() + "/.stignore");
             }
         }
 
         getLog().info("");
         getLog().info("  Generated: 1 workspace + " + perComponent
-                + " component .stignore files");
+                + " subproject .stignore files");
         getLog().info("");
 
         writeReport(WsGoal.STIGNORE, "Generated **1** workspace + **"
-                + perComponent + "** component .stignore files.\n");
+                + perComponent + "** subproject .stignore files.\n");
     }
 
     private void writeStignore(Path path, List<String> lines)

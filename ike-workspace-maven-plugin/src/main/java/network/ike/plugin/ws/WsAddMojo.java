@@ -1,7 +1,7 @@
 package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.Dependency;
 import network.ike.workspace.Manifest;
 import network.ike.workspace.ManifestException;
@@ -31,23 +31,23 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Add a component repository to an existing workspace.
+ * Add a subproject repository to an existing workspace.
  *
  * <p>Given a git URL, this goal:
  * <ol>
  *   <li>Clones the repository into the workspace</li>
- *   <li>Derives the component name from the URL (or accepts
- *       {@code -Dcomponent=<name>})</li>
- *   <li>Scans the POM to derive groupId and inter-component
+ *   <li>Derives the subproject name from the URL (or accepts
+ *       {@code -Dsubproject=<name>})</li>
+ *   <li>Scans the POM to derive groupId and inter-subproject
  *       dependencies (matching dependency/parent groupIds against
- *       already-registered workspace components)</li>
- *   <li>Appends a component entry to workspace.yaml</li>
+ *       already-registered workspace subprojects)</li>
+ *   <li>Appends a subproject entry to workspace.yaml</li>
  *   <li>Adds a file-activated profile to the reactor POM</li>
- *   <li>Re-scans existing components to discover any that depend
- *       on the newly added component (backward resolution)</li>
+ *   <li>Re-scans existing subprojects to discover any that depend
+ *       on the newly added subproject (backward resolution)</li>
  * </ol>
  *
- * <p>The component name is derived from the last path segment of the
+ * <p>The subproject name is derived from the last path segment of the
  * URL with {@code .git} stripped. For example,
  * {@code https://github.com/ikmdev/tinkar-core.git} becomes
  * {@code tinkar-core}.
@@ -59,7 +59,7 @@ import java.util.stream.Collectors;
  * }</pre>
  *
  * @see WsCreateMojo for creating a new workspace
- * @see InitWorkspaceMojo for cloning all components
+ * @see InitWorkspaceMojo for cloning all subprojects
  */
 @Mojo(name = "add", projectRequired = false)
 public class WsAddMojo extends AbstractWorkspaceMojo {
@@ -71,21 +71,21 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
     private String repo;
 
     /**
-     * Component name override. If omitted, derived from the repo URL
+     * Subproject name override. If omitted, derived from the repo URL
      * (last path segment minus {@code .git}).
      */
-    @Parameter(property = "component")
-    private String component;
+    @Parameter(property = "subproject")
+    private String subproject;
 
     /**
-     * Component type. Must match a key in the workspace.yaml
+     * Subproject type. Must match a key in the workspace.yaml
      * {@code component-types} section.
      */
     @Parameter(property = "type", defaultValue = "software")
     private String type;
 
     /**
-     * Short description of the component.
+     * Short description of the subproject.
      */
     @Parameter(property = "description")
     private String description;
@@ -97,22 +97,22 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
     private String branch;
 
     /**
-     * Maven groupId for the component. If omitted, left as
+     * Maven groupId for the subproject. If omitted, left as
      * a placeholder in workspace.yaml.
      */
     @Parameter(property = "groupId")
     private String groupId;
 
     /**
-     * Maven version for the component. If omitted, derived from
-     * the component's root POM. Written to workspace.yaml so that
+     * Maven version for the subproject. If omitted, derived from
+     * the subproject's root POM. Written to workspace.yaml so that
      * {@code ws:feature-start} can branch-qualify it.
      */
     @Parameter(property = "version")
     private String version;
 
     /**
-     * Skip cloning — register the component in workspace.yaml without
+     * Skip cloning — register the subproject in workspace.yaml without
      * cloning. Dependencies cannot be derived without a POM to scan,
      * so they will be empty. Use {@code ws:init} to clone later.
      */
@@ -140,9 +140,9 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
                     + ". Run ws:create first.");
         }
 
-        // Derive component name from URL if not specified
-        if (component == null || component.isBlank()) {
-            component = deriveComponentName(repo);
+        // Derive subproject name from URL if not specified
+        if (subproject == null || subproject.isBlank()) {
+            subproject = deriveComponentName(repo);
         }
 
         // Check if already registered — if so, re-derive and update
@@ -150,50 +150,50 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
         boolean alreadyRegistered = false;
         try {
             Manifest existing = ManifestReader.read(manifestPath);
-            alreadyRegistered = existing.components().containsKey(component);
+            alreadyRegistered = existing.components().containsKey(subproject);
         } catch (ManifestException e) {
             // Manifest may be empty/malformed on first add — continue
         }
 
         if (description == null || description.isBlank()) {
-            description = component + " component.";
+            description = subproject + " subproject.";
         }
 
         // Clone so we can scan the POM for groupId and dependencies
-        Path componentDir = wsDir.resolve(component);
+        Path subprojectDir = wsDir.resolve(subproject);
         boolean cloned = false;
         List<DerivedDep> derivedDeps = null;
 
-        if (!skipClone && !Files.exists(componentDir)) {
+        if (!skipClone && !Files.exists(subprojectDir)) {
             cloneComponent(wsDir);
             cloned = true;
         }
 
         String detectedParent = null;
 
-        if (Files.exists(componentDir.resolve("pom.xml"))) {
+        if (Files.exists(subprojectDir.resolve("pom.xml"))) {
             // Derive groupId from POM if not explicitly specified
             if (groupId == null || groupId.isBlank()) {
-                groupId = deriveGroupId(componentDir);
+                groupId = deriveGroupId(subprojectDir);
             }
 
             // Derive version from POM if not explicitly specified
             if (version == null || version.isBlank()) {
                 try {
                     version = ReleaseSupport.readPomVersion(
-                            componentDir.resolve("pom.xml").toFile());
+                            subprojectDir.resolve("pom.xml").toFile());
                 } catch (MojoException e) {
                     // Non-fatal — version will be null in manifest
                 }
             }
 
-            // Detect parent POM — match against workspace components
+            // Detect parent POM — match against workspace subprojects
             try {
                 PomParentSupport.ParentInfo parentInfo =
-                        PomParentSupport.readParent(componentDir.resolve("pom.xml"));
+                        PomParentSupport.readParent(subprojectDir.resolve("pom.xml"));
                 if (parentInfo != null) {
                     Manifest existing = ManifestReader.read(manifestPath);
-                    for (Map.Entry<String, Component> candidate :
+                    for (Map.Entry<String, Subproject> candidate :
                             existing.components().entrySet()) {
                         if (candidate.getValue().groupId() != null
                                 && candidate.getValue().groupId().equals(parentInfo.groupId())) {
@@ -207,10 +207,10 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
             }
 
             // Derive dependencies by matching POM groupIds against
-            // already-registered workspace components
+            // already-registered workspace subprojects
             try {
                 derivedDeps = deriveDependencies(wsDir, manifestPath,
-                        componentDir, component);
+                        subprojectDir, subproject);
             } catch (IOException e) {
                 getLog().warn("  Could not derive dependencies from POM: "
                         + e.getMessage());
@@ -221,69 +221,69 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
 
         getLog().info("");
         String wsName = readWorkspaceName(wsDir);
-        getLog().info(wsName + " — Add Component");
+        getLog().info(wsName + " — Add Subproject");
         getLog().info("══════════════════════════════════════════════════════════════");
-        getLog().info("  Component: " + component);
-        getLog().info("  Repo:      " + repo);
-        getLog().info("  Type:      " + type);
+        getLog().info("  Subproject: " + subproject);
+        getLog().info("  Repo:       " + repo);
+        getLog().info("  Type:       " + type);
         if (branch != null) {
-            getLog().info("  Branch:    " + branch);
+            getLog().info("  Branch:     " + branch);
         }
         if (version != null && !version.isBlank()) {
-            getLog().info("  Version:   " + version);
+            getLog().info("  Version:    " + version);
         }
         if (groupId != null && !groupId.isBlank()) {
-            getLog().info("  GroupId:   " + groupId);
+            getLog().info("  GroupId:    " + groupId);
         }
         if (detectedParent != null) {
-            getLog().info("  Parent:    " + detectedParent + " (detected from POM)");
+            getLog().info("  Parent:     " + detectedParent + " (detected from POM)");
         }
         if (derivedDeps != null && !derivedDeps.isEmpty()) {
             String depNames = derivedDeps.stream()
                     .map(DerivedDep::component)
                     .collect(Collectors.joining(", "));
-            getLog().info("  Depends:   " + depNames + " (derived from POM)");
+            getLog().info("  Depends:    " + depNames + " (derived from POM)");
         } else {
-            getLog().info("  Depends:   (none)");
+            getLog().info("  Depends:    (none)");
         }
         if (alreadyRegistered) {
             getLog().info("  (already registered — re-validating dependencies)");
         }
         if (cloned) {
-            getLog().info(Ansi.green("  ✓ ") + "Cloned " + component);
+            getLog().info(Ansi.green("  ✓ ") + "Cloned " + subproject);
         }
         getLog().info("");
 
         try {
             if (alreadyRegistered) {
                 // Update existing entry's depends-on in workspace.yaml
-                updateComponentDependencies(manifestPath, component, derivedDeps);
+                updateComponentDependencies(manifestPath, subproject, derivedDeps);
                 getLog().info(Ansi.green("  ✓ ") + "workspace.yaml updated (dependencies re-derived)");
             } else {
-                // Append new component to workspace.yaml
+                // Append new subproject to workspace.yaml
                 appendComponentToManifest(manifestPath, derivedDeps, detectedParent);
                 getLog().info(Ansi.green("  ✓ ") + "workspace.yaml updated");
             }
 
             // Profile is idempotent — addProfileToPom already checks for existence
             addProfileToPom(pomPath);
-            getLog().info(Ansi.green("  ✓ ") + "pom.xml updated (profile: with-" + component + ")");
+            getLog().info(Ansi.green("  ✓ ") + "pom.xml updated (profile: with-" + subproject + ")");
 
         } catch (IOException e) {
             throw new MojoException(
                     "Failed to update workspace files: " + e.getMessage(), e);
         }
 
-        // Backward resolution: check if any existing components
-        // depend on the newly added component's groupId
-        if (Files.exists(componentDir.resolve("pom.xml"))) {
+        // Backward resolution: check if any existing subprojects
+        // depend on the newly added subproject's groupId
+        if (Files.exists(subprojectDir.resolve("pom.xml"))) {
             try {
                 int backfilled = backfillDependencies(
-                        wsDir, manifestPath, component, componentDir);
+                        wsDir, manifestPath, subproject, subprojectDir);
                 if (backfilled > 0) {
                     getLog().info(Ansi.green("  ✓ ") + "Updated " + backfilled
-                            + " existing component(s) with dependency on "
-                            + component);
+                            + " existing subproject(s) with dependency on "
+                            + subproject);
                 }
             } catch (IOException e) {
                 getLog().warn("  Could not backfill dependencies: "
@@ -294,26 +294,26 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
         // Auto-commit workspace.yaml + pom.xml changes
         try {
             ReleaseSupport.exec(wsDir.toFile(), getLog(), "git", "add", "workspace.yaml", "pom.xml");
-            ReleaseSupport.exec(wsDir.toFile(), getLog(), "git", "commit", "-m", "workspace: add " + component);
+            ReleaseSupport.exec(wsDir.toFile(), getLog(), "git", "commit", "-m", "workspace: add " + subproject);
             getLog().info(Ansi.green("  ✓ ") + "committed workspace.yaml + pom.xml");
         } catch (Exception e) {
             getLog().warn("  Auto-commit failed (non-fatal): " + e.getMessage());
         }
 
         // Version alignment: update dependency versions in the newly
-        // added component (and any backfilled components) to match
+        // added subproject (and any backfilled subprojects) to match
         // workspace SNAPSHOT versions. Changes are left uncommitted
         // so the developer can review and fold them into a feature branch.
-        if (Files.exists(componentDir.resolve("pom.xml"))) {
+        if (Files.exists(subprojectDir.resolve("pom.xml"))) {
             try {
                 Manifest updatedManifest = ManifestReader.read(manifestPath);
-                int aligned = alignVersions(wsDir, componentDir, component,
+                int aligned = alignVersions(wsDir, subprojectDir, subproject,
                         updatedManifest);
                 if (aligned > 0) {
                     getLog().info("");
                     getLog().info(Ansi.yellow("  ⚠ ") + aligned + " file(s) modified for version "
                             + "alignment (uncommitted)");
-                    getLog().info("    Review with 'git diff' in " + component);
+                    getLog().info("    Review with 'git diff' in " + subproject);
                 }
             } catch (IOException e) {
                 getLog().warn("  Could not align versions: " + e.getMessage());
@@ -322,12 +322,12 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
 
         getLog().info("");
         if (cloned) {
-            getLog().info("  Component added and cloned.");
+            getLog().info("  Subproject added and cloned.");
         } else {
-            getLog().info("  Component added. Run 'mvn ws:init' to clone.");
+            getLog().info("  Subproject added. Run 'mvn ws:init' to clone.");
         }
         getLog().info("");
-        writeReport(WsGoal.ADD, "Added component **" + component + "**\n\n"
+        writeReport(WsGoal.ADD, "Added subproject **" + subproject + "**\n\n"
                 + "| Field | Value |\n|-------|-------|\n"
                 + "| Repo | " + repo + " |\n"
                 + "| Type | " + type + " |\n"
@@ -342,7 +342,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
         String yaml = Files.readString(manifestPath, StandardCharsets.UTF_8);
 
         StringBuilder entry = new StringBuilder();
-        entry.append("\n  ").append(component).append(":\n");
+        entry.append("\n  ").append(subproject).append(":\n");
         entry.append("    type: ").append(type).append("\n");
         entry.append("    description: >\n");
         entry.append("      ").append(description).append("\n");
@@ -381,18 +381,18 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
             yaml = yaml + entry;
         }
 
-        // Update the "all" group to include the new component
-        yaml = addToAllGroup(yaml, component);
+        // Update the "all" group to include the new subproject
+        yaml = addToAllGroup(yaml, subproject);
 
         Files.writeString(manifestPath, yaml, StandardCharsets.UTF_8);
     }
 
     /**
-     * Update the depends-on section for an existing component in
+     * Update the depends-on section for an existing subproject in
      * workspace.yaml. Replaces the current depends-on block with
      * the newly derived dependencies.
      */
-    void updateComponentDependencies(Path manifestPath, String componentName,
+    void updateComponentDependencies(Path manifestPath, String subprojectName,
                                       List<DerivedDep> derivedDeps) throws IOException {
         String yaml = Files.readString(manifestPath, StandardCharsets.UTF_8);
 
@@ -411,10 +411,10 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
             newDeps.append("    depends-on: []\n");
         }
 
-        // Replace the existing depends-on block for this component.
+        // Replace the existing depends-on block for this subproject.
         // Match: "    depends-on: []\n" or "    depends-on:\n      - ...\n"
-        // within this component's section.
-        String escaped = Pattern.quote(componentName);
+        // within this subproject's section.
+        String escaped = Pattern.quote(subprojectName);
         Pattern depsPattern = Pattern.compile(
                 "(" + escaped + ":[\\s\\S]*?)(    depends-on:.*(?:\\n      .*)*\\n)",
                 Pattern.MULTILINE);
@@ -434,21 +434,21 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
         String pom = Files.readString(pomPath, StandardCharsets.UTF_8);
 
         // Check if profile already exists
-        if (pom.contains("with-" + component)) {
-            getLog().info("  Profile with-" + component + " already exists");
+        if (pom.contains("with-" + subproject)) {
+            getLog().info("  Profile with-" + subproject + " already exists");
             return;
         }
 
         String profile = "\n"
                 + "        <profile>\n"
-                + "            <id>with-" + component + "</id>\n"
+                + "            <id>with-" + subproject + "</id>\n"
                 + "            <activation>\n"
                 + "                <file>\n"
-                + "                    <exists>${project.basedir}/" + component + "/pom.xml</exists>\n"
+                + "                    <exists>${project.basedir}/" + subproject + "/pom.xml</exists>\n"
                 + "                </file>\n"
                 + "            </activation>\n"
                 + "            <subprojects>\n"
-                + "                <subproject>" + component + "</subproject>\n"
+                + "                <subproject>" + subproject + "</subproject>\n"
                 + "            </subprojects>\n"
                 + "        </profile>\n";
 
@@ -476,66 +476,66 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
             cmd.add(branch);
         }
         cmd.add(repo);
-        cmd.add(component);
+        cmd.add(subproject);
         ReleaseSupport.exec(wsDir.toFile(), getLog(), cmd.toArray(new String[0]));
     }
 
     // ── POM-based dependency derivation ────────────────────────
 
     /**
-     * Derive dependencies by scanning the new component's POMs for
+     * Derive dependencies by scanning the new subproject's POMs for
      * referenced {@code groupId:artifactId} pairs and matching them
      * against the published artifact sets of already-registered
-     * workspace components.
+     * workspace subprojects.
      *
      * <p>This is artifact-level matching, not groupId-level — it
-     * correctly handles components that share a groupId (e.g.,
+     * correctly handles subprojects that share a groupId (e.g.,
      * tinkar-core and tinkar-composer both use {@code dev.ikm.tinkar}).
      */
     private List<DerivedDep> deriveDependencies(Path wsDir, Path manifestPath,
-                                                Path componentDir, String componentName)
+                                                Path subprojectDir, String subprojectName)
             throws IOException {
-        // Collect all groupId:artifactId pairs referenced by this component
+        // Collect all groupId:artifactId pairs referenced by this subproject
         Set<String> referencedArtifacts = extractReferencedArtifacts(
-                componentDir.resolve("pom.xml"));
+                subprojectDir.resolve("pom.xml"));
         if (referencedArtifacts.isEmpty()) return null;
 
-        // Read the new component's <properties> for version-property detection
-        Map<String, String> newCompProperties;
+        // Read the new subproject's <properties> for version-property detection
+        Map<String, String> newSubProperties;
         try {
             DocumentBuilder db = DBF.newDocumentBuilder();
-            Document doc = db.parse(componentDir.resolve("pom.xml").toFile());
-            newCompProperties = readProperties(doc.getDocumentElement());
+            Document doc = db.parse(subprojectDir.resolve("pom.xml").toFile());
+            newSubProperties = readProperties(doc.getDocumentElement());
         } catch (Exception e) {
-            newCompProperties = Map.of();
+            newSubProperties = Map.of();
         }
 
         Manifest manifest = ManifestReader.read(manifestPath);
 
         List<DerivedDep> matched = new ArrayList<>();
-        for (Map.Entry<String, Component> entry : manifest.components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : manifest.components().entrySet()) {
             String existingName = entry.getKey();
-            Component existingComp = entry.getValue();
+            Subproject existingSub = entry.getValue();
 
             // Never depend on yourself
-            if (existingName.equals(componentName)) continue;
+            if (existingName.equals(subprojectName)) continue;
 
             Path existingDir = wsDir.resolve(existingName);
             if (!Files.exists(existingDir.resolve("pom.xml"))) continue;
 
-            // Build the published artifact set for the existing component
+            // Build the published artifact set for the existing subproject
             Set<PublishedArtifactSet.Artifact> published =
                     PublishedArtifactSet.scan(existingDir);
 
-            // Check if any referenced artifact is published by this component
+            // Check if any referenced artifact is published by this subproject
             for (PublishedArtifactSet.Artifact artifact : published) {
                 String key = artifact.groupId() + ":" + artifact.artifactId();
                 if (referencedArtifacts.contains(key)) {
                     // Try to find a property whose value matches the upstream version
                     String versionProperty = null;
-                    String upstreamVersion = existingComp.version();
-                    if (upstreamVersion != null && !newCompProperties.isEmpty()) {
-                        for (Map.Entry<String, String> prop : newCompProperties.entrySet()) {
+                    String upstreamVersion = existingSub.version();
+                    if (upstreamVersion != null && !newSubProperties.isEmpty()) {
+                        for (Map.Entry<String, String> prop : newSubProperties.entrySet()) {
                             if (upstreamVersion.equals(prop.getValue())) {
                                 versionProperty = prop.getKey();
                                 break;
@@ -552,18 +552,18 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
     }
 
     /**
-     * Backward resolution: for each existing cloned component, check
+     * Backward resolution: for each existing cloned subproject, check
      * whether its POMs reference any artifact published by the newly
-     * added component. Uses artifact-level matching via
+     * added subproject. Uses artifact-level matching via
      * {@link PublishedArtifactSet} to avoid false positives from
      * shared groupIds.
      */
     private int backfillDependencies(Path wsDir, Path manifestPath,
-                                     String newComponent, Path newComponentDir)
+                                     String newSubproject, Path newSubprojectDir)
             throws IOException {
-        // Build the published artifact set for the new component
+        // Build the published artifact set for the new subproject
         Set<PublishedArtifactSet.Artifact> newPublished =
-                PublishedArtifactSet.scan(newComponentDir);
+                PublishedArtifactSet.scan(newSubprojectDir);
         if (newPublished.isEmpty()) return 0;
 
         // Build a lookup set of "groupId:artifactId" strings
@@ -576,22 +576,22 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
         Manifest manifest = ManifestReader.read(manifestPath);
         int updated = 0;
 
-        for (Map.Entry<String, Component> entry : manifest.components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : manifest.components().entrySet()) {
             String existingName = entry.getKey();
-            Component existing = entry.getValue();
+            Subproject existing = entry.getValue();
 
-            // Skip the newly added component itself
-            if (existingName.equals(newComponent)) continue;
+            // Skip the newly added subproject itself
+            if (existingName.equals(newSubproject)) continue;
 
-            // Skip if already depends on the new component
+            // Skip if already depends on the new subproject
             if (existing.dependsOn() != null
                     && existing.dependsOn().stream()
-                    .anyMatch(d -> newComponent.equals(d.component()))) {
+                    .anyMatch(d -> newSubproject.equals(d.component()))) {
                 continue;
             }
 
-            // Check if this existing component references any artifact
-            // published by the new component
+            // Check if this existing subproject references any artifact
+            // published by the new subproject
             Path existingPom = wsDir.resolve(existingName).resolve("pom.xml");
             if (!Files.exists(existingPom)) continue;
 
@@ -601,9 +601,9 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
 
             if (!dependsOnNew) continue;
 
-            yaml = addDependencyEdge(yaml, existingName, newComponent, null);
+            yaml = addDependencyEdge(yaml, existingName, newSubproject, null);
             updated++;
-            getLog().info(Ansi.cyan("  → ") + existingName + " depends on " + newComponent);
+            getLog().info(Ansi.cyan("  → ") + existingName + " depends on " + newSubproject);
         }
 
         if (updated > 0) {
@@ -614,17 +614,17 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
     }
 
     /**
-     * Add a depends-on edge for an existing component in workspace.yaml.
+     * Add a depends-on edge for an existing subproject in workspace.yaml.
      * Converts {@code depends-on: []} to a populated list, or appends
      * to an existing list.
      */
-    static String addDependencyEdge(String yaml, String componentName,
+    static String addDependencyEdge(String yaml, String subprojectName,
                                     String dependsOnName, String versionProperty) {
         String versionPropertyLine = (versionProperty != null)
                 ? "        version-property: " + versionProperty + "\n" : "";
 
         // Case 1: depends-on: [] — replace with populated entry
-        String emptyDeps = "(" + componentName + ":[\\s\\S]*?)(depends-on:\\s*\\[])";
+        String emptyDeps = "(" + subprojectName + ":[\\s\\S]*?)(depends-on:\\s*\\[])";
         Pattern emptyPattern = Pattern.compile(emptyDeps);
         Matcher emptyMatcher = emptyPattern.matcher(yaml);
         if (emptyMatcher.find()) {
@@ -636,9 +636,9 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
             return emptyMatcher.replaceFirst(Matcher.quoteReplacement(replacement));
         }
 
-        // Case 2: existing depends-on list — append before next component
-        // or section. Find the component's depends-on block and add an entry.
-        String existingDeps = "(" + componentName
+        // Case 2: existing depends-on list — append before next subproject
+        // or section. Find the subproject's depends-on block and add an entry.
+        String existingDeps = "(" + subprojectName
                 + ":[\\s\\S]*?depends-on:\\n)((?:\\s+- component:.*\\n(?:\\s+relationship:.*\\n)(?:\\s+version-property:.*\\n)?)*)";
         Pattern existingPattern = Pattern.compile(existingDeps);
         Matcher existingMatcher = existingPattern.matcher(yaml);
@@ -656,7 +656,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
 
     /**
      * Extract all {@code groupId:artifactId} pairs referenced as
-     * build dependencies across the entire component (root POM +
+     * build dependencies across the entire subproject (root POM +
      * all submodules/subprojects).
      *
      * <p>Uses DOM parsing to correctly read XML structure and
@@ -843,23 +843,23 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
     // ── Version alignment ───────────────────────────────────────
 
     /**
-     * Align dependency versions in the newly added component's POMs
-     * to match workspace SNAPSHOT versions. For each workspace component
-     * that this component depends on, find explicit version declarations
+     * Align dependency versions in the newly added subproject's POMs
+     * to match workspace SNAPSHOT versions. For each workspace subproject
+     * that this subproject depends on, find explicit version declarations
      * and update them.
      *
      * @return the number of POM files modified
      */
-    private int alignVersions(Path wsDir, Path componentDir,
-                               String componentName, Manifest manifest)
+    private int alignVersions(Path wsDir, Path subprojectDir,
+                               String subprojectName, Manifest manifest)
             throws IOException {
         // Build a map: groupId:artifactId → workspace version
-        // for all workspace components (except the one being added)
+        // for all workspace subprojects (except the one being added)
         Map<String, String> artifactVersions = new LinkedHashMap<>();
-        for (Map.Entry<String, Component> entry : manifest.components().entrySet()) {
-            if (entry.getKey().equals(componentName)) continue;
-            Component comp = entry.getValue();
-            if (comp.version() == null) continue;
+        for (Map.Entry<String, Subproject> entry : manifest.components().entrySet()) {
+            if (entry.getKey().equals(subprojectName)) continue;
+            Subproject sub = entry.getValue();
+            if (sub.version() == null) continue;
 
             Path compDir = wsDir.resolve(entry.getKey());
             if (!Files.exists(compDir.resolve("pom.xml"))) continue;
@@ -869,15 +869,15 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
             for (PublishedArtifactSet.Artifact artifact : published) {
                 artifactVersions.put(
                         artifact.groupId() + ":" + artifact.artifactId(),
-                        comp.version());
+                        sub.version());
             }
         }
 
         if (artifactVersions.isEmpty()) return 0;
 
-        // Walk all POM files in the new component and update versions
+        // Walk all POM files in the new subproject and update versions
         int filesModified = 0;
-        List<Path> pomFiles = findAllPomFiles(componentDir);
+        List<Path> pomFiles = findAllPomFiles(subprojectDir);
 
         for (Path pomFile : pomFiles) {
             String original = Files.readString(pomFile, StandardCharsets.UTF_8);
@@ -887,7 +887,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
                 Files.writeString(pomFile, updated, StandardCharsets.UTF_8);
                 filesModified++;
                 // Log each change
-                Path relative = componentDir.getParent().relativize(pomFile);
+                Path relative = subprojectDir.getParent().relativize(pomFile);
                 getLog().info("  Version alignment: " + relative);
             }
         }
@@ -957,10 +957,10 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
     }
 
     /**
-     * Find all pom.xml files in a component directory (root + submodules).
+     * Find all pom.xml files in a subproject directory (root + submodules).
      */
-    private List<Path> findAllPomFiles(Path componentDir) throws IOException {
-        try (var stream = Files.walk(componentDir)) {
+    private List<Path> findAllPomFiles(Path subprojectDir) throws IOException {
+        try (var stream = Files.walk(subprojectDir)) {
             return stream
                     .filter(p -> p.getFileName().toString().equals("pom.xml"))
                     .filter(p -> !p.toString().contains("/target/"))
@@ -972,12 +972,12 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
             Pattern.compile("<version>([^<]+)</version>");
 
     /**
-     * Derive the Maven groupId from the component's root POM.
+     * Derive the Maven groupId from the subproject's root POM.
      * Strips the parent block first; if no groupId is declared
      * outside parent, falls back to the parent's groupId.
      */
-    private String deriveGroupId(Path componentDir) {
-        Path pomFile = componentDir.resolve("pom.xml");
+    private String deriveGroupId(Path subprojectDir) {
+        Path pomFile = subprojectDir.resolve("pom.xml");
         if (!Files.exists(pomFile)) return null;
 
         try {
@@ -1018,7 +1018,7 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
     // ── Helpers ──────────────────────────────────────────────────
 
     /**
-     * Derive a component name from a git URL.
+     * Derive a subproject name from a git URL.
      * {@code https://github.com/ikmdev/tinkar-core.git} → {@code tinkar-core}
      */
     static String deriveComponentName(String repoUrl) {
@@ -1040,10 +1040,10 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
     }
 
     /**
-     * Add a component to the "all" group in workspace.yaml.
+     * Add a subproject to the "all" group in workspace.yaml.
      */
-    static String addToAllGroup(String yaml, String componentName) {
-        // Match "  all: [...]" and add the component
+    static String addToAllGroup(String yaml, String subprojectName) {
+        // Match "  all: [...]" and add the subproject
         Pattern allGroup = Pattern.compile(
                 "(  all:\\s*\\[)(.*?)(])", Pattern.DOTALL);
         Matcher m = allGroup.matcher(yaml);
@@ -1051,9 +1051,9 @@ public class WsAddMojo extends AbstractWorkspaceMojo {
             String existing = m.group(2).trim();
             String updated;
             if (existing.isEmpty()) {
-                updated = componentName;
+                updated = subprojectName;
             } else {
-                updated = existing + ", " + componentName;
+                updated = existing + ", " + subprojectName;
             }
             return m.replaceFirst("$1" + Matcher.quoteReplacement(updated) + "]");
         }

@@ -215,7 +215,7 @@ public class WsHelpMojo implements Mojo {
         getLog().info("");
         getLog().info("Release & checkpoint:");
         getLog().info("  -Dname=<name>                 Checkpoint name (auto-derived)");
-        getLog().info("  -DdeploySite=true             Deploy site for each component");
+        getLog().info("  -DdeploySite=true             Deploy site for each subproject");
         getLog().info("  -Dpush=true                   Push to origin");
     }
 

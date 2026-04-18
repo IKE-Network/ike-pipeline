@@ -16,10 +16,10 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Scan all workspace components for merged feature branches and offer
+ * Scan all workspace subprojects for merged feature branches and offer
  * interactive deletion.
  *
- * <p>Lists feature branches across all components, classifies each as
+ * <p>Lists feature branches across all subprojects, classifies each as
  * merged (into the target branch) or active, and displays last-commit
  * timestamps. In draft mode (default), only reports. In publish mode,
  * prompts for deletion.
@@ -60,9 +60,9 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
         if (draft) getLog().info("  Mode:   DRAFT — listing only");
         getLog().info("");
 
-        // Collect merged and active feature branches per component
-        Map<String, List<String>> mergedByComponent = new LinkedHashMap<>();
-        Map<String, List<String>> activeByComponent = new LinkedHashMap<>();
+        // Collect merged and active feature branches per subproject
+        Map<String, List<String>> mergedBySubproject = new LinkedHashMap<>();
+        Map<String, List<String>> activeBySubproject = new LinkedHashMap<>();
         Set<String> allMerged = new TreeSet<>();
         Set<String> allActive = new TreeSet<>();
 
@@ -78,11 +78,11 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
                     .toList();
 
             if (!merged.isEmpty()) {
-                mergedByComponent.put(name, merged);
+                mergedBySubproject.put(name, merged);
                 allMerged.addAll(merged);
             }
             if (!active.isEmpty()) {
-                activeByComponent.put(name, active);
+                activeBySubproject.put(name, active);
                 allActive.addAll(active);
             }
         }
@@ -93,12 +93,12 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
         } else {
             getLog().info("  Merged branches (safe to delete):");
             for (String branch : allMerged) {
-                int count = (int) mergedByComponent.values().stream()
+                int count = (int) mergedBySubproject.values().stream()
                         .filter(list -> list.contains(branch))
                         .count();
-                // Get last commit date from first component
+                // Get last commit date from first subproject
                 String date = "unknown";
-                for (var entry : mergedByComponent.entrySet()) {
+                for (var entry : mergedBySubproject.entrySet()) {
                     if (entry.getValue().contains(branch)) {
                         date = VcsOperations.branchLastCommitDate(
                                 new File(root, entry.getKey()), branch);
@@ -106,7 +106,7 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
                     }
                 }
                 getLog().info(Ansi.green("    ✓ ") + branch + " (" + count
-                        + " component" + (count == 1 ? "" : "s")
+                        + " subproject" + (count == 1 ? "" : "s")
                         + ", last commit: " + date + ")");
             }
         }
@@ -116,11 +116,11 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
             getLog().info("");
             getLog().info("  Active branches (not fully merged):");
             for (String branch : allActive) {
-                int count = (int) activeByComponent.values().stream()
+                int count = (int) activeBySubproject.values().stream()
                         .filter(list -> list.contains(branch))
                         .count();
                 String date = "unknown";
-                for (var entry : activeByComponent.entrySet()) {
+                for (var entry : activeBySubproject.entrySet()) {
                     if (entry.getValue().contains(branch)) {
                         date = VcsOperations.branchLastCommitDate(
                                 new File(root, entry.getKey()), branch);
@@ -128,7 +128,7 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
                     }
                 }
                 getLog().info(Ansi.yellow("    · ") + branch + " (" + count
-                        + " component" + (count == 1 ? "" : "s")
+                        + " subproject" + (count == 1 ? "" : "s")
                         + ", last commit: " + date + ")");
             }
         }
@@ -141,7 +141,7 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
         if (publish && !allMerged.isEmpty()) {
             getLog().info("");
             int deleted = 0;
-            for (var entry : mergedByComponent.entrySet()) {
+            for (var entry : mergedBySubproject.entrySet()) {
                 File dir = new File(root, entry.getKey());
                 for (String branch : entry.getValue()) {
                     try {
@@ -169,11 +169,11 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
         getLog().info("");
 
         writeReport(publish ? WsGoal.CLEANUP_PUBLISH : WsGoal.CLEANUP_DRAFT, buildCleanupReport(
-                allMerged, allActive, mergedByComponent, root));
+                allMerged, allActive, mergedBySubproject, root));
     }
 
     private String buildCleanupReport(Set<String> merged, Set<String> active,
-                                       Map<String, List<String>> mergedByComponent,
+                                       Map<String, List<String>> mergedBySubproject,
                                        File root) {
         var sb = new StringBuilder();
         sb.append(merged.size()).append(" merged, ")
@@ -183,14 +183,14 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
 
         if (!merged.isEmpty()) {
             sb.append("### Merged (safe to delete)\n\n");
-            sb.append("| Branch | Components | Last Commit |\n");
-            sb.append("|--------|------------|-------------|\n");
+            sb.append("| Branch | Subprojects | Last Commit |\n");
+            sb.append("|--------|-------------|-------------|\n");
             for (String branch : merged) {
-                int count = (int) mergedByComponent.values().stream()
+                int count = (int) mergedBySubproject.values().stream()
                         .filter(list -> list.contains(branch))
                         .count();
                 String date = "unknown";
-                for (var entry : mergedByComponent.entrySet()) {
+                for (var entry : mergedBySubproject.entrySet()) {
                     if (entry.getValue().contains(branch)) {
                         date = VcsOperations.branchLastCommitDate(
                                 new File(root, entry.getKey()), branch);
@@ -206,10 +206,10 @@ public class CleanupWorkspaceMojo extends AbstractWorkspaceMojo {
 
         if (!active.isEmpty()) {
             sb.append("\n### Active\n\n");
-            sb.append("| Branch | Components |\n");
-            sb.append("|--------|------------|\n");
+            sb.append("| Branch | Subprojects |\n");
+            sb.append("|--------|-------------|\n");
             for (String branch : active) {
-                int count = (int) mergedByComponent.values().stream()
+                int count = (int) mergedBySubproject.values().stream()
                         .filter(list -> list.contains(branch))
                         .count();
                 sb.append("| ").append(branch)

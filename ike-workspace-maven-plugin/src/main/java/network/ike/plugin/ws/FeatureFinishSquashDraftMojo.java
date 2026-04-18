@@ -1,6 +1,6 @@
 package network.ike.plugin.ws;
 
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
@@ -90,7 +90,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
             return;
         }
 
-        // Auto-detect feature from component branches if not specified
+        // Auto-detect feature from subproject branches if not specified
         if (feature == null || feature.isBlank()) {
             WorkspaceGraph g = loadGraph();
             List<String> all = g.topologicalSort();
@@ -105,9 +105,9 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
      * Ensure {@code -Dmessage=...} is supplied before any mutation path
      * runs. In draft mode this emits a warning (so the plan still
      * renders); in publish mode it aborts before any VCS operation
-     * touches a component. Fixes #160 — null message previously
+     * touches a subproject. Fixes #160 — null message previously
      * propagated into {@code git commit -m} and NPE'd mid-operation
-     * on the first component, leaving partial state.
+     * on the first subproject, leaving partial state.
      *
      * @param draft whether we're in draft (warn) or publish (throw) mode
      * @throws MojoException in publish mode when message is missing
@@ -153,9 +153,9 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
         List<String> eligible = new ArrayList<>();
         List<String> uncommitted = new ArrayList<>();
         for (String name : reversed) {
-            Component component = graph.manifest().components().get(name);
+            Subproject subproject = graph.manifest().components().get(name);
             String reason = FeatureFinishSupport.validateComponent(
-                    root, name, branchName, component, this);
+                    root, name, branchName, subproject, this);
             if (reason == null) {
                 eligible.add(name);
             } else if ("MODIFIED".equals(reason)) {
@@ -192,10 +192,10 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
             return;
         }
 
-        // Merge each component
+        // Merge each subproject
         int merged = 0;
         for (String name : eligible) {
-            Component component = graph.manifest().components().get(name);
+            Subproject subproject = graph.manifest().components().get(name);
             File dir = new File(root, name);
 
             if (draft) {
@@ -206,7 +206,7 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
 
             getLog().info(Ansi.cyan("  → ") + name);
             VcsOperations.catchUp(dir, getLog());
-            FeatureFinishSupport.stripBranchVersion(dir, component, branchName, getLog());
+            FeatureFinishSupport.stripBranchVersion(dir, subproject, branchName, getLog());
 
             VcsOperations.checkout(dir, getLog(), targetBranch);
             VcsOperations.mergeSquash(dir, getLog(), branchName);
@@ -268,14 +268,14 @@ public class FeatureFinishSquashDraftMojo extends AbstractWorkspaceMojo {
           .append(target).append("`\n");
         sb.append("**Strategy:** squash-merge\n\n");
 
-        sb.append("| Component | Status |\n");
+        sb.append("| Subproject | Status |\n");
         sb.append("|-----------|--------|\n");
         for (String name : components) {
             sb.append("| ").append(name).append(" | ")
               .append(isDraft ? "would squash" : "squashed").append(" |\n");
         }
 
-        sb.append("\n**").append(merged).append(" component(s)** ")
+        sb.append("\n**").append(merged).append(" subproject(s)** ")
           .append(isDraft ? "would be squash-merged" : "squash-merged")
           .append(". Branch ").append(kept ? "kept" : "deleted").append(".\n");
         return sb.toString();

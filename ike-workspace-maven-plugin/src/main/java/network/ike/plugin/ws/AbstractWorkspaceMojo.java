@@ -111,15 +111,15 @@ abstract class AbstractWorkspaceMojo implements Mojo {
     }
 
     /**
-     * Run {@code git status --porcelain} on a component directory and
+     * Run {@code git status --porcelain} on a subproject directory and
      * return the output (empty string = clean).
      *
-     * @param componentDir the component directory to check
+     * @param subprojectDir the subproject directory to check
      * @return git status output, empty if clean
      */
-    protected String gitStatus(File componentDir) {
+    protected String gitStatus(File subprojectDir) {
         try {
-            return ReleaseSupport.execCapture(componentDir,
+            return ReleaseSupport.execCapture(subprojectDir,
                     "git", "status", "--porcelain");
         } catch (Exception e) {
             return "ERROR: " + e.getMessage();
@@ -127,14 +127,14 @@ abstract class AbstractWorkspaceMojo implements Mojo {
     }
 
     /**
-     * Get the current branch of a component directory.
+     * Get the current branch of a subproject directory.
      *
-     * @param componentDir the component directory to check
+     * @param subprojectDir the subproject directory to check
      * @return the current branch name
      */
-    protected String gitBranch(File componentDir) {
+    protected String gitBranch(File subprojectDir) {
         try {
-            return ReleaseSupport.execCapture(componentDir,
+            return ReleaseSupport.execCapture(subprojectDir,
                     "git", "rev-parse", "--abbrev-ref", "HEAD");
         } catch (Exception e) {
             return "unknown";
@@ -142,14 +142,14 @@ abstract class AbstractWorkspaceMojo implements Mojo {
     }
 
     /**
-     * Get the short SHA of HEAD for a component directory.
+     * Get the short SHA of HEAD for a subproject directory.
      *
-     * @param componentDir the component directory to check
+     * @param subprojectDir the subproject directory to check
      * @return the short SHA of HEAD
      */
-    protected String gitShortSha(File componentDir) {
+    protected String gitShortSha(File subprojectDir) {
         try {
-            return ReleaseSupport.execCapture(componentDir,
+            return ReleaseSupport.execCapture(subprojectDir,
                     "git", "rev-parse", "--short", "HEAD");
         } catch (Exception e) {
             return "???????";

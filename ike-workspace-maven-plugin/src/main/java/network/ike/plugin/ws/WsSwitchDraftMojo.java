@@ -34,7 +34,7 @@ import java.util.TreeSet;
  *
  * <p>Before switching, validates that all component working trees are
  * clean. If any have uncommitted changes, the goal fails with a list
- * of the affected components and a "commit or stash, then try again"
+ * of the affected subprojects and a "commit or stash, then try again"
  * message.
  *
  * <p>After switching, updates workspace.yaml branch fields and commits

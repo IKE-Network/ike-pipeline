@@ -1,6 +1,6 @@
 package network.ike.plugin.ws;
 
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
 import network.ike.plugin.ws.vcs.VcsState;
@@ -78,7 +78,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
             return;
         }
 
-        // Auto-detect feature from component branches if not specified
+        // Auto-detect feature from subproject branches if not specified
         if (feature == null || feature.isBlank()) {
             WorkspaceGraph g = loadGraph();
             List<String> all = g.topologicalSort();
@@ -87,7 +87,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
         }
         String branchName = "feature/" + feature;
 
-        // message is optional — auto-generated from component history
+        // message is optional — auto-generated from subproject history
         executeWorkspaceMode(branchName);
     }
 
@@ -116,9 +116,9 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
         List<String> eligible = new ArrayList<>();
         List<String> uncommitted = new ArrayList<>();
         for (String name : reversed) {
-            Component component = graph.manifest().components().get(name);
+            Subproject subproject = graph.manifest().components().get(name);
             String reason = FeatureFinishSupport.validateComponent(
-                    root, name, branchName, component, this);
+                    root, name, branchName, subproject, this);
             if (reason == null) {
                 eligible.add(name);
             } else if ("MODIFIED".equals(reason)) {
@@ -155,7 +155,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
             return;
         }
 
-        // Auto-generate commit message from per-component history
+        // Auto-generate commit message from per-subproject history
         String generatedMessage = FeatureFinishSupport.generateFeatureMessage(
                 root, eligible, branchName, targetBranch, message, getLog());
         getLog().info("  Commit message:");
@@ -166,7 +166,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
 
         int merged = 0;
         for (String name : eligible) {
-            Component component = graph.manifest().components().get(name);
+            Subproject subproject = graph.manifest().components().get(name);
             File dir = new File(root, name);
 
             if (draft) {
@@ -177,7 +177,7 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
 
             getLog().info(Ansi.cyan("  → ") + name);
             VcsOperations.catchUp(dir, getLog());
-            FeatureFinishSupport.stripBranchVersion(dir, component, branchName, getLog());
+            FeatureFinishSupport.stripBranchVersion(dir, subproject, branchName, getLog());
 
             VcsOperations.checkout(dir, getLog(), targetBranch);
             VcsOperations.mergeNoFf(dir, getLog(), branchName, generatedMessage);
@@ -226,14 +226,14 @@ public class FeatureFinishMergeDraftMojo extends AbstractWorkspaceMojo {
           .append(target).append("`\n");
         sb.append("**Strategy:** no-fast-forward merge\n\n");
 
-        sb.append("| Component | Status |\n");
+        sb.append("| Subproject | Status |\n");
         sb.append("|-----------|--------|\n");
         for (String name : components) {
             sb.append("| ").append(name).append(" | ")
               .append(isDraft ? "would merge" : "merged").append(" |\n");
         }
 
-        sb.append("\n**").append(merged).append(" component(s)** ")
+        sb.append("\n**").append(merged).append(" subproject(s)** ")
           .append(isDraft ? "would be merged" : "merged")
           .append(". Branch ").append(kept ? "kept" : "deleted").append(".\n");
         return sb.toString();

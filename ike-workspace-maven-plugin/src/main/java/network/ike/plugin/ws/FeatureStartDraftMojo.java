@@ -3,7 +3,7 @@ package network.ike.plugin.ws;
 import network.ike.plugin.ReleaseSupport;
 
 import network.ike.workspace.BomAnalysis;
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.PublishedArtifactSet;
 import network.ike.workspace.VersionSupport;
@@ -35,7 +35,7 @@ import java.util.Set;
  * <ol>
  *   <li>Validates the working tree is clean</li>
  *   <li>Creates branch {@code feature/<name>} from the current HEAD</li>
- *   <li>If the component has a Maven version, sets a branch-qualified
+ *   <li>If the subproject has a Maven version, sets a branch-qualified
  *       version (e.g., {@code 1.2.0-my-feature-SNAPSHOT})</li>
  *   <li>Commits the version change</li>
  *   <li>Updates workspace.yaml branch fields for all branched components</li>
@@ -78,7 +78,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
     public FeatureStartDraftMojo() {}
 
     /** A row in the feature-start summary table. */
-    private record BranchRow(String component, String branch,
+    private record BranchRow(String subproject, String branch,
                               String snapshotVersion, String status) {}
 
     /** A row in the BOM cascade gaps table. */
@@ -130,7 +130,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         List<BranchRow> branchRows = new ArrayList<>();
 
         for (String name : sorted) {
-            Component component = graph.manifest().components().get(name);
+            Subproject subproject = graph.manifest().components().get(name);
             File dir = new File(root, name);
             File gitDir = new File(dir, ".git");
 
@@ -169,7 +169,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
             }
 
             // Resolve effective version: workspace.yaml first, POM fallback
-            String effectiveVersion = component.version();
+            String effectiveVersion = subproject.version();
             if (effectiveVersion == null || effectiveVersion.isEmpty()) {
                 File pom = new File(dir, "pom.xml");
                 if (pom.exists()) {
@@ -236,7 +236,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
             cascadeBomImports(graph, root, sorted, branchName);
         }
 
-        // Write VCS state for each branched component (no push — branches stay local)
+        // Write VCS state for each branched subproject (no push — branches stay local)
         if (!created.isEmpty() && publish) {
             for (String name : created) {
                 File dir = new File(root, name);
@@ -266,10 +266,10 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         var sb = new StringBuilder();
         sb.append("**Branch:** `").append(branchName).append("`\n\n");
 
-        sb.append("| Component | Branch | Snapshot Version | Status |\n");
+        sb.append("| Subproject | Branch | Snapshot Version | Status |\n");
         sb.append("|-----------|--------|-----------------|--------|\n");
         for (BranchRow row : branchRows) {
-            sb.append("| ").append(row.component)
+            sb.append("| ").append(row.subproject)
               .append(" | ").append(row.branch)
               .append(" | ").append(row.snapshotVersion)
               .append(" | ").append(row.status)
@@ -474,7 +474,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
     /**
      * Cascade version-property updates to downstream components.
      *
-     * <p>When an upstream component's version changes (e.g., tinkar-core
+     * <p>When an upstream subproject's version changes (e.g., tinkar-core
      * gets a branch-qualified version), downstream components that track
      * that version via a POM property (declared as {@code version-property}
      * in workspace.yaml) need their property updated too.
@@ -488,20 +488,20 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                                            List<String> sorted, String branchName)
             throws MojoException {
 
-        // Build map of upstream component → new branch-qualified version
+        // Build map of upstream subproject → new branch-qualified version
         java.util.Map<String, String> newVersions = new java.util.LinkedHashMap<>();
         for (String name : sorted) {
-            Component comp = graph.manifest().components().get(name);
-            if (comp.version() != null && !comp.version().isEmpty()) {
+            Subproject sub = graph.manifest().components().get(name);
+            if (sub.version() != null && !sub.version().isEmpty()) {
                 newVersions.put(name, VersionSupport.branchQualifiedVersion(
-                        comp.version(), branchName));
+                        sub.version(), branchName));
             }
         }
 
-        // For each component in topological order, update version-properties
-        // that reference upstream components
+        // For each subproject in topological order, update version-properties
+        // that reference upstream subprojects
         for (String name : sorted) {
-            Component comp = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().components().get(name);
             File dir = new File(root, name);
             File pomFile = new File(dir, "pom.xml");
             if (!pomFile.exists()) continue;
@@ -512,7 +512,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                         pomFile.toPath(), java.nio.charset.StandardCharsets.UTF_8);
                 String original = content;
 
-                for (network.ike.workspace.Dependency dep : comp.dependsOn()) {
+                for (network.ike.workspace.Dependency dep : sub.dependsOn()) {
                     String upstreamName = dep.component();
                     if (dep.versionProperty() == null) continue;
                     if (!newVersions.containsKey(upstreamName)) continue;
@@ -547,11 +547,11 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
 
     /**
      * Cascade branch-qualified versions into POM properties that match
-     * workspace component names.
+     * workspace subproject names.
      *
-     * <p>Scans each component's root POM {@code <properties>} block for
+     * <p>Scans each subproject's root POM {@code <properties>} block for
      * entries like {@code <tinkar-core.version>1.0.0-SNAPSHOT</tinkar-core.version>}
-     * where "tinkar-core" matches a workspace component name. Updates
+     * where "tinkar-core" matches a workspace subproject name. Updates
      * these properties to the branch-qualified version.
      *
      * <p>This complements {@link #cascadeVersionProperties} which only
@@ -562,11 +562,11 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                                        List<String> sorted, String branchName)
             throws MojoException {
 
-        // Build map of component name → new branch-qualified version
+        // Build map of subproject name → new branch-qualified version
         java.util.Map<String, String> newVersions = new java.util.LinkedHashMap<>();
         for (String name : sorted) {
-            Component comp = graph.manifest().components().get(name);
-            String effectiveVersion = comp.version();
+            Subproject sub = graph.manifest().components().get(name);
+            String effectiveVersion = sub.version();
             if (effectiveVersion == null || effectiveVersion.isEmpty()) {
                 File pom = new File(new File(root, name), "pom.xml");
                 if (pom.exists()) {
@@ -581,7 +581,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
             }
         }
 
-        // For each component, check its POM properties for references
+        // For each subproject, check its POM properties for references
         // to other workspace components (e.g., <tinkar-core.version>)
         for (String name : sorted) {
             File dir = new File(root, name);
@@ -594,10 +594,10 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                 String original = content;
 
                 for (java.util.Map.Entry<String, String> vEntry : newVersions.entrySet()) {
-                    String compName = vEntry.getKey();
-                    if (compName.equals(name)) continue;
+                    String subName = vEntry.getKey();
+                    if (subName.equals(name)) continue;
 
-                    String propertyName = compName + ".version";
+                    String propertyName = subName + ".version";
                     String before = content;
                     content = ReleaseSupport.updateVersionProperty(
                             content, propertyName, vEntry.getValue());
@@ -624,7 +624,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
     }
 
     /**
-     * Check if a component is a shallow clone and fetch full history
+     * Check if a subproject is a shallow clone and fetch full history
      * if needed. Feature branches require full history for merge-base
      * operations during feature-finish.
      */
@@ -678,13 +678,13 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         }
 
         // Filter out gaps that cascadeBomProperties() can resolve (#82).
-        // Check if the affected component's own POM (or any POM in its
+        // Check if the affected subproject's own POM (or any POM in its
         // module tree) has a <upstream.version> property — if so, the
         // cascade will update it automatically and the gap is handled.
         issues.removeIf(issue -> {
             String propertyName = issue.dependsOn() + ".version";
-            // Check the affected component's POM tree
-            java.nio.file.Path compDir = root.toPath().resolve(issue.componentName());
+            // Check the affected subproject's POM tree
+            java.nio.file.Path compDir = root.toPath().resolve(issue.subprojectName());
             if (java.nio.file.Files.exists(compDir.resolve("pom.xml"))) {
                 try {
                     java.util.List<java.io.File> poms = network.ike.plugin.ReleaseSupport
@@ -699,10 +699,10 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                 } catch (Exception _) { /* skip */ }
             }
             // Also check workspace-internal BOMs that manage the upstream's
-            // artifacts — if a BOM component has the property, the cascade
+            // artifacts — if a BOM subproject has the property, the cascade
             // path exists through the BOM import chain.
             for (String bomName : graph.manifest().components().keySet()) {
-                Component bomComp = graph.manifest().components().get(bomName);
+                Subproject bomComp = graph.manifest().components().get(bomName);
                 if (bomComp.type() != network.ike.workspace.SubprojectType.INFRASTRUCTURE) continue;
                 java.nio.file.Path bomPom = root.toPath()
                         .resolve(bomName).resolve("pom.xml");
@@ -731,7 +731,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
                         + ":" + bom.artifactId() + ":" + bom.version();
             }
             gaps.add(new CascadeGapRow(
-                    issue.componentName(), issue.dependsOn(), issueDesc));
+                    issue.subprojectName(), issue.dependsOn(), issueDesc));
         }
 
         // Report issues to console
@@ -746,7 +746,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         getLog().warn("");
 
         for (var issue : issues) {
-            getLog().warn("    " + issue.componentName() + " → " + issue.dependsOn());
+            getLog().warn("    " + issue.subprojectName() + " → " + issue.dependsOn());
             for (var bom : issue.externalBomPins()) {
                 getLog().warn("      external BOM: " + bom.groupId()
                         + ":" + bom.artifactId() + ":" + bom.version());
@@ -779,7 +779,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
     /**
      * Cascade BOM import version updates to downstream components.
      *
-     * <p>When an upstream component's version changes (e.g., tinkar-core
+     * <p>When an upstream subproject's version changes (e.g., tinkar-core
      * gets a branch-qualified version), downstream components that import
      * a BOM published by the upstream need their import version updated.
      */
@@ -792,7 +792,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
         java.util.Map<String, String> newVersions = new java.util.LinkedHashMap<>();
 
         for (String name : sorted) {
-            Component comp = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().components().get(name);
             java.nio.file.Path compDir = root.toPath().resolve(name);
 
             if (java.nio.file.Files.exists(compDir.resolve("pom.xml"))) {
@@ -805,7 +805,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
             }
 
             // Resolve effective version (same logic as the branching loop)
-            String effectiveVersion = comp.version();
+            String effectiveVersion = sub.version();
             if (effectiveVersion == null || effectiveVersion.isEmpty()) {
                 File pom = new File(new File(root, name), "pom.xml");
                 if (pom.exists()) {
@@ -820,10 +820,10 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
             }
         }
 
-        // For each component in topological order, check if it imports
-        // a BOM published by an upstream component that got a new version
+        // For each subproject in topological order, check if it imports
+        // a BOM published by an upstream subproject that got a new version
         for (String name : sorted) {
-            Component comp = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().components().get(name);
             File dir = new File(root, name);
             java.nio.file.Path pomPath = dir.toPath().resolve("pom.xml");
 
@@ -841,7 +841,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
             for (BomAnalysis.BomImport bom : bomImports) {
                 if (!bom.isWorkspaceInternal()) continue;
 
-                String upstreamName = bom.publishingComponent();
+                String upstreamName = bom.publishingSubproject();
                 if (!newVersions.containsKey(upstreamName)) continue;
 
                 String newVersion = newVersions.get(upstreamName);
@@ -887,7 +887,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
      * removes the pins and commits the changes.
      *
      * @param root      workspace root directory
-     * @param components component names to scan
+     * @param components subproject names to scan
      * @param publish   true to actually remove; false to report only
      */
     private void removeIntraReactorPins(File root, List<String> components,
@@ -900,7 +900,7 @@ public class FeatureStartDraftMojo extends AbstractWorkspaceMojo {
 
             try {
                 // Build the set of all reactor artifactIds by walking
-                // the subproject tree from the component root POM.
+                // the subproject tree from the subproject root POM.
                 PomModel rootModel = PomModel.parse(rootPom.toPath());
                 String reactorGroupId = rootModel.groupId();
                 Set<String> reactorArtifacts = new java.util.LinkedHashSet<>();

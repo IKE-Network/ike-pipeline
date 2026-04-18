@@ -5,7 +5,7 @@ import network.ike.plugin.ws.preflight.Preflight;
 import network.ike.plugin.ws.preflight.PreflightCondition;
 import network.ike.plugin.ws.preflight.PreflightContext;
 
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.WorkspaceGraph;
 import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.api.plugin.annotations.Mojo;

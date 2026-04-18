@@ -1,7 +1,7 @@
 package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.DependencyConvergenceAnalysis;
 import network.ike.workspace.DependencyConvergenceAnalysis.Divergence;
 import network.ike.workspace.DependencyTreeParser;
@@ -28,7 +28,7 @@ import java.util.TreeSet;
 /**
  * Check transitive dependency convergence across workspace components.
  *
- * <p>This goal runs {@code mvn dependency:tree} for each component in
+ * <p>This goal runs {@code mvn dependency:tree} for each subproject in
  * topological order, then compares resolved versions of shared
  * dependencies. Divergences (the same artifact resolving to different
  * versions in different components) are reported in the terminal and
@@ -36,7 +36,7 @@ import java.util.TreeSet;
  *
  * <p>This is inherently read-only — no apply variant is needed.
  * Slower than other verification goals because it invokes Maven
- * per component.
+ * per subproject.
  *
  * <pre>{@code
  * mvn ws:verify-convergence
@@ -83,7 +83,7 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
 
         File mvnExecutable = resolveMvn(root);
 
-        // Collect dependency trees per component in topological order
+        // Collect dependency trees per subproject in topological order
         List<String> order = graph.topologicalSort();
         Map<String, List<ResolvedDependency>> componentTrees =
                 new LinkedHashMap<>();
@@ -137,7 +137,7 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
 
             for (Divergence d : divergences) {
                 getLog().info("    " + d.coordinate());
-                for (var vEntry : d.versionToComponents().entrySet()) {
+                for (var vEntry : d.versionToSubprojects().entrySet()) {
                     getLog().info("      " + vEntry.getKey() + " ← "
                             + String.join(", ", vEntry.getValue()));
                 }
@@ -220,7 +220,7 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
             sb.append("\n## Divergences\n\n");
             for (Divergence d : divergences) {
                 sb.append("- `").append(d.coordinate()).append("`\n");
-                for (var vEntry : d.versionToComponents().entrySet()) {
+                for (var vEntry : d.versionToSubprojects().entrySet()) {
                     sb.append("  - `").append(vEntry.getKey()).append("` ← ")
                       .append(String.join(", ", vEntry.getValue())).append("\n");
                 }
@@ -259,7 +259,7 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
         getLog().info("");
         getLog().info("  Parent version check (" + parentAid + ":" + rootVersion + ")");
 
-        for (Map.Entry<String, Component> entry
+        for (Map.Entry<String, Subproject> entry
                 : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
             File compDir = new File(root, name);
@@ -323,7 +323,7 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
 
         // Collect known feature branch qualifiers from component branches
         Set<String> qualifiers = new TreeSet<>();
-        for (Map.Entry<String, Component> entry
+        for (Map.Entry<String, Subproject> entry
                 : graph.manifest().components().entrySet()) {
             File compDir = new File(root, entry.getKey());
             if (!new File(compDir, ".git").exists()) continue;
@@ -354,7 +354,7 @@ public class VerifyConvergenceMojo extends AbstractWorkspaceMojo {
 
         List<String> contaminated = new ArrayList<>();
 
-        for (Map.Entry<String, Component> entry
+        for (Map.Entry<String, Subproject> entry
                 : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
             File compDir = new File(root, name);

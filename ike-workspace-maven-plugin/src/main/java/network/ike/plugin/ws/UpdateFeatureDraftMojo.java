@@ -147,7 +147,7 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
             return;
         }
 
-        // Show how far behind each component is + collect report data
+        // Show how far behind each subproject is + collect report data
         List<String[]> reportRows = new ArrayList<>();
         for (String name : eligible) {
             File dir = new File(root, name);
@@ -250,7 +250,7 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
             getLog().info("");
             getLog().info("  Next: mvn ws:update-feature-publish");
         } else {
-            getLog().info("  Updated: " + eligible.size() + " component(s)"
+            getLog().info("  Updated: " + eligible.size() + " subproject(s)"
                     + " | Skipped: " + skipped.size());
         }
         getLog().info("");
@@ -259,7 +259,7 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
         var sb = new StringBuilder();
         sb.append("**Branch:** `").append(branchName)
           .append("` ← `").append(targetBranch).append("`\n\n");
-        sb.append("| Component | Behind | Ahead | Conflicts | Status |\n");
+        sb.append("| Subproject | Behind | Ahead | Conflicts | Status |\n");
         sb.append("|-----------|--------|-------|-----------|--------|\n");
         for (String[] row : reportRows) {
             sb.append("| ").append(row[0])
@@ -269,7 +269,7 @@ public class UpdateFeatureDraftMojo extends AbstractWorkspaceMojo {
               .append(" | ").append(row[4])
               .append(" |\n");
         }
-        sb.append("\n**").append(eligible.size()).append("** component(s)")
+        sb.append("\n**").append(eligible.size()).append("** subproject(s)")
           .append(draft ? " to update" : " updated")
           .append(", **").append(skipped.size()).append("** skipped.\n");
         writeReport(publish ? WsGoal.UPDATE_FEATURE_PUBLISH : WsGoal.UPDATE_FEATURE_DRAFT,

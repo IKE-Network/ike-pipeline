@@ -5,7 +5,7 @@ import network.ike.plugin.ws.preflight.Preflight;
 import network.ike.plugin.ws.preflight.PreflightCondition;
 import network.ike.plugin.ws.preflight.PreflightContext;
 import network.ike.plugin.ws.preflight.PreflightResult;
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.Dependency;
 import network.ike.workspace.PublishedArtifactSet;
 import network.ike.workspace.WorkspaceGraph;
@@ -27,13 +27,13 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Align inter-component dependency versions in POM files to match the
- * current workspace component versions.
+ * Align inter-subproject dependency versions in POM files to match the
+ * current workspace subproject versions.
  *
- * <p>This is the {@code ws:align} goal. For each component on disk, it
+ * <p>This is the {@code ws:align} goal. For each subproject on disk, it
  * scans POM dependency declarations. When a dependency's groupId matches
- * another workspace component and the declared version does not match
- * that component's current POM version, the dependency version is
+ * another workspace subproject and the declared version does not match
+ * that subproject's current POM version, the dependency version is
  * updated.
  *
  * <p>Property-based versions (e.g., {@code <ike-bom.version>}) are
@@ -62,7 +62,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
     public void execute() throws MojoException {
         boolean draft = !publish;
         getLog().info("");
-        getLog().info("IKE Workspace Align — synchronize inter-component dependency versions");
+        getLog().info("IKE Workspace Align — synchronize inter-subproject dependency versions");
         getLog().info("══════════════════════════════════════════════════════════════");
 
         if (draft) {
@@ -84,7 +84,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             preflight.requirePassed(WsGoal.ALIGN_PUBLISH);
         }
 
-        // Build lookup: groupId:artifactId → (component name, current POM version)
+        // Build lookup: groupId:artifactId → (subproject name, current POM version)
         Map<String, ComponentVersion> artifactIndex = buildArtifactIndex(graph, root);
 
         int totalChanges = 0;
@@ -92,9 +92,9 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         List<AlignChange> reportChanges = new ArrayList<>();
         List<AlignCheck> alignChecks = new ArrayList<>();
 
-        for (Map.Entry<String, Component> entry : graph.manifest().components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
-            Component component = entry.getValue();
+            Subproject subproject = entry.getValue();
             File componentDir = new File(root, name);
 
             if (!new File(componentDir, "pom.xml").exists()) {
@@ -102,7 +102,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
                 continue;
             }
 
-            // Find all POM files in this component
+            // Find all POM files in this subproject
             List<File> pomFiles;
             try {
                 pomFiles = ReleaseSupport.findPomFiles(componentDir);
@@ -114,9 +114,9 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
 
             // Also use the declared depends-on to find version-property hints
             Map<String, String> versionPropertyMap = new LinkedHashMap<>();
-            for (Dependency dep : component.dependsOn()) {
+            for (Dependency dep : subproject.dependsOn()) {
                 if (dep.versionProperty() != null && !dep.versionProperty().isEmpty()) {
-                    Component target = graph.manifest().components().get(dep.component());
+                    Subproject target = graph.manifest().components().get(dep.component());
                     if (target != null && target.groupId() != null
                             && !target.groupId().isEmpty()) {
                         versionPropertyMap.put(dep.component(), dep.versionProperty());
@@ -153,13 +153,13 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         }
 
         // --- Parent version alignment (via Maven 4 Model API) ---
-        for (Map.Entry<String, Component> entry : graph.manifest().components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
-            Component component = entry.getValue();
-            String parentComponentName = component.parent();
+            Subproject subproject = entry.getValue();
+            String parentComponentName = subproject.parent();
             if (parentComponentName == null) continue;
 
-            Component parentComponent = graph.manifest().components().get(parentComponentName);
+            Subproject parentComponent = graph.manifest().components().get(parentComponentName);
             if (parentComponent == null || parentComponent.version() == null) continue;
 
             File componentDir = new File(root, name);
@@ -222,7 +222,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         // in ike-parent's pluginManagement for ike-maven-plugin must match.
         // Extensions plugins need literal versions (loaded before property
         // interpolation), so this literal is the only way to pin the version.
-        for (Map.Entry<String, Component> entry : graph.manifest().components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
             File componentDir = new File(root, name);
             Path rootPomPath = componentDir.toPath().resolve("pom.xml");
@@ -283,14 +283,14 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         // --- Summary ---
         getLog().info("");
         if (totalChanges == 0) {
-            getLog().info("  All inter-component dependency and parent versions are aligned  ✓");
+            getLog().info("  All inter-subproject dependency and parent versions are aligned  ✓");
         } else if (draft) {
             getLog().info("  " + totalChanges + " version(s) would be updated across "
-                    + changedComponents.size() + " component(s)");
+                    + changedComponents.size() + " subproject(s)");
             getLog().info("  Use ws:align-publish to apply changes.");
         } else {
             getLog().info("  Updated " + totalChanges + " version(s) across "
-                    + changedComponents.size() + " component(s)");
+                    + changedComponents.size() + " subproject(s)");
         }
         getLog().info("");
 
@@ -309,22 +309,22 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         StringBuilder md = new StringBuilder();
 
         if (totalChanges == 0) {
-            md.append("All inter-component dependency and parent versions are aligned.\n\n");
+            md.append("All inter-subproject dependency and parent versions are aligned.\n\n");
         } else if (!publish) {
             md.append("**Dry run** — ").append(totalChanges)
               .append(" version(s) would be updated across ")
-              .append(changedComponents.size()).append(" component(s).\n\n");
+              .append(changedComponents.size()).append(" subproject(s).\n\n");
         } else {
             md.append("Updated ").append(totalChanges)
               .append(" version(s) across ")
-              .append(changedComponents.size()).append(" component(s).\n\n");
+              .append(changedComponents.size()).append(" subproject(s).\n\n");
         }
 
         if (!changes.isEmpty()) {
-            md.append("| Component | POM | Artifact | From | To |\n");
+            md.append("| Subproject | POM | Artifact | From | To |\n");
             md.append("|-----------|-----|----------|------|----|\n");
             for (AlignChange c : changes) {
-                md.append("| ").append(c.component)
+                md.append("| ").append(c.subproject)
                   .append(" | ").append(c.pomRelPath)
                   .append(" | `").append(c.artifact).append('`')
                   .append(" | ").append(c.fromVersion)
@@ -336,10 +336,10 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
 
         // Always show alignment summary table
         if (!checks.isEmpty()) {
-            md.append("| Component | Version | Status |\n");
+            md.append("| Subproject | Version | Status |\n");
             md.append("|-----------|---------|--------|\n");
             for (AlignCheck c : checks) {
-                md.append("| ").append(c.component)
+                md.append("| ").append(c.subproject)
                   .append(" | ").append(c.version)
                   .append(" | ").append(c.aligned ? "✓ aligned" : "✗ needs update")
                   .append(" |\n");
@@ -350,22 +350,22 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
     }
 
     /** A single version alignment change for the report. */
-    private record AlignChange(String component, String pomRelPath,
+    private record AlignChange(String subproject, String pomRelPath,
                                 String artifact, String fromVersion,
                                 String toVersion) {}
 
-    /** A component alignment check result for the summary table. */
-    private record AlignCheck(String component, String version,
+    /** A subproject alignment check result for the summary table. */
+    private record AlignCheck(String subproject, String version,
                                boolean aligned) {}
 
     // ── Artifact index ───────────────────────────────────────────────
 
     /**
-     * Build an index from {@code groupId:artifactId} to (component name,
+     * Build an index from {@code groupId:artifactId} to (subproject name,
      * current POM version) for all cloned workspace components.
      *
      * <p>Uses {@link PublishedArtifactSet#scan} to discover every
-     * artifact each component publishes, so components sharing a
+     * artifact each subproject publishes, so components sharing a
      * groupId (e.g., {@code dev.ikm.ike}) are correctly distinguished
      * by artifactId.
      */
@@ -373,7 +373,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             WorkspaceGraph graph, File root) throws MojoException {
         Map<String, ComponentVersion> index = new LinkedHashMap<>();
 
-        for (Map.Entry<String, Component> entry : graph.manifest().components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
             File componentDir = new File(root, name);
 
@@ -414,7 +414,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
 
     /**
      * Scan a single POM file for dependencies whose {@code groupId:artifactId}
-     * matches a workspace component's published artifact, and update
+     * matches a workspace subproject's published artifact, and update
      * mismatched versions.
      *
      * <p>Uses Maven 4's {@link PomModel} for reading dependency coordinates
@@ -496,7 +496,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
         }
 
         // Handle version-property updates declared in depends-on.
-        // Look up the target component's version by name (via the
+        // Look up the target subproject's version by name (via the
         // artifact index), not by groupId — avoids the collision.
         for (Map.Entry<String, String> vpEntry : versionPropertyMap.entrySet()) {
             String targetComponent = vpEntry.getKey();
@@ -541,7 +541,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
 
     /**
      * Scan a single POM file for plugins whose {@code groupId:artifactId}
-     * matches a workspace component's published artifact, and update
+     * matches a workspace subproject's published artifact, and update
      * mismatched literal versions.
      *
      * <p>Uses Maven 4's {@link PomModel} for reading plugin coordinates.
@@ -622,14 +622,14 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
     }
 
     /**
-     * Find a component's version by scanning its published artifacts
-     * and looking them up in the artifact index. Matches by component
+     * Find a subproject's version by scanning its published artifacts
+     * and looking them up in the artifact index. Matches by subproject
      * name (not groupId), so it handles groupId collisions.
      */
     private ComponentVersion findComponentVersion(
-            String componentName,
+            String subprojectName,
             Map<String, ComponentVersion> artifactIndex, File root) {
-        File componentDir = new File(root, componentName);
+        File componentDir = new File(root, subprojectName);
         if (!new File(componentDir, "pom.xml").exists()) {
             return null;
         }
@@ -639,7 +639,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
             for (PublishedArtifactSet.Artifact artifact : published) {
                 String key = artifact.groupId() + ":" + artifact.artifactId();
                 ComponentVersion cv = artifactIndex.get(key);
-                if (cv != null && cv.name.equals(componentName)) {
+                if (cv != null && cv.name.equals(subprojectName)) {
                     return cv;
                 }
             }
@@ -652,7 +652,7 @@ public class WsAlignDraftMojo extends AbstractWorkspaceMojo {
     // ── Internal record ─────────────────────────────────────────────
 
     /**
-     * Associates a component name with its current POM version.
+     * Associates a subproject name with its current POM version.
      */
     private record ComponentVersion(String name, String version) {}
 }

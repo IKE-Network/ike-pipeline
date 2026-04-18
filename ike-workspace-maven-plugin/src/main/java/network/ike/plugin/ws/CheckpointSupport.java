@@ -8,13 +8,13 @@ import org.apache.maven.api.plugin.Log;
 import java.io.File;
 
 /**
- * Per-component checkpoint engine — tag a single repo at its current HEAD.
+ * Per-subproject checkpoint engine — tag a single repo at its current HEAD.
  *
  * <p>This is the internal engine invoked by {@link WsCheckpointDraftMojo}
- * for each workspace component. It is not exposed as a standalone Maven goal.
+ * for each workspace subproject. It is not exposed as a standalone Maven goal.
  *
  * <p>A checkpoint records the current state for reproduction — it is not
- * a build or a release. The workflow for a single component:
+ * a build or a release. The workflow for a single subproject:
  * <ol>
  *   <li>Tag current HEAD with {@code checkpoint/<name>}</li>
  *   <li>Push tag to origin</li>
@@ -28,9 +28,9 @@ class CheckpointSupport {
     private CheckpointSupport() {}
 
     /**
-     * Tag a single component at its current HEAD.
+     * Tag a single subproject at its current HEAD.
      *
-     * @param dir     component git root directory
+     * @param dir     subproject git root directory
      * @param tagName the tag to create (e.g., {@code checkpoint/post-migration})
      * @param log     Maven logger
      * @throws MojoException if tagging or pushing fails
@@ -58,9 +58,9 @@ class CheckpointSupport {
     }
 
     /**
-     * Log a draft summary for a single component.
+     * Log a draft summary for a single subproject.
      *
-     * @param dir     component git root directory
+     * @param dir     subproject git root directory
      * @param tagName the tag that would be created
      * @param log     Maven logger
      */

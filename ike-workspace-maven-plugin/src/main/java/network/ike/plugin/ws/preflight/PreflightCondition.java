@@ -56,7 +56,7 @@ public enum PreflightCondition {
 
             var sb = new StringBuilder();
             sb.append(uncommitted.size())
-                    .append(" component(s) have uncommitted changes:\n");
+                    .append(" subproject(s) have uncommitted changes:\n");
             for (String name : uncommitted) {
                 File dir = WORKSPACE_ROOT_NAME.equals(name)
                         ? root : new File(root, name);
@@ -70,7 +70,7 @@ public enum PreflightCondition {
             sb.append("  To resolve:\n");
             sb.append("    mvn ws:commit -DaddAll=true"
                     + " -Dmessage=\"<your message>\"\n");
-            sb.append("  Or stash changes in each affected component.");
+            sb.append("  Or stash changes in each affected subproject.");
             return Optional.of(sb.toString());
         }
     };

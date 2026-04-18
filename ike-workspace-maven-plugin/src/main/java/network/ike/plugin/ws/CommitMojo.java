@@ -14,7 +14,7 @@ import java.util.List;
  * Commit with a VCS bridge catch-up preamble.
  *
  * <p>When run from a workspace root (where {@code workspace.yaml} exists),
- * iterates all component repositories in topological order, staging and
+ * iterates all subproject repositories in topological order, staging and
  * committing changes in each. When run from a single repository, operates
  * on the current directory only.
  *

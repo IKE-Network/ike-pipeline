@@ -7,7 +7,7 @@ import network.ike.plugin.ws.preflight.PreflightCondition;
 import network.ike.plugin.ws.preflight.PreflightContext;
 import network.ike.plugin.ws.preflight.PreflightResult;
 
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.SubprojectType;
 import network.ike.workspace.WorkspaceGraph;
@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.LinkedHashSet;
 
 /**
- * Create a workspace checkpoint — tag every component at its current HEAD
+ * Create a workspace checkpoint — tag every subproject at its current HEAD
  * and record the snapshot in a YAML manifest.
  *
  * <p>A checkpoint records the current state of the workspace for reproduction.
@@ -38,7 +38,7 @@ import java.util.LinkedHashSet;
  * no deployment. TeamCity watches for checkpoint tags on the workspace repo
  * and handles CI.
  *
- * <p>Each component is tagged in topological order (dependencies before
+ * <p>Each subproject is tagged in topological order (dependencies before
  * dependents). After all components are tagged, a YAML file recording
  * the SHAs, versions, and branches is committed and tagged in the
  * workspace aggregator repo.
@@ -50,7 +50,7 @@ import java.util.LinkedHashSet;
  * mvn ws:checkpoint-publish                  # execute
  * }</pre>
  *
- * @see CheckpointSupport the per-component tagging engine
+ * @see CheckpointSupport the per-subproject tagging engine
  */
 @Mojo(name = "checkpoint-draft", projectRequired = false)
 public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
@@ -89,7 +89,7 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
     /**
      * Milestone name to snapshot for testing context. If omitted,
      * looks for an open milestone matching the workspace's primary
-     * component (first component in manifest) in the form
+     * subproject (first subproject in manifest) in the form
      * {@code <artifactId> v<version>} where version is the current
      * SNAPSHOT stripped of the suffix.
      */
@@ -136,21 +136,21 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
         }
         getLog().info("");
 
-        // ── Tag each component in dependency order ────────────────────
+        // ── Tag each subproject in dependency order ────────────────────
         List<ComponentSnapshot> snapshots = new ArrayList<>();
         List<String> absentComponents = new ArrayList<>();
 
         List<String> ordered = graph.topologicalSort(
                 new LinkedHashSet<>(graph.manifest().components().keySet()));
 
-        for (String compName : ordered) {
-            Component component = graph.manifest().components().get(compName);
-            File dir = new File(root, compName);
+        for (String subName : ordered) {
+            Subproject subproject = graph.manifest().components().get(subName);
+            File dir = new File(root, subName);
             File gitDir = new File(dir, ".git");
 
             if (!gitDir.exists()) {
-                absentComponents.add(compName);
-                getLog().info("  - " + compName + " [absent — skipped]");
+                absentComponents.add(subName);
+                getLog().info("  - " + subName + " [absent — skipped]");
                 continue;
             }
 
@@ -159,24 +159,24 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
             String shortSha = gitShortSha(dir);
             String version  = readVersion(dir);
 
-            boolean composite = component.type().checkpointMechanism()
+            boolean composite = subproject.type().checkpointMechanism()
                     == SubprojectType.CheckpointMechanism.COMPOSITE;
 
             if (draft) {
-                getLog().info(Ansi.green("  ✓ ") + compName
+                getLog().info(Ansi.green("  ✓ ") + subName
                         + " [" + shortSha + "] " + branch
                         + " (" + version + ")");
                 CheckpointSupport.preview(dir, wsTagName, getLog());
                 snapshots.add(new ComponentSnapshot(
-                        compName, sha, shortSha, branch,
-                        version, false, component.type().yamlName(), composite));
+                        subName, sha, shortSha, branch,
+                        version, false, subproject.type().yamlName(), composite));
             } else {
                 CheckpointSupport.checkpoint(dir, wsTagName, getLog());
-                getLog().info(Ansi.green("  ✓ ") + compName
+                getLog().info(Ansi.green("  ✓ ") + subName
                         + " [" + shortSha + "] → " + wsTagName);
                 snapshots.add(new ComponentSnapshot(
-                        compName, sha, shortSha, branch,
-                        version, false, component.type().yamlName(), composite));
+                        subName, sha, shortSha, branch,
+                        version, false, subproject.type().yamlName(), composite));
             }
         }
 
@@ -204,14 +204,14 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
             return;
         }
 
-        // ── Write component SHAs into workspace.yaml ────────────────
+        // ── Write subproject SHAs into workspace.yaml ────────────────
         try {
             java.util.Map<String, String> shaUpdates = new java.util.LinkedHashMap<>();
             for (ComponentSnapshot snap : snapshots) {
                 shaUpdates.put(snap.name(), snap.sha());
             }
             ManifestWriter.updateShas(resolveManifest(), shaUpdates);
-            getLog().info("  Updated workspace.yaml with component SHAs");
+            getLog().info("  Updated workspace.yaml with subproject SHAs");
         } catch (IOException e) {
             getLog().warn("  Could not update workspace.yaml SHAs: " + e.getMessage());
         }
@@ -278,13 +278,13 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
                 buildCheckpointMarkdownReport(snapshots, absentComponents));
     }
 
-    // ── Per-component checkpoint (overridable for tests) ──────────────
+    // ── Per-subproject checkpoint (overridable for tests) ──────────────
 
     /**
-     * Tag a single component at its current HEAD. Override in tests
+     * Tag a single subproject at its current HEAD. Override in tests
      * to substitute a lighter-weight simulation.
      *
-     * @param dir     the component directory to checkpoint
+     * @param dir     the subproject directory to checkpoint
      * @param tagName the tag name to apply
      * @throws MojoException if the tagging operation fails
      */
@@ -298,12 +298,12 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
     private String buildCheckpointMarkdownReport(
             List<ComponentSnapshot> snapshots, List<String> absent) {
         var sb = new StringBuilder();
-        sb.append(snapshots.size()).append(" component(s) checkpointed");
+        sb.append(snapshots.size()).append(" subproject(s) checkpointed");
         if (!absent.isEmpty()) {
             sb.append(", ").append(absent.size()).append(" absent");
         }
         sb.append(!publish ? " (draft)" : "").append(".\n\n");
-        sb.append("| Component | Version | SHA | Branch | Status |\n");
+        sb.append("| Subproject | Version | SHA | Branch | Status |\n");
         sb.append("|-----------|---------|-----|--------|--------|\n");
         for (var snap : snapshots) {
             sb.append("| ").append(snap.name())
@@ -322,13 +322,13 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
     // ── YAML generation (pure, static, testable) ──────────────────────
 
     /**
-     * Build checkpoint YAML content from pre-gathered component data.
+     * Build checkpoint YAML content from pre-gathered subproject data.
      *
      * @param name          the checkpoint name
      * @param timestamp     the ISO-UTC creation timestamp
      * @param author        the author who created the checkpoint
      * @param schemaVersion the workspace manifest schema version
-     * @param snapshots     the per-component snapshot records
+     * @param snapshots     the per-subproject snapshot records
      * @param absentNames   names of components not present on disk
      * @return the checkpoint YAML content as a string
      */
@@ -412,11 +412,11 @@ public class WsCheckpointDraftMojo extends AbstractWorkspaceMojo {
             var components = graph.manifest().components();
             if (!components.isEmpty()) {
                 var first = components.entrySet().iterator().next();
-                String compName = first.getKey();
+                String subName = first.getKey();
                 String version = first.getValue().version();
                 if (version != null) {
                     String releaseVersion = version.replace("-SNAPSHOT", "");
-                    milestoneName = compName + " v" + releaseVersion;
+                    milestoneName = subName + " v" + releaseVersion;
                 }
             }
         }

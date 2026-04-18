@@ -6,7 +6,7 @@ import network.ike.plugin.ws.preflight.PreflightCondition;
 import network.ike.plugin.ws.preflight.PreflightContext;
 import network.ike.plugin.ws.preflight.PreflightResult;
 
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.WorkspaceGraph;
 import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.api.plugin.annotations.Mojo;
@@ -36,11 +36,11 @@ import java.util.Map;
  * dependency order. After each release, downstream parent version
  * references are updated automatically.</p>
  *
- * <p><strong>What it does, per component:</strong></p>
+ * <p><strong>What it does, per subproject:</strong></p>
  * <ol>
  *   <li>Detect latest release tag ({@code v*})</li>
  *   <li>Check for commits since that tag</li>
- *   <li>If modified: run {@code mvn ike:release} in that component's directory</li>
+ *   <li>If modified: run {@code mvn ike:release} in that subproject's directory</li>
  *   <li>After release: update parent version in downstream components</li>
  * </ol>
  *
@@ -74,7 +74,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
     /**
      * GitHub repository for release creation (e.g., "IKE-Network/komet").
-     * If set, creates a GitHub Release for each released component and
+     * If set, creates a GitHub Release for each released subproject and
      * attaches any platform installers found in the component's
      * {@code target/installers/} directory.
      */
@@ -83,7 +83,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
     /**
      * Glob pattern for installer artifacts to attach to the GitHub Release.
-     * Matched relative to each component's {@code target/} directory.
+     * Matched relative to each subproject's {@code target/} directory.
      */
     @Parameter(property = "installerGlob", defaultValue = "installers/*.{pkg,dmg,msi,deb,rpm}")
     String installerGlob;
@@ -116,8 +116,8 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
         for (String name : graph.topologicalSort()) {
             if (!candidates.contains(name)) continue;
 
-            Component comp = graph.manifest().components().get(name);
-            if (comp == null) continue;
+            Subproject sub = graph.manifest().components().get(name);
+            if (sub == null) continue;
 
             File compDir = new File(root, name);
             if (!compDir.isDirectory() || !new File(compDir, "pom.xml").exists()) {
@@ -127,15 +127,15 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
             String latestTag = latestReleaseTag(compDir);
             if (latestTag == null) {
-                // No release tag exists — component has never been released
-                releasable.put(name, new ReleaseCandidate(name, comp, compDir,
+                // No release tag exists — subproject has never been released
+                releasable.put(name, new ReleaseCandidate(name, sub, compDir,
                         null, "never released"));
                 continue;
             }
 
             int commitsSinceTag = commitsSinceTag(compDir, latestTag);
             if (commitsSinceTag > 0) {
-                releasable.put(name, new ReleaseCandidate(name, comp, compDir,
+                releasable.put(name, new ReleaseCandidate(name, sub, compDir,
                         latestTag, commitsSinceTag + " commits since " + latestTag));
                 continue;
             }
@@ -181,7 +181,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
             writeCheckpoint(root, graph, checkpointName);
         }
 
-        // ── 6. Release each component in order ────────────────────────
+        // ── 6. Release each subproject in order ────────────────────────
         List<String> released = new ArrayList<>();
         Map<String, String> releasedVersions = new LinkedHashMap<>();
 
@@ -192,7 +192,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
             getLog().info("  Releasing: " + rc.name);
             getLog().info("────────────────────────────────────────────────");
 
-            // Update parent version if an upstream component was just released
+            // Update parent version if an upstream subproject was just released
             updateParentVersions(rc, releasedVersions);
 
             // Derive release version from current SNAPSHOT
@@ -244,7 +244,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
     /**
      * Create GitHub Releases for released components and attach
-     * platform installers. Uses {@code gh} CLI. Each component gets
+     * platform installers. Uses {@code gh} CLI. Each subproject gets
      * a release tagged {@code v<version>}. If the release already
      * exists, uploads are appended with {@code --clobber}.
      */
@@ -319,8 +319,8 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
             Map<String, String> releasedVersions) {
         var sb = new StringBuilder();
         sb.append(releasedVersions.size())
-                .append(" component(s) released.\n\n");
-        sb.append("| Component | Version | Status |\n");
+                .append(" subproject(s) released.\n\n");
+        sb.append("| Subproject | Version | Status |\n");
         sb.append("|-----------|---------|--------|\n");
         for (var entry : releasedVersions.entrySet()) {
             sb.append("| ").append(entry.getKey())
@@ -397,7 +397,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
             String original = content;
 
             // Use explicit version-property declarations from depends-on edges
-            for (network.ike.workspace.Dependency dep : rc.component.dependsOn()) {
+            for (network.ike.workspace.Dependency dep : rc.subproject.dependsOn()) {
                 String upstreamName = dep.component();
                 if (!releasedVersions.containsKey(upstreamName)) continue;
 
@@ -501,14 +501,14 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
             Files.createDirectories(checkpointsDir);
             Path file = checkpointsDir.resolve("checkpoint-" + name + ".yaml");
 
-            // Gather component data for the pure function
+            // Gather subproject data for the pure function
             String timestamp = ISO_UTC.format(Instant.now());
             List<String[]> componentData = new ArrayList<>();
-            for (String compName : graph.topologicalSort()) {
-                File compDir = new File(root, compName);
+            for (String subName : graph.topologicalSort()) {
+                File compDir = new File(root, subName);
                 if (!compDir.isDirectory()) continue;
                 componentData.add(new String[]{
-                        compName, gitBranch(compDir), gitShortSha(compDir),
+                        subName, gitBranch(compDir), gitShortSha(compDir),
                         currentVersion(compDir),
                         String.valueOf(!gitStatus(compDir).isEmpty())
                 });
@@ -524,7 +524,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
     /**
      * Build pre-release checkpoint YAML content from pre-gathered
-     * component data.
+     * subproject data.
      *
      * <p>This is a pure function with no git or I/O dependencies,
      * suitable for direct unit testing.
@@ -532,7 +532,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
      * @param name          checkpoint name
      * @param timestamp     ISO-8601 UTC timestamp
      * @param componentData list of {@code [name, branch, sha, version, modified]}
-     *                      arrays for each present component
+     *                      arrays for each present subproject
      * @return YAML checkpoint content
      */
     public static String buildPreReleaseCheckpointYaml(
@@ -544,12 +544,12 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
         yaml.append("timestamp: ").append(timestamp).append("\n");
         yaml.append("components:\n");
 
-        for (String[] comp : componentData) {
-            yaml.append("  ").append(comp[0]).append(":\n");
-            yaml.append("    branch: ").append(comp[1]).append("\n");
-            yaml.append("    sha: ").append(comp[2]).append("\n");
-            yaml.append("    version: ").append(comp[3]).append("\n");
-            yaml.append("    modified: ").append(comp[4]).append("\n");
+        for (String[] sub : componentData) {
+            yaml.append("  ").append(sub[0]).append(":\n");
+            yaml.append("    branch: ").append(sub[1]).append("\n");
+            yaml.append("    sha: ").append(sub[2]).append("\n");
+            yaml.append("    version: ").append(sub[3]).append("\n");
+            yaml.append("    modified: ").append(sub[4]).append("\n");
         }
 
         return yaml.toString();
@@ -562,13 +562,13 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
     }
 
     /**
-     * Resolve the Maven executable for a component directory.
+     * Resolve the Maven executable for a subproject directory.
      *
      * <p>Checks for {@code mvnw} (executable) and {@code mvnw.cmd} in
      * the given directory. Falls back to {@code "mvn"} from the system
      * PATH if no wrapper is found.
      *
-     * @param compDir the component directory to check
+     * @param compDir the subproject directory to check
      * @return absolute path to mvnw/mvnw.cmd, or {@code "mvn"}
      */
     public static String resolveMvnCommand(File compDir) {
@@ -587,7 +587,7 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
     private record ReleaseCandidate(
             String name,
-            Component component,
+            Subproject subproject,
             File dir,
             String lastTag,
             String reason) {}

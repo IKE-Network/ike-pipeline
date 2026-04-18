@@ -279,7 +279,7 @@ public class WsCreateMojo implements Mojo {
     /**
      * Generate the workspace {@code .gitignore} using the whitelist
      * strategy: ignore everything by default, then allowlist only
-     * workspace-owned files. Component repos are independent git
+     * workspace-owned files. Subproject repos are independent git
      * repos cloned by {@code ws:init}, so they must stay ignored at
      * the workspace level.
      *
@@ -302,7 +302,7 @@ public class WsCreateMojo implements Mojo {
         gi.append("# ").append("═".repeat(name.length() + 11)).append("\n");
         gi.append("#\n");
         gi.append("# Ignore everything, whitelist only workspace-owned files.\n");
-        gi.append("# Component repos are independent git repos cloned by ws:init.\n\n");
+        gi.append("# Subproject repos are independent git repos cloned by ws:init.\n\n");
         gi.append("# ── Ignore everything by default ─────────────────────────────────\n");
         gi.append("*\n\n");
         gi.append("# ── Whitelist workspace-level files ──────────────────────────────\n");
@@ -352,7 +352,7 @@ public class WsCreateMojo implements Mojo {
         adoc.append("mvn clean install   # <2>\n");
         adoc.append("----\n");
         adoc.append("<1> Clones all component repos in dependency order; installs Maven\n");
-        adoc.append("    wrapper and JVM config per component.\n");
+        adoc.append("    wrapper and JVM config per subproject.\n");
         adoc.append("<2> Builds the full stack.\n\n");
         adoc.append("== Workspace Commands\n\n");
         adoc.append("All `ws:` goals appear in the IntelliJ Maven tool window\n");
@@ -360,7 +360,7 @@ public class WsCreateMojo implements Mojo {
         adoc.append("[source,bash]\n");
         adoc.append("----\n");
         adoc.append("mvn ws:overview          # Workspace overview\n");
-        adoc.append("mvn ws:add -Drepo=      # Add a component repo\n");
+        adoc.append("mvn ws:add -Drepo=      # Add a subproject repo\n");
         adoc.append("mvn ws:upgrade          # Upgrade workspace conventions\n");
         adoc.append("----\n");
         return adoc.toString();

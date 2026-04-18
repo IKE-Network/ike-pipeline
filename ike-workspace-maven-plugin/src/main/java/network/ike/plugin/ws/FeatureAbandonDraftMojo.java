@@ -6,7 +6,7 @@ import network.ike.plugin.ws.preflight.PreflightCondition;
 import network.ike.plugin.ws.preflight.PreflightContext;
 import network.ike.plugin.ws.preflight.PreflightResult;
 
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
@@ -189,7 +189,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
         }
 
         getLog().info("");
-        getLog().info("  " + eligible.size() + " component(s) on " + branchName);
+        getLog().info("  " + eligible.size() + " subproject(s) on " + branchName);
         if (totalUnmerged > 0) {
             getLog().warn("  " + totalUnmerged + " total unmerged commit(s) will be lost");
         }
@@ -221,11 +221,11 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
 
         // Execute
         for (String name : eligible) {
-            Component component = graph.manifest().components().get(name);
+            Subproject subproject = graph.manifest().components().get(name);
             File dir = new File(root, name);
 
             // Strip branch-qualified versions before switching
-            FeatureFinishSupport.stripBranchVersion(dir, component, branchName, getLog());
+            FeatureFinishSupport.stripBranchVersion(dir, subproject, branchName, getLog());
 
             VcsOperations.checkout(dir, getLog(), targetBranch);
             VcsOperations.deleteBranch(dir, getLog(), branchName);
@@ -263,7 +263,7 @@ public class FeatureAbandonDraftMojo extends AbstractWorkspaceMojo {
                                      boolean isDraft) {
         var sb = new StringBuilder();
         sb.append("**Branch:** `").append(branchName).append("`\n\n");
-        sb.append("| Component | Status | Unmerged Commits |\n");
+        sb.append("| Subproject | Status | Unmerged Commits |\n");
         sb.append("|-----------|--------|------------------|\n");
         for (String[] row : rows) {
             sb.append("| ").append(row[0])

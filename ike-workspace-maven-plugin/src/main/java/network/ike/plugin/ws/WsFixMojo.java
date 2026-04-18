@@ -1,7 +1,7 @@
 package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.WorkspaceGraph;
 import org.apache.maven.api.plugin.MojoException;
@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
  * values on disk.
  *
  * <p>This is the {@code ws:fix} goal — an alias for
- * {@code ws:verify --update}. It reads each cloned component's root
+ * {@code ws:verify --update}. It reads each cloned subproject's root
  * POM and updates the workspace manifest's {@code version} and
  * {@code groupId} fields when they drift from the POM truth.
  *
@@ -55,9 +55,9 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
         Map<String, String> groupIdUpdates = new LinkedHashMap<>();
         int skipped = 0;
 
-        for (Map.Entry<String, Component> entry : graph.manifest().components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
-            Component component = entry.getValue();
+            Subproject subproject = entry.getValue();
             File componentDir = new File(root, name);
             File pomFile = new File(componentDir, "pom.xml");
 
@@ -70,7 +70,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
             // --- version ---
             try {
                 String pomVersion = ReleaseSupport.readPomVersion(pomFile);
-                String yamlVersion = component.version();
+                String yamlVersion = subproject.version();
 
                 if (yamlVersion != null && !yamlVersion.equals(pomVersion)) {
                     getLog().info("  " + name + ": version "
@@ -88,7 +88,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
             // --- groupId ---
             try {
                 String pomGroupId = readPomGroupId(pomFile);
-                String yamlGroupId = component.groupId();
+                String yamlGroupId = subproject.groupId();
 
                 if (pomGroupId != null && !pomGroupId.isEmpty()) {
                     if (yamlGroupId == null || yamlGroupId.isEmpty()
@@ -113,11 +113,11 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
             getLog().info("");
             getLog().info("  All denormalized fields are in sync  ✓");
             if (skipped > 0) {
-                getLog().info("  (" + skipped + " component(s) not cloned)");
+                getLog().info("  (" + skipped + " subproject(s) not cloned)");
             }
             getLog().info("");
             writeReport(WsGoal.FIX, "All denormalized fields are in sync. "
-                    + skipped + " component(s) not cloned.\n");
+                    + skipped + " subproject(s) not cloned.\n");
             return;
         }
 
@@ -136,7 +136,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
         getLog().info("");
         getLog().info("  Updated " + totalChanges + " field(s) in workspace.yaml");
         if (skipped > 0) {
-            getLog().info("  (" + skipped + " component(s) not cloned)");
+            getLog().info("  (" + skipped + " subproject(s) not cloned)");
         }
         getLog().info("");
 
@@ -189,7 +189,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
     // ── Manifest field updaters (regex-based, preserving formatting) ─
 
     /**
-     * Update the {@code version} field for each component in the YAML.
+     * Update the {@code version} field for each subproject in the YAML.
      * Uses {@link ManifestWriter#updateComponentField} to preserve
      * comments and formatting.
      */
@@ -205,7 +205,7 @@ public class WsFixMojo extends AbstractWorkspaceMojo {
     }
 
     /**
-     * Update the {@code groupId} field for each component in the YAML.
+     * Update the {@code groupId} field for each subproject in the YAML.
      * Uses {@link ManifestWriter#updateComponentField} to preserve
      * comments and formatting.
      */

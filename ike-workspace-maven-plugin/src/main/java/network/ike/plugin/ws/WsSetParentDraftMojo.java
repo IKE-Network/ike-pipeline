@@ -5,7 +5,7 @@ import network.ike.plugin.ws.preflight.Preflight;
 import network.ike.plugin.ws.preflight.PreflightCondition;
 import network.ike.plugin.ws.preflight.PreflightContext;
 import network.ike.plugin.ws.preflight.PreflightResult;
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.WorkspaceGraph;
 import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.api.plugin.annotations.Mojo;
@@ -124,8 +124,8 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
             }
         }
 
-        // --- Component POMs ---
-        for (Map.Entry<String, Component> entry
+        // --- Subproject POMs ---
+        for (Map.Entry<String, Subproject> entry
                 : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
             File componentDir = new File(root, name);
@@ -136,7 +136,7 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
                 continue;
             }
 
-            // Read the component's root POM parent
+            // Read the subproject's root POM parent
             PomParentSupport.ParentInfo compParent;
             try {
                 compParent = PomParentSupport.readParent(componentPom);
@@ -311,7 +311,7 @@ public class WsSetParentDraftMojo extends AbstractWorkspaceMojo {
               .append(" POM(s).\n\n");
         }
 
-        md.append("| Component | POM | From | To |\n");
+        md.append("| Subproject | POM | From | To |\n");
         md.append("|-----------|-----|------|----|\n");
         for (ParentChange c : changes) {
             md.append("| ").append(c.component)

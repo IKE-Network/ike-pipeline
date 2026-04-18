@@ -2,7 +2,7 @@ package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
 
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.VersionSupport;
 import network.ike.workspace.WorkspaceGraph;
@@ -37,12 +37,12 @@ class FeatureFinishSupport {
     private FeatureFinishSupport() {}
 
     /**
-     * Detect the feature branch name from component branches.
+     * Detect the feature branch name from subproject branches.
      * If all components on a feature branch agree on the name,
      * returns it. Also checks the workspace root branch.
      *
      * @param root       workspace root directory
-     * @param components component names to scan
+     * @param components subproject names to scan
      * @param mojo       the calling mojo (for gitBranch access)
      * @param log        Maven logger
      * @return the detected feature name (without "feature/" prefix)
@@ -61,7 +61,7 @@ class FeatureFinishSupport {
             }
         }
 
-        // Check component branches
+        // Check subproject branches
         for (String name : components) {
             File dir = new File(root, name);
             if (!new File(dir, ".git").exists()) continue;
@@ -90,7 +90,7 @@ class FeatureFinishSupport {
     }
 
     /**
-     * Validate that a component is eligible for feature-finish.
+     * Validate that a subproject is eligible for feature-finish.
      *
      * <p>Checks three consistency requirements:
      * <ol>
@@ -105,15 +105,15 @@ class FeatureFinishSupport {
      * silently proceeding with inconsistent state.
      *
      * @param root       workspace root directory
-     * @param name       component name
+     * @param name       subproject name
      * @param branchName expected git branch (e.g., "feature/my-work")
-     * @param component  the workspace.yaml component record
+     * @param subproject  the workspace.yaml subproject record
      * @param mojo       the calling mojo (for git operations)
      * @return null if eligible, "MODIFIED" for uncommitted changes,
      *         or a descriptive skip/error reason string
      */
     static String validateComponent(File root, String name, String branchName,
-                                     Component component,
+                                     Subproject subproject,
                                      AbstractWorkspaceMojo mojo) {
         File dir = new File(root, name);
         File gitDir = new File(dir, ".git");
@@ -129,7 +129,7 @@ class FeatureFinishSupport {
 
         // Verify workspace.yaml agrees with git — a mismatch means
         // branches were switched outside the ws: workflow.
-        String yamlBranch = component.branch();
+        String yamlBranch = subproject.branch();
         if (yamlBranch != null && !yamlBranch.equals(currentBranch)) {
             return "INCONSISTENT: git is on " + currentBranch
                     + " but workspace.yaml says " + yamlBranch
@@ -145,7 +145,7 @@ class FeatureFinishSupport {
     }
 
     /**
-     * Generate a structured commit message by aggregating per-component
+     * Generate a structured commit message by aggregating per-subproject
      * commit history from the feature branch.
      */
     static String generateFeatureMessage(File root, List<String> components,
@@ -201,7 +201,7 @@ class FeatureFinishSupport {
      * Strip branch-qualified version back to base SNAPSHOT.
      * Returns the base version, or null if no stripping was needed.
      */
-    static String stripBranchVersion(File dir, Component component,
+    static String stripBranchVersion(File dir, Subproject subproject,
                                       String branchName, Log log)
             throws MojoException {
         // Read actual version from POM on disk — workspace.yaml may be stale
@@ -331,7 +331,7 @@ class FeatureFinishSupport {
 
     /**
      * Merge the workspace aggregator repo from the feature branch to the
-     * target branch. Mirrors the per-component merge: checkout target,
+     * target branch. Mirrors the per-subproject merge: checkout target,
      * no-ff merge, push.
      */
     static void mergeWorkspaceRepo(Path manifestPath, String branchName,
@@ -381,7 +381,7 @@ class FeatureFinishSupport {
      * interactive timeout defaults to "no" (safe for unattended runs).
      *
      * @param root         workspace root directory
-     * @param components   component names to scan
+     * @param components   subproject names to scan
      * @param finishedBranch the branch that was just finished (excluded from stale list)
      * @param targetBranch the merge target (e.g., "main")
      * @param log          Maven logger
@@ -414,7 +414,7 @@ class FeatureFinishSupport {
         log.info("");
         log.info("  Stale feature branches (merged into " + targetBranch + "):");
         for (String branch : uniqueBranches) {
-            // Get date from first component that has it
+            // Get date from first subproject that has it
             String date = "unknown";
             for (var entry : staleBranches.entrySet()) {
                 if (entry.getValue().contains(branch)) {
@@ -499,7 +499,7 @@ class FeatureFinishSupport {
      * incomplete (e.g., some POMs were missed) or when commits were
      * cherry-picked outside the {@code ws:} workflow.
      *
-     * @param dir        the component directory (now on the target branch)
+     * @param dir        the subproject directory (now on the target branch)
      * @param branchName the feature branch that was just merged
      * @param log        Maven logger
      * @throws MojoException if POM files cannot be scanned or committed
@@ -555,14 +555,14 @@ class FeatureFinishSupport {
     }
 
     /**
-     * Scan a component directory for any version strings containing a
+     * Scan a subproject directory for any version strings containing a
      * branch qualifier. Returns the list of POM-relative paths that
      * are contaminated, or an empty list if clean.
      *
      * <p>This is a read-only check suitable for use in verification
      * goals or draft modes.
      *
-     * @param dir        the component directory
+     * @param dir        the subproject directory
      * @param qualifier  the branch qualifier to search for
      * @return list of relative POM paths containing the qualifier
      */
@@ -648,7 +648,7 @@ class FeatureFinishSupport {
     }
 
     /**
-     * Scan all POM files in a component for version strings containing
+     * Scan all POM files in a subproject for version strings containing
      * the given branch qualifier and strip them back to base SNAPSHOT.
      * This reverses the cascade done by feature-start (BOM properties,
      * BOM imports, version properties).
@@ -664,7 +664,7 @@ class FeatureFinishSupport {
      * single-segment ({@code 92}), two-segment ({@code 1.0}), semver
      * ({@code 3.0.7}), and deeper schemes all work identically.
      *
-     * @param dir       the component directory containing POM files
+     * @param dir       the subproject directory containing POM files
      * @param qualifier the branch qualifier to strip (e.g., "search-provider-diagnostics")
      * @param log       Maven logger
      * @throws MojoException if POM files cannot be located

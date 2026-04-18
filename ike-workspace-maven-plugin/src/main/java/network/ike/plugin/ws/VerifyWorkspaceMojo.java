@@ -2,7 +2,7 @@ package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
 import network.ike.workspace.BomAnalysis;
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.DependencyConvergenceAnalysis;
 import network.ike.workspace.DependencyConvergenceAnalysis.Divergence;
 import network.ike.workspace.DependencyTreeParser;
@@ -38,7 +38,7 @@ import java.util.Properties;
  * Verify workspace manifest consistency and subproject git state.
  *
  * <p>Checks that all dependency references resolve, no cycles exist,
- * all group members are valid, and all component types are defined.
+ * all group members are valid, and all subproject types are defined.
  * Also reports subproject git state, Syncthing health, and environment
  * presence.
  *
@@ -50,7 +50,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
     /**
      * Run transitive dependency convergence analysis across all
      * workspace components. Slow — requires {@code mvn dependency:tree}
-     * per component.
+     * per subproject.
      */
     @Parameter(property = "checkConvergence", defaultValue = "false")
     boolean checkConvergence;
@@ -118,7 +118,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
         int typeCount = network.ike.workspace.SubprojectType.values().length;
 
         getLog().info("  Components:      " + componentCount);
-        getLog().info("  Component types: " + typeCount);
+        getLog().info("  Subproject types: " + typeCount);
         getLog().info("");
 
         if (errors.isEmpty()) {
@@ -144,10 +144,10 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
         getLog().info("");
 
-        for (Map.Entry<String, Component> entry :
+        for (Map.Entry<String, Subproject> entry :
                 graph.manifest().components().entrySet()) {
             String name = entry.getKey();
-            Component component = entry.getValue();
+            Subproject subproject = entry.getValue();
             java.nio.file.Path pomFile = root.toPath().resolve(name).resolve("pom.xml");
 
             if (!java.nio.file.Files.exists(pomFile)) continue;
@@ -157,11 +157,11 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
                         PomParentSupport.readParent(pomFile);
                 if (parent == null) continue;
 
-                // Check if parent matches a workspace component
-                String parentComponentName = component.parent();
+                // Check if parent matches a workspace subproject
+                String parentComponentName = subproject.parent();
                 if (parentComponentName == null) {
                     // Try to detect: does the parent artifactId match a workspace component?
-                    for (Map.Entry<String, Component> candidate :
+                    for (Map.Entry<String, Subproject> candidate :
                             graph.manifest().components().entrySet()) {
                         if (candidate.getValue().groupId() != null
                                 && candidate.getValue().groupId().equals(parent.groupId())) {
@@ -178,7 +178,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
                 // Parent is declared — check version alignment
                 checked++;
-                Component parentComponent =
+                Subproject parentComponent =
                         graph.manifest().components().get(parentComponentName);
                 if (parentComponent == null) {
                     getLog().warn("  WARN: " + name + " declares parent '"
@@ -209,12 +209,12 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
             verifyRows.add(new String[]{"Parent alignment", "n/a"});
         } else if (misaligned == 0) {
             getLog().info("  Parent alignment: " + checked
-                    + " component(s) aligned  ✓");
+                    + " subproject(s) aligned  ✓");
             verifyRows.add(new String[]{"Parent alignment",
                     checked + " aligned ✓"});
         } else {
             getLog().warn("  Parent alignment: " + misaligned + "/" + checked
-                    + " component(s) misaligned");
+                    + " subproject(s) misaligned");
             verifyRows.add(new String[]{"Parent alignment",
                     misaligned + "/" + checked + " misaligned"});
         }
@@ -255,7 +255,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
                 verifyRows.add(new String[]{"BOM cascade",
                         issues.size() + " gap(s)"});
                 for (var issue : issues) {
-                    getLog().warn("    " + issue.componentName() + " → "
+                    getLog().warn("    " + issue.subprojectName() + " → "
                             + issue.dependsOn()
                             + ": no version-property or workspace BOM import");
                     if (!issue.externalBomPins().isEmpty()) {
@@ -285,7 +285,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
         File mvnExecutable = resolveMvn(root);
 
-        // Collect dependency trees per component in topological order
+        // Collect dependency trees per subproject in topological order
         List<String> order = graph.topologicalSort();
         Map<String, List<ResolvedDependency>> componentTrees =
                 new LinkedHashMap<>();
@@ -339,7 +339,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
 
             for (Divergence d : divergences) {
                 getLog().info("    " + d.coordinate());
-                for (var vEntry : d.versionToComponents().entrySet()) {
+                for (var vEntry : d.versionToSubprojects().entrySet()) {
                     getLog().info("      " + vEntry.getKey() + " ← "
                             + String.join(", ", vEntry.getValue()));
                 }
@@ -401,7 +401,7 @@ public class VerifyWorkspaceMojo extends AbstractWorkspaceMojo {
             reportVcsState(root, "    ");
         }
 
-        // Each component
+        // Each subproject
         for (var entry : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
             File dir = new File(root, name);

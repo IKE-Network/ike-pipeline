@@ -2,7 +2,7 @@ package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
 
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.WorkspaceGraph;
 import org.apache.maven.api.plugin.MojoException;
@@ -21,9 +21,9 @@ import java.util.Map;
  * <p>Two modes:
  * <ul>
  *   <li><b>Default</b> (from=repos): read actual branches from each
- *       cloned component and update workspace.yaml to match reality.</li>
+ *       cloned subproject and update workspace.yaml to match reality.</li>
  *   <li><b>from=manifest</b>: read workspace.yaml branch fields and
- *       switch each cloned component to the declared branch.</li>
+ *       switch each cloned subproject to the declared branch.</li>
  * </ul>
  *
  * <pre>{@code
@@ -86,9 +86,9 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
         Map<String, String> updates = new LinkedHashMap<>();
         int unchanged = 0;
 
-        for (Map.Entry<String, Component> entry : graph.manifest().components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
-            Component component = entry.getValue();
+            Subproject subproject = entry.getValue();
             File dir = new File(root, name);
 
             if (!new File(dir, ".git").exists()) {
@@ -96,7 +96,7 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
             }
 
             String actual = gitBranch(dir);
-            String declared = component.branch();
+            String declared = subproject.branch();
 
             if (actual.equals(declared)) {
                 unchanged++;
@@ -141,9 +141,9 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
         int switched = 0;
         int unchanged = 0;
 
-        for (Map.Entry<String, Component> entry : graph.manifest().components().entrySet()) {
+        for (Map.Entry<String, Subproject> entry : graph.manifest().components().entrySet()) {
             String name = entry.getKey();
-            Component component = entry.getValue();
+            Subproject subproject = entry.getValue();
             File dir = new File(root, name);
 
             if (!new File(dir, ".git").exists()) {
@@ -151,7 +151,7 @@ public class WsSyncMojo extends AbstractWorkspaceMojo {
             }
 
             String actual = gitBranch(dir);
-            String declared = component.branch();
+            String declared = subproject.branch();
 
             if (declared == null || actual.equals(declared)) {
                 unchanged++;

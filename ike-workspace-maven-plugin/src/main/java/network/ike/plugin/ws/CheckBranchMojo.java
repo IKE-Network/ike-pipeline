@@ -1,7 +1,7 @@
 package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.WorkspaceGraph;
 import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.api.plugin.annotations.Mojo;
@@ -45,28 +45,28 @@ public class CheckBranchMojo extends AbstractWorkspaceMojo {
         File wsRoot = workspaceRoot();
         File cwd = new File(System.getProperty("user.dir"));
 
-        // Determine which component we're in by matching CWD to workspace root + component name
-        String componentName = findComponentName(wsRoot, cwd, graph);
-        if (componentName == null) {
+        // Determine which subproject we're in by matching CWD to workspace root + subproject name
+        String subprojectName = findComponentName(wsRoot, cwd, graph);
+        if (subprojectName == null) {
             writeReport(WsGoal.CHECK_BRANCH,
-                    "_CWD is not inside a known component directory._\n");
+                    "_CWD is not inside a known subproject directory._\n");
             return;
         }
 
-        Component component = graph.manifest().components().get(componentName);
-        if (component == null || component.branch() == null) {
+        Subproject subproject = graph.manifest().components().get(subprojectName);
+        if (subproject == null || subproject.branch() == null) {
             writeReport(WsGoal.CHECK_BRANCH,
-                    "**Component:** `" + componentName + "`\n\n"
+                    "**Subproject:** `" + subprojectName + "`\n\n"
                             + "_No expected branch declared in workspace.yaml._\n");
             return;
         }
 
-        String expectedBranch = component.branch();
+        String expectedBranch = subproject.branch();
         String actualBranch = gitBranch(cwd);
 
         if (actualBranch.equals(expectedBranch)) {
             writeReport(WsGoal.CHECK_BRANCH,
-                    "**Component:** `" + componentName + "`\n"
+                    "**Subproject:** `" + subprojectName + "`\n"
                             + "**Branch:** `" + actualBranch
                             + "` (matches expected)  ✓\n");
             return;
@@ -80,7 +80,7 @@ public class CheckBranchMojo extends AbstractWorkspaceMojo {
             // Created a feature branch directly — suggest ike:feature-start
             String featureName = actualBranch.substring("feature/".length());
             getLog().warn("");
-            getLog().warn("\u26A0 You created branch '" + actualBranch + "' directly in " + componentName + ".");
+            getLog().warn("\u26A0 You created branch '" + actualBranch + "' directly in " + subprojectName + ".");
             getLog().warn("");
             getLog().warn("  To fix:");
             getLog().warn("    git checkout " + expectedBranch);
@@ -88,15 +88,15 @@ public class CheckBranchMojo extends AbstractWorkspaceMojo {
             getLog().warn("    mvn ike:feature-start -Dfeature=" + featureName);
             getLog().warn("");
             getLog().warn("  ike:feature-start creates aligned branches across all workspace");
-            getLog().warn("  components and sets version-qualified SNAPSHOTs.");
+            getLog().warn("  subprojects and sets version-qualified SNAPSHOTs.");
             getLog().warn("");
             scenario = "new feature branch created directly (should use ws:feature-start)";
         } else if (isNewBranch) {
             // Created a non-feature branch directly
             getLog().warn("");
-            getLog().warn("\u26A0 You created branch '" + actualBranch + "' directly in " + componentName + ".");
+            getLog().warn("\u26A0 You created branch '" + actualBranch + "' directly in " + subprojectName + ".");
             getLog().warn("");
-            getLog().warn("  The workspace expects branch '" + expectedBranch + "' for this component.");
+            getLog().warn("  The workspace expects branch '" + expectedBranch + "' for this subproject.");
             getLog().warn("");
             getLog().warn("  To undo:");
             getLog().warn("    git checkout " + expectedBranch);
@@ -106,9 +106,9 @@ public class CheckBranchMojo extends AbstractWorkspaceMojo {
         } else {
             // Switched to an existing branch that doesn't match workspace.yaml
             getLog().warn("");
-            getLog().warn("\u26A0 You switched to branch '" + actualBranch + "' in " + componentName + ".");
+            getLog().warn("\u26A0 You switched to branch '" + actualBranch + "' in " + subprojectName + ".");
             getLog().warn("");
-            getLog().warn("  The workspace expects branch '" + expectedBranch + "' for this component.");
+            getLog().warn("  The workspace expects branch '" + expectedBranch + "' for this subproject.");
             getLog().warn("  If this is intentional, update the workspace:");
             getLog().warn("    mvn ike:ws-sync");
             getLog().warn("");
@@ -119,20 +119,20 @@ public class CheckBranchMojo extends AbstractWorkspaceMojo {
         }
 
         writeReport(WsGoal.CHECK_BRANCH,
-                "**Component:** `" + componentName + "`\n"
+                "**Subproject:** `" + subprojectName + "`\n"
                         + "**Expected:** `" + expectedBranch + "`\n"
                         + "**Actual:** `" + actualBranch + "`\n"
                         + "**Scenario:** " + scenario + "\n");
     }
 
     /**
-     * Find which workspace component the CWD belongs to.
+     * Find which workspace subproject the CWD belongs to.
      * Handles being in a subdirectory of a multi-module reactor.
      *
      * @param wsRoot workspace root directory
      * @param cwd    current working directory
      * @param graph  workspace dependency graph
-     * @return the component name, or null if CWD is not inside a known component
+     * @return the subproject name, or null if CWD is not inside a known subproject
      */
     static String findComponentName(File wsRoot, File cwd, WorkspaceGraph graph) {
         // Walk up from CWD toward wsRoot, checking each directory name
@@ -140,7 +140,7 @@ public class CheckBranchMojo extends AbstractWorkspaceMojo {
         Path cwdPath = cwd.toPath().toAbsolutePath().normalize();
 
         while (cwdPath != null && cwdPath.startsWith(wsPath) && !cwdPath.equals(wsPath)) {
-            // The directory immediately under wsRoot is the component name
+            // The directory immediately under wsRoot is the subproject name
             Path relative = wsPath.relativize(cwdPath);
             String topDir = relative.getName(0).toString();
             if (graph.manifest().components().containsKey(topDir)) {

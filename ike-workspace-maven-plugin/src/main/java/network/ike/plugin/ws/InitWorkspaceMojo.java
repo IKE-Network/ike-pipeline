@@ -3,7 +3,7 @@ package network.ike.plugin.ws;
 import network.ike.plugin.ReleaseSupport;
 import network.ike.plugin.ws.vcs.VcsOperations;
 
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.Defaults;
 import network.ike.workspace.WorkspaceGraph;
 import org.apache.maven.api.plugin.MojoException;
@@ -24,7 +24,7 @@ import java.util.Set;
 /**
  * Clone and initialize workspace components from the manifest.
  *
- * <p>Three initialization modes per component:
+ * <p>Three initialization modes per subproject:
  * <ol>
  *   <li><b>Already cloned</b> — directory has {@code .git/}; skip.</li>
  *   <li><b>Syncthing working tree</b> — directory exists but no
@@ -72,7 +72,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
         List<String[]> rows = new ArrayList<>();
 
         for (String name : sorted) {
-            Component component = graph.manifest().components().get(name);
+            Subproject subproject = graph.manifest().components().get(name);
             File dir = new File(root, name);
             File gitDir = new File(dir, ".git");
 
@@ -90,12 +90,12 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                                 + " — updated (" + branch + ")");
                         updated++;
                         rows.add(new String[]{name, "updated",
-                                component.repo() != null ? component.repo() : "—", "✓"});
+                                subproject.repo() != null ? subproject.repo() : "—", "✓"});
                     } catch (MojoException e) {
                         getLog().warn(Ansi.yellow("  ⚠ ") + name
                                 + " — fetch/rebase failed: " + e.getMessage());
                         rows.add(new String[]{name, "update-failed",
-                                component.repo() != null ? component.repo() : "—",
+                                subproject.repo() != null ? subproject.repo() : "—",
                                 e.getMessage()});
                         skipped++;
                     }
@@ -106,21 +106,21 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                             + files + ")");
                     skipped++;
                     rows.add(new String[]{name, "skipped",
-                            component.repo() != null ? component.repo() : "—",
+                            subproject.repo() != null ? subproject.repo() : "—",
                             "uncommitted changes"});
                 }
-                if (ensureMavenWrapper(dir, component, defaults)) {
+                if (ensureMavenWrapper(dir, subproject, defaults)) {
                     wrappers++;
                 }
                 ensureJvmConfig(dir);
                 ensureClaudeNotes(dir.toPath(), name);
-                writeComponentClaudeMd(dir.toPath(), component);
-                checkoutSha(dir, component);
+                writeComponentClaudeMd(dir.toPath(), subproject);
+                checkoutSha(dir, subproject);
                 continue;
             }
 
-            String repo = component.repo();
-            String branch = component.branch();
+            String repo = subproject.repo();
+            String branch = subproject.branch();
 
             if (repo == null || repo.isEmpty()) {
                 getLog().warn(Ansi.yellow("  ⚠ ") + name + " — no repo URL, skipping");
@@ -134,13 +134,13 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                         + " — initializing git in existing directory (Syncthing)");
                 initSyncthingRepo(dir, repo, branch);
                 installHooks(dir);
-                if (ensureMavenWrapper(dir, component, defaults)) {
+                if (ensureMavenWrapper(dir, subproject, defaults)) {
                     wrappers++;
                 }
                 ensureJvmConfig(dir);
                 ensureClaudeNotes(dir.toPath(), name);
-                writeComponentClaudeMd(dir.toPath(), component);
-                checkoutSha(dir, component);
+                writeComponentClaudeMd(dir.toPath(), subproject);
+                checkoutSha(dir, subproject);
                 syncthing++;
                 rows.add(new String[]{name, "syncthing-init", repo, "✓"});
             } else {
@@ -149,13 +149,13 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 cloneRepo(root, name, repo, branch);
                 File componentDir = new File(root, name);
                 installHooks(componentDir);
-                if (ensureMavenWrapper(componentDir, component, defaults)) {
+                if (ensureMavenWrapper(componentDir, subproject, defaults)) {
                     wrappers++;
                 }
                 ensureJvmConfig(componentDir);
                 ensureClaudeNotes(componentDir.toPath(), name);
-                writeComponentClaudeMd(componentDir.toPath(), component);
-                checkoutSha(componentDir, component);
+                writeComponentClaudeMd(componentDir.toPath(), subproject);
+                checkoutSha(componentDir, subproject);
                 cloned++;
                 rows.add(new String[]{name, "cloned", repo, "✓"});
             }
@@ -208,7 +208,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
             sb.append(", ").append(wrappers).append(" Maven wrappers updated");
         }
         sb.append(".\n\n");
-        sb.append("| Component | Action | URL | Status |\n");
+        sb.append("| Subproject | Action | URL | Status |\n");
         sb.append("|-----------|--------|-----|--------|\n");
         for (String[] row : rows) {
             sb.append("| ").append(row[0])
@@ -245,12 +245,12 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
     }
 
     /**
-     * Resolve the effective Maven version for a component: component override,
+     * Resolve the effective Maven version for a component: subproject override,
      * then workspace default, then null (no wrapper).
      */
-    private String resolveMavenVersion(Component component, Defaults defaults) {
-        if (component.mavenVersion() != null) {
-            return component.mavenVersion();
+    private String resolveMavenVersion(Subproject subproject, Defaults defaults) {
+        if (subproject.mavenVersion() != null) {
+            return subproject.mavenVersion();
         }
         return defaults.mavenVersion();
     }
@@ -330,23 +330,23 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
      * Writes {@code .mvn/wrapper/maven-wrapper.properties} and the
      * {@code mvnw} / {@code mvnw.cmd} launcher scripts.
      *
-     * <p>Skips if no maven-version is configured for this component.
+     * <p>Skips if no maven-version is configured for this subproject.
      * Updates the properties file if the version has changed (e.g., after
      * a branch switch updates workspace.yaml).
      *
-     * @param componentDir the component root directory
-     * @param component    the component definition
+     * @param componentDir the subproject root directory
+     * @param subproject    the subproject definition
      * @param defaults     workspace defaults
      * @return true if wrapper was installed or updated
      */
-    private boolean ensureMavenWrapper(File componentDir, Component component,
+    private boolean ensureMavenWrapper(File componentDir, Subproject subproject,
                                         Defaults defaults) {
-        String mavenVersion = resolveMavenVersion(component, defaults);
+        String mavenVersion = resolveMavenVersion(subproject, defaults);
         if (mavenVersion == null) {
             return false;
         }
 
-        // Only install wrapper if the component has a pom.xml (it's a Maven project)
+        // Only install wrapper if the subproject has a pom.xml (it's a Maven project)
         File pomFile = new File(componentDir, "pom.xml");
         if (!pomFile.exists()) {
             return false;
@@ -490,22 +490,22 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
      * Only applies to Maven projects (must have a {@code pom.xml}).
      * Does not overwrite an existing file.
      */
-    private void checkoutSha(File dir, Component component) {
-        if (component.sha() == null || component.sha().isBlank()) {
+    private void checkoutSha(File dir, Subproject subproject) {
+        if (subproject.sha() == null || subproject.sha().isBlank()) {
             return;
         }
         try {
             String currentSha = ReleaseSupport.execCapture(dir,
                     "git", "rev-parse", "HEAD");
-            if (currentSha.startsWith(component.sha())
-                    || component.sha().startsWith(currentSha)) {
+            if (currentSha.startsWith(subproject.sha())
+                    || subproject.sha().startsWith(currentSha)) {
                 return; // already at the right commit
             }
-            getLog().info("    Checking out SHA: " + component.sha().substring(0, 8));
+            getLog().info("    Checking out SHA: " + subproject.sha().substring(0, 8));
             ReleaseSupport.exec(dir, getLog(),
-                    "git", "checkout", component.sha());
+                    "git", "checkout", subproject.sha());
         } catch (MojoException e) {
-            getLog().warn("    Could not checkout SHA " + component.sha()
+            getLog().warn("    Could not checkout SHA " + subproject.sha()
                     + ": " + e.getMessage());
         }
     }
@@ -563,14 +563,14 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 | Goal | Description |
                 |------|-------------|
                 | `ws:create` | Create a new workspace (scaffold + git init) |
-                | `ws:add` | Add a component repo (prompts for URL) |
+                | `ws:add` | Add a subproject repo (prompts for URL) |
                 | `ws:init` | Clone/initialize all components |
                 | `ws:fix` | Sync workspace.yaml versions from actual POMs |
                 | `ws:graph` | Print dependency graph (text or DOT format) |
                 | `ws:stignore` | Generate Syncthing ignore rules |
                 | `ws:upgrade-draft` | Preview workspace convention upgrades |
                 | `ws:upgrade-publish` | Apply convention upgrades |
-                | `ws:remove` | Remove a component (prompts for name) |
+                | `ws:remove` | Remove a subproject (prompts for name) |
                 | `ws:help` | List all ws: goals with descriptions |
 
                 ## Verification
@@ -585,7 +585,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
                 | Goal | Description |
                 |------|-------------|
-                | `ws:align-draft` | Preview inter-component version changes |
+                | `ws:align-draft` | Preview inter-subproject version changes |
                 | `ws:align-publish` | Apply version alignment to POMs |
                 | `ws:pull` | Git pull --rebase across all components |
                 | `ws:sync` | Reconcile git state after machine switch |
@@ -692,7 +692,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 | `targetBranch` | `main` | Source branch |
                 | `skipVersion` | `false` | Skip version qualification |
 
-                Fails if any component is on a different feature branch.
+                Fails if any subproject is on a different feature branch.
                 Branches stay local (no auto-push).
 
                 ### Finish: Three Strategies
@@ -702,8 +702,8 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 **`ws:feature-finish-rebase-publish`** — linear history, no merge commit.
 
                 All strategies:
-                - Auto-generate commit message from per-component commit history
-                - Fail-fast if any component has uncommitted changes
+                - Auto-generate commit message from per-subproject commit history
+                - Fail-fast if any subproject has uncommitted changes
                 - Strip branch-qualified versions back to base SNAPSHOT
                 - Accept optional `-Dmessage="summary"` prepended to auto-generated message
 
@@ -741,7 +741,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 | `ws:release-draft` / `-publish` | Release modified components in topo order |
                 | `ws:checkpoint-draft` / `-publish` | Tag all components, record SHAs |
                 | `ws:post-release` | Bump to next SNAPSHOT |
-                | `ws:align-draft` / `-publish` | Align inter-component versions |
+                | `ws:align-draft` / `-publish` | Align inter-subproject versions |
                 | `ws:release-notes` | Generate notes from GitHub milestone |
 
                 ---
@@ -759,8 +759,8 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
                 ## Preflight Validation
 
-                Multi-repo goals validate that all component working trees are clean
-                before starting. If any component has uncommitted changes, the goal
+                Multi-repo goals validate that all subproject working trees are clean
+                before starting. If any subproject has uncommitted changes, the goal
                 fails immediately with a list of affected repos and files — no partial
                 modifications occur.
 
@@ -789,7 +789,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
                 **Plugin version mismatch** — After upgrading `ike-parent`, run `mvn ws:init`.
 
-                **Stale clones on CI** — `ws:init` now fetches and rebases existing clones. Delete component directories manually only if rebase conflicts occur.
+                **Stale clones on CI** — `ws:init` now fetches and rebases existing clones. Delete subproject directories manually only if rebase conflicts occur.
 
                 ---
                 *Generated by `ws:init`. Regenerated when workspace plugin version changes.*
@@ -815,15 +815,15 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
     }
 
     /**
-     * Write CLAUDE.md in a component directory. Always overwrites.
+     * Write CLAUDE.md in a subproject directory. Always overwrites.
      */
-    private void writeComponentClaudeMd(Path componentDir, Component component) {
+    private void writeComponentClaudeMd(Path componentDir, Subproject subproject) {
         Path file = componentDir.resolve("CLAUDE.md");
         try {
-            Files.writeString(file, generateComponentClaudeMd(component),
+            Files.writeString(file, generateComponentClaudeMd(subproject),
                     StandardCharsets.UTF_8);
         } catch (IOException e) {
-            getLog().debug("Could not write CLAUDE.md for " + component.name()
+            getLog().debug("Could not write CLAUDE.md for " + subproject.name()
                     + ": " + e.getMessage());
         }
     }
@@ -913,14 +913,14 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
     }
 
     /**
-     * Generate CLAUDE.md content for a component directory. Static for testability.
+     * Generate CLAUDE.md content for a subproject directory. Static for testability.
      */
-    static String generateComponentClaudeMd(Component component) {
+    static String generateComponentClaudeMd(Subproject subproject) {
         var sb = new StringBuilder();
-        sb.append("# ").append(component.name()).append("\n\n");
+        sb.append("# ").append(subproject.name()).append("\n\n");
 
-        if (component.description() != null && !component.description().isBlank()) {
-            sb.append(component.description().strip()).append("\n\n");
+        if (subproject.description() != null && !subproject.description().isBlank()) {
+            sb.append(subproject.description().strip()).append("\n\n");
         }
 
         sb.append("""
@@ -938,11 +938,11 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
 
                 """);
 
-        if (component.groupId() != null) {
-            sb.append("- GroupId: `").append(component.groupId()).append("`\n");
+        if (subproject.groupId() != null) {
+            sb.append("- GroupId: `").append(subproject.groupId()).append("`\n");
         }
-        if (component.version() != null) {
-            sb.append("- Version: `").append(component.version()).append("`\n");
+        if (subproject.version() != null) {
+            sb.append("- Version: `").append(subproject.version()).append("`\n");
         }
         sb.append("- Uses `--enable-preview` (Java 25)\n");
         sb.append("- BOM: imports `dev.ikm.ike:ike-bom` for dependency version management\n");
@@ -959,7 +959,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
                 """);
 
         sb.append("See `.claude/standards/` (after `mvn validate`) for full standards.\n");
-        sb.append("See `CLAUDE-").append(component.name())
+        sb.append("See `CLAUDE-").append(subproject.name())
                 .append(".md` for project-specific notes.\n");
 
         return sb.toString();
@@ -979,7 +979,7 @@ public class InitWorkspaceMojo extends AbstractWorkspaceMojo {
     }
 
     /**
-     * Install defensive git hooks in the component's .git/hooks/ directory.
+     * Install defensive git hooks in the subproject's .git/hooks/ directory.
      * Skips if the hook already exists (don't overwrite custom hooks).
      */
     private void installHooks(File componentDir) {

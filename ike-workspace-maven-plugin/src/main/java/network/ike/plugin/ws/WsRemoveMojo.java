@@ -16,35 +16,35 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Remove a component from the workspace.
+ * Remove a subproject from the workspace.
  *
- * <p>Given a component name, this goal:
+ * <p>Given a subproject name, this goal:
  * <ol>
- *   <li>Loads the workspace graph and verifies the component exists</li>
+ *   <li>Loads the workspace graph and verifies the subproject exists</li>
  *   <li>Checks for downstream dependents — fails if any exist
  *       (unless {@code -Dforce=true})</li>
- *   <li>Removes the component entry from workspace.yaml</li>
+ *   <li>Removes the subproject entry from workspace.yaml</li>
  *   <li>Removes the file-activated profile from the aggregator pom.xml</li>
- *   <li>Removes the component from any group lists in workspace.yaml</li>
+ *   <li>Removes the subproject from any group lists in workspace.yaml</li>
  *   <li>Optionally deletes the cloned directory</li>
  * </ol>
  *
  * <pre>{@code
- * mvn ike:ws-remove -Dcomponent=tinkar-core
- * mvn ike:ws-remove -Dcomponent=tinkar-core -Dforce=true
- * mvn ike:ws-remove -Dcomponent=tinkar-core -DdeleteDir=true
+ * mvn ike:ws-remove -Dsubproject=tinkar-core
+ * mvn ike:ws-remove -Dsubproject=tinkar-core -Dforce=true
+ * mvn ike:ws-remove -Dsubproject=tinkar-core -DdeleteDir=true
  * }</pre>
  *
- * @see WsAddMojo for adding a component
+ * @see WsAddMojo for adding a subproject
  */
 @Mojo(name = "remove", projectRequired = false)
 public class WsRemoveMojo extends AbstractWorkspaceMojo {
 
     /**
-     * Component name to remove (required).
+     * Subproject name to remove (required).
      */
-    @Parameter(property = "component")
-    private String component;
+    @Parameter(property = "subproject")
+    private String subproject;
 
     /**
      * Skip the downstream-dependent safety check.
@@ -53,7 +53,7 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
     private boolean force;
 
     /**
-     * Also delete the cloned component directory from disk.
+     * Also delete the cloned subproject directory from disk.
      */
     @Parameter(property = "deleteDir", defaultValue = "false")
     private boolean deleteDir;
@@ -63,8 +63,8 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
 
     @Override
     public void execute() throws MojoException {
-        component = requireParam(component, "component",
-                "Component name to remove");
+        subproject = requireParam(subproject, "subproject",
+                "Subproject name to remove");
 
         // Resolve workspace root and paths
         Path manifestPath = resolveManifest();
@@ -74,46 +74,46 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
         // Remove is main-only — workspace composition changes belong on main,
         // not on feature branches. Add is allowed on any branch (discovery
         // during development), but removal is a structural decision.
-        File compDir = wsDir.resolve(component).toFile();
-        if (new File(compDir, ".git").exists()) {
-            String currentBranch = gitBranch(compDir);
+        File subDir = wsDir.resolve(subproject).toFile();
+        if (new File(subDir, ".git").exists()) {
+            String currentBranch = gitBranch(subDir);
             if (!currentBranch.equals("main")) {
                 throw new MojoException(
-                        "Cannot remove a component from a feature branch ('"
+                        "Cannot remove a subproject from a feature branch ('"
                         + currentBranch + "'). Switch to 'main' first. "
                         + "Workspace composition changes belong on main.");
             }
 
             // Verify clean working tree — no uncommitted changes
-            String status = gitStatus(compDir);
+            String status = gitStatus(subDir);
             if (!status.isEmpty()) {
                 throw new MojoException(
-                        "Cannot remove '" + component + "' — working tree has "
+                        "Cannot remove '" + subproject + "' — working tree has "
                         + "uncommitted changes. Commit or stash first.");
             }
         }
 
-        // Load graph and validate component exists
+        // Load graph and validate subproject exists
         WorkspaceGraph graph = loadGraph();
 
-        if (!graph.manifest().components().containsKey(component)) {
+        if (!graph.manifest().components().containsKey(subproject)) {
             throw new MojoException(
-                    "Component '" + component + "' not found in workspace.yaml.");
+                    "Subproject '" + subproject + "' not found in workspace.yaml.");
         }
 
         // Check for downstream dependents
-        List<String> dependents = graph.cascade(component);
+        List<String> dependents = graph.cascade(subproject);
         if (!dependents.isEmpty() && !force) {
             throw new MojoException(
-                    "Cannot remove '" + component + "' — the following components "
+                    "Cannot remove '" + subproject + "' — the following subprojects "
                     + "depend on it: " + dependents + "\n"
                     + "Use -Dforce=true to remove anyway.");
         }
 
         getLog().info("");
-        getLog().info(header("Remove Component"));
+        getLog().info(header("Remove Subproject"));
         getLog().info("══════════════════════════════════════════════════════════════");
-        getLog().info("  Component: " + component);
+        getLog().info("  Subproject: " + subproject);
         if (!dependents.isEmpty()) {
             getLog().warn("  Dependents (forced): " + dependents);
         }
@@ -122,7 +122,7 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
         try {
             // Remove from workspace.yaml
             removeComponentFromManifest(manifestPath);
-            getLog().info(Ansi.green("  ✓ ") + "workspace.yaml updated — component entry removed");
+            getLog().info(Ansi.green("  ✓ ") + "workspace.yaml updated — subproject entry removed");
 
             // Remove from groups in workspace.yaml
             removeFromGroups(manifestPath);
@@ -130,7 +130,7 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
 
             // Remove profile from pom.xml
             removeProfileFromPom(pomPath);
-            getLog().info(Ansi.green("  ✓ ") + "pom.xml updated — profile with-" + component + " removed");
+            getLog().info(Ansi.green("  ✓ ") + "pom.xml updated — profile with-" + subproject + " removed");
 
         } catch (IOException e) {
             throw new MojoException(
@@ -139,40 +139,40 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
 
         // Optionally delete the cloned directory
         if (deleteDir) {
-            Path componentDir = wsDir.resolve(component);
-            if (Files.isDirectory(componentDir)) {
-                deleteDirectory(componentDir);
-                getLog().info(Ansi.green("  ✓ ") + "Deleted directory: " + componentDir);
+            Path subprojectDir = wsDir.resolve(subproject);
+            if (Files.isDirectory(subprojectDir)) {
+                deleteDirectory(subprojectDir);
+                getLog().info(Ansi.green("  ✓ ") + "Deleted directory: " + subprojectDir);
             } else {
-                getLog().info("  - Directory not present: " + componentDir);
+                getLog().info("  - Directory not present: " + subprojectDir);
             }
         }
 
         getLog().info("");
-        getLog().info("  Component '" + component + "' removed.");
+        getLog().info("  Subproject '" + subproject + "' removed.");
         getLog().info("");
 
-        writeReport(WsGoal.REMOVE, "Removed component **" + component + "**."
+        writeReport(WsGoal.REMOVE, "Removed subproject **" + subproject + "**."
                 + (deleteDir ? " Directory deleted." : "") + "\n");
     }
 
     // ── YAML removal ────────────────────────────────────────────
 
     /**
-     * Remove a component block from workspace.yaml.
+     * Remove a subproject block from workspace.yaml.
      *
-     * <p>Matches the component header at 2-space indent under
+     * <p>Matches the subproject header at 2-space indent under
      * {@code components:} and removes everything until the next
-     * component header or section header (a line at 0 or 2-space
+     * subproject header or section header (a line at 0 or 2-space
      * indent that is not a continuation of this block).
      */
     void removeComponentFromManifest(Path manifestPath) throws IOException {
         String yaml = Files.readString(manifestPath, StandardCharsets.UTF_8);
 
-        // Match:  "  component-name:\n" followed by lines at 4+ space indent
+        // Match:  "  subproject-name:\n" followed by lines at 4+ space indent
         // (including multi-line description blocks) until the next 2-space key
         // or top-level key or end of file.
-        String escaped = Pattern.quote(component);
+        String escaped = Pattern.quote(subproject);
         Pattern blockPattern = Pattern.compile(
                 "\\n  " + escaped + ":\\s*\\n(?:    .*\\n)*",
                 Pattern.MULTILINE);
@@ -186,30 +186,30 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
     }
 
     /**
-     * Remove the component from all group lists in workspace.yaml.
+     * Remove the subproject from all group lists in workspace.yaml.
      *
      * <p>Handles both inline bracket syntax {@code [a, b, c]} and
-     * removes the component from comma-separated lists within brackets.
+     * removes the subproject from comma-separated lists within brackets.
      */
     void removeFromGroups(Path manifestPath) throws IOException {
         String yaml = Files.readString(manifestPath, StandardCharsets.UTF_8);
-        String escaped = Pattern.quote(component);
+        String escaped = Pattern.quote(subproject);
 
-        // Case 1: component is the only member — leave empty list
+        // Case 1: subproject is the only member — leave empty list
         // e.g. "  docs: [ike-lab-documents]" → "  docs: []"
         yaml = yaml.replaceAll(
                 "(:\\s*\\[)\\s*" + escaped + "\\s*(])",
                 "$1$2");
 
-        // Case 2: component is first in list with others after
-        // e.g. "[component, other]" → "[other]"
+        // Case 2: subproject is first in list with others after
+        // e.g. "[subproject, other]" → "[other]"
         yaml = yaml.replaceAll(
                 "(\\[)\\s*" + escaped + "\\s*,\\s*",
                 "$1");
 
-        // Case 3: component is in the middle or at end
-        // e.g. "[other, component]" → "[other]"
-        // e.g. "[a, component, b]" → "[a, b]"
+        // Case 3: subproject is in the middle or at end
+        // e.g. "[other, subproject]" → "[other]"
+        // e.g. "[a, subproject, b]" → "[a, b]"
         yaml = yaml.replaceAll(
                 ",\\s*" + escaped + "(?=\\s*[,\\]])",
                 "");
@@ -220,10 +220,10 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
     // ── POM removal ─────────────────────────────────────────────
 
     /**
-     * Remove the file-activated profile for this component from pom.xml.
+     * Remove the file-activated profile for this subproject from pom.xml.
      *
      * <p>Matches the entire {@code <profile>} block whose
-     * {@code <id>} is {@code with-<component>}.
+     * {@code <id>} is {@code with-<subproject>}.
      */
     void removeProfileFromPom(Path pomPath) throws IOException {
         if (!Files.exists(pomPath)) {
@@ -232,7 +232,7 @@ public class WsRemoveMojo extends AbstractWorkspaceMojo {
         }
 
         String pom = Files.readString(pomPath, StandardCharsets.UTF_8);
-        String profileId = "with-" + component;
+        String profileId = "with-" + subproject;
 
         if (!pom.contains(profileId)) {
             getLog().info("  - Profile " + profileId + " not found in pom.xml (already removed?)");

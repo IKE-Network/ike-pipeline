@@ -2,7 +2,7 @@ package network.ike.plugin.ws;
 
 import network.ike.plugin.ReleaseSupport;
 
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.ManifestWriter;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
@@ -74,7 +74,7 @@ public class WsPostReleaseMojo extends AbstractWorkspaceMojo {
         int skipped = 0;
 
         for (String name : sorted) {
-            Component component = graph.manifest().components().get(name);
+            Subproject subproject = graph.manifest().components().get(name);
             File dir = new File(root, name);
             File gitDir = new File(dir, ".git");
             File pomFile = new File(dir, "pom.xml");

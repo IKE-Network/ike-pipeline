@@ -1,6 +1,6 @@
 package network.ike.plugin.ws;
 
-import network.ike.workspace.Component;
+import network.ike.workspace.Subproject;
 import network.ike.workspace.Dependency;
 import network.ike.workspace.WorkspaceGraph;
 import network.ike.plugin.ws.vcs.VcsOperations;
@@ -23,9 +23,9 @@ import java.util.stream.Collectors;
  * once and presents four sections:
  *
  * <ol>
- *   <li><b>Manifest</b> — component count, consistency check</li>
+ *   <li><b>Manifest</b> — subproject count, consistency check</li>
  *   <li><b>Graph</b> — dependency order with direct dependencies</li>
- *   <li><b>Status</b> — branch, SHA, clean/modified per component</li>
+ *   <li><b>Status</b> — branch, SHA, clean/modified per subproject</li>
  *   <li><b>Cascade</b> — downstream rebuild impact of modified components</li>
  * </ol>
  *
@@ -87,19 +87,19 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         List<String[]> graphRows = new ArrayList<>();
         for (int i = 0; i < sorted.size(); i++) {
             String name = sorted.get(i);
-            Component comp = graph.manifest().components().get(name);
-            String deps = comp.dependsOn().isEmpty() ? "—"
-                    : comp.dependsOn().stream()
+            Subproject sub = graph.manifest().components().get(name);
+            String deps = sub.dependsOn().isEmpty() ? "—"
+                    : sub.dependsOn().stream()
                         .map(Dependency::component)
                         .collect(Collectors.joining(", "));
 
             getLog().info(String.format("  %2d. %-24s → %s",
                     i + 1, name, deps));
             graphRows.add(new String[]{String.valueOf(i + 1), name,
-                    comp.type().yamlName(), deps});
+                    sub.type().yamlName(), deps});
         }
 
-        // ── Section 3: Component Status ─────────────────────────────
+        // ── Section 3: Subproject Status ─────────────────────────────
         Set<String> targets = graph.manifest().components().keySet();
 
         getLog().info("");
@@ -114,7 +114,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         int notCloned = 0;
 
         for (String name : targets) {
-            Component comp = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().components().get(name);
             File dir = new File(root, name);
 
             if (!dir.exists()) {
@@ -140,7 +140,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
             }
 
             String branchCol = branch;
-            if (comp.branch() != null && !branch.equals(comp.branch())) {
+            if (sub.branch() != null && !branch.equals(sub.branch())) {
                 branchCol = branch + Ansi.yellow(" ⚠");
             }
 
@@ -156,7 +156,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
                 + modifiedComponents.size() + " modified");
 
         // ── Section 4: Feature Branch Divergence ────────────────────
-        // If any component is on a feature branch, show how far it has
+        // If any subproject is on a feature branch, show how far it has
         // diverged from main — helps developers keep long-lived branches
         // up to date.
         List<String[]> divergenceRows = new ArrayList<>();
@@ -238,8 +238,8 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         List<String[]> cascadeRows = new ArrayList<>();
         if (!modifiedComponents.isEmpty()) {
             Set<String> allAffected = new LinkedHashSet<>();
-            for (String comp : modifiedComponents) {
-                allAffected.addAll(graph.cascade(comp));
+            for (String sub : modifiedComponents) {
+                allAffected.addAll(graph.cascade(sub));
             }
             allAffected.removeAll(modifiedComponents);
 
@@ -252,9 +252,9 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
                         new LinkedHashSet<>(allAffected));
                 for (String name : buildOrder) {
                     List<String> triggeredBy = new ArrayList<>();
-                    Component comp = graph.manifest().components().get(name);
-                    if (comp != null) {
-                        for (Dependency dep : comp.dependsOn()) {
+                    Subproject sub = graph.manifest().components().get(name);
+                    if (sub != null) {
+                        for (Dependency dep : sub.dependsOn()) {
                             if (modifiedComponents.contains(dep.component())
                                     || allAffected.contains(dep.component())) {
                                 triggeredBy.add(dep.component());
@@ -298,7 +298,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
 
         // Graph table
         sb.append("### Dependency Graph\n\n");
-        sb.append("| # | Component | Type | Dependencies |\n");
+        sb.append("| # | Subproject | Type | Dependencies |\n");
         sb.append("|---|-----------|------|--------------|\n");
         for (String[] row : graphRows) {
             sb.append("| ").append(row[0])
@@ -316,7 +316,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         sb.append("\n### Status\n\n");
         sb.append(cloned).append(" cloned, ").append(notCloned)
           .append(" not cloned, ").append(modified).append(" modified.\n\n");
-        sb.append("| Component | Branch | SHA | Status |\n");
+        sb.append("| Subproject | Branch | SHA | Status |\n");
         sb.append("|-----------|--------|-----|--------|\n");
         for (String[] row : statusRows) {
             sb.append("| ").append(row[0])
@@ -329,7 +329,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         // Divergence
         if (!divergenceRows.isEmpty()) {
             sb.append("\n### Feature Branch Divergence\n\n");
-            sb.append("| Component | Branch | Behind | Ahead | Status |\n");
+            sb.append("| Subproject | Branch | Behind | Ahead | Status |\n");
             sb.append("|-----------|--------|--------|-------|--------|\n");
             for (String[] row : divergenceRows) {
                 sb.append("| ").append(row[0])
@@ -344,7 +344,7 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         // Cascade
         if (!cascadeRows.isEmpty()) {
             sb.append("\n### Cascade\n\n");
-            sb.append("| Component | Triggered By |\n");
+            sb.append("| Subproject | Triggered By |\n");
             sb.append("|-----------|-------------|\n");
             for (String[] row : cascadeRows) {
                 sb.append("| ").append(row[0])
@@ -371,9 +371,9 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
         sb.append('\n');
 
         for (String name : sorted) {
-            Component comp = graph.manifest().components().get(name);
+            Subproject sub = graph.manifest().components().get(name);
             String sourceId = name.replace("-", "_");
-            for (Dependency dep : comp.dependsOn()) {
+            for (Dependency dep : sub.dependsOn()) {
                 String targetId = dep.component().replace("-", "_");
                 if ("content".equals(dep.relationship())) {
                     sb.append("    ").append(sourceId)
@@ -394,11 +394,11 @@ public class OverviewWorkspaceMojo extends AbstractWorkspaceMojo {
     private void printDot(WorkspaceGraph graph) {
         String dot = GraphWorkspaceMojo.buildDotGraph("workspace",
                 graph.manifest().components().values().stream()
-                        .collect(Collectors.toMap(Component::name,
+                        .collect(Collectors.toMap(Subproject::name,
                                 c -> c.type().yamlName())),
                 graph.manifest().components().values().stream()
                         .filter(c -> !c.dependsOn().isEmpty())
-                        .collect(Collectors.toMap(Component::name,
+                        .collect(Collectors.toMap(Subproject::name,
                                 c -> c.dependsOn().stream()
                                         .map(d -> new String[]{d.component(), d.relationship()})
                                         .toList())));
