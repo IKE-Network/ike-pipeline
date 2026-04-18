@@ -44,3 +44,6 @@ ike-build-tools/src/site/asciidoc/ike-workspace-conventions.adoc
 .claude/
 **/.claude/
 mvnw
+
+# ike:* goal reports
+ike꞉*.md
