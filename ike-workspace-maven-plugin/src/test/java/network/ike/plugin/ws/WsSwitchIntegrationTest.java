@@ -102,7 +102,11 @@ class WsSwitchIntegrationTest {
     }
 
     @Test
-    void switch_dirtyWorktree_fails() throws Exception {
+    void switch_dirtyWorktree_withNoStash_fails() throws Exception {
+        // With the #153 auto-stash feature, the default behavior is to
+        // stash uncommitted work rather than fail. The -DnoStash=true
+        // opt-out restores the pre-#153 strict preflight — this test
+        // locks in that opt-out path.
         Files.writeString(tempDir.resolve("lib-b").resolve("dirty.txt"),
                 "uncommitted", StandardCharsets.UTF_8);
 
@@ -110,6 +114,7 @@ class WsSwitchIntegrationTest {
         mojo.manifest = helper.workspaceYaml().toFile();
         mojo.branch = "feature/alpha";
         mojo.publish = true;
+        mojo.noStash = true;
 
         assertThatThrownBy(mojo::execute)
                 .isInstanceOf(MojoException.class)

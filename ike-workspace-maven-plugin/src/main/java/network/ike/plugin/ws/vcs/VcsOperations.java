@@ -585,6 +585,174 @@ public class VcsOperations {
         }
     }
 
+    // ── Auto-stash via pushable refs (ws:switch, #153) ────────────
+
+    /**
+     * Read {@code git config user.email} for the repository.
+     *
+     * @param dir the repository root directory
+     * @return the configured email address
+     * @throws MojoException if no email is configured
+     */
+    public static String userEmail(File dir) throws MojoException {
+        String email = capture(dir, "git", "config", "user.email").trim();
+        if (email.isEmpty()) {
+            throw new MojoException(
+                    "git config user.email is not set in " + dir);
+        }
+        return email;
+    }
+
+    /**
+     * Derive an ASCII-safe slug from a git email address. Used as the
+     * per-user component of the {@code refs/ws-stash/<slug>/<branch>}
+     * ref naming scheme. Lowercases, replaces {@code @} with
+     * {@code --}, and {@code .} with {@code -}.
+     *
+     * @param email the email address (typically from {@link #userEmail})
+     * @return an ASCII slug safe for ref names and cross-platform shells
+     */
+    public static String userSlug(String email) {
+        return email.toLowerCase()
+                .replace("@", "--")
+                .replace(".", "-");
+    }
+
+    /**
+     * Check whether a remote ref exists by shelling out to
+     * {@code git ls-remote}. Distinguishes "ref absent" from
+     * "remote unreachable": a zero-exit with empty stdout means absent,
+     * a zero-exit with output means present, and a non-zero exit
+     * surfaces the network/auth error to the caller.
+     *
+     * @param dir    the repository root directory
+     * @param remote the remote name (e.g., {@code "origin"})
+     * @param ref    the full ref to probe (e.g.,
+     *               {@code "refs/ws-stash/kec--knowledge-design/feature/A"})
+     * @return {@code true} if the ref exists on the remote,
+     *         {@code false} if absent
+     * @throws MojoException if the remote is unreachable or the probe fails
+     */
+    public static boolean remoteRefExists(File dir, String remote, String ref)
+            throws MojoException {
+        String output = capture(dir, "git", "ls-remote", remote, ref);
+        return !output.isEmpty();
+    }
+
+    /**
+     * Stash the working tree including untracked files
+     * ({@code git stash push -u -m <message>}). Ignored files are
+     * skipped.
+     *
+     * @param dir     the repository root directory
+     * @param log     Maven logger
+     * @param message the stash message
+     * @throws MojoException if the git command fails
+     */
+    public static void stashPushUntracked(File dir, Log log, String message)
+            throws MojoException {
+        run(dir, log, null, "git", "stash", "push", "-u", "-m", message);
+    }
+
+    /**
+     * Apply a stash identified by its ref ({@code git stash apply <ref>}).
+     * Unlike {@code git stash apply} with a numbered index, this form
+     * accepts a full ref path (e.g. {@code refs/ws-stash/slug/branch}).
+     *
+     * @param dir the repository root directory
+     * @param log Maven logger
+     * @param ref the stash ref to apply
+     * @throws MojoException if the git command fails
+     */
+    public static void stashApply(File dir, Log log, String ref)
+            throws MojoException {
+        run(dir, log, null, "git", "stash", "apply", ref);
+    }
+
+    /**
+     * Drop the top of the stash stack ({@code git stash drop}).
+     *
+     * @param dir the repository root directory
+     * @param log Maven logger
+     * @throws MojoException if the git command fails
+     */
+    public static void stashDrop(File dir, Log log) throws MojoException {
+        run(dir, log, null, "git", "stash", "drop");
+    }
+
+    /**
+     * Point a ref at a given target ({@code git update-ref <ref> <target>}).
+     *
+     * @param dir    the repository root directory
+     * @param log    Maven logger
+     * @param ref    the ref to update (full path, e.g.
+     *               {@code "refs/ws-stash/slug/branch"})
+     * @param target the ref or SHA to point at
+     * @throws MojoException if the git command fails
+     */
+    public static void updateRef(File dir, Log log, String ref, String target)
+            throws MojoException {
+        run(dir, log, null, "git", "update-ref", ref, target);
+    }
+
+    /**
+     * Delete a local ref ({@code git update-ref -d <ref>}).
+     *
+     * @param dir the repository root directory
+     * @param log Maven logger
+     * @param ref the ref to delete
+     * @throws MojoException if the git command fails
+     */
+    public static void deleteLocalRef(File dir, Log log, String ref)
+            throws MojoException {
+        run(dir, log, null, "git", "update-ref", "-d", ref);
+    }
+
+    /**
+     * Push a ref to a remote under the same name
+     * ({@code git push <remote> <ref>:<ref>}).
+     *
+     * @param dir    the repository root directory
+     * @param log    Maven logger
+     * @param remote the remote name
+     * @param ref    the ref to push
+     * @throws MojoException if the git command fails
+     */
+    public static void pushRef(File dir, Log log, String remote, String ref)
+            throws MojoException {
+        run(dir, log, null, "git", "push", remote, ref + ":" + ref);
+    }
+
+    /**
+     * Delete a ref from a remote ({@code git push <remote> :<ref>}).
+     *
+     * @param dir    the repository root directory
+     * @param log    Maven logger
+     * @param remote the remote name
+     * @param ref    the ref to delete on the remote
+     * @throws MojoException if the git command fails
+     */
+    public static void deleteRemoteRef(File dir, Log log,
+                                        String remote, String ref)
+            throws MojoException {
+        run(dir, log, null, "git", "push", remote, ":" + ref);
+    }
+
+    /**
+     * Fetch a remote ref into a local ref of the same name
+     * ({@code git fetch <remote> <ref>:<ref>}).
+     *
+     * @param dir    the repository root directory
+     * @param log    Maven logger
+     * @param remote the remote name
+     * @param ref    the ref to fetch
+     * @throws MojoException if the git command fails
+     */
+    public static void fetchRef(File dir, Log log, String remote, String ref)
+            throws MojoException {
+        run(dir, log, null, "git", "fetch", remote, ref + ":" + ref);
+    }
+
     // ── VCS state operations ─────────────────────────────────────
 
     /**
