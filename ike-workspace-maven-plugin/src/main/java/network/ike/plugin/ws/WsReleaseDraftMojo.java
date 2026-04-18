@@ -101,12 +101,12 @@ public class WsReleaseDraftMojo extends AbstractWorkspaceMojo {
 
         boolean draft = !publish;
 
-        // ── Preflight (#132, #154, #168):
-        //    • working trees clean
-        //    • javadoc warning-free
+        // ── Preflight: all working trees must be clean (#132, #154) ───
+        // (Javadoc cleanliness is checked per-module by ike:release
+        //  preflight — see ReleaseDraftMojo — so every entry point
+        //  enforces it, not only workspace-level releases.)
         PreflightResult releasePreflight = Preflight.of(
-                List.of(PreflightCondition.WORKING_TREE_CLEAN,
-                        PreflightCondition.JAVADOC_CLEAN),
+                List.of(PreflightCondition.WORKING_TREE_CLEAN),
                 PreflightContext.of(root, graph, candidates));
         if (draft) {
             releasePreflight.warnIfFailed(getLog(), WsGoal.RELEASE_PUBLISH);
